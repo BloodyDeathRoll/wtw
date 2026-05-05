@@ -1,0 +1,197 @@
+{
+  "_comment": "WTW Master DNA Schema v1.2 — Shared contract between all three modules. Field names and types are fixed. Do not rename without team agreement.",
+
+  "metadata": {
+    "user_id": "string — unique user identifier",
+    "schema_version": "1.2",
+    "taste_version": "integer — increment by 1 on every schema write",
+    "last_updated": "ISO-8601 date string",
+    "total_sessions": "integer",
+    "fingerprint_embedding_ref": "string — pgvector row ID, updated by Assignment 3 after embedding regeneration"
+  },
+
+  "strand_a_creative_affinity": {
+    "_comment": "Affinity scores for individual crew members. Keyed by TMDB person ID.",
+    "directors": {
+      "<tmdb_person_id>": {
+        "name": "string",
+        "score": "float -1.0 to 1.0 — negative means dislike",
+        "confidence": "float 0.0 to 1.0 — increases with consistent signals, decreases with contradictions",
+        "sample_size": "integer — number of titles this score is based on",
+        "lineage_boost": "none | low | medium | high — whether to traverse influence graph for this person"
+      }
+    },
+    "writers": {
+      "<tmdb_person_id>": {
+        "name": "string",
+        "score": "float -1.0 to 1.0",
+        "confidence": "float 0.0 to 1.0",
+        "sample_size": "integer",
+        "lineage_boost": "none | low | medium | high"
+      }
+    },
+    "cinematographers": {
+      "<tmdb_person_id>": {
+        "name": "string",
+        "score": "float -1.0 to 1.0",
+        "confidence": "float 0.0 to 1.0",
+        "sample_size": "integer",
+        "lineage_boost": "none | low | medium | high"
+      }
+    },
+    "actors": {
+      "<tmdb_person_id>": {
+        "name": "string",
+        "score": "float -1.0 to 1.0",
+        "confidence": "float 0.0 to 1.0",
+        "sample_size": "integer",
+        "lineage_boost": "none | low | medium | high"
+      }
+    }
+  },
+
+  "strand_b_narrative_dimensions": {
+    "_comment": "Qualitative taste dimensions. Values are enums or floats. Notes field is plain English — updated by LLM after significant changes.",
+    "moral_ambiguity": {
+      "value": "low | medium | medium_high | high",
+      "confidence": "float 0.0 to 1.0",
+      "notes": "string — plain language summary of what we know"
+    },
+    "narrative_complexity": {
+      "value": "low | medium | medium_high | high",
+      "confidence": "float 0.0 to 1.0",
+      "notes": "string"
+    },
+    "emotional_demand": {
+      "value": "low | medium | medium_high | high",
+      "confidence": "float 0.0 to 1.0",
+      "notes": "string"
+    },
+    "originality_weight": {
+      "value": "float 0.0 to 1.0",
+      "confidence": "float 0.0 to 1.0",
+      "notes": "string"
+    },
+    "humor_style": {
+      "value": "string — e.g. observational_character_driven | slapstick | dry | none",
+      "confidence": "float 0.0 to 1.0",
+      "notes": "string"
+    },
+    "protagonist_type": {
+      "value": "string — e.g. flawed_self_aware | anti_hero | ensemble | everyman",
+      "confidence": "float 0.0 to 1.0",
+      "notes": "string"
+    },
+    "ensemble_vs_solo": {
+      "value": "strong_ensemble | slight_ensemble | neutral | slight_solo | strong_solo",
+      "confidence": "float 0.0 to 1.0",
+      "notes": "string"
+    }
+  },
+
+  "strand_c_visceral_specs": {
+    "_comment": "Quantitative weights for pacing, tone, and aspect preferences. All floats 0.0 to 1.0.",
+    "pacing_weights": {
+      "slow_burn": "float 0.0 to 1.0",
+      "moderate": "float 0.0 to 1.0",
+      "high_octane": "float 0.0 to 1.0"
+    },
+    "tone_weights": {
+      "cynical": "float 0.0 to 1.0",
+      "warm": "float 0.0 to 1.0",
+      "dark": "float 0.0 to 1.0",
+      "comedic": "float 0.0 to 1.0",
+      "hopeful": "float 0.0 to 1.0"
+    },
+    "aspect_weights": {
+      "_comment": "How much the user cares about each filmmaking aspect. Derived from deep survey opt-ins.",
+      "cinematography": "float 0.0 to 1.0",
+      "dialogue": "float 0.0 to 1.0",
+      "pacing": "float 0.0 to 1.0",
+      "acting": "float 0.0 to 1.0",
+      "world_building": "float 0.0 to 1.0",
+      "score_music": "float 0.0 to 1.0",
+      "direction": "float 0.0 to 1.0",
+      "originality": "float 0.0 to 1.0",
+      "themes": "float 0.0 to 1.0",
+      "story": "float 0.0 to 1.0",
+      "tone": "float 0.0 to 1.0",
+      "rewatchability": "float 0.0 to 1.0"
+    }
+  },
+
+  "contextual_logic": {
+    "exclusion_rules": [
+      {
+        "_comment": "Hard exclusions. These titles/people/genres are NEVER shown. Parsed from free-text by Groq.",
+        "type": "person | genre | keyword | franchise",
+        "id": "string — TMDB person ID or genre ID where applicable",
+        "name": "string — human readable",
+        "raw": "string — original free-text the user typed",
+        "reason": "string — parsed intent"
+      }
+    ],
+    "soft_preferences": [
+      {
+        "_comment": "Score modifiers. Not eliminations — they adjust ranking.",
+        "signal": "string — e.g. less political content",
+        "weight_modifier": "float 0.0 to 1.0 — multiplied against composite score"
+      }
+    ],
+    "temporal_modifiers": [
+      {
+        "_comment": "Conditional rules. Applied only when condition is detected in session context.",
+        "condition": "string — e.g. evening_tired, date_night, wants_something_short",
+        "boost": "string — dimension or tone to boost under this condition",
+        "suppress": "string — dimension or tone to suppress under this condition"
+      }
+    ]
+  },
+
+  "signals": [
+    {
+      "_comment": "Every title discussed or watched. This is the raw history — never delete entries.",
+      "title": "string",
+      "tmdb_id": "string",
+      "type": "movie | tv",
+      "reaction": "loved | liked | mixed | disliked",
+      "quick_rating": "integer 1 to 5 | null",
+      "regret_signal": "glad_watched | neutral | regret | null — filled in 48hr post-watch",
+      "source": "onboarding | session_N | recommendation_accepted | manual",
+      "reason": "string — why the user reacted this way, in plain language",
+      "dimensions_reinforced": ["array of strand_b field names this signal speaks to"],
+      "dimensions_contradicted": ["array of strand_b field names this signal pushes against"],
+      "confidence": "float 0.0 to 1.0 — how certain we are about this signal",
+      "flag": "null | reason_needed | rewatch_candidate | contradicts_profile",
+      "watched_at": "ISO-8601 datetime | null"
+    }
+  ],
+
+  "learning_loop": {
+    "open_questions": [
+      "string — things the system does not yet know about this user. Append-only during sessions. Resolved by Assignment 3."
+    ],
+    "temporal_decay_applied": "boolean — true if decay has been run on this schema version",
+    "stretch_pick_history": [
+      {
+        "title": "string",
+        "tmdb_id": "string",
+        "accepted": "boolean — did the user watch it",
+        "reaction": "loved | liked | mixed | disliked | null",
+        "session": "integer",
+        "dimensions_stretched": ["which strand_b or strand_c dimensions this violated"]
+      }
+    ],
+    "recommendation_history": [
+      {
+        "session": "integer",
+        "recommended": "string — title",
+        "tmdb_id": "string",
+        "accepted": "boolean — did user engage with it",
+        "watched": "boolean",
+        "rating": "loved | liked | mixed | disliked | null",
+        "fingerprint_version": "integer — which taste_version generated this recommendation"
+      }
+    ]
+  }
+}
