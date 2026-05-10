@@ -13,6 +13,15 @@ cd wtw
 npm install
 ```
 
+**Get your environment variables** — without these the app won't run. In the project folder:
+
+```bash
+npx vercel link
+npx vercel env pull .env.local
+```
+
+When prompted, select the **bloodydeathrolls-projects** team and the **wtw** project. This creates a `.env.local` file with all the API keys. Never commit this file.
+
 Then create your branch (pick the one that matches your assignment):
 
 ```bash
