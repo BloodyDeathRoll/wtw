@@ -1,0 +1,40 @@
+{
+  "name": "wtw",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15",
+    "react": "^19",
+    "react-dom": "^19",
+    "@supabase/supabase-js": "^2",
+    "@supabase/ssr": "^0.6",
+    "ai": "^4",
+    "@ai-sdk/groq": "^1",
+    "@ai-sdk/mistral": "^1",
+    "@upstash/redis": "^1",
+    "framer-motion": "^12",
+    "@ducanh2912/next-pwa": "^10",
+    "class-variance-authority": "^0.7",
+    "clsx": "^2",
+    "tailwind-merge": "^2",
+    "lucide-react": "^0.511"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5",
+    "tailwindcss": "^3",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "eslint": "^9",
+    "eslint-config-next": "^15"
+  }
+}
