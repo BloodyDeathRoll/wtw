@@ -186,6 +186,7 @@ TMDB_API_KEY=
 OMDB_API_KEY=
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
+CRON_SECRET=<any strong random string — shared across all three team members>
 ```
 
 ---
@@ -230,15 +231,32 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 2 — Recommendation Engine
 **Branch:** `feature/rec-engine`
-**Last updated:** —
+**Last updated:** 2026-05-22
 **Completed:**
-- [ ] Nothing yet
+- [x] Database migrations — `titles`, `crew_members` tables + pgvector indexes (`0002`, `0003`)
+- [x] TMDB client — `getMovie`, `getTV`, `getPerson`, `discoverMovies`, `discoverTV`
+- [x] OMDB client — `getRatings` (normalized 0–1, RT 50% + Meta 30% + IMDb 20%)
+- [x] Redis client — Upstash singleton (`src/lib/redis.ts`)
+- [x] Supabase service-role client (`src/lib/supabase/service.ts`)
+- [x] Enrichment pipeline — `fetchAndCacheTitle`, `enrichTitleWithNarrative`, `buildLineageGraph`, `runNightlyEnrichment`
+- [x] Nightly cron route — `POST /api/cron/enrich` + `vercel.json` schedule (3am UTC)
+- [x] Scoring components — `crew-affinity`, `narrative-match` (pgvector batch), `visceral-match`, `lineage-boost` (2-degree, batch-prefetch)
+- [x] Full 8-step recommendation pipeline — Steps 1–8 in `src/modules/engine/pipeline/`
+- [x] Co-watch intersection — geometric mean scoring + shared Groq explanations
+- [x] Public module API — `src/modules/engine/index.ts`
+- [x] API routes — `/generate`, `/cowatch`, `/explain`, `/feedback`
+- [x] Admin seed route — `POST /api/admin/seed` (idempotent, CRON_SECRET protected)
 
-**In progress:**
-- [ ] —
+**Blocked on (needs before first real test):**
+- [ ] Teammates to share API keys so `.env.local` can be filled in
+- [ ] Supabase migrations `0002` and `0003` run in SQL editor
+- [ ] Seed called once: `curl -X POST http://localhost:3000/api/admin/seed -H "Authorization: Bearer <CRON_SECRET>" -d '{"discover_pages":5}'`
+- [ ] Assignment 3 built — feedback route has hooks ready (see commented block in `feedback/route.ts`)
 
 **Next session starts at:**
-- [ ] —
+- [ ] Integration with Assignment 1 — consume `SessionContext` from the session brain's conversation end
+- [ ] Integration with Assignment 3 — uncomment `updateSchemaFromRegret` / `updateSchemaFromStretch` calls in `feedback/route.ts`
+- [ ] Verify `narrativeToEmbeddingText` format matches `strandBToEmbeddingText` in `narrative-match.ts` — Assignment 3 must use the same template when generating user embeddings
 
 ---
 
