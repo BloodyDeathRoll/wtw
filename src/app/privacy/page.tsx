@@ -13,7 +13,7 @@ export default function PrivacyPolicy() {
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">1. Who we are</h2>
         <p>
-          WTW ("What To Watch") is an AI-powered film and television
+          WTW (&ldquo;What To Watch&rdquo;) is an AI-powered film and television
           recommendation service. We are operated by Shahar Naor. Questions
           about this policy can be sent to{" "}
           <a href="mailto:shaharnaor@outlook.com" className="underline">
@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
             (loved / liked / mixed / disliked).
           </li>
           <li>
-            <strong>Taste profile ("DNA")</strong> — a machine-generated
+            <strong>Taste profile (&ldquo;DNA&rdquo;)</strong> — a machine-generated
             fingerprint of your narrative preferences, creative affinities, and
             viewing patterns derived from your ratings and interactions.
           </li>

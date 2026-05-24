@@ -30,7 +30,8 @@ WTW is an AI-powered film and TV recommendation engine that builds a continuousl
 | Database | Supabase — Postgres + pgvector extension |
 | Cache | Upstash Redis (free tier) |
 | AI Orchestration | Vercel AI SDK |
-| LLM — speed | Groq / Llama 3.3 70B (free tier) |
+| LLM — speed (text) | Groq / Llama 3.3 70B (free tier) |
+| LLM — voice (audio↔audio) | Gemini Live 2.5 Flash (native audio-to-audio) |
 | LLM — embeddings | Mistral embed (free tier) |
 | Content metadata | TMDB API (free) |
 | Ratings supplement | OMDB API (free tier) |
@@ -179,6 +180,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 GROQ_API_KEY=
+GEMINI_API_KEY=          # voice mode (Gemini Live 2.5 Flash)
 MISTRAL_API_KEY=
 TMDB_API_KEY=
 OMDB_API_KEY=
@@ -196,22 +198,26 @@ UPSTASH_REDIS_REST_TOKEN=
 **Branch:** `feature/session-brain`
 **Last updated:** 2026-05-24
 **Completed:**
-- [x] Relocated module to `src/modules/session/` per canonical layout (commit `21433dd`)
-- [x] Ported wtw design from claude.ai/design handoff:
-  - `src/modules/session/components/WTWApp.tsx` — Onboard / Welcome / Conversation states (canned `aiResponseFor` stub still stands in for the real engine)
-  - `src/modules/session/components/WTWApp.module.css` — scoped port of the prototype CSS
-  - `src/modules/session/components/particles.ts` — depth-of-field particle canvas, TS
-  - `src/app/globals.css` — `--wtw-*` design tokens (amber `#D49B3A`)
-  - `src/app/layout.tsx` + `tailwind.config.ts` — Inter via `--font-sans`
-  - `public/wtw-logo.svg` — copied + recolored to amber
-  - `src/app/page.tsx` — renders `<WTWApp />`
-- [x] `.gitignore` updated to exclude next-pwa build artifacts
+- [x] Module relocated to `src/modules/session/` (commit `21433dd`)
+- [x] Design port from claude.ai/design handoff (WTWApp, particles, design tokens, layout)
+- [x] Auth flow shipped end-to-end (Supabase Google OAuth via standard redirect):
+  - `/login` rebuilt inside the WTW shell (`AppShell` shared with WTWApp), Google sign-in button
+  - `/` auth-gated server-side, redirects to `/login` if no session, passes `AppUser` to WTWApp
+  - User avatar + sign-out popover in TopBar (replaces the placeholder hamburger)
+- [x] ESLint 9 flat config (`eslint.config.mjs`) with `next/core-web-vitals` + `next/typescript`; underscore-prefix unused-vars convention honoured
+- [x] Task #8 — `POST /api/conversation/message`: auth-gated, Groq Llama 3.3 70B streaming via Vercel AI SDK v4 (`toDataStreamResponse`). UI not yet wired.
+- [x] Voice mode shipped end-to-end via Gemini Live 2.5 Flash (native audio-to-audio):
+  - `POST /api/voice/session` — auth-gated server route mints ephemeral Gemini Live token with locked model + system prompt + AUDIO modality
+  - `src/modules/session/voice/audio.ts` — `MicCapture` (16kHz int16 PCM ↔ base64) and `AudioPlayer` (24kHz playback, barge-in via `flush()`)
+  - `src/modules/session/voice/VoiceMode.tsx` + `.module.css` — full-takeover screen: aurora background, streaming AI transcript top, live user transcript card, mic-mute left / pill blob centre / X-exit right, Recommend button after N turns
 
 **In progress:**
 - [ ] —
 
 **Next session starts at:**
-- [ ] Task #8 — `POST /api/conversation/message` with Groq streaming (minimum viable: auth-gated, no DNA/extraction yet). Task #11 (`summarizeDNAForPrompt` pure fn) is parallelizable.
+- [ ] Wire `WTWApp.tsx` chat to `/api/conversation/message` via AI SDK `useChat` (text mode currently still uses the canned `aiResponseFor` stub)
+- [ ] Voice "Recommend" handoff: today it just calls `handleSubmit("Show me recommendations")` which the stub matches by default — replace with a real call to the recommendation engine once Assignment 2 exposes it
+- [ ] Persist voice transcripts as DNA signals (Assignment 3 handoff)
 
 ---
 

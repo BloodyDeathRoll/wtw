@@ -6,7 +6,8 @@
 // a handful of times per frame, not once per particle.
 
 export interface ParticleOptions {
-  color?: string; // "r, g, b"
+  color?: string; // "r, g, b" — kept for back-compat; superseded by `palette`
+  palette?: string[]; // each entry "r, g, b" — particles pick one at spawn
   density?: number;
   speed?: number;
   maxBlur?: number;
@@ -38,6 +39,7 @@ interface Particle {
   twinkle: number;
   twinkleSpeed: number;
   bucket: number;
+  color: string;
 }
 
 export function mountParticles(
@@ -49,6 +51,8 @@ export function mountParticles(
 
   const cfg: Required<ParticleOptions> = {
     color: "212, 155, 58",
+    // Sampled from the WTW logo — gold + electric blue.
+    palette: ["180, 138, 55", "39, 24, 255"],
     density: 1,
     speed: 1,
     maxBlur: 4.5,
@@ -87,6 +91,8 @@ export function mountParticles(
     const radius = cfg.minRadius + depth * (cfg.maxRadius - cfg.minRadius);
     const blur = (1 - depth) * cfg.maxBlur;
     const lifespan = 4 * (0.8 + Math.random() * 0.4);
+    const palette = cfg.palette.length > 0 ? cfg.palette : [cfg.color];
+    const color = palette[Math.floor(Math.random() * palette.length)];
     return {
       x: Math.random() * w,
       y: initial ? Math.random() * h : h + Math.random() * 30,
@@ -104,6 +110,7 @@ export function mountParticles(
       twinkle: Math.random() * Math.PI * 2,
       twinkleSpeed: 0.008 + Math.random() * 0.025,
       bucket: Math.round(blur),
+      color,
     };
   }
 
@@ -128,8 +135,6 @@ export function mountParticles(
 
     particles.sort((a, b) => a.depth - b.depth);
 
-    const rgb = cfg.color;
-
     // GLOW PASS — blurred halos for big foreground particles
     ctx!.filter = "blur(8px)";
     for (let i = 0; i < particles.length; i++) {
@@ -152,7 +157,7 @@ export function mountParticles(
       );
 
       ctx!.beginPath();
-      ctx!.fillStyle = `rgba(${rgb}, ${a * 0.55})`;
+      ctx!.fillStyle = `rgba(${p.color}, ${a * 0.55})`;
       ctx!.arc(p.x, p.y, p.r * 2.6, 0, Math.PI * 2);
       ctx!.fill();
     }
@@ -182,7 +187,7 @@ export function mountParticles(
       );
 
       ctx!.beginPath();
-      ctx!.fillStyle = `rgba(${rgb}, ${a})`;
+      ctx!.fillStyle = `rgba(${p.color}, ${a})`;
       ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx!.fill();
     }

@@ -12,8 +12,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { mountParticles, type ParticleHandle } from "./particles";
+import { createClient } from "@/lib/supabase/client";
+import AppShell from "./AppShell";
+import VoiceMode from "../voice/VoiceMode";
+import type { AppUser } from "../types";
 import styles from "./WTWApp.module.css";
 
 // ─────────────────────────────────────────────────────────────
@@ -92,31 +96,9 @@ const POSTERS: Record<string, Poster> = {
 // Icons (Lucide-style, currentColor strokes)
 // ─────────────────────────────────────────────────────────────
 const I = {
-  menu: (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <path d="M4 7h16M4 12h16M4 17h10" />
-    </svg>
-  ),
   chevDown: (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="m6 9 6 6 6-6" />
-    </svg>
-  ),
-  edit: (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-    </svg>
-  ),
-  plus: (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  ),
-  mic: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="3" width="6" height="12" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
     </svg>
   ),
   liveBars: (
@@ -239,30 +221,94 @@ function PosterTile({ poster, size = "md" }: { poster: Poster; size?: "sm" | "md
 // Top bar
 // ─────────────────────────────────────────────────────────────
 function TopBar({
-  onMenu,
-  onNew,
   hasConversation,
   onBack,
+  user,
+  onSignOut,
 }: {
-  onMenu: () => void;
-  onNew: () => void;
   hasConversation: boolean;
   onBack: () => void;
+  user: AppUser;
+  onSignOut: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
+
+  const initial =
+    (user.name?.trim()[0] || user.email?.trim()[0] || "?").toUpperCase();
+
   return (
     <div className={styles.topbar}>
-      <button
-        className={styles.iconbtn}
-        onClick={hasConversation ? onBack : onMenu}
-        aria-label={hasConversation ? "back" : "menu"}
-      >
-        {hasConversation ? I.back : I.menu}
-        {!hasConversation && <span className={styles.dotIndicator} />}
-      </button>
-      <div className={styles.brand} aria-hidden="true" />
-      <button className={styles.iconbtn} onClick={onNew} aria-label="new chat">
-        {I.edit}
-      </button>
+      {hasConversation ? (
+        <button
+          className={styles.iconbtn}
+          onClick={onBack}
+          aria-label="back"
+          type="button"
+        >
+          {I.back}
+        </button>
+      ) : (
+        <div className={styles.userMenuWrap} ref={menuRef}>
+          <button
+            className={styles.avatarBtn}
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="account menu"
+            aria-expanded={menuOpen}
+            type="button"
+          >
+            {user.avatarUrl ? (
+              <span
+                className={styles.avatarImg}
+                style={{ backgroundImage: `url(${user.avatarUrl})` }}
+                role="img"
+                aria-label={user.name ?? user.email ?? "account"}
+              />
+            ) : (
+              <span className={styles.avatarInitial}>{initial}</span>
+            )}
+          </button>
+          {menuOpen && (
+            <div className={styles.userMenu} role="menu">
+              <div className={styles.userMenuHeader}>
+                <div className={styles.userMenuName}>
+                  {user.name ?? "Signed in"}
+                </div>
+                {user.email && (
+                  <div className={styles.userMenuEmail}>{user.email}</div>
+                )}
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.userMenuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onSignOut();
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      <div className={styles.brand}>
+        <button className={styles.brandModel} type="button">
+          <span>Cinema</span>
+          {I.chevDown}
+        </button>
+      </div>
+      <span className={styles.topbarSpacer} aria-hidden="true" />
     </div>
   );
 }
@@ -273,12 +319,16 @@ function TopBar({
 function Onboard() {
   return (
     <div className={styles.welcome}>
-      <div className={styles.welcomeBrand}>
-        <span className={styles.welcomeBrandMark}>wtw</span>
-        <button className={styles.welcomeBrandModel}>
-          <span>Cinema</span>
-          {I.chevDown}
-        </button>
+      <div className={styles.welcomeLogoRow}>
+        <Image
+          src="/wtw-logo.svg"
+          alt=""
+          width={24}
+          height={24}
+          className={styles.welcomeLogo}
+          priority
+        />
+        <span className={styles.welcomeLogoName}>WTW</span>
       </div>
       <p className={styles.onboardHint}>
         Let&rsquo;s calibrate your taste: name a few of your all time favorite flicks.
@@ -302,12 +352,16 @@ function Welcome({
   ];
   return (
     <div className={styles.welcome}>
-      <div className={styles.welcomeBrand}>
-        <span className={styles.welcomeBrandMark}>wtw</span>
-        <button className={styles.welcomeBrandModel}>
-          <span>Cinema</span>
-          {I.chevDown}
-        </button>
+      <div className={styles.welcomeLogoRow}>
+        <Image
+          src="/wtw-logo.svg"
+          alt=""
+          width={24}
+          height={24}
+          className={styles.welcomeLogo}
+          priority
+        />
+        <span className={styles.welcomeLogoName}>WTW</span>
       </div>
       {favorites && (
         <p className={styles.calibratedLine}>
@@ -475,11 +529,13 @@ function InputBar({
   value,
   setValue,
   onSend,
+  onLive,
   stage,
 }: {
   value: string;
   setValue: (s: string) => void;
   onSend: (s: string) => void;
+  onLive: () => void;
   stage: Stage;
 }) {
   function submit() {
@@ -488,18 +544,19 @@ function InputBar({
     onSend(v);
     setValue("");
   }
+  function handleLiveBtn() {
+    if (value.trim()) submit();
+    else onLive();
+  }
   const placeholder =
     stage === "onboard"
-      ? "Name a few of your all time favorite movies"
+      ? "Type your favorites…"
       : stage === "conversation"
         ? "Refine, or ask for more like the second one…"
         : "Ask wtw";
   return (
     <div className={styles.inputbarWrap}>
       <div className={styles.inputbar}>
-        <button className={`${styles.iconbtn} ${styles.iconbtnSmall}`} aria-label="attach">
-          {I.plus}
-        </button>
         <input
           className={styles.inputfield}
           placeholder={placeholder}
@@ -509,12 +566,9 @@ function InputBar({
             if (e.key === "Enter") submit();
           }}
         />
-        <button className={`${styles.iconbtn} ${styles.iconbtnSmall}`} aria-label="voice">
-          {I.mic}
-        </button>
         <button
           className={styles.liveBtn}
-          onClick={submit}
+          onClick={handleLiveBtn}
           aria-label={value.trim() ? "send" : "start live session"}
         >
           {I.liveBars}
@@ -533,30 +587,23 @@ interface Message {
   payload?: AiPayload;
 }
 
-export default function WTWApp() {
+export default function WTWApp({ user }: { user: AppUser }) {
+  const router = useRouter();
   const [stage, setStage] = useState<Stage>("onboard");
   const [favorites, setFavorites] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    let handle: ParticleHandle | null = null;
-    try {
-      handle = mountParticles(canvasRef.current, {
-        color: "212, 155, 58",
-        density: 1,
-        speed: 1,
-      });
-    } catch {
-      // canvas unsupported — silent fallback (the gradient still carries the look)
-    }
-    return () => handle?.stop();
-  }, []);
+  async function signOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
 
   function handleSubmit(text: string) {
     if (stage === "onboard") {
@@ -579,13 +626,6 @@ export default function WTWApp() {
     setInput("");
   }
 
-  function newChat() {
-    setStage("onboard");
-    setFavorites("");
-    setMessages([]);
-    setInput("");
-  }
-
   useLayoutEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -593,58 +633,67 @@ export default function WTWApp() {
   }, [messages, typing, stage]);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.app}>
-        <canvas ref={canvasRef} className={styles.canvas} />
-        <div className={styles.appInner}>
-          <div className={styles.shell}>
-            <TopBar
-              hasConversation={stage === "conversation"}
-              onBack={backToWelcome}
-              onMenu={() => {}}
-              onNew={newChat}
-            />
+    <AppShell>
+      {voiceOpen ? (
+        <VoiceMode
+          onExit={() => setVoiceOpen(false)}
+          onRecommend={() => {
+            setVoiceOpen(false);
+            // Voice calibration is done — flip to conversation view and let
+            // the canned aiResponseFor stub deliver the cluster recs.
+            // The real engine handoff lands in a later task.
+            handleSubmit("Show me recommendations");
+          }}
+        />
+      ) : (
+        <div className={styles.shell}>
+          <TopBar
+            hasConversation={stage === "conversation"}
+            onBack={backToWelcome}
+            user={user}
+            onSignOut={signOut}
+          />
 
-            <div className={styles.scroll} ref={scrollRef}>
-              {stage === "onboard" && <Onboard />}
-              {stage === "welcome" && (
-                <Welcome favorites={favorites} onSuggest={(s) => handleSubmit(s)} />
-              )}
-              {stage === "conversation" && (
-                <div className={styles.messages}>
-                  {messages.map((m, i) =>
-                    m.role === "user" ? (
-                      <UserMessage key={i} text={m.text ?? ""} />
-                    ) : (
-                      <AIMessage key={i}>
-                        <div className={styles.aiIntro}>{m.payload!.intro}</div>
-                        <div className={styles.recs}>
-                          {m.payload!.recs.map((r, j) => (
-                            <RecCard key={j} rec={r} expanded={j === 0} />
-                          ))}
-                        </div>
-                        <div className={styles.aiOutro}>{m.payload!.outro}</div>
-                      </AIMessage>
-                    ),
-                  )}
-                  {typing && (
-                    <AIMessage>
-                      <TypingDots />
+          <div className={styles.scroll} ref={scrollRef}>
+            {stage === "onboard" && <Onboard />}
+            {stage === "welcome" && (
+              <Welcome favorites={favorites} onSuggest={(s) => handleSubmit(s)} />
+            )}
+            {stage === "conversation" && (
+              <div className={styles.messages}>
+                {messages.map((m, i) =>
+                  m.role === "user" ? (
+                    <UserMessage key={i} text={m.text ?? ""} />
+                  ) : (
+                    <AIMessage key={i}>
+                      <div className={styles.aiIntro}>{m.payload!.intro}</div>
+                      <div className={styles.recs}>
+                        {m.payload!.recs.map((r, j) => (
+                          <RecCard key={j} rec={r} expanded={j === 0} />
+                        ))}
+                      </div>
+                      <div className={styles.aiOutro}>{m.payload!.outro}</div>
                     </AIMessage>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <InputBar
-              value={input}
-              setValue={setInput}
-              onSend={handleSubmit}
-              stage={stage}
-            />
+                  ),
+                )}
+                {typing && (
+                  <AIMessage>
+                    <TypingDots />
+                  </AIMessage>
+                )}
+              </div>
+            )}
           </div>
+
+          <InputBar
+            value={input}
+            setValue={setInput}
+            onSend={handleSubmit}
+            onLive={() => setVoiceOpen(true)}
+            stage={stage}
+          />
         </div>
-      </div>
-    </div>
+      )}
+    </AppShell>
   );
 }

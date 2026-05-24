@@ -1,0 +1,258 @@
+/* VoiceMode — full takeover of the AppShell inner area while live voice is on.
+   Renders absolutely-positioned over the existing topbar/scroll/input area
+   (the WTWApp swaps these out — see WTWApp.tsx).
+
+   Layout:
+     • .aurora — animated radial-gradient background, fades in with AI audio
+     • .aiText — assistant transcript, top of screen, large readable
+     • .userCard — user's live transcript, floats above the pill
+     • .recommendBtn — appears bottom-center after N turns
+     • .controls — bottom row with mute / pill blob / exit
+*/
+
+.voice {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+  color: var(--wtw-fg);
+}
+
+/* ─── Aurora background ─── */
+/* Layered radial gradients that hue-rotate over time. Sits above the page's
+   amber floor and bg.svg (which live on .app::before/::after) but below all
+   the foreground content. Opacity is driven by the JS aiLevel signal so the
+   field stays calm during listening and blooms during AI speech. */
+.aurora {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.2s ease-out;
+  background:
+    radial-gradient(60% 50% at 25% 30%, rgba(39, 24, 255, 0.55), transparent 70%),
+    radial-gradient(50% 45% at 80% 70%, rgba(180, 138, 55, 0.45), transparent 70%),
+    radial-gradient(70% 60% at 50% 100%, rgba(212, 155, 58, 0.4), transparent 65%);
+  filter: blur(40px);
+  animation: auroraShift 14s ease-in-out infinite alternate;
+}
+
+@keyframes auroraShift {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0);
+    filter: blur(40px) hue-rotate(0deg);
+  }
+  50% {
+    transform: scale(1.08) translate3d(-3%, 1%, 0);
+    filter: blur(48px) hue-rotate(45deg);
+  }
+  100% {
+    transform: scale(1.05) translate3d(2%, -2%, 0);
+    filter: blur(40px) hue-rotate(-25deg);
+  }
+}
+
+/* ─── Streaming AI text (top) ─── */
+.aiText {
+  position: relative;
+  z-index: 2;
+  padding: 28px 22px 0;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--wtw-fg);
+  /* Allow the text region to grow but stop before it touches the pill */
+  max-height: 55%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  text-wrap: pretty;
+}
+
+/* ─── User live transcript card ─── */
+.userCard {
+  position: absolute;
+  left: 50%;
+  bottom: 140px;
+  transform: translateX(-50%);
+  z-index: 2;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 12px 16px;
+  background: rgba(20, 20, 22, 0.78);
+  border: 1px solid var(--wtw-border);
+  border-radius: 16px;
+  color: var(--wtw-fg);
+  font-size: 15px;
+  line-height: 1.4;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: cardIn 0.2s ease-out;
+}
+.userCard em {
+  font-style: italic;
+  color: var(--wtw-fg-muted);
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translate(-50%, 6px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ─── Recommend button ─── */
+.recommendBtn {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--wtw-green);
+  color: #f2f2f2;
+  border: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 11px 20px;
+  border-radius: var(--wtw-radius-pill);
+  cursor: pointer;
+  box-shadow:
+    0 0 22px rgba(var(--wtw-rgb), 0.35),
+    0 6px 18px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  animation: cardIn 0.3s ease-out;
+}
+.recommendBtn:hover {
+  transform: translate(-50%, -2px);
+  box-shadow:
+    0 0 30px rgba(var(--wtw-rgb), 0.5),
+    0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Status / error overlays ─── */
+.statusOverlay,
+.errorOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--wtw-fg-muted);
+  font-size: 15px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+}
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--wtw-green);
+  box-shadow: 0 0 12px var(--wtw-green-glow);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+.errorText {
+  max-width: 280px;
+  text-align: center;
+  color: var(--wtw-fg);
+}
+.errorBtn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--wtw-fg);
+  border: 1px solid var(--wtw-border-strong);
+  padding: 10px 18px;
+  border-radius: var(--wtw-radius-pill);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.errorBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.6; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+/* ─── Bottom controls ─── */
+.controls {
+  position: absolute;
+  bottom: 22px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 20px;
+}
+
+.controlBtn {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 20, 22, 0.7);
+  border: 1px solid var(--wtw-border);
+  border-radius: 50%;
+  color: var(--wtw-fg);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease,
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+.controlBtn:hover {
+  background: rgba(28, 28, 32, 0.85);
+  transform: translateY(-1px);
+}
+.controlBtn.controlMuted {
+  color: rgba(255, 80, 80, 0.95);
+  background: rgba(40, 14, 14, 0.7);
+  border-color: rgba(255, 80, 80, 0.3);
+}
+
+/* ─── Pill blob (centre) ─── */
+.pill {
+  position: relative;
+  width: 160px;
+  height: 56px;
+  border-radius: 32px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(8, 12, 28, 0.95) 0%, rgba(40, 70, 180, 0.55) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 30px rgba(39, 24, 255, 0.35);
+  transform-origin: center;
+  transition: transform 0.06s linear;
+  flex-shrink: 0;
+}
+.pillGlow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 90% at 50% 130%, rgba(160, 200, 255, 0.9), transparent 70%),
+    radial-gradient(40% 60% at 50% 110%, rgba(255, 255, 255, 0.6), transparent 80%);
+  filter: blur(6px);
+  animation: pillDrift 6s ease-in-out infinite alternate;
+}
+
+@keyframes pillDrift {
+  0% { transform: translate(-4%, 0) scale(1.0); }
+  100% { transform: translate(4%, -2%) scale(1.05); }
+}

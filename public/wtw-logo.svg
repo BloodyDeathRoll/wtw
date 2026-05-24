@@ -1,14 +1,30 @@
-<?xml version="1.0"?>
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 128 128">
-  
-  <defs>
-    
-  </defs>
-  <rect fill="none" width="128" height="128"></rect>
-  <g>
-    <path fill="#D49B3A" d="M65.3,114.7c-12.5-.5-23.8-5.3-32.7-13.8s-16.6-25.2-15.4-40.2,2.5-14.1,6-20.3,4.5-7.4,7.6-10.5l2.1-2.1c8.1-7.5,18.4-12.2,29.3-13.2,9-.9,18,.8,26.2,4.6s17.3,12,22.3,21.3c4.2,7.7,6.3,16.4,6,25.2-.3,13.8-6.3,27-16.5,36.2s-22,13.3-34.9,12.8ZM79.8,107.9c9.4-2.8,17.4-8.5,23.2-16.3,10.7-14.6,11.8-34.9,2.4-50.4-1.8-3-3.8-5.7-6.3-8.2l-1.1-1.1c-3.9-3.9-8.6-6.9-13.8-9.1-12.4-5.2-26.6-4.5-38.4,1.8s-8.6,5.6-12.2,9.5c-7.6,8.2-11.6,19-11.7,30.2s1.7,15.2,5.4,22c5.3,9.7,14.2,17.6,24.8,21.1s18.6,3.3,27.7.6Z"></path>
-    <path fill="#D49B3A" d="M66.9,71.4l-4.2,6.3-3.8,5.8-3.9,6c-.5.7-1.1,1.3-1.9,1.4s-1.8-.1-2.3-.9l-8.5-13.8,15.3-21.4,4.3-6.1,2.8-3.8c.5-.6,1-1.1,1.7-1.3s1.8,0,2.3.7l3.4,4.7,11.6,16.3,7.8,10.9-8.7,14c-.5.6-1.6.8-2.2.7s-1.3-.6-1.7-1.3l-1.8-2.9-10.1-15.4Z"></path>
-    <path fill="#D49B3A" d="M94.8,70.7l-1.3,2.1-6-8.2-5.4-7.3,7.8-12.2c.5-.8,1.1-1.4,1.9-1.5s1.8.3,2.5,1.1l8.4,10c.9,1.1.6,2.2,0,3.2l-7.9,12.8Z"></path>
-    <path fill="#D49B3A" d="M40.3,72.9l-7.8-12.7-1.4-2.2c-.9-1.4-.6-2.6.4-3.8l8.3-10c1.1-.9,2.8-.8,3.6.4l8.2,12.8-7.3,10-4,5.5Z"></path>
-  </g>
+<svg width="72" height="76" viewBox="0 0 72 76" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_2_31)">
+<mask id="mask0_2_31" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="72" height="76">
+<path d="M31.4209 7.16992L19.8203 71.4434L15 74.2275C8.33343 78.0764 0.000199483 73.2652 0 65.5674V11.8975L8.41406 58.4941L19.001 0L31.4209 7.16992ZM48.5117 17.0361L54.7129 51.2979L42.2686 58.4824L33.1924 8.19238L48.5117 17.0361ZM66.2842 27.2979C72.9505 31.1468 72.9503 40.769 66.2842 44.6182L57.6172 49.6211L62.0859 24.874L66.2842 27.2979Z" fill="#D9D9D9" style="fill:#D9D9D9;fill:color(display-p3 0.8510 0.8510 0.8510);fill-opacity:1;"></path>
+</mask>
+<g mask="url(#mask0_2_31)">
+<g filter="url(#filter0_f_2_31)">
+<ellipse cx="64" cy="76.5515" rx="55" ry="54.5" fill="#2718FF" style="fill:#2718FF;fill:color(display-p3 0.1542 0.0938 1.0000);fill-opacity:1;"></ellipse>
+</g>
+<g filter="url(#filter1_f_2_31)">
+<ellipse cx="-0.5" cy="-3.94852" rx="53.5" ry="53" fill="#B48A37" style="fill:#B48A37;fill:color(display-p3 0.7059 0.5412 0.2157);fill-opacity:1;"></ellipse>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_f_2_31" x="-21" y="-7.94852" width="170" height="169" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feBlend>
+<feGaussianBlur stdDeviation="15" result="effect1_foregroundBlur_2_31"></feGaussianBlur>
+</filter>
+<filter id="filter1_f_2_31" x="-84" y="-86.9485" width="167" height="166" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feBlend>
+<feGaussianBlur stdDeviation="15" result="effect1_foregroundBlur_2_31"></feGaussianBlur>
+</filter>
+<clipPath id="clip0_2_31">
+<rect width="71.2839" height="75.5821" fill="white" style="fill:white;fill-opacity:1;"></rect>
+</clipPath>
+</defs>
 </svg>
