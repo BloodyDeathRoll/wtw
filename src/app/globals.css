@@ -4,6 +4,27 @@
 
 @layer base {
   :root {
+    /* wtw design tokens (from claude.ai/design handoff) */
+    --wtw-green: #D49B3A;
+    --wtw-rgb: 212, 155, 58;
+    --wtw-green-soft: rgba(212, 155, 58, 0.18);
+    --wtw-green-glow: rgba(212, 155, 58, 0.45);
+
+    --wtw-bg: #000000;
+    --wtw-bg-elev-1: #0E0E10;
+    --wtw-bg-elev-2: #161618;
+    --wtw-bg-elev-3: #1E1E22;
+
+    --wtw-border: rgba(255, 255, 255, 0.07);
+    --wtw-border-strong: rgba(255, 255, 255, 0.12);
+
+    --wtw-fg: #F2F2F2;
+    --wtw-fg-muted: #8A8A8E;
+    --wtw-fg-dim: #5E5E62;
+
+    --wtw-radius-card: 16px;
+    --wtw-radius-pill: 9999px;
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;

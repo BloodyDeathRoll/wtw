@@ -194,15 +194,24 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 1 — Session Brain
 **Branch:** `feature/session-brain`
-**Last updated:** —
+**Last updated:** 2026-05-24
 **Completed:**
-- [ ] Nothing yet
+- [x] Relocated module to `src/modules/session/` per canonical layout (commit `21433dd`)
+- [x] Ported wtw design from claude.ai/design handoff:
+  - `src/modules/session/components/WTWApp.tsx` — Onboard / Welcome / Conversation states (canned `aiResponseFor` stub still stands in for the real engine)
+  - `src/modules/session/components/WTWApp.module.css` — scoped port of the prototype CSS
+  - `src/modules/session/components/particles.ts` — depth-of-field particle canvas, TS
+  - `src/app/globals.css` — `--wtw-*` design tokens (amber `#D49B3A`)
+  - `src/app/layout.tsx` + `tailwind.config.ts` — Inter via `--font-sans`
+  - `public/wtw-logo.svg` — copied + recolored to amber
+  - `src/app/page.tsx` — renders `<WTWApp />`
+- [x] `.gitignore` updated to exclude next-pwa build artifacts
 
 **In progress:**
 - [ ] —
 
 **Next session starts at:**
-- [ ] —
+- [ ] Task #8 — `POST /api/conversation/message` with Groq streaming (minimum viable: auth-gated, no DNA/extraction yet). Task #11 (`summarizeDNAForPrompt` pure fn) is parallelizable.
 
 ---
 
