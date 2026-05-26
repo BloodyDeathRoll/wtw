@@ -1,9 +1,8 @@
 "use client";
 
-// Ported from the design handoff (project/wtw-app.jsx).
 // Fingerprint recommendation chat. Amber-on-black, mobile-first.
-// Welcome ↔ onboard ↔ conversation states. The aiResponseFor stub is
-// stand-in canned data — the real streaming pipe will replace it later.
+// Onboard ↔ conversation states. Chat streams from /api/conversation/message
+// via useChat. Welcome chips screen is parked until the rec engine lands.
 
 import {
   useEffect,
@@ -14,6 +13,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useChat } from "@ai-sdk/react";
 import { createClient } from "@/lib/supabase/client";
 import AppShell from "./AppShell";
 import VoiceMode from "../voice/VoiceMode";
@@ -464,63 +464,6 @@ function RecCard({ rec, expanded }: { rec: Rec; expanded: boolean }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Canned responses — stand-in for the real engine
-// ─────────────────────────────────────────────────────────────
-interface AiPayload {
-  intro: string;
-  recs: Rec[];
-  outro: string;
-}
-
-function aiResponseFor(text: string): AiPayload {
-  const t = text.toLowerCase();
-  if (/severance|twisty|mystery|puzzle/.test(t)) {
-    return {
-      intro:
-        "I cross-referenced your fingerprint — you score high on slow-burn ensembles, dry humour, and domestic stakes. Three that hit that frequency without the existential dread:",
-      recs: [
-        { poster: POSTERS.badSisters, match: 96, why: "Slow-burn ensemble · sibling chemistry · darkly funny" },
-        { poster: POSTERS.pokerFace, match: 92, why: "Case-of-the-week structure · Rian Johnson DNA · warm lead" },
-        { poster: POSTERS.smiths, match: 87, why: "Twisty premise · mundane stakes · long-take dialogue" },
-      ],
-      outro: "Want me to lean weirder, funnier, or more cosy?",
-    };
-  }
-  if (/rainy|sunday|mum|mom|cosy|cozy|comfort/.test(t)) {
-    return {
-      intro:
-        "Cross-generational, low-conflict, emotionally honest. From your fingerprint: you tend to rate Asian-diaspora dramas + understated comedies a half-star higher than average.",
-      recs: [
-        { poster: POSTERS.past, match: 94, why: "Quiet · longing · subtitles you won’t mind" },
-        { poster: POSTERS.loot, match: 88, why: "Warm ensemble · low stakes · 22-min episodes" },
-      ],
-      outro: "I can also pull a pre-2000 pick if you want familiar.",
-    };
-  }
-  if (/a24|hidden|gem|missed|indie/.test(t)) {
-    return {
-      intro:
-        "Pulling from your last 12 months — you skew toward Irish + Korean filmmakers, and you've watched three McDonagh films. Two undervalued matches:",
-      recs: [
-        { poster: POSTERS.banshees, match: 95, why: "McDonagh follow-up · friendship-as-horror · folk dread" },
-        { poster: POSTERS.past, match: 91, why: "A24 patience · long takes · diaspora ache" },
-      ],
-      outro: "Want me to dig further back — your 2017–2019 watchlist had gaps.",
-    };
-  }
-  return {
-    intro:
-      "Here's what your fingerprint pulled this week. You've been gravitating toward ensemble pieces with dry humour — these three landed in the same cluster:",
-    recs: [
-      { poster: POSTERS.badSisters, match: 93, why: "Cluster centroid · 4 of 5 viewers like you finished it" },
-      { poster: POSTERS.smiths, match: 89, why: "Adjacent fingerprint · twisty, warm, dialogue-heavy" },
-      { poster: POSTERS.loot, match: 84, why: "Shorter episodes · light cousin of your last watch" },
-    ],
-    outro: "Tell me one you've already seen and I'll recalibrate.",
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
 // Input bar
 // ─────────────────────────────────────────────────────────────
 type Stage = "onboard" | "welcome" | "conversation";
@@ -581,20 +524,16 @@ function InputBar({
 // ─────────────────────────────────────────────────────────────
 // Main app
 // ─────────────────────────────────────────────────────────────
-interface Message {
-  role: "user" | "ai";
-  text?: string;
-  payload?: AiPayload;
-}
-
 export default function WTWApp({ user }: { user: AppUser }) {
   const router = useRouter();
   const [stage, setStage] = useState<Stage>("onboard");
   const [favorites, setFavorites] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+
+  const { messages, append, setMessages, status } = useChat({
+    api: "/api/conversation/message",
+  });
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -606,18 +545,9 @@ export default function WTWApp({ user }: { user: AppUser }) {
   }
 
   function handleSubmit(text: string) {
-    if (stage === "onboard") {
-      setFavorites(text);
-      setStage("welcome");
-      return;
-    }
+    if (stage === "onboard") setFavorites(text);
     setStage("conversation");
-    setMessages((prev) => [...prev, { role: "user", text }]);
-    setTyping(true);
-    setTimeout(() => {
-      setTyping(false);
-      setMessages((prev) => [...prev, { role: "ai", payload: aiResponseFor(text) }]);
-    }, 1100);
+    void append({ role: "user", content: text });
   }
 
   function backToWelcome() {
@@ -630,7 +560,7 @@ export default function WTWApp({ user }: { user: AppUser }) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, typing, stage]);
+  }, [messages, status, stage]);
 
   return (
     <AppShell>
@@ -639,9 +569,6 @@ export default function WTWApp({ user }: { user: AppUser }) {
           onExit={() => setVoiceOpen(false)}
           onRecommend={() => {
             setVoiceOpen(false);
-            // Voice calibration is done — flip to conversation view and let
-            // the canned aiResponseFor stub deliver the cluster recs.
-            // The real engine handoff lands in a later task.
             handleSubmit("Show me recommendations");
           }}
         />
@@ -661,22 +588,16 @@ export default function WTWApp({ user }: { user: AppUser }) {
             )}
             {stage === "conversation" && (
               <div className={styles.messages}>
-                {messages.map((m, i) =>
+                {messages.map((m) =>
                   m.role === "user" ? (
-                    <UserMessage key={i} text={m.text ?? ""} />
+                    <UserMessage key={m.id} text={m.content} />
                   ) : (
-                    <AIMessage key={i}>
-                      <div className={styles.aiIntro}>{m.payload!.intro}</div>
-                      <div className={styles.recs}>
-                        {m.payload!.recs.map((r, j) => (
-                          <RecCard key={j} rec={r} expanded={j === 0} />
-                        ))}
-                      </div>
-                      <div className={styles.aiOutro}>{m.payload!.outro}</div>
+                    <AIMessage key={m.id}>
+                      <div className={styles.aiIntro}>{m.content}</div>
                     </AIMessage>
                   ),
                 )}
-                {typing && (
+                {status === "submitted" && (
                   <AIMessage>
                     <TypingDots />
                   </AIMessage>

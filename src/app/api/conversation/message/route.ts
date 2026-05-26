@@ -5,17 +5,26 @@
 // client wiring can drop in without server changes.
 
 import { groq } from "@ai-sdk/groq";
-import { streamText, type CoreMessage } from "ai";
+import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const SYSTEM_PROMPT = `You are WTW (What To Watch), a conversational film and TV recommendation assistant.
+const SYSTEM_PROMPT = `You are WTW (What To Watch). Your job is to build a vivid, layered picture of the user's film and TV taste through light, casual conversation — not an interview.
 
-Reply conversationally and concisely (1–3 short paragraphs). When you suggest titles, name them inline in prose — do not output JSON, markdown tables, or any machine-readable structure. The structured recommendation engine is wired separately and will replace your free-text suggestions over time.
+Each turn, ask ONE focused question that surfaces a NEW dimension of their taste. Rotate territory across turns: directors or actors whose work they trust, a recent watch they loved or hated and why, tolerance for moral ambiguity, fast cuts vs. long takes, what they'll never watch, who they usually watch with, how much narrative work they want to do, mood right now.
 
-Ask one focused clarifying question when the user's request is ambiguous about mood, runtime, or who they're watching with.`;
+Style rules:
+- One or two short sentences per turn. Warm and curious, not interrogating.
+- Do not summarize, restate, or react to the user's previous answer. Just ask the next question.
+- Do not probe the same dimension two turns in a row.
+- Plain prose only — no lists, JSON, or markdown tables.
+
+If the user explicitly asks for a recommendation:
+- If you barely know them, say so honestly in one line and either offer a tentative pick with a hedge ("based on the little I have so far, you might try…") or ask one more taste-revealing question first.
+- If you have several signals, name one or two titles inline in prose with a one-line "why this".
+- The structured recommendation engine isn't wired yet; any title you name is a placeholder, not a final pick.`;
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -27,7 +36,7 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { messages?: CoreMessage[] }
+    | { messages?: UIMessage[] }
     | null;
   const messages = body?.messages;
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -40,7 +49,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: groq("llama-3.3-70b-versatile"),
     system: SYSTEM_PROMPT,
-    messages,
+    messages: convertToCoreMessages(messages),
   });
 
   return result.toDataStreamResponse();
