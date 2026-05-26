@@ -196,7 +196,7 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 1 — Session Brain
 **Branch:** `feature/session-brain`
-**Last updated:** 2026-05-24
+**Last updated:** 2026-05-26
 **Completed:**
 - [x] Module relocated to `src/modules/session/` (commit `21433dd`)
 - [x] Design port from claude.ai/design handoff (WTWApp, particles, design tokens, layout)
@@ -205,18 +205,20 @@ UPSTASH_REDIS_REST_TOKEN=
   - `/` auth-gated server-side, redirects to `/login` if no session, passes `AppUser` to WTWApp
   - User avatar + sign-out popover in TopBar (replaces the placeholder hamburger)
 - [x] ESLint 9 flat config (`eslint.config.mjs`) with `next/core-web-vitals` + `next/typescript`; underscore-prefix unused-vars convention honoured
-- [x] Task #8 — `POST /api/conversation/message`: auth-gated, Groq Llama 3.3 70B streaming via Vercel AI SDK v4 (`toDataStreamResponse`). UI not yet wired.
+- [x] Text chat wired end-to-end: `WTWApp.tsx` consumes `/api/conversation/message` via AI SDK `useChat`; canned `aiResponseFor` stub deleted. System prompt rewritten as a calibration interview (one focused taste-revealing question per turn, no echoing the user's answer, hedged fallback if user asks for a rec early).
 - [x] Voice mode shipped end-to-end via Gemini Live 2.5 Flash (native audio-to-audio):
-  - `POST /api/voice/session` — auth-gated server route mints ephemeral Gemini Live token with locked model + system prompt + AUDIO modality
+  - `POST /api/voice/session` — auth-gated server route mints ephemeral Gemini Live token with locked model + system prompt + AUDIO modality. Model is `gemini-2.5-flash-native-audio-preview-12-2025` (the original `gemini-live-2.5-flash-preview` ID was retired on 2026-03-19).
   - `src/modules/session/voice/audio.ts` — `MicCapture` (16kHz int16 PCM ↔ base64) and `AudioPlayer` (24kHz playback, barge-in via `flush()`)
-  - `src/modules/session/voice/VoiceMode.tsx` + `.module.css` — full-takeover screen: aurora background, streaming AI transcript top, live user transcript card, mic-mute left / pill blob centre / X-exit right, Recommend button after N turns
+  - `src/modules/session/voice/VoiceMode.tsx` + `.module.css` — full-takeover screen: aurora background, streaming AI transcript top, live user transcript card (clears the AI's question as soon as the user starts answering), mic-mute left / pill blob centre / X-exit right, Recommend button after N turns
+  - Mic chunks suppressed while AI plays back, to stop laptop-speaker bleed from being read as barge-in. Trade-off: no true barge-in, only turn-taking.
 
 **In progress:**
 - [ ] —
 
 **Next session starts at:**
-- [ ] Wire `WTWApp.tsx` chat to `/api/conversation/message` via AI SDK `useChat` (text mode currently still uses the canned `aiResponseFor` stub)
-- [ ] Voice "Recommend" handoff: today it just calls `handleSubmit("Show me recommendations")` which the stub matches by default — replace with a real call to the recommendation engine once Assignment 2 exposes it
+- [ ] Welcome chips screen (post-calibration UI) is currently parked — needs a stage transition from `conversation` once the fingerprint is "calibrated enough". The Welcome component and chip suggestions are still defined in `WTWApp.tsx`; just wire the transition.
+- [ ] Rec card UI (`RecCard`, `POSTERS`, `Rec`) is parked and currently lint-warned as unused — reconnect it once Assignment 2's engine exposes its API. The chips on the Welcome screen are also meant to be wired to the engine then.
+- [ ] Voice "Recommend" handoff: today it just calls `handleSubmit("Show me recommendations")` which the LLM responds to in prose — replace with a real engine call once Assignment 2 exposes it.
 - [ ] Persist voice transcripts as DNA signals (Assignment 3 handoff)
 
 ---
