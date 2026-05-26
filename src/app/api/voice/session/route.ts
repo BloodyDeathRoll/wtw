@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VOICE_MODEL = "gemini-live-2.5-flash-preview";
+const VOICE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 
 const SYSTEM_PROMPT = `You are WTW (What To Watch) — a friendly conversational guide helping the user calibrate their film and TV taste through a short voice conversation.
 

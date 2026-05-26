@@ -102,6 +102,11 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
 
         const mic = new MicCapture({
           onChunk: (b64) => {
+            // Don't forward mic audio while the AI is talking — laptop speakers
+            // bleed back into the mic and Gemini's VAD reads it as barge-in,
+            // cutting the AI off mid-sentence.
+            if (playerRef.current?.isPlaying()) return;
+
             try {
               sessionRef.current?.sendRealtimeInput({
                 audio: { data: b64, mimeType: "audio/pcm;rate=16000" },
@@ -155,8 +160,11 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
       }
     }
 
-    // Input transcription = user's live words (already in pieces)
+    // Input transcription = user's live words (already in pieces).
+    // Clear the AI's last question as soon as the user starts answering, so
+    // the screen doesn't pile up.
     if (content.inputTranscription?.text) {
+      setAiTranscript("");
       setUserTranscript((s) => s + (content.inputTranscription?.text ?? ""));
     }
 
