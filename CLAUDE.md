@@ -196,6 +196,7 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 1 — Session Brain
 **Branch:** `feature/session-brain`
+**PR:** [#1 — open, awaiting review](https://github.com/BloodyDeathRoll/wtw/pull/1)
 **Last updated:** 2026-05-26
 **Completed:**
 - [x] Module relocated to `src/modules/session/` (commit `21433dd`)
