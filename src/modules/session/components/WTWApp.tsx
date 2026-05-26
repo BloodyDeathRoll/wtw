@@ -531,8 +531,17 @@ export default function WTWApp({ user }: { user: AppUser }) {
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
 
-  const { messages, append, setMessages, status } = useChat({
+  const { messages, append, setMessages, status, error, reload } = useChat({
     api: "/api/conversation/message",
+    // Intercept 401 at the fetch layer (the HTTP status is unambiguous here,
+    // whereas useChat's onError only sees the response body text). The
+    // server returns 401 when the Supabase session has expired — bounce to
+    // /login so the user can re-auth instead of hitting a dead chat.
+    fetch: async (input, init) => {
+      const res = await fetch(input, init);
+      if (res.status === 401) router.replace("/login");
+      return res;
+    },
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -601,6 +610,18 @@ export default function WTWApp({ user }: { user: AppUser }) {
                   <AIMessage>
                     <TypingDots />
                   </AIMessage>
+                )}
+                {error && !/401|unauthorized/i.test(error.message) && (
+                  <div className={styles.chatError} role="alert">
+                    <span>Couldn&rsquo;t reach the model.</span>
+                    <button
+                      type="button"
+                      className={styles.chatErrorBtn}
+                      onClick={() => void reload()}
+                    >
+                      Try again
+                    </button>
+                  </div>
                 )}
               </div>
             )}

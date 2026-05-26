@@ -515,6 +515,34 @@
   }
 }
 
+/* ─── Inline chat error ─── */
+.chatError {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 0 30px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--wtw-border);
+  font-size: 13.5px;
+  color: var(--wtw-fg-muted);
+}
+.chatErrorBtn {
+  background: transparent;
+  border: 1px solid var(--wtw-border);
+  color: var(--wtw-fg);
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.chatErrorBtn:hover {
+  background: rgba(var(--wtw-rgb), 0.06);
+  border-color: rgba(var(--wtw-rgb), 0.25);
+}
+
 /* ─── Recommendation cards ─── */
 .recs {
   display: flex;
