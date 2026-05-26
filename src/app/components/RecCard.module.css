@@ -1,0 +1,183 @@
+/* Ported from feature/session-brain WTWApp.module.css
+   Scoped to recommendation card + poster tile styles only. */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ─── Recommendation card ─── */
+.rec {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--wtw-radius-card);
+  background: rgba(20, 20, 22, 0.65);
+  border: 1px solid var(--wtw-border);
+  transition: all 0.18s ease;
+  animation: fadeUp 0.35s ease both;
+}
+.rec:hover {
+  border-color: rgba(var(--wtw-rgb), 0.2);
+  background: rgba(22, 22, 24, 0.85);
+}
+.recExp {
+  background: linear-gradient(180deg, rgba(28, 28, 32, 0.9), rgba(18, 18, 20, 0.7));
+  border-color: rgba(var(--wtw-rgb), 0.18);
+}
+
+.recBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.recHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.recTitle {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--wtw-fg);
+  line-height: 1.2;
+}
+.recMatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--wtw-green);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.matchDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wtw-green);
+  box-shadow: 0 0 6px var(--wtw-green-glow);
+}
+.recMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--wtw-fg-muted);
+}
+.recDot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--wtw-fg-dim);
+}
+.stretchBadge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wtw-green);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--wtw-rgb), 0.3);
+  background: rgba(var(--wtw-rgb), 0.08);
+}
+.recWhy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: rgba(var(--wtw-rgb), 0.04);
+  border-left: 2px solid rgba(var(--wtw-rgb), 0.5);
+  border-radius: 0 8px 8px 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--wtw-fg);
+}
+.whyEyebrow {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--wtw-green);
+  font-weight: 600;
+}
+.recActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+.btnWatch {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--wtw-green);
+  color: #f2f2f2;
+  border: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 0 18px rgba(var(--wtw-rgb), 0.18);
+}
+.btnWatch:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 22px rgba(var(--wtw-rgb), 0.3);
+}
+.btnGhost {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--wtw-border);
+  border-radius: 9px;
+  color: var(--wtw-fg-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btnGhost:hover {
+  color: var(--wtw-fg);
+  border-color: var(--wtw-border-strong);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ─── Poster tile ─── */
+.poster {
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.posterTitle {
+  position: absolute;
+  left: var(--p-pad);
+  right: var(--p-pad);
+  bottom: var(--p-pad);
+  font-size: var(--p-font);
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.posterMotif {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+}
