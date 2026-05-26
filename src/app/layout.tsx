@@ -25,7 +25,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans`}>{children}</body>
+      <body className={`${inter.variable} font-sans`}>
+        {/* next-pwa is disabled in dev, but a SW from a prior production build
+            can linger in the browser and serve stale HTML. Tear it down on
+            every dev page load. */}
+        {process.env.NODE_ENV === "development" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}`,
+            }}
+          />
+        )}
+        {children}
+      </body>
     </html>
   );
 }
