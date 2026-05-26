@@ -13,14 +13,20 @@ cd wtw
 npm install
 ```
 
-**Get your environment variables** — without these the app won't run. In the project folder:
+**Get your environment variables** — without these the app won't run.
 
-```bash
-npx vercel link
-npx vercel env pull .env.local
+Ask Shahar for the latest `.env.local` (shared over chat — never in the repo). Drop it in the project root so it sits next to `package.json`:
+
+```
+wtw/
+├── .env.local       ← here
+├── package.json
+└── ...
 ```
 
-When prompted, select the **bloodydeathrolls-projects** team and the **wtw** project. This creates a `.env.local` file with all the API keys. Never commit this file.
+**Never commit `.env.local`** — it's gitignored, and it holds every API key the app uses. If a key changes, Shahar will share an updated file.
+
+> Why a file and not `vercel env pull`? Vercel removed the free Hobby team tier, so the project lives under a personal account and teammates can't pull env vars from the dashboard.
 
 Then create your branch (pick the one that matches your assignment):
 
@@ -43,7 +49,11 @@ git push -u origin feature/your-branch-name
 
 ---
 
-## Starting a session
+# Your day-to-day session loop
+
+> Every working session has the same three beats: **open**, **work**, **close**. Treat them as one routine, not three separate tasks.
+
+### 1. Starting a session
 
 Run these three commands every time you open the project. Takes 30 seconds.
 
@@ -58,9 +68,7 @@ If the last command shows conflicts (rare), come to the group chat before touchi
 Then open Claude Code and start with:
 > "Read CLAUDE.md and then let's continue where we left off."
 
----
-
-## During a session
+### 2. During a session
 
 Save your work regularly. Every time you finish something that works, commit it:
 
@@ -83,9 +91,7 @@ git push origin feature/your-branch-name
 
 Commit little and often. If Claude Code goes sideways, small commits mean you can roll back to the last working state without losing everything.
 
----
-
-## Ending a session
+### 3. Ending a session
 
 **Step 1 — Commit everything you did today:**
 ```bash
