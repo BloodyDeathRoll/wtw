@@ -16,81 +16,63 @@ import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
 import { createClient } from "@/lib/supabase/client";
 import AppShell from "./AppShell";
+import RecommendPill from "./RecommendPill";
+import RecommendationsView from "../recommendations/RecommendationsView";
 import VoiceMode from "../voice/VoiceMode";
-import type { AppUser } from "../types";
+import type { AppUser, Conversation, Welcome } from "../types";
 import styles from "./WTWApp.module.css";
 
-// ─────────────────────────────────────────────────────────────
-// Mock data — bespoke poster tiles (no external assets)
-// ─────────────────────────────────────────────────────────────
-type MotifKind = "spades" | "circle" | "star" | "cross" | "dot" | "wave";
+// How many completed AI replies before "See Recommendations" appears.
+// Modality-agnostic — every assistant message counts (voice OR text).
+const RECOMMEND_AFTER_TURNS = 2;
 
-interface Poster {
-  title: string;
-  palette: [string, string];
-  motif: MotifKind;
-  year: string;
-  meta: string;
-  rating: string;
-  where: string;
-}
-
-const POSTERS: Record<string, Poster> = {
-  pokerFace: {
-    title: "Poker Face",
-    palette: ["#2A1810", "#E8C547"],
-    motif: "spades",
-    year: "2023",
-    meta: "10 ep · S1",
-    rating: "8.0",
-    where: "Peacock",
-  },
-  badSisters: {
-    title: "Bad Sisters",
-    palette: ["#1B2A28", "#C7B8FF"],
-    motif: "circle",
-    year: "2022",
-    meta: "10 ep · S1",
-    rating: "8.3",
-    where: "Apple TV+",
-  },
-  loot: {
-    title: "Loot",
-    palette: ["#2D0F2E", "#FF7AB8"],
-    motif: "star",
-    year: "2022",
-    meta: "20 ep · S1–2",
-    rating: "7.4",
-    where: "Apple TV+",
-  },
-  smiths: {
-    title: "Mr & Mrs Smith",
-    palette: ["#0F1620", "#7FB3FF"],
-    motif: "cross",
-    year: "2024",
-    meta: "8 ep · S1",
-    rating: "7.4",
-    where: "Prime Video",
-  },
-  past: {
-    title: "Past Lives",
-    palette: ["#16242E", "#F5C9A6"],
-    motif: "dot",
-    year: "2023",
-    meta: "1h 45m",
-    rating: "7.9",
-    where: "Paramount+",
-  },
-  banshees: {
-    title: "The Banshees of Inisherin",
-    palette: ["#1C2A1A", "#E9E2C8"],
-    motif: "wave",
-    year: "2022",
-    meta: "1h 54m",
-    rating: "7.7",
-    where: "Disney+",
-  },
+type ContentType = "movies" | "series";
+const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
+  movies: "Movies",
+  series: "Series",
 };
+
+// Gemini Live prebuilt voices. Display name === voice ID (constellations
+// and mythology). Descriptors come from Google's own catalogue and give the
+// user a hint of timbre before they pick.
+const VOICES = [
+  { id: "Aoede", desc: "Breezy" },
+  { id: "Charon", desc: "Informative" },
+  { id: "Fenrir", desc: "Excitable" },
+  { id: "Kore", desc: "Firm" },
+  { id: "Puck", desc: "Upbeat" },
+  { id: "Zephyr", desc: "Bright" },
+  { id: "Leda", desc: "Youthful" },
+  { id: "Orus", desc: "Firm" },
+  { id: "Callirrhoe", desc: "Easy-going" },
+  { id: "Autonoe", desc: "Bright" },
+  { id: "Enceladus", desc: "Breathy" },
+  { id: "Iapetus", desc: "Clear" },
+  { id: "Umbriel", desc: "Easy-going" },
+  { id: "Algieba", desc: "Smooth" },
+  { id: "Despina", desc: "Smooth" },
+  { id: "Erinome", desc: "Clear" },
+  { id: "Algenib", desc: "Gravelly" },
+  { id: "Rasalgethi", desc: "Informative" },
+  { id: "Laomedeia", desc: "Upbeat" },
+  { id: "Achernar", desc: "Soft" },
+  { id: "Alnilam", desc: "Firm" },
+  { id: "Schedar", desc: "Even" },
+  { id: "Gacrux", desc: "Mature" },
+  { id: "Pulcherrima", desc: "Forward" },
+  { id: "Achird", desc: "Friendly" },
+  { id: "Zubenelgenubi", desc: "Casual" },
+  { id: "Vindemiatrix", desc: "Gentle" },
+  { id: "Sadachbia", desc: "Lively" },
+  { id: "Sadaltager", desc: "Knowledgeable" },
+  { id: "Sulafat", desc: "Warm" },
+] as const;
+type Voice = (typeof VOICES)[number]["id"];
+const DEFAULT_VOICE: Voice = "Aoede";
+const VOICE_IDS = VOICES.map((v) => v.id) as readonly string[];
+const isVoice = (s: unknown): s is Voice =>
+  typeof s === "string" && VOICE_IDS.includes(s);
+
 
 // ─────────────────────────────────────────────────────────────
 // Icons (Lucide-style, currentColor strokes)
@@ -112,181 +94,285 @@ const I = {
       <rect x="19.5" y="10.5" width="2" height="3" rx="1" />
     </svg>
   ),
-  play: (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-      <path d="M7 4.5v15l13-7.5L7 4.5Z" />
-    </svg>
-  ),
-  bookmark: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
-      <path d="M6 3h12v18l-6-4-6 4V3Z" />
-    </svg>
-  ),
-  thumbs: (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
-      <path d="M7 22V11M2 13v7a2 2 0 0 0 2 2h3V11H4a2 2 0 0 0-2 2Zm5-2V8a3 3 0 0 1 3-3l1 5h6.5a2 2 0 0 1 2 2.3l-1.5 7a2 2 0 0 1-2 1.7H7" />
-    </svg>
-  ),
   back: (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="m15 18-6-6 6-6" />
     </svg>
   ),
+  hamburger: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  ),
+  chevRight: (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  ),
+  message: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="14" rx="2" />
+      <path d="M7 18v3l4-3" />
+    </svg>
+  ),
+  close: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  ),
 };
 
-// ─────────────────────────────────────────────────────────────
-// Poster tile
-// ─────────────────────────────────────────────────────────────
-function Motif({ kind, fg }: { kind: MotifKind; fg: string }) {
-  const style = { color: fg } as const;
-  if (kind === "spades") {
-    return (
-      <svg className={styles.posterMotif} style={style} viewBox="0 0 100 150" preserveAspectRatio="none">
-        <path d="M50 30 C 30 60, 20 75, 35 90 C 42 97, 50 90, 50 80 C 50 90, 58 97, 65 90 C 80 75, 70 60, 50 30 Z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (kind === "circle") {
-    return (
-      <svg className={styles.posterMotif} style={style} viewBox="0 0 100 150" preserveAspectRatio="none">
-        <circle cx="50" cy="68" r="40" fill="none" stroke="currentColor" strokeWidth="1.2" />
-        <circle cx="50" cy="68" r="28" fill="none" stroke="currentColor" strokeWidth="1.2" />
-        <circle cx="50" cy="68" r="16" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      </svg>
-    );
-  }
-  if (kind === "star") {
-    return (
-      <svg className={styles.posterMotif} style={style} viewBox="0 0 100 150" preserveAspectRatio="none">
-        <path d="M50 25 L58 55 L88 55 L64 73 L72 103 L50 85 L28 103 L36 73 L12 55 L42 55 Z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (kind === "cross") {
-    return (
-      <svg className={styles.posterMotif} style={style} viewBox="0 0 100 150" preserveAspectRatio="none">
-        <path d="M20 20 L80 80 M80 20 L20 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M50 30 L50 100" stroke="currentColor" strokeWidth="1" opacity="0.5" />
-      </svg>
-    );
-  }
-  if (kind === "dot") {
-    return (
-      <svg className={styles.posterMotif} style={style} viewBox="0 0 100 150" preserveAspectRatio="none">
-        <circle cx="50" cy="55" r="22" fill="currentColor" />
-      </svg>
-    );
-  }
-  return (
-    <svg className={styles.posterMotif} style={style} viewBox="0 0 100 150" preserveAspectRatio="none">
-      <path d="M0 70 Q 25 55, 50 70 T 100 70" stroke="currentColor" strokeWidth="1.4" fill="none" />
-      <path d="M0 85 Q 25 70, 50 85 T 100 85" stroke="currentColor" strokeWidth="1.4" fill="none" />
-      <path d="M0 100 Q 25 85, 50 100 T 100 100" stroke="currentColor" strokeWidth="1.4" fill="none" />
-    </svg>
-  );
-}
+const IconPlay = (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+    <path d="M8 5v14l11-7L8 5Z" />
+  </svg>
+);
 
-function PosterTile({ poster, size = "md" }: { poster: Poster; size?: "sm" | "md" | "lg" }) {
-  const [bg, fg] = poster.palette;
-  const dims =
-    size === "sm"
-      ? { w: 72, h: 108, font: 13, pad: 8 }
-      : size === "lg"
-        ? { w: 132, h: 198, font: 19, pad: 12 }
-        : { w: 104, h: 156, font: 16, pad: 10 };
+const IconPause = (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+    <rect x="6" y="5" width="4" height="14" rx="1" />
+    <rect x="14" y="5" width="4" height="14" rx="1" />
+  </svg>
+);
 
-  return (
-    <div
-      className={styles.poster}
-      style={{
-        width: dims.w,
-        height: dims.h,
-        background: bg,
-        ["--p-pad" as string]: `${dims.pad}px`,
-        ["--p-font" as string]: `${dims.font}px`,
-      }}
-    >
-      <Motif kind={poster.motif} fg={fg} />
-      <div className={styles.posterTitle} style={{ color: fg }}>
-        {poster.title}
-      </div>
-      <div className={styles.posterYear} style={{ color: fg }}>
-        {poster.year}
-      </div>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────
 // Top bar
 // ─────────────────────────────────────────────────────────────
 function TopBar({
   hasConversation,
+  hasMessages,
   onBack,
+  onOpenChat,
+  onFastLearning,
   user,
   onSignOut,
+  contentType,
+  setContentType,
+  voice,
+  setVoice,
 }: {
   hasConversation: boolean;
+  hasMessages: boolean;
   onBack: () => void;
+  onOpenChat: () => void;
+  onFastLearning: () => void;
   user: AppUser;
   onSignOut: () => void;
+  contentType: ContentType;
+  setContentType: (c: ContentType) => void;
+  voice: Voice;
+  setVoice: (v: Voice) => void;
 }) {
+  const [brandOpen, setBrandOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuView, setMenuView] = useState<"root" | "voice">("root");
+  const [previewVoice, setPreviewVoice] = useState<string | null>(null);
+  const brandRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Static voice samples live in /public/voice-samples/{voice}.wav — see
+  // scripts/generate-voice-samples.mjs. The browser caches them after
+  // first load. No runtime API call (Gemini's free-tier TTS quota is too
+  // tight to allow on-demand previews).
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  async function playSample(voiceId: string) {
+    if (previewVoice === voiceId) {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setPreviewVoice(null);
+      return;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setPreviewVoice(voiceId);
+    try {
+      const audio = new Audio(`/voice-samples/${voiceId}.wav`);
+      audio.onended = () => {
+        audioRef.current = null;
+        setPreviewVoice(null);
+      };
+      audio.onerror = () => {
+        // Sample hasn't been generated yet — fail quietly.
+        audioRef.current = null;
+        setPreviewVoice(null);
+      };
+      audioRef.current = audio;
+      await audio.play();
+    } catch (e) {
+      console.error("[voice/sample] play failed", e);
+      audioRef.current = null;
+      setPreviewVoice(null);
+    }
+  }
+
+  // Stop any running preview when the menu closes.
+  useEffect(() => {
+    if (!menuOpen) {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setPreviewVoice(null);
+    }
+  }, [menuOpen]);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!brandOpen && !menuOpen) return;
     function onDocClick(e: MouseEvent) {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      const t = e.target as Node;
+      if (brandOpen && !brandRef.current?.contains(t)) {
+        setBrandOpen(false);
+      }
+      if (
+        menuOpen &&
+        !hamburgerRef.current?.contains(t) &&
+        !panelRef.current?.contains(t)
+      ) {
+        setMenuOpen(false);
+        setMenuView("root");
+      }
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
-  }, [menuOpen]);
+  }, [brandOpen, menuOpen]);
 
   const initial =
     (user.name?.trim()[0] || user.email?.trim()[0] || "?").toUpperCase();
 
   return (
+    <>
     <div className={styles.topbar}>
-      {hasConversation ? (
-        <button
-          className={styles.iconbtn}
-          onClick={onBack}
-          aria-label="back"
-          type="button"
-        >
-          {I.back}
-        </button>
-      ) : (
-        <div className={styles.userMenuWrap} ref={menuRef}>
+      <div className={styles.topbarSlot}>
+        {hasConversation ? (
           <button
-            className={styles.avatarBtn}
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="account menu"
-            aria-expanded={menuOpen}
+            className={styles.iconbtn}
+            onClick={onBack}
+            aria-label="back"
             type="button"
           >
-            {user.avatarUrl ? (
-              <span
-                className={styles.avatarImg}
-                style={{ backgroundImage: `url(${user.avatarUrl})` }}
-                role="img"
-                aria-label={user.name ?? user.email ?? "account"}
-              />
-            ) : (
-              <span className={styles.avatarInitial}>{initial}</span>
-            )}
+            {I.back}
           </button>
-          {menuOpen && (
-            <div className={styles.userMenu} role="menu">
+        ) : hasMessages ? (
+          <button
+            className={styles.iconbtn}
+            onClick={onOpenChat}
+            aria-label="open chat"
+            type="button"
+          >
+            {I.message}
+          </button>
+        ) : null}
+      </div>
+
+      <div className={styles.brand} ref={brandRef}>
+        <button
+          className={styles.brandModel}
+          type="button"
+          onClick={() => setBrandOpen((v) => !v)}
+          aria-expanded={brandOpen}
+          aria-haspopup="menu"
+        >
+          <span>{CONTENT_TYPE_LABEL[contentType]}</span>
+          {I.chevDown}
+        </button>
+        {brandOpen && (
+          <div className={styles.brandMenu} role="menu">
+            {(Object.keys(CONTENT_TYPE_LABEL) as ContentType[]).map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="menuitemradio"
+                aria-checked={contentType === c}
+                className={`${styles.brandMenuItem} ${
+                  contentType === c ? styles.brandMenuItemActive : ""
+                }`}
+                onClick={() => {
+                  setContentType(c);
+                  setBrandOpen(false);
+                }}
+              >
+                {CONTENT_TYPE_LABEL[c]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.userMenuWrap}>
+        <button
+          ref={hamburgerRef}
+          className={styles.hamburgerBtn}
+          onClick={() => {
+            setMenuOpen((v) => !v);
+            setMenuView("root");
+          }}
+          aria-label={menuOpen ? "close menu" : "menu"}
+          aria-expanded={menuOpen}
+          type="button"
+        >
+          {menuOpen ? I.close : I.hamburger}
+        </button>
+      </div>
+
+    </div>
+
+    {menuOpen && (
+      <div className={styles.userMenuOverlay}>
+        <div className={styles.userMenuPanel} ref={panelRef} role="menu">
+          {menuView === "root" ? (
+            <>
               <div className={styles.userMenuHeader}>
-                <div className={styles.userMenuName}>
-                  {user.name ?? "Signed in"}
-                </div>
-                {user.email && (
-                  <div className={styles.userMenuEmail}>{user.email}</div>
+                {user.avatarUrl ? (
+                  // <img> + no-referrer is required for Google's
+                  // lh3.googleusercontent.com avatar URLs to render —
+                  // they reject requests carrying our origin as referer.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className={styles.userMenuAvatar}
+                    src={user.avatarUrl}
+                    alt={user.name ?? user.email ?? "account"}
+                    referrerPolicy="no-referrer"
+                    width={36}
+                    height={36}
+                  />
+                ) : (
+                  <span className={styles.userMenuAvatarInitial}>{initial}</span>
                 )}
+                <div className={styles.userMenuHeaderText}>
+                  <div className={styles.userMenuName}>
+                    {user.name ?? "Signed in"}
+                  </div>
+                  {user.email && (
+                    <div className={styles.userMenuEmail}>{user.email}</div>
+                  )}
+                </div>
               </div>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.userMenuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onFastLearning();
+                }}
+              >
+                <span>Fast learning</span>
+                <span className={styles.userMenuTrail}>{I.chevRight}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.userMenuItem}
+                onClick={() => setMenuView("voice")}
+              >
+                <span>Set voice</span>
+                <span className={styles.userMenuTrail}>
+                  {voice}
+                  {I.chevRight}
+                </span>
+              </button>
               <button
                 type="button"
                 role="menuitem"
@@ -298,25 +384,84 @@ function TopBar({
               >
                 Sign out
               </button>
-            </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.userMenuSubHeader}>
+                <button
+                  type="button"
+                  className={styles.userMenuBackBtn}
+                  onClick={() => setMenuView("root")}
+                  aria-label="back to menu"
+                >
+                  {I.back}
+                </button>
+                <span className={styles.userMenuSubTitle}>Voice</span>
+              </div>
+              {VOICES.map((v) => (
+                <div
+                  key={v.id}
+                  className={`${styles.voiceRow} ${
+                    voice === v.id ? styles.voiceRowActive : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={voice === v.id}
+                    className={styles.voiceSelect}
+                    onClick={() => {
+                      setVoice(v.id);
+                      setMenuView("root");
+                    }}
+                  >
+                    <span className={styles.voiceName}>{v.id}</span>
+                    <span className={styles.voiceDesc}>{v.desc}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.voicePlay}
+                    onClick={() => playSample(v.id)}
+                    aria-label={`preview ${v.id}`}
+                    // Disabled until /public/voice-samples/* is filled in
+                    // (see scripts/generate-voice-samples.mjs).
+                    disabled
+                  >
+                    {previewVoice === v.id ? IconPause : IconPlay}
+                  </button>
+                </div>
+              ))}
+            </>
           )}
         </div>
-      )}
-      <div className={styles.brand}>
-        <button className={styles.brandModel} type="button">
-          <span>Cinema</span>
-          {I.chevDown}
-        </button>
       </div>
-      <span className={styles.topbarSpacer} aria-hidden="true" />
-    </div>
+    )}
+    </>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
 // Onboard / Welcome
 // ─────────────────────────────────────────────────────────────
-function Onboard() {
+function Onboard({
+  continuePrompt,
+  matureGreeting,
+  onPlayVoice,
+}: {
+  continuePrompt?: string;
+  matureGreeting?: string;
+  onPlayVoice?: (primer: string) => void;
+}) {
+  // Priority: mature greeting (server-rendered, situational) →
+  // continuation of an in-progress chat → cold-start calibration.
+  const hint =
+    matureGreeting ??
+    continuePrompt ??
+    "Let's calibrate your taste: name a few of your all time favorite flicks.";
+  const spoken =
+    matureGreeting ??
+    continuePrompt ??
+    "Let's start by calibrating your taste. Name a few of your all-time favorite films.";
   return (
     <div className={styles.welcome}>
       <div className={styles.welcomeLogoRow}>
@@ -330,9 +475,30 @@ function Onboard() {
         />
         <span className={styles.welcomeLogoName}>WTW</span>
       </div>
-      <p className={styles.onboardHint}>
-        Let&rsquo;s calibrate your taste: name a few of your all time favorite flicks.
-      </p>
+      <p className={styles.onboardHint}>{hint}</p>
+      {onPlayVoice && (
+        <button
+          type="button"
+          className={styles.onboardPlayBtn}
+          onClick={() => onPlayVoice(spoken)}
+          aria-label="play message"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M11 5 6 9H2v6h4l5 4Z" />
+            <path d="M16 9a4 4 0 0 1 0 6" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -417,69 +583,26 @@ function TypingDots() {
   );
 }
 
-interface Rec {
-  poster: Poster;
-  match: number;
-  why: string;
-}
-
-function RecCard({ rec, expanded }: { rec: Rec; expanded: boolean }) {
-  return (
-    <div className={`${styles.rec} ${expanded ? styles.recExp : ""}`}>
-      <PosterTile poster={rec.poster} size={expanded ? "lg" : "md"} />
-      <div className={styles.recBody}>
-        <div className={styles.recHead}>
-          <div className={styles.recTitle}>{rec.poster.title}</div>
-          <div className={styles.recMatch}>
-            <span className={styles.matchDot} />
-            {rec.match}% match
-          </div>
-        </div>
-        <div className={styles.recMeta}>
-          <span>{rec.poster.year}</span>
-          <span className={styles.recDot} />
-          <span>{rec.poster.meta}</span>
-          <span className={styles.recDot} />
-          <span>★ {rec.poster.rating}</span>
-        </div>
-        <div className={styles.recWhy}>
-          <span className={styles.whyEyebrow}>FINGERPRINT</span>
-          <span>{rec.why}</span>
-        </div>
-        <div className={styles.recActions}>
-          <button className={styles.btnWatch}>
-            {I.play}
-            <span>Watch on {rec.poster.where}</span>
-          </button>
-          <button className={styles.btnGhost} aria-label="save">
-            {I.bookmark}
-          </button>
-          <button className={styles.btnGhost} aria-label="more like this">
-            {I.thumbs}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────
 // Input bar
 // ─────────────────────────────────────────────────────────────
-type Stage = "onboard" | "welcome" | "conversation";
+type Stage =
+  | "onboard"
+  | "welcome"
+  | "conversation"
+  | "recommendations"
+  | "learning";
 
 function InputBar({
   value,
   setValue,
   onSend,
   onLive,
-  stage,
 }: {
   value: string;
   setValue: (s: string) => void;
   onSend: (s: string) => void;
   onLive: () => void;
-  stage: Stage;
 }) {
   function submit() {
     const v = value.trim();
@@ -491,18 +614,12 @@ function InputBar({
     if (value.trim()) submit();
     else onLive();
   }
-  const placeholder =
-    stage === "onboard"
-      ? "Type your favorites…"
-      : stage === "conversation"
-        ? "Refine, or ask for more like the second one…"
-        : "Ask wtw";
   return (
     <div className={styles.inputbarWrap}>
       <div className={styles.inputbar}>
         <input
           className={styles.inputfield}
-          placeholder={placeholder}
+          placeholder="Type here"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -517,6 +634,7 @@ function InputBar({
           {I.liveBars}
         </button>
       </div>
+      <p className={styles.inputHint}>You can always skip a question</p>
     </div>
   );
 }
@@ -524,15 +642,54 @@ function InputBar({
 // ─────────────────────────────────────────────────────────────
 // Main app
 // ─────────────────────────────────────────────────────────────
-export default function WTWApp({ user }: { user: AppUser }) {
+export default function WTWApp({
+  user,
+  conversation,
+  welcome,
+}: {
+  user: AppUser;
+  conversation: Conversation;
+  welcome: Welcome;
+}) {
   const router = useRouter();
+  // Every login (and every reload) lands on the welcome/continue screen,
+  // not directly inside the chat. The chat is still one tap away (via the
+  // message icon in the top-left when there's history) and the Onboard
+  // component shows the AI's last question as its prompt so the user
+  // sees continuity.
   const [stage, setStage] = useState<Stage>("onboard");
-  const [favorites, setFavorites] = useState("");
+  const [favorites, setFavorites] = useState(conversation.favorites);
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voicePrimer, setVoicePrimer] = useState<string | null>(null);
+  const [contentType, setContentType] = useState<ContentType>("movies");
+  const [voice, setVoice] = useState<Voice>(DEFAULT_VOICE);
+  // Whether the user has done anything this page-load. Once they have,
+  // the greeting yields to "continue: <last AI question>" so we don't
+  // re-greet mid-flow. Reset only by a page reload.
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Hydrate Movies/Series + voice from localStorage after mount. SSR-safe
+  // (window check happens only here). Brief race on first paint is fine.
+  useEffect(() => {
+    const c = window.localStorage.getItem("wtw:contentType");
+    if (c === "movies" || c === "series") setContentType(c);
+    const v = window.localStorage.getItem("wtw:voice");
+    if (isVoice(v)) setVoice(v);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("wtw:contentType", contentType);
+  }, [contentType]);
+
+  useEffect(() => {
+    window.localStorage.setItem("wtw:voice", voice);
+  }, [voice]);
 
   const { messages, append, setMessages, status, error, reload } = useChat({
     api: "/api/conversation/message",
+    initialMessages: conversation.messages,
+    body: { conversation_id: conversation.id },
     // Intercept 401 at the fetch layer (the HTTP status is unambiguous here,
     // whereas useChat's onError only sees the response body text). The
     // server returns 401 when the Supabase session has expired — bounce to
@@ -554,15 +711,97 @@ export default function WTWApp({ user }: { user: AppUser }) {
   }
 
   function handleSubmit(text: string) {
-    if (stage === "onboard") setFavorites(text);
-    setStage("conversation");
-    void append({ role: "user", content: text });
+    // First-ever submit on this conversation: persist favorites + flip stage.
+    // Subsequent submits just stream — server already knows the conversation.
+    const isFirstOnboard = stage === "onboard" && messages.length === 0;
+    const nextStage: Stage = "conversation";
+
+    setHasInteracted(true);
+    if (isFirstOnboard) setFavorites(text);
+    setStage(nextStage);
+
+    const body = isFirstOnboard
+      ? { stage: nextStage, favorites: text }
+      : undefined;
+
+    void append(
+      { role: "user", content: text },
+      body ? { body } : undefined,
+    );
   }
 
-  function backToWelcome() {
-    setStage(favorites ? "welcome" : "onboard");
-    setMessages([]);
+  function handleRecommend() {
+    setVoiceOpen(false);
+    setStage("recommendations");
+  }
+
+  function handleFastLearning() {
+    setVoiceOpen(false);
+    setStage("learning");
+  }
+
+  const assistantTurns = messages.filter((m) => m.role === "assistant").length;
+  // Mature users see the rec pill from the start (the server-side signals
+  // count says they have enough fingerprint to act on). Cold users still
+  // need to get through a couple of turns first.
+  const showRecommend =
+    !!welcome.greeting || assistantTurns >= RECOMMEND_AFTER_TURNS;
+  const matureGreeting =
+    welcome.greeting && !hasInteracted ? welcome.greeting : undefined;
+
+  // "Back" keeps the chat — just returns the user to the onboard shell.
+  // The onboard prompt swaps to "Let's continue: …" because there are
+  // existing messages. Doesn't persist to DB (stage flip is local-only;
+  // a reload lands them back in conversation view).
+  function backToOnboard() {
+    setStage("onboard");
     setInput("");
+  }
+
+  // Voice mode hands us one completed turn at a time — user's transcribed
+  // input + AI's transcribed output. We mirror it into the local chat so
+  // it shows up next to text messages, and persist to the same table as
+  // text via /api/voice/transcript.
+  function handleVoiceTurn(userText: string, assistantText: string) {
+    const newMessages = [
+      ...messages,
+      ...(userText
+        ? [
+            {
+              id: crypto.randomUUID(),
+              role: "user" as const,
+              content: userText,
+            },
+          ]
+        : []),
+      ...(assistantText
+        ? [
+            {
+              id: crypto.randomUUID(),
+              role: "assistant" as const,
+              content: assistantText,
+            },
+          ]
+        : []),
+    ];
+    setMessages(newMessages);
+
+    // First voice turn from onboard flips stage like the text path does.
+    const wasOnboard = stage === "onboard";
+    if (wasOnboard) setStage("conversation");
+
+    void fetch("/api/voice/transcript", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: conversation.id,
+        user_content: userText || undefined,
+        assistant_content: assistantText || undefined,
+        stage: wasOnboard ? "conversation" : undefined,
+      }),
+    }).catch((e) => {
+      console.error("[voice] persist failed", e);
+    });
   }
 
   useLayoutEffect(() => {
@@ -575,23 +814,67 @@ export default function WTWApp({ user }: { user: AppUser }) {
     <AppShell>
       {voiceOpen ? (
         <VoiceMode
-          onExit={() => setVoiceOpen(false)}
-          onRecommend={() => {
+          onExit={() => {
             setVoiceOpen(false);
-            handleSubmit("Show me recommendations");
+            setVoicePrimer(null);
           }}
+          onBack={() => {
+            setVoiceOpen(false);
+            setVoicePrimer(null);
+            backToOnboard();
+          }}
+          onTurnComplete={handleVoiceTurn}
+          onRecommend={handleRecommend}
+          recommendVisible={showRecommend}
+          voice={voice}
+          primer={voicePrimer}
         />
+      ) : stage === "recommendations" ? (
+        <div className={styles.shell}>
+          <RecommendationsView
+            onBack={() => setStage("onboard")}
+            contentType={contentType}
+            mode="recommendations"
+          />
+        </div>
+      ) : stage === "learning" ? (
+        <div className={styles.shell}>
+          <RecommendationsView
+            onBack={() => setStage("onboard")}
+            contentType={contentType}
+            mode="learning"
+          />
+        </div>
       ) : (
         <div className={styles.shell}>
           <TopBar
             hasConversation={stage === "conversation"}
-            onBack={backToWelcome}
+            hasMessages={messages.length > 0}
+            onBack={backToOnboard}
+            onOpenChat={() => setStage("conversation")}
+            onFastLearning={handleFastLearning}
             user={user}
             onSignOut={signOut}
+            contentType={contentType}
+            setContentType={setContentType}
+            voice={voice}
+            setVoice={setVoice}
           />
 
           <div className={styles.scroll} ref={scrollRef}>
-            {stage === "onboard" && <Onboard />}
+            {stage === "onboard" && (
+              <Onboard
+                continuePrompt={
+                  [...messages].reverse().find((m) => m.role === "assistant")
+                    ?.content
+                }
+                matureGreeting={matureGreeting}
+                onPlayVoice={(primer) => {
+                  setVoicePrimer(primer);
+                  setVoiceOpen(true);
+                }}
+              />
+            )}
             {stage === "welcome" && (
               <Welcome favorites={favorites} onSuggest={(s) => handleSubmit(s)} />
             )}
@@ -627,12 +910,20 @@ export default function WTWApp({ user }: { user: AppUser }) {
             )}
           </div>
 
+          {showRecommend && (
+            <div className={styles.recommendBar}>
+              <RecommendPill onClick={handleRecommend} />
+            </div>
+          )}
+
           <InputBar
             value={input}
             setValue={setInput}
             onSend={handleSubmit}
-            onLive={() => setVoiceOpen(true)}
-            stage={stage}
+            onLive={() => {
+              setVoicePrimer(null);
+              setVoiceOpen(true);
+            }}
           />
         </div>
       )}

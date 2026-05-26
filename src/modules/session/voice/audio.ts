@@ -130,10 +130,17 @@ export class AudioPlayer {
   constructor(opts: AudioPlayerOptions = {}) {
     this.ctx = new AudioContext({ sampleRate: OUTPUT_SAMPLE_RATE });
     this.analyser = this.ctx.createAnalyser();
-    this.analyser.fftSize = 512;
+    // 1024 = enough time-domain samples for a smooth oscilloscope-style
+    // waveform without paying for high frequency-domain precision.
+    this.analyser.fftSize = 1024;
     this.analyser.connect(this.ctx.destination);
     this.onLevel = opts.onLevel;
     if (this.onLevel) this.tickLevel();
+  }
+
+  /** Exposed so VoiceMode can drive an oscilloscope-style waveform. */
+  getAnalyser(): AnalyserNode {
+    return this.analyser;
   }
 
   /** Push a base64-encoded int16 LE PCM chunk @ 24kHz onto the playback queue. */

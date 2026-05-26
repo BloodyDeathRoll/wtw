@@ -59,7 +59,8 @@
 .aiText {
   position: relative;
   z-index: 2;
-  padding: 28px 22px 0;
+  /* top padding clears the back button (top 16 + 40h ≈ 56) with breathing room */
+  padding: 72px 28px 0;
   font-size: 26px;
   font-weight: 400;
   letter-spacing: -0.02em;
@@ -102,36 +103,16 @@
   to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
-/* ─── Recommend button ─── */
-.recommendBtn {
+/* ─── Recommend pill positioning (styling lives in RecommendPill.module.css) ─── */
+.recommendPos {
   position: absolute;
   left: 50%;
   bottom: 96px;
   transform: translateX(-50%);
   z-index: 3;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--wtw-green);
-  color: #f2f2f2;
-  border: 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  padding: 11px 20px;
-  border-radius: var(--wtw-radius-pill);
-  cursor: pointer;
-  box-shadow:
-    0 0 22px rgba(var(--wtw-rgb), 0.35),
-    0 6px 18px rgba(0, 0, 0, 0.4);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  animation: cardIn 0.3s ease-out;
 }
-.recommendBtn:hover {
+.recommendPos:hover {
   transform: translate(-50%, -2px);
-  box-shadow:
-    0 0 30px rgba(var(--wtw-rgb), 0.5),
-    0 8px 22px rgba(0, 0, 0, 0.5);
 }
 
 /* ─── Status / error overlays ─── */
@@ -197,6 +178,33 @@
   padding: 0 20px;
 }
 
+/* ─── Back arrow (top-left, mirrors TopBar's back) ─── */
+.backBtn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 20, 22, 0.7);
+  border: 1px solid var(--wtw-border);
+  border-radius: 50%;
+  color: var(--wtw-fg);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease;
+}
+.backBtn:hover {
+  background: rgba(28, 28, 32, 0.85);
+  transform: translateY(-1px);
+}
+
 .controlBtn {
   width: 48px;
   height: 48px;
@@ -226,7 +234,55 @@
   border-color: rgba(255, 80, 80, 0.3);
 }
 
-/* ─── Pill blob (centre) ─── */
+/* ─── Wave visualiser (centre) — line only, no chrome ─── */
+.wave {
+  position: relative;
+  width: 220px;
+  height: 56px;
+}
+.waveCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.wavePause {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  color: var(--wtw-fg);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.15s ease, transform 0.12s ease;
+  animation: pauseIn 0.18s ease-out both;
+}
+.wavePause:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translate(-50%, -50%) scale(1.04);
+}
+@keyframes pauseIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ─── Legacy pill (kept temporarily; safe to delete once happy) ─── */
 .pill {
   position: relative;
   width: 160px;

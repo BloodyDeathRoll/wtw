@@ -20,7 +20,41 @@ Have a natural, two-way conversation. Ask one focused question at a time about t
 
 This is voice. Keep every reply to 1–2 short sentences. Do not list options. Do not output URLs, markdown, or formatted text. When the user is ready to see recommendations, they will tap a button — do not try to recommend titles during the calibration conversation.`;
 
-export async function POST() {
+const ALLOWED_VOICES = [
+  "Aoede",
+  "Charon",
+  "Fenrir",
+  "Kore",
+  "Puck",
+  "Zephyr",
+  "Leda",
+  "Orus",
+  "Callirrhoe",
+  "Autonoe",
+  "Enceladus",
+  "Iapetus",
+  "Umbriel",
+  "Algieba",
+  "Despina",
+  "Erinome",
+  "Algenib",
+  "Rasalgethi",
+  "Laomedeia",
+  "Achernar",
+  "Alnilam",
+  "Schedar",
+  "Gacrux",
+  "Pulcherrima",
+  "Achird",
+  "Zubenelgenubi",
+  "Vindemiatrix",
+  "Sadachbia",
+  "Sadaltager",
+  "Sulafat",
+];
+const DEFAULT_VOICE = "Aoede";
+
+export async function POST(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -36,6 +70,14 @@ export async function POST() {
       { status: 500 },
     );
   }
+
+  const body = (await req.json().catch(() => null)) as
+    | { voice?: string }
+    | null;
+  const voice =
+    body?.voice && ALLOWED_VOICES.includes(body.voice)
+      ? body.voice
+      : DEFAULT_VOICE;
 
   const ai = new GoogleGenAI({
     apiKey,
@@ -58,6 +100,11 @@ export async function POST() {
           systemInstruction: SYSTEM_PROMPT,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: voice },
+            },
+          },
         },
       },
       // Empty array means: lock exactly the fields above; client cannot change them.

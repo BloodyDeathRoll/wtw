@@ -8,6 +8,11 @@ import { groq } from "@ai-sdk/groq";
 import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  saveMessage,
+  updateConversationState,
+} from "@/lib/conversations";
+import type { ConversationStage } from "@/modules/session/types";
 
 export const runtime = "nodejs";
 
@@ -36,20 +41,74 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { messages?: UIMessage[] }
+    | {
+        messages?: UIMessage[];
+        conversation_id?: string;
+        stage?: ConversationStage;
+        favorites?: string;
+      }
     | null;
   const messages = body?.messages;
+  const conversationId = body?.conversation_id;
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json(
       { error: "messages must be a non-empty array" },
       { status: 400 },
     );
   }
+  if (!conversationId) {
+    return NextResponse.json(
+      { error: "conversation_id required" },
+      { status: 400 },
+    );
+  }
+
+  // Persist the user's latest message (the last item — useChat always
+  // sends history + the new one). RLS ensures the conversation belongs
+  // to this user; if it doesn't, the insert silently no-ops and we
+  // continue anyway (the model still gets the context from `messages`).
+  const last = messages[messages.length - 1];
+  if (last.role === "user") {
+    const content =
+      typeof last.content === "string"
+        ? last.content
+        : last.parts
+            ?.map((p) => (p.type === "text" ? p.text : ""))
+            .join("") ?? "";
+    if (content) {
+      try {
+        await saveMessage(supabase, conversationId, "user", content);
+      } catch (e) {
+        console.error("[conversation] failed to save user message", e);
+      }
+    }
+  }
+
+  // Stage/favorites land on first onboard submit (and stay sticky). The
+  // client sends them in the body so we don't need a separate PATCH.
+  if (body?.stage || body?.favorites !== undefined) {
+    try {
+      await updateConversationState(supabase, conversationId, {
+        stage: body.stage,
+        favorites: body.favorites,
+      });
+    } catch (e) {
+      console.error("[conversation] failed to update state", e);
+    }
+  }
 
   const result = streamText({
     model: groq("llama-3.3-70b-versatile"),
     system: SYSTEM_PROMPT,
     messages: convertToCoreMessages(messages),
+    onFinish: async ({ text }) => {
+      if (!text) return;
+      try {
+        await saveMessage(supabase, conversationId, "assistant", text);
+      } catch (e) {
+        console.error("[conversation] failed to save assistant message", e);
+      }
+    },
   });
 
   return result.toDataStreamResponse();

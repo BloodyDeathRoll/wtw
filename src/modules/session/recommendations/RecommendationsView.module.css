@@ -1,0 +1,395 @@
+.view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Sub-header (back / title / view toggle) ─── */
+.header {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  padding: 10px 14px 10px;
+  flex-shrink: 0;
+}
+.headerBtn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--wtw-fg);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.headerBtn:first-child {
+  justify-self: start;
+}
+.headerBtn:last-child {
+  justify-self: end;
+}
+.headerBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.headerTitle {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wtw-fg);
+  letter-spacing: -0.005em;
+}
+
+/* ─── Compact list view ─── */
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.sentinel {
+  padding: 24px 0 8px;
+  text-align: center;
+  min-height: 40px;
+}
+.muted {
+  color: var(--wtw-fg-muted);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+.error {
+  color: #ff8b8b;
+  font-size: 12.5px;
+}
+
+/* ─── Card (compact) ─── */
+.card {
+  /* Grid (not flex) so the row height is unambiguously the natural height
+     of cardBody — no stretch-vs-intrinsic ambiguity that was hiding the
+     feedback buttons. The poster fills that height via its grid cell. */
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  background: rgba(20, 20, 22, 0.6);
+  border: 0;
+  border-radius: 14px;
+  animation: cardIn 0.25s ease both;
+}
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.cardBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+}
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cardTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--wtw-fg);
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+.cardMatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--wtw-fg);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.matchDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wtw-green);
+  box-shadow: 0 0 6px var(--wtw-green-glow);
+}
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--wtw-fg-muted);
+}
+.dot {
+  display: inline-block;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+.cardReason {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 8px;
+  color: var(--wtw-fg);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.reasonEyebrow {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--wtw-fg-muted);
+}
+
+/* ─── Feedback row ─── */
+.feedback {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  min-height: 34px;
+}
+.feedbackCompact .feedbackLike,
+.feedbackCompact .feedbackDislike {
+  font-size: 12px;
+  padding: 7px 10px;
+}
+.feedbackLike,
+.feedbackDislike {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  color: var(--wtw-fg);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.feedbackLike {
+  background: #000;
+  color: var(--wtw-fg);
+}
+.feedbackLike:hover {
+  background: #111;
+}
+.feedbackDislike {
+  background: #000;
+  color: var(--wtw-fg-muted);
+  font-weight: 500;
+}
+.feedbackDislike:hover {
+  background: #111;
+  color: var(--wtw-fg);
+}
+.feedbackAcked {
+  margin-top: 8px;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--wtw-fg-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  animation: cardIn 0.18s ease both;
+}
+
+/* ─── Poster tile (motif fallback or real image) ─── */
+.poster {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.poster_md {
+  /* Grid cell fills the full card height naturally; explicit 100% so the
+     absolute-positioned children (img / motif) have something to fill. */
+  width: 100%;
+  height: 100%;
+  border-radius: 14px 0 0 14px;
+}
+.poster_lg {
+  /* Full-bleed poster fills the entire .fullCard container — content
+     overlays on top via a dark gradient. */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.posterImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.posterMotif {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0.65;
+}
+.posterTitle {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  right: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.15;
+  z-index: 1;
+}
+
+/* ─── Full-screen view ─── */
+.full {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 14px 16px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.fullProgress {
+  display: flex;
+  gap: 4px;
+  padding: 0 4px 10px;
+  flex-shrink: 0;
+}
+.fullProgressDot {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.15s ease;
+}
+.fullProgressDotActive {
+  background: var(--wtw-green);
+}
+/* The card is a positioning context for the full-bleed poster, the
+   gradient overlay, and the bottom-aligned content. No internal scroll. */
+.fullCard {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0a0a0a;
+  isolation: isolate;
+}
+.fullCard.slideRight {
+  animation: slideFromRight 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.fullCard.slideLeft {
+  animation: slideFromLeft 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes slideFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes slideFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.fullGradient {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 35%,
+    rgba(0, 0, 0, 0.55) 65%,
+    rgba(0, 0, 0, 0.92) 100%
+  );
+  pointer-events: none;
+}
+.fullContent {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px 20px;
+  color: var(--wtw-fg);
+}
+.fullTitle {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.fullWhere {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wtw-fg);
+  padding: 6px 12px;
+  background: rgba(var(--wtw-rgb), 0.18);
+  border-radius: 999px;
+  width: max-content;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.fullReason {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0 4px;
+  color: var(--wtw-fg);
+  font-size: 13px;
+  line-height: 1.4;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+.fullEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--wtw-fg-muted);
+  font-size: 14px;
+}

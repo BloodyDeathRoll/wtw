@@ -8,3 +8,28 @@ export interface AppUser {
   name: string | null;
   avatarUrl: string | null;
 }
+
+export type ConversationStage = "onboard" | "welcome" | "conversation";
+
+export interface ConversationMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
+// Hydration shape passed from server → WTWApp. Mirrors the `conversations`
+// + `messages` tables but flattened so the client can init useChat without
+// any further fetches.
+export interface Conversation {
+  id: string;
+  session_number: number;
+  stage: ConversationStage;
+  favorites: string;
+  messages: ConversationMessage[];
+}
+
+// Greeting data computed server-side per page load. Greeting is non-null
+// only when the user has crossed the maturity threshold for signals.
+export interface Welcome {
+  greeting: string | null;
+}

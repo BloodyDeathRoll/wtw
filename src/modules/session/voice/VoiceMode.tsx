@@ -20,39 +20,80 @@ import {
   type Session,
 } from "@google/genai";
 import { AudioPlayer, MicCapture } from "./audio";
+import RecommendPill from "../components/RecommendPill";
 import styles from "./VoiceMode.module.css";
 
 interface VoiceModeProps {
   onExit: () => void;
+  onBack: () => void;
   onRecommend: () => void;
+  onTurnComplete: (userText: string, assistantText: string) => void;
+  /** Threshold-met flag computed by the parent (modality-agnostic) */
+  recommendVisible: boolean;
+  /** Gemini Live voice ID — sent to the session route so the token bakes
+   * it into speechConfig. */
+  voice: string;
+  /** Optional text the assistant should speak as its very first utterance.
+   * When set, we prompt Gemini to open with this line, then listen. Used by
+   * the "play" button on the welcome screen so voice mode starts with the
+   * AI reading the current question aloud. */
+  primer: string | null;
 }
 
 type Status = "connecting" | "live" | "error" | "closed";
 
-// Threshold of completed model turns before the Recommend button shows.
-// Tuned low for v1 — easy to dial up once the calibration prompt matures.
-const RECOMMEND_AFTER_TURNS = 2;
-
-export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
+export default function VoiceMode({
+  onExit,
+  onBack,
+  onRecommend,
+  onTurnComplete,
+  recommendVisible,
+  voice,
+  primer,
+}: VoiceModeProps) {
   const [status, setStatus] = useState<Status>("connecting");
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [userTranscript, setUserTranscript] = useState("");
   const [aiTranscript, setAiTranscript] = useState("");
-  const [micLevel, setMicLevel] = useState(0);
+  // _micLevel kept around (via the setter into MicCapture) for future
+  // mic-side visual feedback; not read directly now that the waveform
+  // visualises AI playback only.
+  const [, setMicLevel] = useState(0);
   const [aiLevel, setAiLevel] = useState(0);
-  const [turnCount, setTurnCount] = useState(0);
 
   const sessionRef = useRef<Session | null>(null);
   const micRef = useRef<MicCapture | null>(null);
   const playerRef = useRef<AudioPlayer | null>(null);
+  const waveCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Refs (not state) for the *full* accumulated transcripts within the
+  // current turn. We need them at save time inside handleServerMessage,
+  // which is registered once in useEffect and closes over initial state
+  // — reading state directly there would always see "". Refs sidestep
+  // that and survive across re-renders. State is mirrored for display.
+  const userTextRef = useRef("");
+  const aiTextRef = useRef("");
+  const onTurnCompleteRef = useRef(onTurnComplete);
+  onTurnCompleteRef.current = onTurnComplete;
+  // Voice is read from a ref so the effect (deps=[]) doesn't need to
+  // re-fire when the user changes preference. The new value applies on
+  // the next time VoiceMode opens.
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
+  // Primer is also captured on mount — we send it once after connect.
+  const primerRef = useRef(primer);
 
   useEffect(() => {
     let cancelled = false;
 
     async function connect() {
       try {
-        const sessionRes = await fetch("/api/voice/session", { method: "POST" });
+        const sessionRes = await fetch("/api/voice/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ voice: voiceRef.current }),
+        });
         if (!sessionRes.ok) {
           throw new Error(`session ${sessionRes.status}`);
         }
@@ -99,6 +140,29 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
           return;
         }
         sessionRef.current = session;
+
+        // If the parent supplied an opening line, ask the model to speak
+        // it verbatim before listening. The system prompt's "be concise"
+        // rule still applies for the rest of the conversation.
+        if (primerRef.current) {
+          try {
+            session.sendClientContent({
+              turns: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: `Open this conversation by saying exactly this line as your greeting, in your own voice, then stop and listen for my response. Do not add any preface or commentary. The line: "${primerRef.current}"`,
+                    },
+                  ],
+                },
+              ],
+              turnComplete: true,
+            });
+          } catch (e) {
+            console.error("[voice] primer send failed", e);
+          }
+        }
 
         const mic = new MicCapture({
           onChunk: (b64) => {
@@ -161,16 +225,18 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
     }
 
     // Input transcription = user's live words (already in pieces).
-    // Clear the AI's last question as soon as the user starts answering, so
-    // the screen doesn't pile up.
+    // Clear the AI's last question (display only — ref keeps the full text
+    // so we can save it on turnComplete).
     if (content.inputTranscription?.text) {
+      userTextRef.current += content.inputTranscription.text;
+      setUserTranscript(userTextRef.current);
       setAiTranscript("");
-      setUserTranscript((s) => s + (content.inputTranscription?.text ?? ""));
     }
 
     // Output transcription = assistant's voice transcribed to text
     if (content.outputTranscription?.text) {
-      setAiTranscript((s) => s + (content.outputTranscription?.text ?? ""));
+      aiTextRef.current += content.outputTranscription.text;
+      setAiTranscript(aiTextRef.current);
     }
 
     // Model was interrupted (user barged in) — stop playback immediately
@@ -179,7 +245,13 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
     }
 
     if (content.turnComplete) {
-      setTurnCount((c) => c + 1);
+      const userText = userTextRef.current.trim();
+      const aiText = aiTextRef.current.trim();
+      if (userText || aiText) {
+        onTurnCompleteRef.current(userText, aiText);
+      }
+      userTextRef.current = "";
+      aiTextRef.current = "";
       // User's turn is over — wipe their transcript so the next utterance
       // starts fresh. AI transcript stays visible until the next turn starts.
       setUserTranscript("");
@@ -192,10 +264,80 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
     micRef.current?.setMuted(next);
   }
 
-  const showRecommend = turnCount >= RECOMMEND_AFTER_TURNS && status === "live";
-  // Pill blob scales with the louder of mic / playback signal.
-  const blobAmp = Math.max(micLevel, aiLevel);
-  const blobScale = 1 + Math.min(0.55, blobAmp * 4);
+  function interruptAi() {
+    // Stop local playback immediately. The mic-gate (`isPlaying()`) flips
+    // false, so subsequent mic chunks flow to Gemini, which interprets
+    // them as a barge-in and stops its current turn.
+    playerRef.current?.flush();
+  }
+
+  // Oscilloscope rendering — once the session is live the player exists,
+  // its analyser is taking continuous samples, and we draw the latest
+  // time-domain buffer each frame onto the canvas. Bypasses React state
+  // for paint-perfect smoothness.
+  useEffect(() => {
+    if (status !== "live") return;
+    const canvas = waveCanvasRef.current;
+    const player = playerRef.current;
+    if (!canvas || !player) return;
+    const maybeCtx = canvas.getContext("2d");
+    if (!maybeCtx) return;
+    const ctx: CanvasRenderingContext2D = maybeCtx;
+    const analyser = player.getAnalyser();
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+    const buf = new Float32Array(analyser.fftSize);
+    let raf = 0;
+    let pulse = 0;
+
+    function draw() {
+      analyser.getFloatTimeDomainData(buf);
+
+      // Quick RMS so we can dampen the resting baseline a touch — when AI
+      // isn't talking we still show a faint, gently undulating line.
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      const rms = Math.sqrt(sum / buf.length);
+      const active = rms > 0.005;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.18)";
+      ctx.beginPath();
+
+      const mid = h / 2;
+      const stride = Math.max(1, Math.floor(buf.length / 200));
+      pulse += 0.06;
+      for (let i = 0; i < buf.length; i += stride) {
+        const x = (i / buf.length) * w;
+        const sample = active
+          ? buf[i] * h * 0.45
+          : Math.sin(pulse + i * 0.05) * 1.2;
+        const y = mid + sample;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      raf = requestAnimationFrame(draw);
+    }
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [status]);
+
+  const showRecommend = recommendVisible && status === "live";
+  // AI is "talking" when the player has scheduled audio in front of the
+  // playhead. We use the easy proxy (aiLevel > tiny threshold) so the
+  // pause button appears whenever there's audible output, not earlier.
+  const aiPlaying = aiLevel > 0.003;
   // Aurora fades in proportional to AI playback amplitude.
   const auroraOpacity = Math.min(1, aiLevel * 8);
 
@@ -206,6 +348,15 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
         style={{ opacity: auroraOpacity }}
         aria-hidden="true"
       />
+
+      <button
+        type="button"
+        className={styles.backBtn}
+        onClick={onBack}
+        aria-label="back"
+      >
+        {IconBack}
+      </button>
 
       {aiTranscript && (
         <div className={styles.aiText} aria-live="polite">
@@ -242,13 +393,7 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
       )}
 
       {showRecommend && (
-        <button
-          type="button"
-          className={styles.recommendBtn}
-          onClick={onRecommend}
-        >
-          See Recommendations
-        </button>
+        <RecommendPill onClick={onRecommend} className={styles.recommendPos} />
       )}
 
       <div className={styles.controls}>
@@ -261,12 +406,22 @@ export default function VoiceMode({ onExit, onRecommend }: VoiceModeProps) {
           {muted ? IconMicOff : IconMic}
         </button>
 
-        <div
-          className={styles.pill}
-          aria-hidden="true"
-          style={{ transform: `scaleY(${blobScale.toFixed(3)})` }}
-        >
-          <div className={styles.pillGlow} />
+        <div className={styles.wave}>
+          <canvas
+            ref={waveCanvasRef}
+            className={styles.waveCanvas}
+            aria-hidden="true"
+          />
+          {aiPlaying && (
+            <button
+              type="button"
+              className={styles.wavePause}
+              onClick={interruptAi}
+              aria-label="interrupt and listen"
+            >
+              {IconPauseBars}
+            </button>
+          )}
         </div>
 
         <button
@@ -302,5 +457,18 @@ const IconMicOff = (
 const IconX = (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
+
+const IconBack = (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+const IconPauseBars = (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+    <rect x="6" y="5" width="4" height="14" rx="1" />
+    <rect x="14" y="5" width="4" height="14" rx="1" />
   </svg>
 );
