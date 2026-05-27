@@ -91,9 +91,13 @@ export async function updateConversationState(
   patch: { stage?: ConversationStage; favorites?: string },
 ): Promise<void> {
   if (Object.keys(patch).length === 0) return;
+  // The DB trigger only bumps last_active_at on new messages, so a stage or
+  // favorites change before the user's first message would otherwise leave
+  // the conversation stuck at its created-at timestamp and never surface as
+  // "most recent" in getOrCreateActiveConversation.
   const { error } = await supabase
     .from("conversations")
-    .update(patch)
+    .update({ ...patch, last_active_at: new Date().toISOString() })
     .eq("id", conversationId);
   if (error) throw new Error(`failed to update conversation: ${error.message}`);
 }
