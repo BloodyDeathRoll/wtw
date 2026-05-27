@@ -3,15 +3,16 @@
 /**
  * RecCard — displays a single RecommendationResult.
  *
- * "Why this?" button toggles an inline breakdown panel showing:
- *   - Score component bars (crew / narrative / visceral / ratings / recency)
- *   - Crew affinity matches
- *   - Narrative dimension alignment
- *   - Negative signals (what doesn't fit)
+ * Card state machine:
+ *   idle   → normal view, "Watched it" + "?" + skip buttons
+ *   rating → reaction picker: loved / liked / mixed / disliked
+ *   done   → confirmation message, fingerprint updated
+ *
+ * "Why this?" (?) button toggles the WhyPanel inline at any state.
  */
 
 import { useState } from "react"
-import type { RecommendationResult } from "@/types/dna"
+import type { RecommendationResult, Reaction } from "@/types/dna"
 import styles from "./RecCard.module.css"
 
 // ─── Poster generation ───────────────────────────────────────
@@ -58,6 +59,26 @@ const I = {
     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
       <path d="M12 9v4M12 17h.01" />
+    </svg>
+  ),
+  heart: (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  ),
+  thumbUp: (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 22V11M2 13v7a2 2 0 0 0 2 2h3V11H4a2 2 0 0 0-2 2Zm5-2V8a3 3 0 0 1 3-3l1 5h6.5a2 2 0 0 1 2 2.3l-1.5 7a2 2 0 0 1-2 1.7H7" />
+    </svg>
+  ),
+  mixed: (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M5 12h14" />
+    </svg>
+  ),
+  thumbDown: (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 2v11M22 11V4a2 2 0 0 0-2-2h-3v11h3a2 2 0 0 0 2-2Zm-5 2v3a3 3 0 0 1-3 3l-1-5H5.5a2 2 0 0 1-2-2.3l1.5-7A2 2 0 0 1 7 3h10" />
     </svg>
   ),
 }
@@ -130,6 +151,62 @@ function PosterTile({ title, palette, motif, size = "md" }: {
   )
 }
 
+// ─── Reaction picker ─────────────────────────────────────────
+const REACTIONS: { value: Reaction; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: "loved",    label: "Loved it",    icon: I.heart,     color: "#D49B3A" },
+  { value: "liked",    label: "Liked it",    icon: I.thumbUp,   color: "#C7B8FF" },
+  { value: "mixed",    label: "Mixed",       icon: I.mixed,     color: "#8A8A8E" },
+  { value: "disliked", label: "Didn't like", icon: I.thumbDown, color: "#E07C5A" },
+]
+
+// Need React import for ReactNode
+import React from "react"
+
+function ReactionPicker({ onPick, onSkip }: {
+  onPick: (r: Reaction) => void
+  onSkip: () => void
+}) {
+  return (
+    <div className={styles.reactionWrap}>
+      <div className={styles.reactionLabel}>How was it?</div>
+      <div className={styles.reactionGrid}>
+        {REACTIONS.map(r => (
+          <button
+            key={r.value}
+            className={styles.reactionBtn}
+            onClick={() => onPick(r.value)}
+          >
+            <span className={styles.reactionIcon} style={{ color: r.color }}>{r.icon}</span>
+            <span className={styles.reactionText}>{r.label}</span>
+          </button>
+        ))}
+      </div>
+      <button className={styles.reactionSkip} onClick={onSkip}>
+        Skip rating
+      </button>
+    </div>
+  )
+}
+
+// ─── Done state ──────────────────────────────────────────────
+const DONE_MESSAGES: Record<Reaction | "none", string> = {
+  loved:    "Fingerprint updated — more like this",
+  liked:    "Good signal — noted in your fingerprint",
+  mixed:    "Mixed noted — we'll calibrate",
+  disliked: "Got it — steering away from this",
+  none:     "Marked as watched",
+}
+
+function DoneState({ reaction }: { reaction: Reaction | null }) {
+  const msg = DONE_MESSAGES[reaction ?? "none"]
+  return (
+    <div className={styles.doneWrap}>
+      <span className={styles.doneCheck}>{I.check}</span>
+      <span className={styles.doneMsg}>{msg}</span>
+    </div>
+  )
+}
+
 // ─── Why panel ───────────────────────────────────────────────
 const SCORE_SEGMENTS = [
   { key: "crew",      label: "Crew",      weight: 35, color: "#D49B3A" },
@@ -142,7 +219,6 @@ const SCORE_SEGMENTS = [
 function WhyPanel({ result }: { result: RecommendationResult }) {
   const p = result.reason_payload
 
-  // Derive per-component scores from available data
   const crewScore = p.crew_matches.length > 0
     ? p.crew_matches.reduce((s, m) => s + m.affinity_score, 0) / p.crew_matches.length
     : result.composite_score * 0.8
@@ -161,8 +237,6 @@ function WhyPanel({ result }: { result: RecommendationResult }) {
 
   return (
     <div className={styles.whyPanel}>
-
-      {/* Score breakdown */}
       <div className={styles.whySection}>
         <div className={styles.whySectionLabel}>Score breakdown</div>
         {SCORE_SEGMENTS.map(seg => (
@@ -172,22 +246,13 @@ function WhyPanel({ result }: { result: RecommendationResult }) {
               <span className={styles.scoreWeight}>{seg.weight}%</span>
             </div>
             <div className={styles.scoreTrack}>
-              <div
-                className={styles.scoreFill}
-                style={{
-                  width: `${scores[seg.key] * 100}%`,
-                  background: seg.color,
-                }}
-              />
+              <div className={styles.scoreFill} style={{ width: `${scores[seg.key] * 100}%`, background: seg.color }} />
             </div>
-            <span className={styles.scoreNum}>
-              {Math.round(scores[seg.key] * 100)}
-            </span>
+            <span className={styles.scoreNum}>{Math.round(scores[seg.key] * 100)}</span>
           </div>
         ))}
       </div>
 
-      {/* Crew matches */}
       {p.crew_matches.length > 0 && (
         <div className={styles.whySection}>
           <div className={styles.whySectionLabel}>Crew in your fingerprint</div>
@@ -198,20 +263,14 @@ function WhyPanel({ result }: { result: RecommendationResult }) {
                 <span className={styles.crewRole}>{m.role}</span>
               </div>
               <div className={styles.crewTrack}>
-                <div
-                  className={styles.crewFill}
-                  style={{ width: `${m.affinity_score * 100}%` }}
-                />
+                <div className={styles.crewFill} style={{ width: `${m.affinity_score * 100}%` }} />
               </div>
-              <span className={styles.crewPct}>
-                {Math.round(m.affinity_score * 100)}%
-              </span>
+              <span className={styles.crewPct}>{Math.round(m.affinity_score * 100)}%</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Dimension alignment */}
       {p.dimension_matches.length > 0 && (
         <div className={styles.whySection}>
           <div className={styles.whySectionLabel}>Narrative alignment</div>
@@ -228,7 +287,6 @@ function WhyPanel({ result }: { result: RecommendationResult }) {
         </div>
       )}
 
-      {/* Negative signals */}
       {p.negative_signals.length > 0 && (
         <div className={styles.whySection}>
           <div className={styles.whySectionLabelWarn}>Doesn&apos;t quite fit</div>
@@ -240,18 +298,21 @@ function WhyPanel({ result }: { result: RecommendationResult }) {
           ))}
         </div>
       )}
-
     </div>
   )
 }
 
 // ─── RecCard ─────────────────────────────────────────────────
+type CardState = "idle" | "rating" | "done"
+
 interface RecCardProps {
   result: RecommendationResult
-  onFeedback?: (action: "watched" | "skipped") => void
+  onFeedback?: (action: "watched" | "skipped", reaction?: Reaction) => void
 }
 
 export default function RecCard({ result, onFeedback }: RecCardProps) {
+  const [cardState, setCardState] = useState<CardState>("idle")
+  const [reaction, setReaction] = useState<Reaction | null>(null)
   const [whyOpen, setWhyOpen] = useState(false)
 
   const h = hashId(result.tmdb_id)
@@ -259,8 +320,46 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
   const motif = MOTIFS[(h >> 2) % MOTIFS.length]
   const matchPct = Math.round(result.composite_score * 100)
 
+  async function submitFeedback(action: "watched" | "skipped", r?: Reaction) {
+    onFeedback?.(action, r)
+    // Fire-and-forget — UI transitions immediately, API call is best-effort
+    fetch("/api/recommendations/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tmdb_id: result.tmdb_id,
+        action,
+        is_stretch_pick: result.is_stretch_pick,
+        reaction: r ?? undefined,
+      }),
+    }).catch(() => {/* silently ignore in test/dev */})
+  }
+
+  function handleWatched() {
+    setCardState("rating")
+  }
+
+  function handleReaction(r: Reaction) {
+    setReaction(r)
+    setCardState("done")
+    submitFeedback("watched", r)
+  }
+
+  function handleSkipRating() {
+    setReaction(null)
+    setCardState("done")
+    submitFeedback("watched")
+  }
+
+  function handleSkip() {
+    submitFeedback("skipped")
+    onFeedback?.("skipped")
+  }
+
+  const isDone = cardState === "done"
+
   return (
-    <div className={`${styles.rec} ${whyOpen ? styles.recExp : ""}`}>
+    <div className={`${styles.rec} ${whyOpen ? styles.recExp : ""} ${isDone ? styles.recDone : ""}`}>
 
       {/* ── Main row ── */}
       <div className={styles.recMain}>
@@ -290,32 +389,44 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
             )}
           </div>
 
-          <div className={styles.recWhy}>
-            <span className={styles.whyEyebrow}>FINGERPRINT</span>
-            <span>{result.explanation}</span>
-          </div>
+          {cardState === "idle" && (
+            <>
+              <div className={styles.recWhy}>
+                <span className={styles.whyEyebrow}>FINGERPRINT</span>
+                <span>{result.explanation}</span>
+              </div>
 
-          <div className={styles.recActions}>
-            <button className={styles.btnWatch} onClick={() => onFeedback?.("watched")}>
-              {I.check}
-              <span>Watched it</span>
-            </button>
-            <button
-              className={`${styles.btnGhost} ${whyOpen ? styles.btnGhostActive : ""}`}
-              aria-label="why this"
-              onClick={() => setWhyOpen(v => !v)}
-            >
-              {whyOpen ? I.chevUp : I.why}
-            </button>
-            <button className={styles.btnGhost} aria-label="skip" onClick={() => onFeedback?.("skipped")}>
-              {I.skip}
-            </button>
-          </div>
+              <div className={styles.recActions}>
+                <button className={styles.btnWatch} onClick={handleWatched}>
+                  {I.check}
+                  <span>Watched it</span>
+                </button>
+                <button
+                  className={`${styles.btnGhost} ${whyOpen ? styles.btnGhostActive : ""}`}
+                  aria-label="why this"
+                  onClick={() => setWhyOpen(v => !v)}
+                >
+                  {whyOpen ? I.chevUp : I.why}
+                </button>
+                <button className={styles.btnGhost} aria-label="skip" onClick={handleSkip}>
+                  {I.skip}
+                </button>
+              </div>
+            </>
+          )}
+
+          {cardState === "rating" && (
+            <ReactionPicker onPick={handleReaction} onSkip={handleSkipRating} />
+          )}
+
+          {cardState === "done" && (
+            <DoneState reaction={reaction} />
+          )}
         </div>
       </div>
 
       {/* ── Why panel ── */}
-      {whyOpen && <WhyPanel result={result} />}
+      {whyOpen && cardState === "idle" && <WhyPanel result={result} />}
 
     </div>
   )

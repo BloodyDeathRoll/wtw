@@ -199,6 +199,96 @@
   opacity: 0.18;
 }
 
+/* ─── Done state ─── */
+.recDone {
+  opacity: 0.75;
+}
+.doneWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(var(--wtw-rgb), 0.06);
+  border-radius: 10px;
+  border: 1px solid rgba(var(--wtw-rgb), 0.15);
+  animation: fadeUp 0.25s ease both;
+}
+.doneCheck {
+  color: var(--wtw-green);
+  display: flex;
+  align-items: center;
+}
+.doneMsg {
+  font-size: 12.5px;
+  color: var(--wtw-fg-muted);
+  line-height: 1.3;
+}
+
+/* ─── Reaction picker ─── */
+.reactionWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  animation: fadeUp 0.2s ease both;
+}
+.reactionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--wtw-fg-muted);
+  text-transform: uppercase;
+}
+.reactionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.reactionBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--wtw-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--wtw-fg);
+}
+.reactionBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--wtw-border-strong);
+  transform: translateY(-1px);
+}
+.reactionBtn:active {
+  transform: translateY(0);
+}
+.reactionIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.reactionText {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+.reactionSkip {
+  background: transparent;
+  border: 0;
+  color: var(--wtw-fg-dim);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 0;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+.reactionSkip:hover {
+  color: var(--wtw-fg-muted);
+}
+
 /* ─── Why panel ─── */
 .whyPanel {
   border-top: 1px solid var(--wtw-border);
