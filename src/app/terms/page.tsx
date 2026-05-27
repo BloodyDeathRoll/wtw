@@ -13,7 +13,7 @@ export default function TermsOfService() {
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">1. Acceptance</h2>
         <p>
-          By creating an account or using WTW ("What To Watch", "the Service"),
+          By creating an account or using WTW (&ldquo;What To Watch&rdquo;, &ldquo;the Service&rdquo;),
           you agree to these Terms of Service. If you do not agree, do not use
           the Service. The Service is operated by Shahar Naor.
         </p>
@@ -45,7 +45,7 @@ export default function TermsOfService() {
             You must provide accurate information and keep it up to date.
           </li>
           <li>
-            You may not share your account or use another person's account
+            You may not share your account or use another person&rsquo;s account
             without permission.
           </li>
           <li>
@@ -98,7 +98,7 @@ export default function TermsOfService() {
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">8. Disclaimer of warranties</h2>
         <p>
-          The Service is provided "as is" and "as available" without warranties
+          The Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without warranties
           of any kind, either express or implied, including but not limited to
           warranties of merchantability, fitness for a particular purpose, or
           non-infringement. We do not warrant that the Service will be

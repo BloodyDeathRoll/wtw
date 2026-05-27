@@ -1,27 +1,16 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import LoginScreen from "./LoginScreen";
 
-import { createClient } from "@/lib/supabase/client";
+export default async function LoginPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-export default function LoginPage() {
-  async function signInWithGoogle() {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+  if (user) {
+    redirect("/");
   }
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <h1 className="mb-8 text-4xl font-bold tracking-tight">WTW</h1>
-      <button
-        onClick={signInWithGoogle}
-        className="rounded-lg bg-white px-6 py-3 text-sm font-medium text-black shadow hover:bg-gray-100 transition-colors"
-      >
-        Sign in with Google
-      </button>
-    </main>
-  );
+  return <LoginScreen />;
 }
