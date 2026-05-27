@@ -222,15 +222,29 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 3 — DNA Schema Writer
 **Branch:** `feature/dna-writer`
-**Last updated:** —
+**Last updated:** 2026-05-27
 **Completed:**
-- [ ] Nothing yet
+- [x] `src/modules/dna/init.ts` — `buildEmptyDNA(userId)` factory for new users
+- [x] `src/modules/dna/signal-merger.ts` — append signals, contradiction detection, dedup
+- [x] `src/modules/dna/temporal-decay.ts` — 18-month decay, 30-day run guard
+- [x] `src/modules/dna/strand-a-updater.ts` — crew affinity scores + lineage boost (pure)
+- [x] `src/modules/dna/strand-b-updater.ts` — narrative dimensions + Groq notes regeneration
+- [x] `src/modules/dna/strand-c-updater.ts` — pacing/tone/aspect weights + aspect survey path
+- [x] `src/modules/dna/learning-loop.ts` — open questions, recommendation & stretch pick history
+- [x] `src/modules/dna/tmdb.ts` — TMDB credits resolution (feeds Strand A)
+- [x] `src/modules/dna/embedding.ts` — Mistral embed → pgvector upsert
+- [x] `src/modules/dna/snapshot.ts` — versioned snapshots, keep-last-5, rollback
+- [x] `src/modules/dna/reader.ts` — `readDNA` with Upstash Redis cache + cache invalidation
+- [x] `src/modules/dna/writer.ts` — orchestrator: full write pipeline, `patchRegretSignal`
+- [x] `src/modules/dna/index.ts` — public API re-exports for Assignments 1 & 2
+- [x] `supabase/migrations/0002_dna_snapshots.sql` — `dna_snapshots` table + `fingerprint_embeddings` UNIQUE constraint
 
 **In progress:**
 - [ ] —
 
 **Next session starts at:**
-- [ ] —
+- [ ] Integration testing: call `writeDNA` end-to-end with a mock `SessionSummary` against a live Supabase dev instance
+- [ ] Confirm `fingerprint_embedding_ref` upsert format with Assignment 2
 
 ---
 
