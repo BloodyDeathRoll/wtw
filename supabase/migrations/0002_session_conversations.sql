@@ -6,6 +6,12 @@
 -- One row per active chat thread (Assignment 1, Session Brain).
 -- Assignment 3 (DNA Writer) reads `messages` to derive signals,
 -- and reads `conversations.session_number` for SessionSummary.
+--
+-- DEPENDS ON `0001_initial.sql`:
+--   - `public.users` (mirror of `auth.users`, auto-populated by the
+--     `on_auth_user_created` trigger). Apply 0001 before this file or the
+--     foreign key on `user_id` below will fail with
+--     `relation "public.users" does not exist`.
 
 -- ── conversations ────────────────────────────────────────────
 create table if not exists public.conversations (

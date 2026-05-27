@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateActiveConversation } from "@/lib/conversations";
@@ -15,6 +16,13 @@ export default async function Home() {
     redirect("/login");
   }
 
+  // Browser-style UTC offset written by the inline script in layout.tsx.
+  // Absent on the very first visit — buildWelcomeData falls back to a
+  // greeting without time-of-day context in that case.
+  const tzCookie = (await cookies()).get("tz_offset")?.value;
+  const parsedOffset = tzCookie === undefined ? NaN : Number(tzCookie);
+  const utcOffsetMinutes = Number.isFinite(parsedOffset) ? parsedOffset : null;
+
   const appUser: AppUser = {
     id: user.id,
     email: user.email ?? null,
@@ -28,8 +36,12 @@ export default async function Home() {
       null,
   };
 
-  const conversation = await getOrCreateActiveConversation(supabase, user.id);
-  const welcome = await buildWelcomeData(supabase, user.id, appUser.name);
+  // Independent — fan out to shave the Groq round-trip off `buildWelcomeData`
+  // when it lands during the conversation fetch.
+  const [conversation, welcome] = await Promise.all([
+    getOrCreateActiveConversation(supabase, user.id),
+    buildWelcomeData(supabase, user.id, appUser.name, utcOffsetMinutes),
+  ]);
 
   return (
     <WTWApp user={appUser} conversation={conversation} welcome={welcome} />

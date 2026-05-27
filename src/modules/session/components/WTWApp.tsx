@@ -763,8 +763,11 @@ export default function WTWApp({
   // it shows up next to text messages, and persist to the same table as
   // text via /api/voice/transcript.
   function handleVoiceTurn(userText: string, assistantText: string) {
-    const newMessages = [
-      ...messages,
+    // Functional updater — two voice turns landing back-to-back (primer +
+    // first user reply) would otherwise both close over the same stale
+    // `messages` snapshot and the second call would clobber the first.
+    setMessages((prev) => [
+      ...prev,
       ...(userText
         ? [
             {
@@ -783,8 +786,7 @@ export default function WTWApp({
             },
           ]
         : []),
-    ];
-    setMessages(newMessages);
+    ]);
 
     // First voice turn from onboard flips stage like the text path does.
     const wasOnboard = stage === "onboard";
@@ -865,8 +867,7 @@ export default function WTWApp({
             {stage === "onboard" && (
               <Onboard
                 continuePrompt={
-                  [...messages].reverse().find((m) => m.role === "assistant")
-                    ?.content
+                  messages.findLast((m) => m.role === "assistant")?.content
                 }
                 matureGreeting={matureGreeting}
                 onPlayVoice={(primer) => {

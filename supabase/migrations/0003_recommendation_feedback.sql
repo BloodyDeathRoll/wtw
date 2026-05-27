@@ -10,6 +10,12 @@
 -- Intentionally NOT unique on (user_id, recommendation_id) — a user
 -- changing their mind is itself a signal, and the DNA Writer wants the
 -- ordered history, not just the latest verdict.
+--
+-- DEPENDS ON `0001_initial.sql`:
+--   - `public.users` (mirror of `auth.users`, auto-populated by the
+--     `on_auth_user_created` trigger). Apply 0001 before this file or the
+--     foreign key on `user_id` below will fail with
+--     `relation "public.users" does not exist`.
 
 create table if not exists public.recommendation_feedback (
   id                uuid default gen_random_uuid() primary key,

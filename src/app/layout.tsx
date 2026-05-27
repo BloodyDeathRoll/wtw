@@ -26,6 +26,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans`}>
+        {/* Write the browser's UTC offset so the server can render
+            time-of-day-aware greetings on the next request. Browser semantics
+            (minutes behind UTC). 1-year cookie; refreshed every load. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.cookie='tz_offset='+new Date().getTimezoneOffset()+'; path=/; max-age=31536000; samesite=lax';`,
+          }}
+        />
         {/* next-pwa is disabled in dev, but a SW from a prior production build
             can linger in the browser and serve stale HTML. Tear it down on
             every dev page load. */}

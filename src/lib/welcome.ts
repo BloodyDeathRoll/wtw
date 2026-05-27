@@ -22,12 +22,16 @@ export async function buildWelcomeData(
   supabase: SupabaseClient,
   userId: string,
   name: string | null,
+  /** Browser-style offset in minutes (minutes behind UTC — Tel Aviv = -180).
+   *  Null on first-ever visit before the client has set the tz cookie; the
+   *  greeting then omits time-of-day context rather than guessing wrong. */
+  utcOffsetMinutes: number | null = null,
 ): Promise<WelcomeData> {
   const signals = await countUserSignals(supabase, userId);
   if (signals < MATURE_THRESHOLD) {
     return { greeting: null };
   }
-  const greeting = await generateGreeting(name);
+  const greeting = await generateGreeting(name, utcOffsetMinutes);
   return { greeting };
 }
 
@@ -35,17 +39,15 @@ async function countUserSignals(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<number> {
-  // 1. Feedback rows directly.
-  const { count: feedbackCount } = await supabase
-    .from("recommendation_feedback")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  // 2. User messages across all the user's conversations.
-  const { data: convos } = await supabase
-    .from("conversations")
-    .select("id")
-    .eq("user_id", userId);
+  // The feedback count and conversation list are independent — fan them out.
+  // The message count then has to wait for the conversation ids.
+  const [{ count: feedbackCount }, { data: convos }] = await Promise.all([
+    supabase
+      .from("recommendation_feedback")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    supabase.from("conversations").select("id").eq("user_id", userId),
+  ]);
 
   const ids = (convos ?? []).map((c) => c.id as string);
   let messageCount = 0;
@@ -61,37 +63,52 @@ async function countUserSignals(
   return (feedbackCount ?? 0) + messageCount;
 }
 
-async function generateGreeting(name: string | null): Promise<string> {
+async function generateGreeting(
+  name: string | null,
+  utcOffsetMinutes: number | null,
+): Promise<string> {
   const displayName = (name?.trim().split(" ")[0] ?? "").trim() || "there";
 
-  const now = new Date();
-  const hour = now.getHours();
-  const dayName = now.toLocaleDateString("en-US", { weekday: "long" });
-  const dayIndex = now.getDay();
-  const isWeekend = dayIndex === 0 || dayIndex === 6;
-  const isFriday = dayIndex === 5;
+  // When we have the client's offset, shift "now" to the user's local clock
+  // and read fields in UTC so the rendered values reflect their wall time.
+  // Without an offset we'd be reading the server's clock (UTC on Vercel) and
+  // pinning the wrong time-of-day on the prompt — so we drop the context
+  // entirely instead.
+  let timeContextLine: string;
+  if (utcOffsetMinutes === null) {
+    timeContextLine = "";
+  } else {
+    const local = new Date(Date.now() - utcOffsetMinutes * 60_000);
+    const hour = local.getUTCHours();
+    const dayName = local.toLocaleDateString("en-US", {
+      weekday: "long",
+      timeZone: "UTC",
+    });
+    const dayIndex = local.getUTCDay();
+    const isWeekend = dayIndex === 0 || dayIndex === 6;
+    const isFriday = dayIndex === 5;
 
-  const timeOfDay =
-    hour < 5
-      ? "late night"
-      : hour < 12
-        ? "morning"
-        : hour < 17
-          ? "afternoon"
-          : hour < 21
-            ? "evening"
-            : "night";
+    const timeOfDay =
+      hour < 5
+        ? "late night"
+        : hour < 12
+          ? "morning"
+          : hour < 17
+            ? "afternoon"
+            : hour < 21
+              ? "evening"
+              : "night";
 
-  const dayContext = isWeekend
-    ? "weekend"
-    : isFriday
-      ? "Friday — winding-down energy"
-      : "weekday";
+    const dayContext = isWeekend
+      ? "weekend"
+      : isFriday
+        ? "Friday — winding-down energy"
+        : "weekday";
 
-  const systemPrompt = `You are WTW (What To Watch). The user just opened the app — greet them by first name and ask ONE specific, situational question to start a conversation about what they should watch RIGHT NOW.
+    timeContextLine = `\n\nContext for THIS visit (use it to set tone — do NOT restate it):\n- It's ${timeOfDay} on a ${dayName} (${dayContext}).`;
+  }
 
-Context for THIS visit (use it to set tone — do NOT restate it):
-- It's ${timeOfDay} on a ${dayName} (${dayContext}).
+  const systemPrompt = `You are WTW (What To Watch). The user just opened the app — greet them by first name and ask ONE specific, situational question to start a conversation about what they should watch RIGHT NOW.${timeContextLine}
 
 Voice:
 - Like a knowledgeable, casual friend. Specific. Warm. Never canned.

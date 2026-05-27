@@ -35,6 +35,17 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  // Hygiene caps — RLS + auth already guard intent; these stop accidental or
+  // malicious oversized payloads from landing in the DNA Writer's input.
+  if (body.recommendation_id.length > 200) {
+    return NextResponse.json(
+      { error: "recommendation_id too long" },
+      { status: 400 },
+    );
+  }
+  if (body.title && body.title.length > 500) {
+    return NextResponse.json({ error: "title too long" }, { status: 400 });
+  }
 
   const { error } = await supabase.from("recommendation_feedback").insert({
     user_id: user.id,
