@@ -13,6 +13,7 @@
 
 import { useState } from "react"
 import type { RecommendationResult, Reaction } from "@/types/dna"
+import { addToRegretQueue } from "@/lib/regret-queue"
 import styles from "./RecCard.module.css"
 
 // ─── Poster generation ───────────────────────────────────────
@@ -336,6 +337,7 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
   }
 
   function handleWatched() {
+    addToRegretQueue(result.tmdb_id, result.title, result.type)
     setCardState("rating")
   }
 

@@ -1,12 +1,15 @@
 "use client"
 
 /**
- * /test — visual sandbox for RecCard + WhyPanel
+ * /test — visual sandbox for RecCard + WhyPanel + RegretPrompt
  * DELETE this file before merging to main.
  */
 
+import { useState } from "react"
 import RecCard from "@/app/components/RecCard"
+import RegretPrompt from "@/app/components/RegretPrompt"
 import type { RecommendationResult } from "@/types/dna"
+import type { RegretEntry } from "@/lib/regret-queue"
 
 const MOCK: RecommendationResult[] = [
   {
@@ -113,7 +116,15 @@ const MOCK: RecommendationResult[] = [
   },
 ]
 
+// Mock regret entries — simulates titles watched 48hr+ ago
+const MOCK_REGRET: RegretEntry[] = [
+  { tmdb_id: "95396",  title: "Severance",               type: "tv",    watched_at: Date.now() - 50 * 3600 * 1000, reacted: false },
+  { tmdb_id: "674324", title: "The Banshees of Inisherin", type: "movie", watched_at: Date.now() - 72 * 3600 * 1000, reacted: false },
+]
+
 export default function TestPage() {
+  const [regretQueue, setRegretQueue] = useState<RegretEntry[]>(MOCK_REGRET)
+
   return (
     <div
       style={{
@@ -126,15 +137,35 @@ export default function TestPage() {
         gap: "12px",
       }}
     >
-      <p style={{ color: "#5E5E62", fontSize: 11, letterSpacing: "0.12em", marginBottom: 16 }}>
+      <p style={{ color: "#5E5E62", fontSize: 11, letterSpacing: "0.12em", marginBottom: 8 }}>
         TEST PAGE — DELETE BEFORE MERGE
       </p>
+
       <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 10 }}>
+
+        {/* ── Regret prompts (surface above recs) ── */}
+        {regretQueue.length > 0 && (
+          <>
+            <p style={{ color: "#5E5E62", fontSize: 10, letterSpacing: "0.1em", margin: "4px 0 0" }}>
+              48-HOUR CHECK-INS
+            </p>
+            {regretQueue.map(entry => (
+              <RegretPrompt
+                key={entry.tmdb_id}
+                entry={entry}
+                onDone={(id) => setRegretQueue(q => q.filter(e => e.tmdb_id !== id))}
+              />
+            ))}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", margin: "4px 0" }} />
+          </>
+        )}
+
+        {/* ── Recommendation cards ── */}
         {MOCK.map((r) => (
           <RecCard
             key={r.tmdb_id}
             result={r}
-            onFeedback={(action) => console.log(r.title, action)}
+            onFeedback={(action, reaction) => console.log(r.title, action, reaction)}
           />
         ))}
       </div>
