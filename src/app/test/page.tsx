@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * /test — visual sandbox for RecCard + WhyPanel
  * DELETE this file before merging to main.
