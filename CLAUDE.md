@@ -30,7 +30,8 @@ WTW is an AI-powered film and TV recommendation engine that builds a continuousl
 | Database | Supabase — Postgres + pgvector extension |
 | Cache | Upstash Redis (free tier) |
 | AI Orchestration | Vercel AI SDK |
-| LLM — speed | Groq / Llama 3.3 70B (free tier) |
+| LLM — speed (text) | Groq / Llama 3.3 70B (free tier) |
+| LLM — voice (audio↔audio) | Gemini Live 2.5 Flash (native audio-to-audio) |
 | LLM — embeddings | Mistral embed (free tier) |
 | Content metadata | TMDB API (free) |
 | Ratings supplement | OMDB API (free tier) |
@@ -179,6 +180,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 GROQ_API_KEY=
+GEMINI_API_KEY=          # voice mode (Gemini Live 2.5 Flash)
 MISTRAL_API_KEY=
 TMDB_API_KEY=
 OMDB_API_KEY=
@@ -194,15 +196,35 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 1 — Session Brain
 **Branch:** `feature/session-brain`
-**Last updated:** —
+**PR:** [#1 — open, awaiting review](https://github.com/BloodyDeathRoll/wtw/pull/1)
+**Last updated:** 2026-05-26
 **Completed:**
-- [ ] Nothing yet
+- [x] Module relocated to `src/modules/session/` (commit `21433dd`)
+- [x] Design port from claude.ai/design handoff
+- [x] Auth flow shipped end-to-end (Supabase Google OAuth)
+- [x] ESLint 9 flat config (`eslint.config.mjs`)
+- [x] Text chat wired end-to-end via AI SDK `useChat`. System prompt is a calibration interview — one focused taste question per turn, no echoing, hedged fallback if user asks for a rec early.
+- [x] Voice mode end-to-end via Gemini Live 2.5 (model `gemini-2.5-flash-native-audio-preview-12-2025`). Aurora background, streaming AI transcript top, live user transcript that clears when the user answers, mic-mute left / oscilloscope wave centre / X right, pause button overlays the wave during AI speech and interrupts via `player.flush()`.
+- [x] Voice mode mic suppression during AI playback (no echo-bleed barge-in). Voice mode "primer" — when user taps the speaker on onboard, voice opens with Gemini reading the displayed message aloud first.
+- [x] Voice picker — 30 Gemini voices with descriptors, accessible via hamburger → Set voice. Sample-preview buttons are stubbed (disabled / faded) until `public/voice-samples/*.wav` is populated via `scripts/generate-voice-samples.mjs` (free-tier quota is 10/day → run over 3 days).
+- [x] **Persistence (Supabase)**: `conversations` + `messages` tables (migration `0002`). Chat + voice transcripts saved to the same `messages` stream so the DNA Writer sees a unified history. `recommendation_feedback` table (migration `0003`) captures every 👍 / 👎 click.
+- [x] **Recommendations view** — accessible via the "Recommendations Ready" pill. Two view modes (compact list with infinite scroll; full-screen card with directional swipe animation). Cards use mock data shaped to match Alon's eventual `RecommendationResult` plus enrichment fields. Real TMDB poster URLs with motif/palette fallback when missing. Feedback writes to `recommendation_feedback`.
+- [x] **Fast Learning** — same UI as Recommendations, opened from hamburger menu. Bulk taste-training mode; user swipes or rates 👍 / 👎. Feeds the same feedback table.
+- [x] **Smart welcome (mature-fingerprint mode)** — `src/lib/welcome.ts` counts user signals (chat messages + feedback rows). When >= 10, server-side calls Groq with a system prompt seeded by time-of-day / day-of-week and returns a fresh greeting per page-load. Greeting renders as the onboard hint; rec pill always visible. Once the user interacts on the page, the greeting yields to "continue: \<last AI question\>".
+- [x] **Top bar overhaul** — 3-col grid for clean centring. Brand selector toggles Movies / Series (persists to localStorage). Hamburger menu (full-bleed drawer with backdrop blur) contains user header → Fast learning → Set voice → Sign out. Message icon top-left when there's chat history.
+- [x] **Welcome-loop UX** — every login + every "Back from chat/recs" lands on the onboard view. Onboard shows either the AI's last question (continue mode) or the mature greeting.
 
 **In progress:**
 - [ ] —
 
 **Next session starts at:**
-- [ ] —
+- [ ] Generate the 30 voice WAV samples (`npm run generate-voice-samples`) over a few days as the Gemini free-tier quota allows. Drop the `disabled` attribute on the voice play buttons once samples are present.
+- [ ] When Alon's engine merges, swap `/api/recommendations/generate`'s mock list for his real pipeline output. UI is already shape-compatible.
+- [ ] Voice "Recommend" handoff: today it just navigates to the recommendations view. Could re-enter with an explicit query mode once the engine exposes that.
+
+**Cross-team handoff notes (for Eran / Assignment 3):**
+- DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
+- Maturity heuristic for "skip calibration" is currently `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
 ---
 

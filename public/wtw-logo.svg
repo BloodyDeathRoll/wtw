@@ -1,0 +1,30 @@
+<svg width="72" height="76" viewBox="0 0 72 76" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_2_31)">
+<mask id="mask0_2_31" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="72" height="76">
+<path d="M31.4209 7.16992L19.8203 71.4434L15 74.2275C8.33343 78.0764 0.000199483 73.2652 0 65.5674V11.8975L8.41406 58.4941L19.001 0L31.4209 7.16992ZM48.5117 17.0361L54.7129 51.2979L42.2686 58.4824L33.1924 8.19238L48.5117 17.0361ZM66.2842 27.2979C72.9505 31.1468 72.9503 40.769 66.2842 44.6182L57.6172 49.6211L62.0859 24.874L66.2842 27.2979Z" fill="#D9D9D9" style="fill:#D9D9D9;fill:color(display-p3 0.8510 0.8510 0.8510);fill-opacity:1;"></path>
+</mask>
+<g mask="url(#mask0_2_31)">
+<g filter="url(#filter0_f_2_31)">
+<ellipse cx="64" cy="76.5515" rx="55" ry="54.5" fill="#2718FF" style="fill:#2718FF;fill:color(display-p3 0.1542 0.0938 1.0000);fill-opacity:1;"></ellipse>
+</g>
+<g filter="url(#filter1_f_2_31)">
+<ellipse cx="-0.5" cy="-3.94852" rx="53.5" ry="53" fill="#B48A37" style="fill:#B48A37;fill:color(display-p3 0.7059 0.5412 0.2157);fill-opacity:1;"></ellipse>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_f_2_31" x="-21" y="-7.94852" width="170" height="169" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feBlend>
+<feGaussianBlur stdDeviation="15" result="effect1_foregroundBlur_2_31"></feGaussianBlur>
+</filter>
+<filter id="filter1_f_2_31" x="-84" y="-86.9485" width="167" height="166" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feBlend>
+<feGaussianBlur stdDeviation="15" result="effect1_foregroundBlur_2_31"></feGaussianBlur>
+</filter>
+<clipPath id="clip0_2_31">
+<rect width="71.2839" height="75.5821" fill="white" style="fill:white;fill-opacity:1;"></rect>
+</clipPath>
+</defs>
+</svg>
