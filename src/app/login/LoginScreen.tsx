@@ -22,6 +22,12 @@ export default function LoginScreen() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        // Force Google's account chooser on every sign-in. Without this,
+        // Google silently reuses whatever account is already active in the
+        // browser, so a logged-out user can't pick a different account.
+        queryParams: {
+          prompt: "select_account",
+        },
       },
     });
     if (error) {

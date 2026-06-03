@@ -1,5 +1,6 @@
 # dependencies
 node_modules/
+wtw_prompts/
 .pnp
 .pnp.js
 
