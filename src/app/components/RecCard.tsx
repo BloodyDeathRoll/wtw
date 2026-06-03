@@ -14,6 +14,7 @@
 import { useState } from "react"
 import type { RecommendationResult, Reaction } from "@/types/dna"
 import { addToRegretQueue } from "@/lib/regret-queue"
+import DeepSurvey from "./DeepSurvey"
 import styles from "./RecCard.module.css"
 
 // ─── Poster generation ───────────────────────────────────────
@@ -315,6 +316,7 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
   const [cardState, setCardState] = useState<CardState>("idle")
   const [reaction, setReaction] = useState<Reaction | null>(null)
   const [whyOpen, setWhyOpen] = useState(false)
+  const [surveyOpen, setSurveyOpen] = useState(false)
 
   const h = hashId(result.tmdb_id)
   const palette = PALETTES[h % PALETTES.length]
@@ -422,13 +424,23 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
           )}
 
           {cardState === "done" && (
-            <DoneState reaction={reaction} />
+            <>
+              <DoneState reaction={reaction} />
+              <button className={styles.deepRateBtn} onClick={() => setSurveyOpen(true)}>
+                Rate in depth →
+              </button>
+            </>
           )}
         </div>
       </div>
 
       {/* ── Why panel ── */}
       {whyOpen && cardState === "idle" && <WhyPanel result={result} />}
+
+      {/* ── Deep survey overlay ── */}
+      {surveyOpen && (
+        <DeepSurvey result={result} onClose={() => setSurveyOpen(false)} />
+      )}
 
     </div>
   )

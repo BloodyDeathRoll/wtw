@@ -1,0 +1,311 @@
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Overlay backdrop ─── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease both;
+}
+
+/* ─── Bottom drawer ─── */
+.drawer {
+  width: 100%;
+  max-width: 420px;
+  max-height: 88vh;
+  background: #0E0E10;
+  border-radius: 24px 24px 0 0;
+  border: 1px solid var(--wtw-border);
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* ─── Header ─── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 18px 14px;
+  border-bottom: 1px solid var(--wtw-border);
+  flex-shrink: 0;
+}
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.eyebrow {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wtw-green);
+}
+.drawerTitle {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--wtw-fg);
+  line-height: 1.2;
+}
+.closeBtn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--wtw-border);
+  border-radius: 50%;
+  color: var(--wtw-fg-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--wtw-fg);
+}
+
+/* ─── Scrollable body ─── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+}
+.body::-webkit-scrollbar { width: 3px; }
+.body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+
+/* ─── Sections ─── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sectionLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wtw-fg);
+  letter-spacing: -0.01em;
+}
+.sectionHint {
+  font-size: 11.5px;
+  color: var(--wtw-fg-muted);
+  line-height: 1.4;
+  margin-top: -8px;
+}
+
+/* ─── Dimension blocks ─── */
+.dimensionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dimensionLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--wtw-fg);
+}
+.dimensionHint {
+  font-size: 11px;
+  color: var(--wtw-fg-dim);
+  margin-top: -3px;
+}
+.pillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.pill {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--wtw-border);
+  background: transparent;
+  color: var(--wtw-fg-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.pill:hover {
+  border-color: rgba(var(--wtw-rgb), 0.35);
+  color: var(--wtw-fg);
+  background: rgba(var(--wtw-rgb), 0.05);
+}
+.pillActive {
+  border-color: rgba(var(--wtw-rgb), 0.6);
+  background: rgba(var(--wtw-rgb), 0.12);
+  color: var(--wtw-green);
+}
+
+/* ─── Aspect grid ─── */
+.aspectGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--wtw-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.aspectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.01);
+  transition: background 0.12s ease;
+}
+.aspectRow:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.aspectLabel {
+  font-size: 13px;
+  color: var(--wtw-fg-muted);
+  font-weight: 500;
+}
+.aspectBtns {
+  display: flex;
+  gap: 4px;
+}
+.aspectBtn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--wtw-border);
+  border-radius: 8px;
+  color: var(--wtw-fg-dim);
+  cursor: pointer;
+  transition: all 0.13s ease;
+}
+.aspectBtn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--wtw-fg-muted);
+}
+.aspectBtnGood {
+  border-color: rgba(var(--wtw-rgb), 0.5);
+  background: rgba(var(--wtw-rgb), 0.1);
+  color: var(--wtw-green);
+}
+.aspectBtnOk {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--wtw-fg-muted);
+}
+.aspectBtnWeak {
+  border-color: rgba(224, 124, 90, 0.4);
+  background: rgba(224, 124, 90, 0.08);
+  color: #E07C5A;
+}
+
+/* ─── Footer ─── */
+.footer {
+  padding: 14px 18px 24px;
+  border-top: 1px solid var(--wtw-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  background: #0E0E10;
+}
+.progress {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  background: var(--wtw-green);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.progressLabel {
+  font-size: 11px;
+  color: var(--wtw-fg-dim);
+}
+.submitBtn {
+  width: 100%;
+  padding: 13px;
+  background: var(--wtw-green);
+  color: #f2f2f2;
+  border: 0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 0 24px rgba(var(--wtw-rgb), 0.2);
+  margin-top: 4px;
+}
+.submitBtn:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+.submitBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ─── Done state ─── */
+.doneWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 20px;
+}
+.doneCheck {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(var(--wtw-rgb), 0.12);
+  border: 1px solid rgba(var(--wtw-rgb), 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--wtw-green);
+  flex-shrink: 0;
+}
+.doneTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wtw-fg);
+}
+.doneSubtitle {
+  font-size: 12.5px;
+  color: var(--wtw-fg-muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
