@@ -215,7 +215,14 @@ function downsampleTo16k(input: Float32Array, sourceRate: number): Float32Array 
   // Simple box average — good enough for speech; better than naive picking.
   for (let i = 0; i < outLength; i++) {
     const start = Math.floor(i * ratio);
-    const end = Math.min(input.length, Math.floor((i + 1) * ratio));
+    // Guarantee a non-empty window. When ratio < 1 (source rate below 16kHz,
+    // e.g. some Bluetooth/low-power contexts) the floored bounds would collapse
+    // to an empty range on alternating indices and emit silence; clamp to at
+    // least one sample so the resampler degrades to sample-and-hold instead.
+    const end = Math.max(
+      start + 1,
+      Math.min(input.length, Math.floor((i + 1) * ratio)),
+    );
     let sum = 0;
     let count = 0;
     for (let j = start; j < end; j++) {
