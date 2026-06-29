@@ -231,7 +231,8 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 
 ### Assignment 2 — Recommendation Engine
 **Branch:** `feature/rec-engine`
-**Last updated:** 2026-05-22
+**PR:** open, awaiting review
+**Last updated:** 2026-06-29
 **Completed:**
 - [x] Database migrations — `titles`, `crew_members` tables + pgvector indexes (`0002`, `0003`)
 - [x] TMDB client — `getMovie`, `getTV`, `getPerson`, `discoverMovies`, `discoverTV`
@@ -244,18 +245,23 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 - [x] Full 8-step recommendation pipeline — Steps 1–8 in `src/modules/engine/pipeline/`
 - [x] Co-watch intersection — geometric mean scoring + shared Groq explanations
 - [x] Public module API — `src/modules/engine/index.ts`
-- [x] API routes — `/generate`, `/cowatch`, `/explain`, `/feedback`
+- [x] API routes — `/generate`, `/cowatch`, `/explain`, `/feedback`, `/survey`
 - [x] Admin seed route — `POST /api/admin/seed` (idempotent, CRON_SECRET protected)
+- [x] **RecCard component** — full state machine (idle → rating → done), real `RecommendationResult` binding, feedback fire-and-forget
+- [x] **WhyPanel** — inline score breakdown (5 segments), crew matches, dimension alignment, negative signals
+- [x] **Reaction picker** — loved / liked / mixed / disliked on RecCard feedback loop
+- [x] **RegretPrompt component** — 48-hr post-watch check-in UI; `regret-queue.ts` localStorage queue
+- [x] **DeepSurvey overlay** — 12-dimension post-watch rating (7 StrandB + 8 StrandC); submits to `/api/recommendations/survey`
 
 **Blocked on (needs before first real test):**
 - [ ] Teammates to share API keys so `.env.local` can be filled in
 - [ ] Supabase migrations `0002` and `0003` run in SQL editor
 - [ ] Seed called once: `curl -X POST http://localhost:3000/api/admin/seed -H "Authorization: Bearer <CRON_SECRET>" -d '{"discover_pages":5}'`
-- [ ] Assignment 3 built — feedback route has hooks ready (see commented block in `feedback/route.ts`)
+- [ ] Assignment 3 built — feedback + survey routes have hooks ready (commented blocks in `feedback/route.ts` and `survey/route.ts`)
 
 **Next session starts at:**
-- [ ] Integration with Assignment 1 — consume `SessionContext` from the session brain's conversation end
-- [ ] Integration with Assignment 3 — uncomment `updateSchemaFromRegret` / `updateSchemaFromStretch` calls in `feedback/route.ts`
+- [ ] Integration with Assignment 1 — consume `SessionContext` from the session brain's conversation end; swap `generate/route.ts` GET mock for real Redis cache
+- [ ] Integration with Assignment 3 — uncomment `updateSchemaFromRegret` / `updateSchemaFromStretch` calls in `feedback/route.ts`; wire survey route to `updateSchemaFromSession`
 - [ ] Verify `narrativeToEmbeddingText` format matches `strandBToEmbeddingText` in `narrative-match.ts` — Assignment 3 must use the same template when generating user embeddings
 
 ---
