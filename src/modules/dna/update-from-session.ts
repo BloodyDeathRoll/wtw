@@ -3,6 +3,8 @@ import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { mergeStrandB, applySignalDimensionTags } from './lib/update-strand-b'
 import { applyStrandCUpdate } from './lib/update-strand-c'
+import { rewriteChangedDimensionNotes } from './lib/rewrite-dimension-notes'
+import { regenerateEmbedding } from './lib/regenerate-embedding'
 
 export async function updateSchemaFromSession(
   user_id: string,
@@ -57,9 +59,22 @@ export async function updateSchemaFromSession(
     if (rec) rec.accepted = summary.recommendation_accepted
   }
 
-  // 8. Increment session count, bump version, persist
+  // 8. Increment session count + bump version
   dna.metadata.total_sessions = summary.session_number
   bumpVersion(dna)
+
+  // 9. Rewrite any dimension notes that changed significantly (fire-and-forget on error)
+  await rewriteChangedDimensionNotes(dna, freshSignals).catch(err =>
+    console.warn('[update-from-session] notes rewrite failed:', err)
+  )
+
+  // 10. Regenerate Mistral embedding snapshot (fire-and-forget on error)
+  //     The engine's Redis cache handles the embedding for scoring —
+  //     this persists the historical snapshot in fingerprint_embeddings.
+  await regenerateEmbedding(user_id, dna).catch(err =>
+    console.warn('[update-from-session] embedding regen failed:', err)
+  )
+
   await saveDNA(user_id, dna)
 
   return dna

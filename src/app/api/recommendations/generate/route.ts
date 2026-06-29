@@ -1,14 +1,18 @@
-// GET  — serves paginated recommendations to the UI (mock data until engine is seeded)
+// GET  — serves paginated recommendations to the UI.
+//        Checks Redis cache (keyed by taste_version) first; falls back to mocks
+//        when the DB is not yet seeded or no recs have been generated.
 // POST — runs the full Assignment 2 engine pipeline and returns RecommendationResult[]
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import {
   MOCK_RECOMMENDATIONS,
   pageOf,
 } from "@/modules/session/recommendations/mock-data";
 import { generateRecommendations } from "@/modules/engine";
-import type { SessionContext } from "@/types/dna";
+import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
+import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 
 export const runtime = "nodejs";
 
@@ -31,26 +35,52 @@ export async function GET(req: Request) {
     : 0;
   const contentType = url.searchParams.get("type"); // "movies" | "series"
 
-  // Only the two known values filter. Anything else (a typo like "movie", an
-  // unknown future caller, a different case) returns the full mixed list rather
-  // than silently collapsing to a tv-only slice.
-  const filtered =
+  // Try Redis cache — requires knowing the user's current taste_version
+  let cachedRecs: RecommendationResult[] | null = null
+
+  try {
+    const db = createServiceClient()
+    const { data } = await db
+      .from("users")
+      .select("dna")
+      .eq("id", user.id)
+      .single<{ dna: DNASchema | null }>()
+
+    if (data?.dna) {
+      cachedRecs = await getCachedRecommendations(user.id, data.dna.metadata.taste_version)
+    }
+  } catch {
+    // Redis or DB unavailable — fall through to mocks
+  }
+
+  if (cachedRecs && cachedRecs.length > 0) {
+    const filtered =
+      contentType === "movies"
+        ? cachedRecs.filter((r) => r.type === "movie")
+        : contentType === "series"
+          ? cachedRecs.filter((r) => r.type === "tv")
+          : cachedRecs;
+    const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
+    const nextOffset = offset + items.length;
+    const hasMore = nextOffset < filtered.length;
+    return NextResponse.json({ recommendations: items, next_offset: nextOffset, has_more: hasMore, source: "cache" });
+  }
+
+  // Fall back to mocks (DB not yet seeded)
+  const mockFiltered =
     contentType === "movies"
       ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "movie")
       : contentType === "series"
         ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "tv")
         : MOCK_RECOMMENDATIONS;
 
-  const { items, nextOffset, hasMore } = pageOf(
-    filtered,
-    offset,
-    DEFAULT_PAGE_SIZE,
-  );
+  const { items, nextOffset, hasMore } = pageOf(mockFiltered, offset, DEFAULT_PAGE_SIZE);
 
   return NextResponse.json({
     recommendations: items,
     next_offset: nextOffset,
     has_more: hasMore,
+    source: "mock",
   });
 }
 
