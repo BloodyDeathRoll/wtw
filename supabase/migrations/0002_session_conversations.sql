@@ -1,17 +1,7 @@
 -- ============================================================
 -- WTW — Session conversations + messages
--- Run this in the Supabase SQL Editor (or via supabase db push)
+-- Safe to re-run — all statements are idempotent.
 -- ============================================================
---
--- One row per active chat thread (Assignment 1, Session Brain).
--- Assignment 3 (DNA Writer) reads `messages` to derive signals,
--- and reads `conversations.session_number` for SessionSummary.
---
--- DEPENDS ON `0001_initial.sql`:
---   - `public.users` (mirror of `auth.users`, auto-populated by the
---     `on_auth_user_created` trigger). Apply 0001 before this file or the
---     foreign key on `user_id` below will fail with
---     `relation "public.users" does not exist`.
 
 -- ── conversations ────────────────────────────────────────────
 create table if not exists public.conversations (
@@ -27,10 +17,15 @@ create table if not exists public.conversations (
 
 alter table public.conversations enable row level security;
 
+drop policy if exists "conversations_select_own" on public.conversations;
 create policy "conversations_select_own" on public.conversations
   for select using (auth.uid() = user_id);
+
+drop policy if exists "conversations_insert_own" on public.conversations;
 create policy "conversations_insert_own" on public.conversations
   for insert with check (auth.uid() = user_id);
+
+drop policy if exists "conversations_update_own" on public.conversations;
 create policy "conversations_update_own" on public.conversations
   for update using (auth.uid() = user_id);
 
@@ -48,6 +43,7 @@ create table if not exists public.messages (
 
 alter table public.messages enable row level security;
 
+drop policy if exists "messages_select_own" on public.messages;
 create policy "messages_select_own" on public.messages
   for select using (
     exists (
@@ -55,6 +51,8 @@ create policy "messages_select_own" on public.messages
       where c.id = conversation_id and c.user_id = auth.uid()
     )
   );
+
+drop policy if exists "messages_insert_own" on public.messages;
 create policy "messages_insert_own" on public.messages
   for insert with check (
     exists (
@@ -79,6 +77,7 @@ begin
 end;
 $$;
 
+drop trigger if exists messages_bump_conversation on public.messages;
 create trigger messages_bump_conversation
   after insert on public.messages
   for each row execute procedure public.bump_conversation_last_active();

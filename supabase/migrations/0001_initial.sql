@@ -1,6 +1,7 @@
 -- ============================================================
 -- WTW — Initial Schema
 -- Run this in the Supabase SQL Editor (or via supabase db push)
+-- Safe to re-run — all statements are idempotent.
 -- ============================================================
 
 -- pgvector for fingerprint embeddings
@@ -16,33 +17,33 @@ create table if not exists public.users (
 
 alter table public.users enable row level security;
 
+drop policy if exists "users_select_own" on public.users;
 create policy "users_select_own" on public.users
   for select using (auth.uid() = id);
 
+drop policy if exists "users_insert_own" on public.users;
 create policy "users_insert_own" on public.users
   for insert with check (auth.uid() = id);
 
+drop policy if exists "users_update_own" on public.users;
 create policy "users_update_own" on public.users
   for update using (auth.uid() = id);
 
 -- ── Fingerprint embeddings ────────────────────────────────────
--- Separate table so we can keep the last 5 snapshots per user
--- (DNASchema.metadata.fingerprint_embedding_ref points here)
 create table if not exists public.fingerprint_embeddings (
   id             uuid default gen_random_uuid() primary key,
   user_id        uuid references public.users(id) on delete cascade not null,
-  embedding      vector(1024),   -- Mistral embed = 1024 dims
+  embedding      vector(1024),
   taste_version  integer not null,
   created_at     timestamptz default now() not null
 );
 
 alter table public.fingerprint_embeddings enable row level security;
 
--- Users can read their own; service role manages writes
+drop policy if exists "embeddings_select_own" on public.fingerprint_embeddings;
 create policy "embeddings_select_own" on public.fingerprint_embeddings
   for select using (auth.uid() = user_id);
 
--- Vector similarity index (cosine — best for normalised Mistral embeddings)
 create index if not exists fingerprint_embeddings_ivfflat_idx
   on public.fingerprint_embeddings
   using ivfflat (embedding vector_cosine_ops)
@@ -60,7 +61,8 @@ begin
 end;
 $$;
 
-create or replace trigger on_auth_user_created
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
@@ -75,6 +77,7 @@ begin
 end;
 $$;
 
+drop trigger if exists users_updated_at on public.users;
 create trigger users_updated_at
   before update on public.users
   for each row execute procedure public.handle_updated_at();
