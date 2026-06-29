@@ -231,7 +231,7 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 
 ### Assignment 2 — Recommendation Engine
 **Branch:** `feature/rec-engine`
-**PR:** open, awaiting review
+**PR:** [#7 — open, awaiting review](https://github.com/BloodyDeathRoll/wtw/pull/7)
 **Last updated:** 2026-06-29
 **Completed:**
 - [x] Database migrations — `titles`, `crew_members` tables + pgvector indexes (`0002`, `0003`)
@@ -240,7 +240,7 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 - [x] Redis client — Upstash singleton (`src/lib/redis.ts`)
 - [x] Supabase service-role client (`src/lib/supabase/service.ts`)
 - [x] Enrichment pipeline — `fetchAndCacheTitle`, `enrichTitleWithNarrative`, `buildLineageGraph`, `runNightlyEnrichment`
-- [x] Nightly cron route — `POST /api/cron/enrich` + `vercel.json` schedule (3am UTC)
+- [x] Nightly cron routes — `POST /api/cron/enrich` (3am UTC) + `POST /api/cron/decay` (4am UTC)
 - [x] Scoring components — `crew-affinity`, `narrative-match` (pgvector batch), `visceral-match`, `lineage-boost` (2-degree, batch-prefetch)
 - [x] Full 8-step recommendation pipeline — Steps 1–8 in `src/modules/engine/pipeline/`
 - [x] Co-watch intersection — geometric mean scoring + shared Groq explanations
@@ -252,31 +252,41 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 - [x] **Reaction picker** — loved / liked / mixed / disliked on RecCard feedback loop
 - [x] **RegretPrompt component** — 48-hr post-watch check-in UI; `regret-queue.ts` localStorage queue
 - [x] **DeepSurvey overlay** — 12-dimension post-watch rating (7 StrandB + 8 StrandC); submits to `/api/recommendations/survey`
+- [x] **GET /generate** — checks Redis cache by taste_version before falling back to mocks
 
 **Blocked on (needs before first real test):**
-- [ ] Teammates to share API keys so `.env.local` can be filled in
-- [ ] Supabase migrations `0002` and `0003` run in SQL editor
-- [ ] Seed called once: `curl -X POST http://localhost:3000/api/admin/seed -H "Authorization: Bearer <CRON_SECRET>" -d '{"discover_pages":5}'`
-- [ ] Assignment 3 built — feedback + survey routes have hooks ready (commented blocks in `feedback/route.ts` and `survey/route.ts`)
+- [ ] Fill `.env.local` with real API keys (see keys section above)
+- [ ] Run Supabase migrations `0001`, `0002`, `0003` in SQL editor
+- [ ] Seed titles: `curl -X POST http://localhost:3000/api/admin/seed -H "Authorization: Bearer <CRON_SECRET>" -d '{"discover_pages":5}'`
 
 **Next session starts at:**
-- [ ] Integration with Assignment 1 — consume `SessionContext` from the session brain's conversation end; swap `generate/route.ts` GET mock for real Redis cache
-- [ ] Integration with Assignment 3 — uncomment `updateSchemaFromRegret` / `updateSchemaFromStretch` calls in `feedback/route.ts`; wire survey route to `updateSchemaFromSession`
-- [ ] Verify `narrativeToEmbeddingText` format matches `strandBToEmbeddingText` in `narrative-match.ts` — Assignment 3 must use the same template when generating user embeddings
+- [ ] Integration with Assignment 1 — wire `POST /api/dna/update-from-session` call at conversation end; surface `RegretPrompt` using `getPendingRegretChecks()`
+- [ ] End-to-end test with real keys: bootstrap DNA → chat → session update → generate recs → verify cache hit
 
 ---
 
 ### Assignment 3 — DNA Schema Writer
-**Branch:** `feature/dna-writer`
-**Last updated:** —
+**Branch:** `feature/rec-engine` (built alongside Assignment 2)
+**Last updated:** 2026-06-29
 **Completed:**
-- [ ] Nothing yet
-
-**In progress:**
-- [ ] —
+- [x] `createBlankDNA` — blank fingerprint factory (all strands neutral)
+- [x] `updateSchemaFromSession` — merges SessionSummary → strand A/B/C + learning loop + Mistral embedding + LLM notes rewrite
+- [x] `updateSchemaFromRegret` — 48-hr regret/glad signal nudges crew affinity
+- [x] `updateSchemaFromStretch` — stretch pick outcome expands dimension confidence
+- [x] `updateSchemaFromSurvey` — deep survey → strand B values + strand C aspect weights
+- [x] Mistral embedding regeneration — `lib/regenerate-embedding.ts`; stores last 5 snapshots in `fingerprint_embeddings`
+- [x] LLM dimension notes rewriter — `lib/rewrite-dimension-notes.ts`; Groq rewrites notes when confidence shifts significantly
+- [x] Temporal decay — `lib/apply-temporal-decay.ts`; 18-month decay at 50%; wired to `POST /api/cron/decay`
+- [x] API routes — `POST /api/dna/bootstrap`, `POST /api/dna/update-from-session`, `GET /api/dna/summary`, `POST /api/dna/parse-instruction`
+- [x] Free-text instruction parser — Groq extracts ExclusionRule / SoftPreference / TemporalModifier from natural language
+- [x] **Profile page** — `/profile/dna`: crew affinities, dimension bars, visceral weights, exclusion rules, open questions, stretch history
+- [x] `feedback/route.ts` hooks wired — `updateSchemaFromRegret` + `updateSchemaFromStretch` called on regret/stretch actions
+- [x] `survey/route.ts` implemented — delegates to `updateSchemaFromSurvey`
 
 **Next session starts at:**
-- [ ] —
+- [ ] Assignment 1 integration: call `POST /api/dna/update-from-session` when a chat session ends
+- [ ] Surface `GET /api/dna/summary` on the profile page (currently loads raw DNA only)
+- [ ] Add profile page link to hamburger menu (coordinate with Assignment 1)
 
 ---
 
