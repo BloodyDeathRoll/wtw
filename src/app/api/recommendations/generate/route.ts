@@ -34,11 +34,15 @@ export async function GET(req: Request) {
   // Real engine will respect it.
   const contentType = url.searchParams.get("type"); // "movies" | "series"
 
-  const filtered = contentType
-    ? MOCK_RECOMMENDATIONS.filter((r) =>
-        contentType === "movies" ? r.type === "movie" : r.type === "tv",
-      )
-    : MOCK_RECOMMENDATIONS;
+  // Only the two known values filter. Anything else (a typo like "movie", an
+  // unknown future caller, a different case) returns the full mixed list rather
+  // than silently collapsing to a tv-only slice.
+  const filtered =
+    contentType === "movies"
+      ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "movie")
+      : contentType === "series"
+        ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "tv")
+        : MOCK_RECOMMENDATIONS;
 
   const { items, nextOffset, hasMore } = pageOf(
     filtered,
