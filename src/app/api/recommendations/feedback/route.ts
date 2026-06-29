@@ -25,6 +25,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
+import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import type { DNASchema, Reaction } from '@/types/dna'
 
 const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
@@ -133,21 +135,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
   }
 
-  // ── Notify Assignment 3 (DNA Writer) ─────────────────────
-  // When Assignment 3 is available, uncomment the appropriate call:
-  //
-  // Regret / glad_watched signal:
-  //   import { updateSchemaFromRegret } from '@/modules/dna'
-  //   if (action === 'regret' || action === 'glad_watched') {
-  //     const signal = action === 'regret' ? 'regret' : 'glad_watched'
-  //     await updateSchemaFromRegret(user.id, tmdb_id, signal)
-  //   }
-  //
-  // Stretch pick outcome:
-  //   import { updateSchemaFromStretch } from '@/modules/dna'
-  //   if (is_stretch_pick && action === 'watched' && reaction) {
-  //     await updateSchemaFromStretch(user.id, tmdb_id, reaction)
-  //   }
+  // ── DNA Writer hooks ──────────────────────────────────────
+  if (action === 'regret' || action === 'glad_watched') {
+    const regretSignal = action === 'regret' ? 'regret' : 'glad_watched'
+    await updateSchemaFromRegret(user.id, tmdb_id, regretSignal).catch(err =>
+      console.error('[feedback] updateSchemaFromRegret failed:', err)
+    )
+  }
+
+  if (is_stretch_pick && action === 'watched' && reaction) {
+    await updateSchemaFromStretch(user.id, tmdb_id, reaction).catch(err =>
+      console.error('[feedback] updateSchemaFromStretch failed:', err)
+    )
+  }
 
   return NextResponse.json({ ok: true })
 }
