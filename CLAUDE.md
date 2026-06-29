@@ -244,7 +244,8 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 3 — DNA Schema Writer
 **Branch:** `feature/dna-writer`
-**Last updated:** 2026-05-27
+**Last updated:** 2026-06-29
+**Type-check:** `npm run type-check` is clean for `src/modules/dna/`. The only repo-wide errors (`Cannot find module '@google/genai'` in `src/app/api/voice/session/route.ts` and `src/modules/session/voice/VoiceMode.tsx`) belong to Assignment 1 and are unrelated to this module.
 **Completed:**
 - [x] `src/modules/dna/init.ts` — `buildEmptyDNA(userId)` factory for new users
 - [x] `src/modules/dna/signal-merger.ts` — append signals, contradiction detection, dedup
