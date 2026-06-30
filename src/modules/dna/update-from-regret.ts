@@ -1,5 +1,6 @@
 import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
+import { storeSnapshot } from './lib/snapshot'
 
 // Small score nudge — regret/glad is a softer signal than a full watch reaction
 const REGRET_NUDGE = -0.05
@@ -38,4 +39,8 @@ export async function updateSchemaFromRegret(
 
   bumpVersion(dna)
   await saveDNA(user_id, dna)
+
+  await storeSnapshot(user_id, dna).catch(err =>
+    console.warn('[update-from-regret] snapshot store failed:', err)
+  )
 }

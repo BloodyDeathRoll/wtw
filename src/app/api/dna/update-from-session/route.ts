@@ -4,13 +4,18 @@
  * Called by Session Brain (Assignment 1) after each conversation session ends.
  * Accepts a SessionSummary and merges it into the user's DNA fingerprint.
  *
- * Body: SessionSummary (see src/types/dna.ts)
+ * Body: {
+ *   ...SessionSummary fields (see src/types/dna.ts),
+ *   recommendation?: RecommendationResult  // pass through when the session's
+ *                                          // rec was a stretch pick, so it gets
+ *                                          // recorded in learning_loop.stretch_pick_history
+ * }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
-import type { SessionSummary } from '@/types/dna'
+import type { SessionSummary, RecommendationResult } from '@/types/dna'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -21,8 +26,11 @@ export async function POST(req: NextRequest) {
   }
 
   let summary: SessionSummary
+  let recommendation: RecommendationResult | undefined
   try {
-    summary = await req.json()
+    const body = await req.json()
+    summary = body
+    recommendation = body.recommendation
     if (typeof summary.session_number !== 'number' || !Array.isArray(summary.new_signals)) {
       return NextResponse.json({ error: 'Invalid SessionSummary shape' }, { status: 400 })
     }
@@ -31,7 +39,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const updated = await updateSchemaFromSession(user.id, summary)
+    const updated = await updateSchemaFromSession(user.id, summary, recommendation)
     return NextResponse.json({
       ok:            true,
       taste_version: updated.metadata.taste_version,

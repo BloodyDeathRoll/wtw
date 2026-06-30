@@ -266,7 +266,6 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 ---
 
 ### Assignment 3 — DNA Schema Writer
-<<<<<<< feature/dna-writer
 **Branch:** `feature/dna-writer`
 **Last updated:** 2026-06-29
 **Type-check:** `npm run type-check` is clean for `src/modules/dna/`. The only repo-wide errors (`Cannot find module '@google/genai'` in `src/app/api/voice/session/route.ts` and `src/modules/session/voice/VoiceMode.tsx`) belong to Assignment 1 and are unrelated to this module.
@@ -290,9 +289,11 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 - [ ] —
 
 **Next session starts at:**
+- [ ] Integration testing: call `writeDNA` end-to-end with a mock `SessionSummary` against a live Supabase dev instance
+- [ ] Confirm `fingerprint_embedding_ref` upsert format with Assignment 2
 - [ ] Assignment 1 integration: call `POST /api/dna/update-from-session` when a chat session ends
 - [ ] Surface `GET /api/dna/summary` on the profile page (currently loads raw DNA only)
-- [ ] Add profile page link to hamburger menu (coordinate with Assignment 1
+- [ ] Add profile page link to hamburger menu (coordinate with Assignment 1)
 
 ---
 

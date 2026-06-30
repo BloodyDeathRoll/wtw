@@ -1,14 +1,17 @@
-import type { DNASchema, SessionSummary } from '@/types/dna'
+import type { DNASchema, SessionSummary, RecommendationResult } from '@/types/dna'
 import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { mergeStrandB, applySignalDimensionTags } from './lib/update-strand-b'
 import { applyStrandCUpdate } from './lib/update-strand-c'
 import { rewriteChangedDimensionNotes } from './lib/rewrite-dimension-notes'
 import { regenerateEmbedding } from './lib/regenerate-embedding'
+import { recordStretchPick } from './lib/record-stretch-pick'
+import { storeSnapshot } from './lib/snapshot'
 
 export async function updateSchemaFromSession(
   user_id: string,
   summary: SessionSummary,
+  recommendation?: RecommendationResult,
 ): Promise<DNASchema> {
   const dna = await loadDNA(user_id)
 
@@ -59,6 +62,11 @@ export async function updateSchemaFromSession(
     if (rec) rec.accepted = summary.recommendation_accepted
   }
 
+  // 7b. Record a stretch pick history entry the first time it's presented
+  if (summary.recommendation_made && recommendation?.is_stretch_pick) {
+    dna.learning_loop = recordStretchPick(dna.learning_loop, recommendation, summary.session_number)
+  }
+
   // 8. Increment session count + bump version
   dna.metadata.total_sessions = summary.session_number
   bumpVersion(dna)
@@ -76,6 +84,11 @@ export async function updateSchemaFromSession(
   )
 
   await saveDNA(user_id, dna)
+
+  // 11. Store a versioned snapshot (keep-last-5, pruned in storeSnapshot)
+  await storeSnapshot(user_id, dna).catch(err =>
+    console.warn('[update-from-session] snapshot store failed:', err)
+  )
 
   return dna
 }
