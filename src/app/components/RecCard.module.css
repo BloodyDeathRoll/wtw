@@ -1,0 +1,471 @@
+/* RecCard + WhyPanel styles
+   Ported from feature/session-brain WTWApp.module.css + new panel additions. */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ─── Recommendation card ─── */
+.rec {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--wtw-radius-card);
+  background: rgba(20, 20, 22, 0.65);
+  border: 1px solid var(--wtw-border);
+  transition: border-color 0.18s ease, background 0.18s ease;
+  animation: fadeUp 0.35s ease both;
+  overflow: hidden;
+}
+.rec:hover {
+  border-color: rgba(var(--wtw-rgb), 0.2);
+  background: rgba(22, 22, 24, 0.85);
+}
+.recExp {
+  background: rgba(18, 18, 20, 0.9);
+  border-color: rgba(var(--wtw-rgb), 0.22);
+}
+
+/* ─── Main row (poster + body) ─── */
+.recMain {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+}
+
+.recBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.recHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.recTitle {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--wtw-fg);
+  line-height: 1.2;
+}
+.recMatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--wtw-green);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.matchDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wtw-green);
+  box-shadow: 0 0 6px var(--wtw-green-glow);
+}
+.recMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--wtw-fg-muted);
+}
+.recDot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--wtw-fg-dim);
+}
+.stretchBadge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wtw-green);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--wtw-rgb), 0.3);
+  background: rgba(var(--wtw-rgb), 0.08);
+}
+.recWhy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: rgba(var(--wtw-rgb), 0.04);
+  border-left: 2px solid rgba(var(--wtw-rgb), 0.5);
+  border-radius: 0 8px 8px 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--wtw-fg);
+}
+.whyEyebrow {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--wtw-green);
+  font-weight: 600;
+}
+.recActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+.btnWatch {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--wtw-green);
+  color: #f2f2f2;
+  border: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 0 18px rgba(var(--wtw-rgb), 0.18);
+}
+.btnWatch:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 22px rgba(var(--wtw-rgb), 0.3);
+}
+.btnGhost {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--wtw-border);
+  border-radius: 9px;
+  color: var(--wtw-fg-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btnGhost:hover {
+  color: var(--wtw-fg);
+  border-color: var(--wtw-border-strong);
+  background: rgba(255, 255, 255, 0.03);
+}
+.btnGhostActive {
+  color: var(--wtw-green);
+  border-color: rgba(var(--wtw-rgb), 0.4);
+  background: rgba(var(--wtw-rgb), 0.06);
+}
+
+/* ─── Poster tile ─── */
+.poster {
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.posterTitle {
+  position: absolute;
+  left: var(--p-pad);
+  right: var(--p-pad);
+  bottom: var(--p-pad);
+  font-size: var(--p-font);
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.posterMotif {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+}
+
+/* ─── Done state ─── */
+.recDone {
+  opacity: 0.75;
+}
+.doneWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(var(--wtw-rgb), 0.06);
+  border-radius: 10px;
+  border: 1px solid rgba(var(--wtw-rgb), 0.15);
+  animation: fadeUp 0.25s ease both;
+}
+.doneCheck {
+  color: var(--wtw-green);
+  display: flex;
+  align-items: center;
+}
+.doneMsg {
+  font-size: 12.5px;
+  color: var(--wtw-fg-muted);
+  line-height: 1.3;
+}
+
+/* ─── Reaction picker ─── */
+.reactionWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  animation: fadeUp 0.2s ease both;
+}
+.reactionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--wtw-fg-muted);
+  text-transform: uppercase;
+}
+.reactionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.reactionBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--wtw-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--wtw-fg);
+}
+.reactionBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--wtw-border-strong);
+  transform: translateY(-1px);
+}
+.reactionBtn:active {
+  transform: translateY(0);
+}
+.reactionIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.reactionText {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+.reactionSkip {
+  background: transparent;
+  border: 0;
+  color: var(--wtw-fg-dim);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 0;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+.reactionSkip:hover {
+  color: var(--wtw-fg-muted);
+}
+
+/* ─── Deep rate link ─── */
+.deepRateBtn {
+  background: transparent;
+  border: 0;
+  color: var(--wtw-green);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 0;
+  text-align: left;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+  letter-spacing: 0.01em;
+}
+.deepRateBtn:hover {
+  opacity: 1;
+}
+
+/* ─── Why panel ─── */
+.whyPanel {
+  border-top: 1px solid var(--wtw-border);
+  padding: 14px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: panelIn 0.22s ease both;
+}
+
+.whySection {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.whySectionLabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wtw-green);
+  margin-bottom: 2px;
+}
+.whySectionLabelWarn {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #E07C5A;
+  margin-bottom: 2px;
+}
+
+/* Score breakdown rows */
+.scoreRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scoreLabel {
+  display: flex;
+  justify-content: space-between;
+  width: 90px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--wtw-fg-muted);
+}
+.scoreWeight {
+  font-size: 10px;
+  color: var(--wtw-fg-dim);
+}
+.scoreTrack {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.scoreFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+  opacity: 0.85;
+}
+.scoreNum {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wtw-fg-muted);
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Crew match rows */
+.crewRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.crewInfo {
+  display: flex;
+  flex-direction: column;
+  width: 120px;
+  flex-shrink: 0;
+}
+.crewName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--wtw-fg);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crewRole {
+  font-size: 10px;
+  color: var(--wtw-fg-dim);
+  text-transform: capitalize;
+}
+.crewTrack {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.crewFill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--wtw-green);
+  transition: width 0.5s ease;
+}
+.crewPct {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wtw-green);
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Dimension alignment rows */
+.dimRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.dimName {
+  color: var(--wtw-fg-muted);
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+.dimArrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.dimVal {
+  color: var(--wtw-fg);
+  font-weight: 500;
+  font-size: 11.5px;
+}
+.dimSep {
+  color: var(--wtw-fg-dim);
+  font-size: 10px;
+}
+
+/* Negative signal rows */
+.negRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--wtw-fg-muted);
+  line-height: 1.4;
+}
+.negIcon {
+  color: #E07C5A;
+  flex-shrink: 0;
+  margin-top: 1px;
+}

@@ -1,21 +1,24 @@
-// Recommendations API — mock implementation.
-//
-// When Alon's rec engine lands on this branch, this route will call
-// his pipeline (TMDB + scoring + Groq re-rank) and adapt the result into
-// the `Recommendation` shape the UI consumes. For now it serves a static
-// list from `mock-data.ts`, paged so the infinite-scroll behaviour works.
+// GET  — serves paginated recommendations to the UI.
+//        Checks Redis cache (keyed by taste_version) first; falls back to mocks
+//        when the DB is not yet seeded or no recs have been generated.
+// POST — runs the full Assignment 2 engine pipeline and returns RecommendationResult[]
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import {
   MOCK_RECOMMENDATIONS,
   pageOf,
 } from "@/modules/session/recommendations/mock-data";
+import { generateRecommendations } from "@/modules/engine";
+import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
+import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 
 export const runtime = "nodejs";
 
 const DEFAULT_PAGE_SIZE = 6;
 
+// ── GET: paginated list for the RecommendationsView UI ────────
 export async function GET(req: Request) {
   const supabase = await createClient();
   const {
@@ -30,29 +33,96 @@ export async function GET(req: Request) {
   const offset = Number.isFinite(Number(offsetParam))
     ? Math.max(0, Number(offsetParam))
     : 0;
-  // We accept content_type but the mock list mixes movies + tv freely.
-  // Real engine will respect it.
   const contentType = url.searchParams.get("type"); // "movies" | "series"
 
-  // Only the two known values filter. Anything else (a typo like "movie", an
-  // unknown future caller, a different case) returns the full mixed list rather
-  // than silently collapsing to a tv-only slice.
-  const filtered =
+  // Try Redis cache — requires knowing the user's current taste_version
+  let cachedRecs: RecommendationResult[] | null = null
+
+  try {
+    const db = createServiceClient()
+    const { data } = await db
+      .from("users")
+      .select("dna")
+      .eq("id", user.id)
+      .single<{ dna: DNASchema | null }>()
+
+    if (data?.dna) {
+      cachedRecs = await getCachedRecommendations(user.id, data.dna.metadata.taste_version)
+    }
+  } catch {
+    // Redis or DB unavailable — fall through to mocks
+  }
+
+  if (cachedRecs && cachedRecs.length > 0) {
+    const filtered =
+      contentType === "movies"
+        ? cachedRecs.filter((r) => r.type === "movie")
+        : contentType === "series"
+          ? cachedRecs.filter((r) => r.type === "tv")
+          : cachedRecs;
+    const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
+    const nextOffset = offset + items.length;
+    const hasMore = nextOffset < filtered.length;
+    return NextResponse.json({ recommendations: items, next_offset: nextOffset, has_more: hasMore, source: "cache" });
+  }
+
+  // Fall back to mocks (DB not yet seeded)
+  const mockFiltered =
     contentType === "movies"
       ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "movie")
       : contentType === "series"
         ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "tv")
         : MOCK_RECOMMENDATIONS;
 
-  const { items, nextOffset, hasMore } = pageOf(
-    filtered,
-    offset,
-    DEFAULT_PAGE_SIZE,
-  );
+  const { items, nextOffset, hasMore } = pageOf(mockFiltered, offset, DEFAULT_PAGE_SIZE);
 
   return NextResponse.json({
     recommendations: items,
     next_offset: nextOffset,
     has_more: hasMore,
+    source: "mock",
   });
+}
+
+// ── POST: full engine pipeline (Assignment 2) ─────────────────
+export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let session_context: SessionContext | undefined;
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (body.session_context) {
+      session_context = body.session_context as SessionContext;
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  try {
+    const results = await generateRecommendations(user.id, session_context);
+    return NextResponse.json(results);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[recommendations/generate]", message);
+
+    if (message.includes("No DNA found")) {
+      return NextResponse.json(
+        { error: "Profile not set up yet. Complete onboarding first." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to generate recommendations" },
+      { status: 500 },
+    );
+  }
 }
