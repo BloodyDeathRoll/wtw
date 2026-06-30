@@ -1,0 +1,101 @@
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 14px;
+  border-radius: var(--wtw-radius-card);
+  background: rgba(16, 16, 18, 0.8);
+  border: 1px solid rgba(var(--wtw-rgb), 0.15);
+  animation: fadeUp 0.3s ease both;
+}
+
+.cardDone {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.6;
+  padding: 12px 14px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wtw-fg-dim);
+}
+.eyebrowIcon {
+  display: flex;
+  align-items: center;
+  color: var(--wtw-fg-dim);
+}
+
+.question {
+  font-size: 14.5px;
+  font-weight: 400;
+  color: var(--wtw-fg);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.titleHighlight {
+  font-weight: 600;
+  color: var(--wtw-fg);
+}
+
+.actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 2px;
+}
+.btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--wtw-border);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+.btnGlad {
+  color: var(--wtw-green);
+  border-color: rgba(var(--wtw-rgb), 0.25);
+}
+.btnGlad:hover {
+  background: rgba(var(--wtw-rgb), 0.08);
+  border-color: rgba(var(--wtw-rgb), 0.4);
+  transform: translateY(-1px);
+}
+.btnRegret {
+  color: var(--wtw-fg-muted);
+}
+.btnRegret:hover {
+  color: #E07C5A;
+  border-color: rgba(224, 124, 90, 0.3);
+  background: rgba(224, 124, 90, 0.05);
+  transform: translateY(-1px);
+}
+
+.doneCheck {
+  color: var(--wtw-green);
+  display: flex;
+  align-items: center;
+}
+.doneMsg {
+  font-size: 12px;
+  color: var(--wtw-fg-muted);
+}

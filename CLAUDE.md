@@ -186,6 +186,7 @@ TMDB_API_KEY=
 OMDB_API_KEY=
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
+CRON_SECRET=<any strong random string — shared across all three team members>
 ```
 
 ---
@@ -230,15 +231,37 @@ UPSTASH_REDIS_REST_TOKEN=
 
 ### Assignment 2 — Recommendation Engine
 **Branch:** `feature/rec-engine`
-**Last updated:** —
+**PR:** [#7 — open, awaiting review](https://github.com/BloodyDeathRoll/wtw/pull/7)
+**Last updated:** 2026-06-29
 **Completed:**
-- [ ] Nothing yet
+- [x] Database migrations — `titles`, `crew_members` tables + pgvector indexes (`0002`, `0003`)
+- [x] TMDB client — `getMovie`, `getTV`, `getPerson`, `discoverMovies`, `discoverTV`
+- [x] OMDB client — `getRatings` (normalized 0–1, RT 50% + Meta 30% + IMDb 20%)
+- [x] Redis client — Upstash singleton (`src/lib/redis.ts`)
+- [x] Supabase service-role client (`src/lib/supabase/service.ts`)
+- [x] Enrichment pipeline — `fetchAndCacheTitle`, `enrichTitleWithNarrative`, `buildLineageGraph`, `runNightlyEnrichment`
+- [x] Nightly cron routes — `POST /api/cron/enrich` (3am UTC) + `POST /api/cron/decay` (4am UTC)
+- [x] Scoring components — `crew-affinity`, `narrative-match` (pgvector batch), `visceral-match`, `lineage-boost` (2-degree, batch-prefetch)
+- [x] Full 8-step recommendation pipeline — Steps 1–8 in `src/modules/engine/pipeline/`
+- [x] Co-watch intersection — geometric mean scoring + shared Groq explanations
+- [x] Public module API — `src/modules/engine/index.ts`
+- [x] API routes — `/generate`, `/cowatch`, `/explain`, `/feedback`, `/survey`
+- [x] Admin seed route — `POST /api/admin/seed` (idempotent, CRON_SECRET protected)
+- [x] **RecCard component** — full state machine (idle → rating → done), real `RecommendationResult` binding, feedback fire-and-forget
+- [x] **WhyPanel** — inline score breakdown (5 segments), crew matches, dimension alignment, negative signals
+- [x] **Reaction picker** — loved / liked / mixed / disliked on RecCard feedback loop
+- [x] **RegretPrompt component** — 48-hr post-watch check-in UI; `regret-queue.ts` localStorage queue
+- [x] **DeepSurvey overlay** — 12-dimension post-watch rating (7 StrandB + 8 StrandC); submits to `/api/recommendations/survey`
+- [x] **GET /generate** — checks Redis cache by taste_version before falling back to mocks
 
-**In progress:**
-- [ ] —
+**Blocked on (needs before first real test):**
+- [ ] Fill `.env.local` with real API keys (see keys section above)
+- [ ] Run Supabase migrations `0001`, `0002`, `0003` in SQL editor
+- [ ] Seed titles: `curl -X POST http://localhost:3000/api/admin/seed -H "Authorization: Bearer <CRON_SECRET>" -d '{"discover_pages":5}'`
 
 **Next session starts at:**
-- [ ] —
+- [ ] Integration with Assignment 1 — wire `POST /api/dna/update-from-session` call at conversation end; surface `RegretPrompt` using `getPendingRegretChecks()`
+- [ ] End-to-end test with real keys: bootstrap DNA → chat → session update → generate recs → verify cache hit
 
 ---
 
@@ -268,6 +291,9 @@ UPSTASH_REDIS_REST_TOKEN=
 **Next session starts at:**
 - [ ] Integration testing: call `writeDNA` end-to-end with a mock `SessionSummary` against a live Supabase dev instance
 - [ ] Confirm `fingerprint_embedding_ref` upsert format with Assignment 2
+- [ ] Assignment 1 integration: call `POST /api/dna/update-from-session` when a chat session ends
+- [ ] Surface `GET /api/dna/summary` on the profile page (currently loads raw DNA only)
+- [ ] Add profile page link to hamburger menu (coordinate with Assignment 1)
 
 ---
 

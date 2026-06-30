@@ -63,9 +63,9 @@ export class MicCapture {
     // Buffer size 4096 @ 48kHz = ~85ms; resampled to 16kHz ≈ 1365 samples.
     this.processor = this.ctx.createScriptProcessor(4096, 1, 1);
     this.processor.onaudioprocess = (e) => {
-      if (this.muted) return;
+      if (this.muted || !this.ctx) return;
       const input = e.inputBuffer.getChannelData(0);
-      const resampled = downsampleTo16k(input, this.ctx!.sampleRate);
+      const resampled = downsampleTo16k(input, this.ctx.sampleRate);
       const pcm16 = floatToInt16(resampled);
       this.onChunk(int16ToBase64(pcm16));
     };

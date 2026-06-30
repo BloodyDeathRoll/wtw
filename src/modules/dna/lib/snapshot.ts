@@ -36,7 +36,6 @@ export async function storeSnapshot(
   }
 
   // Prune — keep only the MAX_SNAPSHOTS most recent
-  // Fetch IDs ordered by taste_version desc, skip the ones we want to keep
   const { data: all, error: fetchError } = await supabase
     .from('dna_snapshots')
     .select('id, taste_version')

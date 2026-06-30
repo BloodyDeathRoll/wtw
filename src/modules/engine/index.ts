@@ -1,32 +1,34 @@
 /**
- * WTW — Assignment 2: Recommendation Engine
- * src/modules/engine/index.ts
+ * WTW — Recommendation Engine: Public API
  *
- * This module owns:
- * - Candidate generation from TMDB
- * - Composite scoring pipeline (crew affinity + pgvector + visceral + external ratings)
- * - Creative lineage graph traversal
- * - Groq LLM re-ranking
- * - Stretch pick injection
- * - Reason payload assembly
- * - Plain-language explanation generation
- * - Co-watch fingerprint intersection mode
- * - Upstash Redis caching
- * - TMDB + OMDB content enrichment utilities
- * - Nightly enrichment cron
- *
- * Exports:
- * - RecommendationResult
- * - CowatchResult
- * - ReasonPayload
- *
- * API routes owned by this module:
- * - POST /api/recommendations/generate
- * - POST /api/recommendations/cowatch
- * - GET  /api/recommendations/explain
- * - POST /api/recommendations/feedback
+ * The only file other modules (Assignment 1 session brain, Assignment 3 DNA writer,
+ * and API routes) should import from. Everything else in src/modules/engine/ is private.
  */
 
-export type { RecommendationResult, CowatchResult, ReasonPayload } from '@/types/dna'
+// ── Core pipeline ─────────────────────────────────────────
+export { generateRecommendations }          from './pipeline/generate'
+export { generateCowatchRecommendations }   from './cowatch/intersection'
 
-// Scoring pipeline and utilities will be exported here as they are built.
+// ── Enrichment utilities (also used by cron and seed scripts) ──
+export { fetchAndCacheTitle, discoverAndSeed } from './enrichment/fetch-and-cache-title'
+export { enrichTitleWithNarrative }            from './enrichment/enrich-title-narrative'
+export { buildLineageGraph }                   from './enrichment/build-lineage-graph'
+export { runNightlyEnrichment }                from './enrichment/nightly-enrichment'
+
+// ── Cache utilities (used by feedback route to invalidate) ────
+export {
+  recCacheKey,
+  cowatchCacheKey,
+  getCachedRecommendations,
+  cacheRecommendations,
+} from './pipeline/step8-cache'
+
+// ── Public types (re-exported for consumers) ──────────────
+// These are defined in src/types/dna.ts — the shared contract.
+// Re-exported here so consumers only need one import.
+export type {
+  RecommendationResult,
+  CowatchResult,
+  ReasonPayload,
+  SessionContext,
+} from '@/types/dna'
