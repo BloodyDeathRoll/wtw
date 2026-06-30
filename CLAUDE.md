@@ -266,27 +266,33 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 ---
 
 ### Assignment 3 — DNA Schema Writer
-**Branch:** `feature/rec-engine` (built alongside Assignment 2)
+<<<<<<< feature/dna-writer
+**Branch:** `feature/dna-writer`
 **Last updated:** 2026-06-29
+**Type-check:** `npm run type-check` is clean for `src/modules/dna/`. The only repo-wide errors (`Cannot find module '@google/genai'` in `src/app/api/voice/session/route.ts` and `src/modules/session/voice/VoiceMode.tsx`) belong to Assignment 1 and are unrelated to this module.
 **Completed:**
-- [x] `createBlankDNA` — blank fingerprint factory (all strands neutral)
-- [x] `updateSchemaFromSession` — merges SessionSummary → strand A/B/C + learning loop + Mistral embedding + LLM notes rewrite
-- [x] `updateSchemaFromRegret` — 48-hr regret/glad signal nudges crew affinity
-- [x] `updateSchemaFromStretch` — stretch pick outcome expands dimension confidence
-- [x] `updateSchemaFromSurvey` — deep survey → strand B values + strand C aspect weights
-- [x] Mistral embedding regeneration — `lib/regenerate-embedding.ts`; stores last 5 snapshots in `fingerprint_embeddings`
-- [x] LLM dimension notes rewriter — `lib/rewrite-dimension-notes.ts`; Groq rewrites notes when confidence shifts significantly
-- [x] Temporal decay — `lib/apply-temporal-decay.ts`; 18-month decay at 50%; wired to `POST /api/cron/decay`
-- [x] API routes — `POST /api/dna/bootstrap`, `POST /api/dna/update-from-session`, `GET /api/dna/summary`, `POST /api/dna/parse-instruction`
-- [x] Free-text instruction parser — Groq extracts ExclusionRule / SoftPreference / TemporalModifier from natural language
-- [x] **Profile page** — `/profile/dna`: crew affinities, dimension bars, visceral weights, exclusion rules, open questions, stretch history
-- [x] `feedback/route.ts` hooks wired — `updateSchemaFromRegret` + `updateSchemaFromStretch` called on regret/stretch actions
-- [x] `survey/route.ts` implemented — delegates to `updateSchemaFromSurvey`
+- [x] `src/modules/dna/init.ts` — `buildEmptyDNA(userId)` factory for new users
+- [x] `src/modules/dna/signal-merger.ts` — append signals, contradiction detection, dedup
+- [x] `src/modules/dna/temporal-decay.ts` — 18-month decay, 30-day run guard
+- [x] `src/modules/dna/strand-a-updater.ts` — crew affinity scores + lineage boost (pure)
+- [x] `src/modules/dna/strand-b-updater.ts` — narrative dimensions + Groq notes regeneration
+- [x] `src/modules/dna/strand-c-updater.ts` — pacing/tone/aspect weights + aspect survey path
+- [x] `src/modules/dna/learning-loop.ts` — open questions, recommendation & stretch pick history
+- [x] `src/modules/dna/tmdb.ts` — TMDB credits resolution (feeds Strand A)
+- [x] `src/modules/dna/embedding.ts` — Mistral embed → pgvector upsert
+- [x] `src/modules/dna/snapshot.ts` — versioned snapshots, keep-last-5, rollback
+- [x] `src/modules/dna/reader.ts` — `readDNA` with Upstash Redis cache + cache invalidation
+- [x] `src/modules/dna/writer.ts` — orchestrator: full write pipeline, `patchRegretSignal`
+- [x] `src/modules/dna/index.ts` — public API re-exports for Assignments 1 & 2
+- [x] `supabase/migrations/0002_dna_snapshots.sql` — `dna_snapshots` table + `fingerprint_embeddings` UNIQUE constraint
+
+**In progress:**
+- [ ] —
 
 **Next session starts at:**
 - [ ] Assignment 1 integration: call `POST /api/dna/update-from-session` when a chat session ends
 - [ ] Surface `GET /api/dna/summary` on the profile page (currently loads raw DNA only)
-- [ ] Add profile page link to hamburger menu (coordinate with Assignment 1)
+- [ ] Add profile page link to hamburger menu (coordinate with Assignment 1
 
 ---
 
