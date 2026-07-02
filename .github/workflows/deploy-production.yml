@@ -1,0 +1,41 @@
+name: Deploy production (Vercel)
+
+# Why this exists:
+# On the free (Hobby) Vercel plan, Git-triggered deployments are rejected when
+# the commit author isn't a member of the Vercel project — which blocks
+# teammate-authored merges to main from deploying. So Git auto-deploys are
+# turned OFF in vercel.json (`git.deploymentEnabled: false`), and this workflow
+# is the SOLE production trigger. It POSTs a Vercel Deploy Hook, which deploys
+# the latest commit on main as the project owner, regardless of commit author.
+#
+# One-time setup (repo admin):
+#   1. Vercel → Project → Settings → Git → Deploy Hooks → create one for the
+#      `main` branch. Copy the URL.
+#   2. Add it as a repo secret named VERCEL_DEPLOY_HOOK_URL:
+#        gh secret set VERCEL_DEPLOY_HOOK_URL
+#      (or GitHub → Settings → Secrets and variables → Actions).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy hook
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "::error::VERCEL_DEPLOY_HOOK_URL secret is not set. Create a Deploy Hook in Vercel (Settings → Git → Deploy Hooks, branch=main) and add it as a repo secret."
+            exit 1
+          fi
+          echo "Triggering production deployment via Vercel deploy hook…"
+          curl -fsSL --retry 3 -X POST "$HOOK_URL"
+          echo "✅ Deploy hook triggered — track the build in the Vercel dashboard."
