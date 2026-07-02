@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadDNA } from '@/modules/dna/lib/load-save'
@@ -121,13 +122,13 @@ export default async function DNAProfilePage() {
             {new Date(metadata.last_updated).toLocaleDateString()}
           </p>
         </div>
-        <a
+        <Link
           href="/"
           className="text-sm px-3 py-1.5 rounded-full"
           style={{ background: 'var(--wtw-bg-elev-2)', color: 'var(--wtw-fg-muted)', border: '1px solid var(--wtw-border)' }}
         >
           ← Home
-        </a>
+        </Link>
       </div>
 
       {!hasData && (
