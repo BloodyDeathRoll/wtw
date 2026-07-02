@@ -54,6 +54,10 @@ That's the whole setup — you do **not** create a permanent personal branch any
 
 The harness is Vitest + React Testing Library. Run `npm test` (once) or `npm run test:watch` (while developing). Tests live under `tests/` — see `tests/README.md` for layout, conventions, and how to wire the shared Supabase/Redis/Groq mocks into a test. A test for `src/modules/<x>/` is written by that module's owner, same as the code.
 
+## Deployments (Vercel)
+
+One Vercel account (Shahar's) is connected to the repo — **you never connect your own.** No branch except `main` gets preview deployments (`vercel.json` disables all branches via `"**": false`), so your pushes won't spawn Vercel build noise regardless of what you name your branch. Only `main` auto-deploys to production, which happens automatically when a PR merges. If a production deploy fails, that's Shahar's to sort out.
+
 ---
 
 # Your day-to-day session loop
