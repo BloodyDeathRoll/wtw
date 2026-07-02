@@ -56,7 +56,9 @@ The harness is Vitest + React Testing Library. Run `npm test` (once) or `npm run
 
 ## Deployments (Vercel)
 
-One Vercel account (Shahar's) is connected to the repo — **you never connect your own.** No branch except `main` gets preview deployments (`vercel.json` disables all branches via `"**": false`), so your pushes won't spawn Vercel build noise regardless of what you name your branch. Only `main` auto-deploys to production, which happens automatically when a PR merges. If a production deploy fails, that's Shahar's to sort out.
+One Vercel account (Shahar's) is connected to the repo — **you never connect your own.** Git-triggered deployments are turned off entirely (`vercel.json` → `git.deploymentEnabled: false`), so **no push, on any branch, spawns a Vercel build** — no preview noise, and none of the "git author must have access" failures the free plan throws for teammate-authored commits.
+
+Production deploys instead run through a GitHub Action (`.github/workflows/deploy-production.yml`): on every merge to `main` it calls a Vercel **Deploy Hook**, which deploys the latest `main` as the project owner regardless of who authored the commit. So merges auto-deploy for everyone, and there's still only one Vercel account. If a production deploy fails, that's Shahar's to sort out. (One-time admin setup — the Deploy Hook URL — is documented in the workflow file.)
 
 ---
 
