@@ -9,9 +9,39 @@
 
 ---
 
-## First time only — Clone the repo
+## Getting the latest code
 
-Do this once on your machine. Never again.
+**You already have the repo cloned — do NOT delete your folder or re-clone.** Everything is now merged into `main`; just update your existing checkout in place:
+
+```bash
+cd wtw                     # your existing project folder
+git checkout main          # leave whatever old branch you were on
+git fetch --prune origin   # get the latest refs, drop branches deleted on GitHub
+git pull origin main       # fast-forward main to the fully merged state
+npm install                # dependencies changed (test harness was added) — resync
+```
+
+That's it — your folder now matches everyone's merged work.
+
+> If `git checkout main` complains about local changes, you have uncommitted edits on your old branch. Your assignment work is already merged into `main`, so unless there's something you still need, discard them with `git checkout .` (or `git stash` to set them aside), then retry.
+
+**Tidy up your old branch (optional).** The old per-person branches are gone from GitHub; drop your stale local copies:
+
+```bash
+git branch -d feature/session-brain    # or feature/rec-engine / feature/dna-writer
+```
+
+`-d` refuses to delete a branch with unmerged work — that's the safety net. If you're certain it's all merged, use `-D`.
+
+### Your environment file
+
+You already have `.env.local`, and pulling never touches it (it's gitignored). If Shahar sends an updated one — because a key changed — just replace the file. **Never commit `.env.local`.**
+
+> Why a file and not `vercel env pull`? Vercel removed the free Hobby team tier, so the project lives under a personal account and teammates can't pull env vars from the dashboard.
+
+### Brand-new machine only (rare)
+
+Only if you've *never* set the project up anywhere:
 
 ```bash
 git clone https://github.com/BloodyDeathRoll/wtw.git
@@ -19,20 +49,9 @@ cd wtw
 npm install
 ```
 
-**Get your environment variables** — without these the app won't run.
+Then get `.env.local` from Shahar and drop it next to `package.json`.
 
-Ask Shahar for the latest `.env.local` (shared over chat — never in the repo). Drop it in the project root so it sits next to `package.json`:
-
-```
-wtw/
-├── .env.local       ← here
-├── package.json
-└── ...
-```
-
-**Never commit `.env.local`** — it's gitignored, and it holds every API key the app uses. If a key changes, Shahar will share an updated file.
-
-> Why a file and not `vercel env pull`? Vercel removed the free Hobby team tier, so the project lives under a personal account and teammates can't pull env vars from the dashboard.
+---
 
 That's the whole setup — you do **not** create a permanent personal branch anymore. Branches are created per task, see below.
 
