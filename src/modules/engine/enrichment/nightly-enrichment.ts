@@ -23,10 +23,12 @@ const CREW_BATCH_SIZE = 8     // crew lineage rows per run
 // 50 req/min + 50K tokens/min, resets per-minute, no daily/monthly header cap;
 // a 45-call burst hit 0 failures. Each title = generateObject + embed (2 calls),
 // each crew = 1 generateObject, and a real enrichment is only ~1K tokens — so
-// the binding limit is ~50 req/min → ~25 titles/min. At 1.5s between serial
-// calls we run ~15 titles/min (~30 req/min ≈ 60% of the ceiling): 3x the old
-// pace, still comfortably inside the limit. A run of 15 titles + 8 crew is
-// ~120s, well under the cron's 300s cap.
+// the binding limit is ~50 req/min → ~25 titles/min. The 1.5s delay is applied
+// BETWEEN items (title→title, crew→crew) — the generateObject+embed pair within
+// a single title fires back-to-back — so traffic is bursty pairs, not a smooth
+// stream. Either way a full run is 15*2 + 8*1 = 38 calls, under 50 req/min on
+// count alone, and the burst probe hit 0 failures on 45 rapid calls. ~15
+// titles/min, run ~120s (under the cron's 300s cap), 3x the old pace.
 const BATCH_DELAY_MS = 1500
 
 export interface EnrichmentReport {
