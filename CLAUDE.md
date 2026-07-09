@@ -30,7 +30,7 @@ WTW is an AI-powered film and TV recommendation engine that builds a continuousl
 | Database | Supabase — Postgres + pgvector extension |
 | Cache | Upstash Redis (free tier) |
 | AI Orchestration | Vercel AI SDK |
-| LLM — speed (text) | Groq / Llama 3.3 70B (free tier) |
+| LLM — speed (text) | Groq / `openai/gpt-oss-120b` (free tier) — model IDs centralized in `src/lib/ai-models.ts`, never hardcode in a module |
 | LLM — voice (audio↔audio) | Gemini Live 2.5 Flash (native audio-to-audio) |
 | LLM — embeddings | Mistral embed (free tier) |
 | Content metadata | TMDB API (free) |
@@ -99,12 +99,14 @@ Full reference: `docs/master_dna_schema.json`
 
 ## Branch Names
 
-| Assignment | Branch |
-|---|---|
-| Assignment 1 — Session Brain | `feature/session-brain` |
-| Assignment 2 — Recommendation Engine | `feature/rec-engine` |
-| Assignment 3 — DNA Schema Writer | `feature/dna-writer` |
-| Shared foundation | `main` |
+> **Integration phase:** the per-assignment `feature/*` branches are merged and retired. Cut a fresh short-lived branch off `main` per task, named by the work — see `GITGUIDE.md`.
+
+| Prefix | Use | Example |
+|---|---|---|
+| `feat/…` | new functionality | `feat/wire-dna-on-session-end` |
+| `fix/…` | bug fix | `fix/external-rating-halving` |
+| `test/…` | tests / harness | `test/vitest-setup` |
+| `chore/…` | tooling, docs, config | `chore/update-claude-md` |
 
 ---
 
@@ -193,11 +195,56 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 
 ## Current Status
 
-> ⬇️ UPDATE THIS SECTION AT THE END OF EVERY SESSION
+> ⬇️ At the end of every session, check off completed items in the **Integration Checklist** below and note anything new you discovered.
 
-### Assignment 1 — Session Brain
-**Branch:** `feature/session-brain`
-**PR:** [#1 — open, awaiting review](https://github.com/BloodyDeathRoll/wtw/pull/1)
+### Where we are: Integration Phase
+
+All three modules are built and **merged into `main`**. There are no open PRs; the per-assignment `feature/*` branches are merged and deleted. The remaining work is **wiring the modules together**, which lives in shared files (`src/app/`, `src/lib/`, route handlers) — so use the short-lived-task-branch model in `GITGUIDE.md`, not long-lived personal branches.
+
+**How to use the checklist below:** it's ordered by dependency — each block gates the ones under it. Every item names a **driver** (writes it); cross-module seams also name a **reviewer** (owns the other side and must approve the PR). A1 = Session Brain, A2 = Recommendation Engine, A3 = DNA Schema Writer. Check items off in the task PR that lands them.
+
+---
+
+## Integration Checklist
+
+### 0. Unblock — environment & database · driver: Shahar · ✅ DONE (2026-07-09)
+- [x] `.env.local` filled with real API keys — all 5 API providers validated by the seed run (TMDB, OMDB, Supabase service-role, Groq `gpt-oss-120b`, Mistral embed)
+- [x] Ran Supabase migrations `0001`–`0006` in the SQL editor — all 8 tables + 1 view verified present
+- [x] Seeded + enriched catalog: `236 titles` — **236/236 narrative-enriched, 236/236 with posters**, `1317 crew_members` (384 crew lineage graphs still pending — the nightly cron drains ~20/night; non-blocking scoring enhancer).
+  - 📌 Free-tier LLM learnings (2026-07-09, measured live): Groq gpt-oss/qwen are *reasoning* models → break `generateObject` (empty `content`); Gemini free is ~20 req/**day**; **Mistral chat on the embeddings key is the enrichment workhorse** (50K TPM / 50 req-min, no daily wall). Model IDs live only in `src/lib/ai-models.ts` (`MODELS.text` = Groq chat, `MODELS.enrichment` = Mistral, `MODELS.embedding`, `MODELS.voice`).
+
+### 1. Freeze the seams — merge contract stubs to `main` first
+Land each as a tiny PR: the route handler + exact request/response types in `src/types/`, stubbed to return a mock. Once merged, both sides build against the agreed shape in parallel. Anything touching `src/types/dna.ts` needs all three to approve.
+- [ ] `POST /api/dna/update-from-session` — request = `SessionSummary`, response = `{ taste_version }` · driver: A3 · review: A1
+- [ ] Confirm `fingerprint_embedding_ref` upsert format between DNA writer and engine · driver: A3 · review: A2
+- [ ] Confirm real-rec shape: engine `/generate` already returns `RecommendationResult` — agree the enrichment fields A1's cards read · driver: A2 · review: A1
+
+### 2. Wire the modules — one driver each; the module owner reviews
+- [x] Call `POST /api/dna/update-from-session` at chat/voice session end · driver: A1 · review: A3 — landed via `POST /api/session/end` (transcript → `analyzeSession()` → `updateSchemaFromSession()` → `generateRecommendations()`), fired by `handleRecommend` in `WTWApp.tsx`; DNA bootstrap on app load
+- [x] Swap `/api/recommendations/generate` mock list for the engine's real pipeline output (UI is already shape-compatible) · driver: A1 · review: A2 — GET serves engine recs from Redis cache (with `poster_url` attached) once a session end has generated them; mocks remain only as the pre-first-session fallback
+- [ ] Surface `RegretPrompt` using `getPendingRegretChecks()` · driver: A2 · review: A1
+- [ ] Surface `GET /api/dna/summary` on the profile page + add a profile link to the hamburger menu — **`src/app/`, one person at a time, call it in the group chat first** · driver: A3 · review: A1
+
+### 3. End-to-end verification — after 0–2 are green
+- [ ] Full flow with real keys: bootstrap DNA → chat → session update → generate recs → verify Redis cache hit by `taste_version`
+- [ ] `writeDNA` E2E with a real `SessionSummary` against a live Supabase dev instance
+- [ ] Repo-wide `npm run type-check` clean — resolve the `@google/genai` module errors in `src/app/api/voice/session/route.ts` and `src/modules/session/voice/VoiceMode.tsx`
+
+### 4. Non-blocking — independent, any time
+- [ ] Generate the 30 voice WAV samples (`npm run generate-voice-samples`) over several days (Gemini free-tier 10/day); drop the `disabled` attribute on the voice play buttons once present · A1
+- [ ] Voice "Recommend" handoff: re-enter the recs view with an explicit query mode once the engine exposes one · A1
+
+**Standing handoff notes:**
+- DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
+- "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
+
+---
+
+## Shipped modules (reference)
+
+> What each module delivered before the integration phase. History, not a to-do list — the live to-do list is the Integration Checklist above.
+
+### Assignment 1 — Session Brain · merged to `main` (was PR #1)
 **Last updated:** 2026-05-26
 **Completed:**
 - [x] Module relocated to `src/modules/session/` (commit `21433dd`)
@@ -215,23 +262,9 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 - [x] **Top bar overhaul** — 3-col grid for clean centring. Brand selector toggles Movies / Series (persists to localStorage). Hamburger menu (full-bleed drawer with backdrop blur) contains user header → Fast learning → Set voice → Sign out. Message icon top-left when there's chat history.
 - [x] **Welcome-loop UX** — every login + every "Back from chat/recs" lands on the onboard view. Onboard shows either the AI's last question (continue mode) or the mature greeting.
 
-**In progress:**
-- [ ] —
-
-**Next session starts at:**
-- [ ] Generate the 30 voice WAV samples (`npm run generate-voice-samples`) over a few days as the Gemini free-tier quota allows. Drop the `disabled` attribute on the voice play buttons once samples are present.
-- [ ] When Alon's engine merges, swap `/api/recommendations/generate`'s mock list for his real pipeline output. UI is already shape-compatible.
-- [ ] Voice "Recommend" handoff: today it just navigates to the recommendations view. Could re-enter with an explicit query mode once the engine exposes that.
-
-**Cross-team handoff notes (for Eran / Assignment 3):**
-- DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
-- Maturity heuristic for "skip calibration" is currently `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
-
 ---
 
-### Assignment 2 — Recommendation Engine
-**Branch:** `feature/rec-engine`
-**PR:** [#7 — open, awaiting review](https://github.com/BloodyDeathRoll/wtw/pull/7)
+### Assignment 2 — Recommendation Engine · merged to `main` (was PR #7)
 **Last updated:** 2026-06-29
 **Completed:**
 - [x] Database migrations — `titles`, `crew_members` tables + pgvector indexes (`0002`, `0003`)
@@ -254,21 +287,11 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 - [x] **DeepSurvey overlay** — 12-dimension post-watch rating (7 StrandB + 8 StrandC); submits to `/api/recommendations/survey`
 - [x] **GET /generate** — checks Redis cache by taste_version before falling back to mocks
 
-**Blocked on (needs before first real test):**
-- [ ] Fill `.env.local` with real API keys (see keys section above)
-- [ ] Run Supabase migrations `0001`, `0002`, `0003` in SQL editor
-- [ ] Seed titles: `curl -X POST http://localhost:3000/api/admin/seed -H "Authorization: Bearer <CRON_SECRET>" -d '{"discover_pages":5}'`
-
-**Next session starts at:**
-- [ ] Integration with Assignment 1 — wire `POST /api/dna/update-from-session` call at conversation end; surface `RegretPrompt` using `getPendingRegretChecks()`
-- [ ] End-to-end test with real keys: bootstrap DNA → chat → session update → generate recs → verify cache hit
-
 ---
 
-### Assignment 3 — DNA Schema Writer
-**Branch:** `feature/dna-writer`
+### Assignment 3 — DNA Schema Writer · merged to `main` (PR #8)
 **Last updated:** 2026-06-29
-**Type-check:** `npm run type-check` is clean for `src/modules/dna/`. The only repo-wide errors (`Cannot find module '@google/genai'` in `src/app/api/voice/session/route.ts` and `src/modules/session/voice/VoiceMode.tsx`) belong to Assignment 1 and are unrelated to this module.
+**Type-check:** `npm run type-check` is clean for `src/modules/dna/`. The only repo-wide errors (`Cannot find module '@google/genai'` in `src/app/api/voice/session/route.ts` and `src/modules/session/voice/VoiceMode.tsx`) belong to Assignment 1 — tracked in Integration Checklist §3.
 **Completed:**
 - [x] `src/modules/dna/init.ts` — `buildEmptyDNA(userId)` factory for new users
 - [x] `src/modules/dna/signal-merger.ts` — append signals, contradiction detection, dedup
@@ -284,16 +307,6 @@ CRON_SECRET=<any strong random string — shared across all three team members>
 - [x] `src/modules/dna/writer.ts` — orchestrator: full write pipeline, `patchRegretSignal`
 - [x] `src/modules/dna/index.ts` — public API re-exports for Assignments 1 & 2
 - [x] `supabase/migrations/0002_dna_snapshots.sql` — `dna_snapshots` table + `fingerprint_embeddings` UNIQUE constraint
-
-**In progress:**
-- [ ] —
-
-**Next session starts at:**
-- [ ] Integration testing: call `writeDNA` end-to-end with a mock `SessionSummary` against a live Supabase dev instance
-- [ ] Confirm `fingerprint_embedding_ref` upsert format with Assignment 2
-- [ ] Assignment 1 integration: call `POST /api/dna/update-from-session` when a chat session ends
-- [ ] Surface `GET /api/dna/summary` on the profile page (currently loads raw DNA only)
-- [ ] Add profile page link to hamburger menu (coordinate with Assignment 1)
 
 ---
 
