@@ -17,10 +17,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
 
-// A full serial run (20 titles + 20 crew at ~13s per LLM call) takes ~8-9 min.
-// Vercel's default function timeout is 300s — raise to the Fluid Compute max
-// so the nightly run isn't killed mid-batch.
-export const maxDuration = 800
+// 300s is the platform max on the Hobby/personal plan this project runs on
+// (800 was rejected at deploy). The per-run batch in runNightlyEnrichment is
+// sized to finish comfortably inside 300s; it's idempotent, and the Dream
+// nightly automation is the primary bulk-enrichment driver, so this cron is a
+// backup that just drains a small slice each night.
+export const maxDuration = 300
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
