@@ -18,10 +18,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
 
 // 300s is the platform max on the Hobby/personal plan this project runs on
-// (800 was rejected at deploy). The per-run batch in runNightlyEnrichment is
-// sized to finish comfortably inside 300s; it's idempotent, and the Dream
-// nightly automation is the primary bulk-enrichment driver, so this cron is a
-// backup that just drains a small slice each night.
+// (800 was rejected at deploy). The handler is idempotent (enriched_at is set
+// per-row only after a successful write), so a run killed at the cap loses no
+// data — the next invocation resumes from the backlog. Enrichment is primarily
+// driven by the Dream nightly automation (no time limit); this route is a
+// manual/backup entry point. (The per-run batch size lives in
+// runNightlyEnrichment and is tightened to fit 300s in a separate change.)
 export const maxDuration = 300
 
 export async function POST(req: NextRequest) {
