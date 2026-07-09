@@ -1,5 +1,5 @@
 -- ============================================================
--- WTW — Migration 0002: DNA Snapshots + Embedding Upsert Fix
+-- WTW — Migration 0006: DNA Snapshots + Embedding Upsert Fix
 -- Run after 0001_initial.sql
 -- ============================================================
 
@@ -25,6 +25,7 @@ create table if not exists public.dna_snapshots (
 alter table public.dna_snapshots enable row level security;
 
 -- Users can read their own snapshots (for rollback UI)
+drop policy if exists "snapshots_select_own" on public.dna_snapshots;
 create policy "snapshots_select_own" on public.dna_snapshots
   for select using (auth.uid() = user_id);
 
