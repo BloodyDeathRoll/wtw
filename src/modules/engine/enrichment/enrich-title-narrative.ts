@@ -131,9 +131,14 @@ export function narrativeToEmbeddingText(meta: NarrativeExtractionResult): strin
  * Requires the title to already exist in the `titles` table.
  *
  * @param tmdb_id  The title to enrich
+ * @param type     'movie' | 'tv' — required to disambiguate: TMDB movie/tv ids
+ *                 share a namespace, so (tmdb_id, type) is the real key.
  * @returns        true on success, false if title not found in DB
  */
-export async function enrichTitleWithNarrative(tmdb_id: string): Promise<boolean> {
+export async function enrichTitleWithNarrative(
+  tmdb_id: string,
+  type: 'movie' | 'tv',
+): Promise<boolean> {
   const supabase = createServiceClient()
 
   // ── 1. Load title from DB ─────────────────────────────────
@@ -141,6 +146,7 @@ export async function enrichTitleWithNarrative(tmdb_id: string): Promise<boolean
     .from('titles')
     .select('tmdb_id, title, type, synopsis, genres, crew')
     .eq('tmdb_id', tmdb_id)
+    .eq('type', type)
     .single<Pick<TitleRow, 'tmdb_id' | 'title' | 'type' | 'synopsis' | 'genres' | 'crew'>>()
 
   if (fetchError || !title) return false
@@ -217,6 +223,7 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
       enriched_at: new Date().toISOString(),
     })
     .eq('tmdb_id', tmdb_id)
+    .eq('type', type)
 
   if (updateError) {
     throw new Error(`Failed to update narrative for ${tmdb_id}: ${updateError.message}`)

@@ -63,7 +63,10 @@ export async function fetchAndCacheTitle(
         // narrative_embedding, enriched_at) are left null — filled by
         // enrichTitleWithNarrative()
       },
-      { onConflict: 'tmdb_id', ignoreDuplicates: false }
+      // Composite key: TMDB movie/tv ids share a namespace, so a movie and a
+      // TV show can have the same tmdb_id. Conflict on (tmdb_id, type) — never
+      // let one type overwrite the other's row (migration 0008).
+      { onConflict: 'tmdb_id,type', ignoreDuplicates: false }
     )
 
   if (titleError) {

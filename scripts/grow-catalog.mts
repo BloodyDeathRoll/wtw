@@ -22,10 +22,12 @@
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
-import { discoverVaried } from '@/lib/tmdb'
+import { discoverVaried, getMovie, getTV } from '@/lib/tmdb'
 import { fetchAndCacheTitle } from '@/modules/engine/enrichment/fetch-and-cache-title'
 import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
-import { getMovie, getTV } from '@/lib/tmdb'
+
+// (tmdb_id, type) is the real title key — TMDB movie/tv ids share a namespace.
+const key = (type: string, tmdb_id: string) => `${type}:${tmdb_id}`
 
 // ── Tunables (env-overridable; Dream's run.sh sets these) ───────────────────
 const SEED_COUNT     = intEnv('SEED_COUNT', 40)        // new titles to add per run
@@ -50,10 +52,12 @@ const DECADES: [number, number][] = [
 async function main() {
   const db = createServiceClient()
 
-  // ── 0. Current catalog size + known ids (one query) ───────────────────────
-  const { data: existing, error } = await db.from('titles').select('tmdb_id')
+  // ── 0. Current catalog size + known (tmdb_id, type) keys (one query) ───────
+  const { data: existing, error } = await db.from('titles').select('tmdb_id, type')
   if (error) throw new Error(`Cannot read titles: ${error.message}`)
-  const known = new Set<string>((existing ?? []).map((r) => r.tmdb_id as string))
+  const known = new Set<string>(
+    (existing ?? []).map((r) => key(r.type as string, r.tmdb_id as string)),
+  )
   const startCount = known.size
 
   // ── 1. Seed new titles (variety sweep), bounded by budget + target ────────
@@ -77,15 +81,17 @@ async function main() {
         candidates = await discoverVaried(type, { genreId, yearGte, yearLte, page })
       } catch (e) {
         console.error(`[grow] discover slice failed (${type} g${genreId} ${yearGte}s p${page}):`, e)
+        await sleep(1000) // back off before the next slice — a TMDB 429/5xx
+                          // shouldn't trigger DISCOVER_CAP rapid-fire retries
         continue
       }
 
       for (const item of candidates) {
-        if (known.has(item.tmdb_id)) continue
+        if (known.has(key(item.type, item.tmdb_id))) continue
         try {
           const ok = await fetchAndCacheTitle(item.tmdb_id, item.type)
           if (ok) {
-            known.add(item.tmdb_id)
+            known.add(key(item.type, item.tmdb_id))
             seeded++
             if (seeded >= seedBudget) break outer
           }
