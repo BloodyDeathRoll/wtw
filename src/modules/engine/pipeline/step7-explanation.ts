@@ -17,6 +17,7 @@
 
 import { generateObject } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
+import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
 import type { RecommendationResult } from '@/types/dna'
 import type { ScoredTitleWithPayload } from './step6-reason-payload'
@@ -100,7 +101,7 @@ ${titlesList}
 Return explanations for all ${items.length} titles.`
 
   const { object } = await generateObject({
-    model: groq()('llama-3.3-70b-versatile'),
+    model: groq()(MODELS.text),
     schema: explanationSchema,
     prompt,
   })

@@ -1,5 +1,6 @@
 import { generateText } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
+import { MODELS } from '@/lib/ai-models'
 import type { DNASchema, DNASignal, StrandB } from '@/types/dna'
 
 // Only rewrite notes for a dimension when confidence changed by this much
@@ -64,7 +65,7 @@ Return ONLY a JSON object with dimension names as keys and note strings as value
 ${dimensionDescriptions}`
 
   const { text } = await generateText({
-    model: getGroq()('llama-3.3-70b-versatile'),
+    model: getGroq()(MODELS.text),
     system: systemPrompt,
     prompt: userPrompt,
     temperature: 0.3,

@@ -16,6 +16,7 @@ import { applySoftModifiers }  from '../pipeline/step3-soft-modifiers'
 import { buildReasonPayloads } from '../pipeline/step6-reason-payload'
 import { generateObject }      from 'ai'
 import { createGroq }          from '@ai-sdk/groq'
+import { MODELS }              from '@/lib/ai-models'
 import { z }                   from 'zod'
 import {
   getCachedCowatch,
@@ -116,7 +117,7 @@ ${titleList}
 For each title, write 2-3 sentences on why it works for BOTH viewers. Be specific about what each person will appreciate.`
 
   const { object } = await generateObject({
-    model: groq()('llama-3.3-70b-versatile'),
+    model: groq()(MODELS.text),
     schema: cowatchExplanationSchema,
     prompt,
   })

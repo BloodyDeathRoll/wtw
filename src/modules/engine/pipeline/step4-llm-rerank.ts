@@ -13,6 +13,7 @@
 
 import { generateObject } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
+import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
@@ -112,7 +113,7 @@ Return ALL ${top50.length} titles in your preferred order with a brief rationale
 Be specific: reference the viewer's actual preferences, not generic praise for the title.`
 
   const { object } = await generateObject({
-    model: groq()('llama-3.3-70b-versatile'),
+    model: groq()(MODELS.text),
     schema: rerankSchema,
     prompt,
   })

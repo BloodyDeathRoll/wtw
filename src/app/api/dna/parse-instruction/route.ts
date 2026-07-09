@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateText } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
+import { MODELS } from '@/lib/ai-models'
 import { createClient } from '@/lib/supabase/server'
 import { loadDNA, saveDNA, bumpVersion } from '@/modules/dna/lib/load-save'
 import type { ExclusionRule, SoftPreference, TemporalModifier } from '@/types/dna'
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   // Parse with Groq
   const { text } = await generateText({
-    model: getGroq()('llama-3.3-70b-versatile'),
+    model: getGroq()(MODELS.text),
     system: SYSTEM_PROMPT,
     prompt: instruction.trim(),
     temperature: 0.1,

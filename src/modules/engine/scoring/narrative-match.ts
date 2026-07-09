@@ -18,6 +18,7 @@
 
 import { embed } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
+import { MODELS } from '@/lib/ai-models'
 import { getRedis } from '@/lib/redis'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { StrandB, StrandC } from '@/types/dna'
@@ -95,7 +96,7 @@ async function getUserEmbedding(
   // Generate via Mistral
   const text = strandBToEmbeddingText(strandB, strandC)
   const { embedding } = await embed({
-    model: mistral().textEmbeddingModel('mistral-embed'),
+    model: mistral().textEmbeddingModel(MODELS.embedding),
     value: text,
   })
 
