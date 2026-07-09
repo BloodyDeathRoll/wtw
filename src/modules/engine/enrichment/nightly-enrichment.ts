@@ -4,8 +4,9 @@
  * Processes the enrichment backlog: titles in `titles` where enriched_at IS NULL.
  * Called by POST /api/cron/enrich (protected by CRON_SECRET).
  *
- * Runs in batches of 5 titles with a delay between batches to stay within
- * Groq's free-tier rate limits (~30 RPM on llama-3.3-70b-versatile).
+ * Runs strictly serially with a delay between calls to stay inside the
+ * enrichment LLM's free-tier rate limits — see MODELS.enrichment in
+ * src/lib/ai-models.ts for the current provider and its measured limits.
  *
  * Also runs buildLineageGraph for any crew members without lineage data,
  * capped at 20 per run to keep the job short.
@@ -15,9 +16,12 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { enrichTitleWithNarrative } from './enrich-title-narrative'
 import { buildLineageGraph } from './build-lineage-graph'
 
-const TITLE_BATCH_SIZE = 5
-const CREW_BATCH_SIZE = 20
-const BATCH_DELAY_MS = 2500   // ~24 title requests/min — well within Groq free tier
+const TITLE_BATCH_SIZE = 1    // STRICTLY serial — one enrichment call at a time
+const CREW_BATCH_SIZE = 20    // crew lineage rows per run — with titles (20) fits
+                              // inside the cron route's maxDuration = 800s
+const BATCH_DELAY_MS = 5000   // ~5s between calls → ~10 req/min ≈ 30-40K TPM, safely
+                              // inside Mistral's free tier (measured 50K TPM / 50 req-min,
+                              // no daily wall). Serial keeps bursts impossible.
 
 export interface EnrichmentReport {
   titles_processed: number
@@ -42,7 +46,9 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
     .select('tmdb_id, title')
     .is('enriched_at', null)
     .order('created_at', { ascending: true })
-    .limit(50)
+    .limit(20)   // small per-run batch: at ~25s/title serial, keeps a full run
+                 // (titles + crew) inside the caller's timeout. The drain loop
+                 // re-invokes until the backlog is empty.
 
   const titleQueue = pendingTitles ?? []
 
@@ -72,8 +78,8 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
   }
 
   // ── Phase 2: Build lineage for pending crew members ──────
-  // Only run if we have capacity (Groq budget). Each buildLineageGraph
-  // call costs 1 Groq request. Cap at CREW_BATCH_SIZE per run.
+  // Each buildLineageGraph call costs 1 Mistral request. Cap at
+  // CREW_BATCH_SIZE per run, same serial concurrency + delay as titles.
   const { data: pendingCrew } = await supabase
     .from('crew_members')
     .select('tmdb_person_id, name, primary_role')
@@ -86,8 +92,8 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
 
   const crewQueue = pendingCrew ?? []
 
-  for (let i = 0; i < crewQueue.length; i += 5) {
-    const batch = crewQueue.slice(i, i + 5)
+  for (let i = 0; i < crewQueue.length; i += TITLE_BATCH_SIZE) {
+    const batch = crewQueue.slice(i, i + TITLE_BATCH_SIZE)
 
     await Promise.allSettled(
       batch.map(async ({ tmdb_person_id, name }) => {
@@ -104,7 +110,7 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
       })
     )
 
-    if (i + 5 < crewQueue.length) {
+    if (i + TITLE_BATCH_SIZE < crewQueue.length) {
       await new Promise(r => setTimeout(r, BATCH_DELAY_MS))
     }
   }
