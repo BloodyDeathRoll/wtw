@@ -18,7 +18,7 @@
  */
 
 import { generateObject } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
+import { createMistral } from '@ai-sdk/mistral'
 import { z } from 'zod'
 import { MODELS } from '@/lib/ai-models'
 import { searchTitle } from '@/lib/tmdb'
@@ -98,9 +98,9 @@ export async function analyzeSession(
   // ── 1. LLM extraction ─────────────────────────────────────
   let extracted: z.infer<typeof extractionSchema>
   try {
-    const groq = createGroq({ apiKey: process.env.GROQ_API_KEY })
+    const mistral = createMistral({ apiKey: process.env.MISTRAL_API_KEY })
     const { object } = await generateObject({
-      model: groq(MODELS.text),
+      model: mistral(MODELS.structured),
       schema: extractionSchema,
       system: SYSTEM_PROMPT,
       prompt: transcript,

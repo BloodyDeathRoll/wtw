@@ -9,20 +9,31 @@
 // createMistral / Gemini); only the *model identifier* is centralized.
 
 export const MODELS = {
-  /** Groq — general chat, instruction following, reranking. Low-volume,
-   *  latency-sensitive paths. Was `llama-3.3-70b-versatile` (Groq free-tier
-   *  shutdown 2026-08-16). */
+  /** Groq — free-form TEXT generation only: `generateText` / `streamText`
+   *  (chat, welcome greeting, DNA summary/notes/instruction-parse). A reasoning
+   *  model is FINE here — the answer is the streamed/returned text. Do NOT use
+   *  this with `generateObject` (see `structured` below). Was
+   *  `llama-3.3-70b-versatile` (Groq free-tier shutdown 2026-08-16). */
   text: 'openai/gpt-oss-120b',
 
+  /** STRUCTURED output via `generateObject` on the low-volume, latency-sensitive
+   *  paths: engine rerank / explanation / co-watch, and session transcript
+   *  analysis. MUST be NON-reasoning — reasoning models (Groq gpt-oss-*, qwen3.6)
+   *  spend their budget on a `reasoning` trace and often return empty `content`,
+   *  which `generateObject` can't parse. Measured 2026-07-09: gpt-oss-120b fails
+   *  ~1/6 on complex schemas (e.g. analyze-session) and these sites sit in the
+   *  rec pipeline with no try/catch → one failure zeroes out generateRecommendations
+   *  → GET keeps serving mocks. Mistral is reliable here. Kept separate from
+   *  `text` (which stays on fast Groq for streaming chat). */
+  structured: 'mistral-small-latest',
+
   /** BULK structured enrichment (narrative extraction + lineage graphs) via
-   *  generateObject. MUST be a NON-reasoning model — reasoning models (Groq's
-   *  gpt-oss-*, qwen3.6) emit their answer as `reasoning` with empty `content`,
-   *  which generateObject can't parse.
-   *
-   *  Mistral chat on the SAME key as embeddings: free tier measured live at
-   *  50K TPM / 50 req-min with no daily wall (vs Groq 12K TPM + daily token
-   *  budget, Gemini free ~20 req/DAY — both hit during 2026-07-09 seeding).
-   *  Driven serially by the enrichment loop. */
+   *  generateObject. Same NON-reasoning requirement as `structured`, but kept a
+   *  distinct key because it is HIGH-VOLUME + rate-sensitive and may diverge
+   *  (e.g. move to a paid fast model) independently of the live-path sites.
+   *  Mistral free tier measured live at 50K TPM / 50 req-min, no daily wall (vs
+   *  Groq 12K TPM + daily token budget, Gemini free ~20 req/DAY — both hit during
+   *  2026-07-09 seeding). Driven serially by the enrichment loop. */
   enrichment: 'mistral-small-latest',
 
   /** Mistral — narrative + fingerprint embeddings (1024-dim, matches the

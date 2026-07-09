@@ -749,11 +749,18 @@ export default function WTWApp({
     setVoiceOpen(false);
     setBuildingRecs(true);
     try {
-      await fetch("/api/session/end", {
+      const res = await fetch("/api/session/end", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversation_id: conversation.id }),
       });
+      // fetch() resolves (doesn't throw) on 4xx/5xx — surface those so a failed
+      // fingerprint/rec build is visible in logs rather than silently opening
+      // the view to mocks. UX intent is still "never blocked", so we don't
+      // interrupt the user; we just log.
+      if (!res.ok) {
+        console.error(`[session/end] HTTP ${res.status}`, await res.text().catch(() => ""));
+      }
     } catch (e) {
       console.error("[session/end] failed", e);
     } finally {
