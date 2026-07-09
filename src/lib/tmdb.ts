@@ -379,3 +379,50 @@ export async function discoverTV(page = 1): Promise<TMDBDiscoverItem[]> {
     type: 'tv',
   }))
 }
+
+/**
+ * Variety-aware discover for catalog *growth*. Unlike discoverMovies/discoverTV
+ * (which only sweep popularity.desc → more blockbusters), this filters by genre
+ * and release-year window so the nightly grow job adds BREADTH: long-tail and
+ * older titles the fingerprint needs to distinguish taste. Called by
+ * scripts/grow-catalog.mts, which rotates genre × decade slices.
+ *
+ * @param type          'movie' | 'tv'
+ * @param opts.genreId  TMDB genre id (see the genre lists TMDB publishes)
+ * @param opts.yearGte  earliest release year (inclusive)
+ * @param opts.yearLte  latest release year (inclusive)
+ * @param opts.page     1-based page
+ * @param opts.voteCountGte  minimum vote count (skip micro-obscurities; default 40)
+ */
+export async function discoverVaried(
+  type: 'movie' | 'tv',
+  opts: { genreId?: number; yearGte?: number; yearLte?: number; page?: number; voteCountGte?: number } = {},
+): Promise<TMDBDiscoverItem[]> {
+  const { genreId, yearGte, yearLte, page = 1, voteCountGte = 40 } = opts
+  const params: Record<string, string> = {
+    sort_by: 'popularity.desc',
+    'vote_count.gte': String(voteCountGte),
+    page: String(page),
+  }
+  if (genreId) params.with_genres = String(genreId)
+
+  if (type === 'movie') {
+    if (yearGte) params['primary_release_date.gte'] = `${yearGte}-01-01`
+    if (yearLte) params['primary_release_date.lte'] = `${yearLte}-12-31`
+  } else {
+    if (yearGte) params['first_air_date.gte'] = `${yearGte}-01-01`
+    if (yearLte) params['first_air_date.lte'] = `${yearLte}-12-31`
+  }
+
+  const raw = await tmdbFetch<{
+    results: { id: number; title?: string; name?: string }[]
+  }>(`/discover/${type}`, params)
+
+  if (!raw) return []
+
+  return raw.results.map(r => ({
+    tmdb_id: String(r.id),
+    title: r.title ?? r.name ?? '',
+    type,
+  }))
+}
