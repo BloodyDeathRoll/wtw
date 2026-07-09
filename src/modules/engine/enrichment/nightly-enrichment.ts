@@ -9,7 +9,7 @@
  * src/lib/ai-models.ts for the current provider and its measured limits.
  *
  * Also runs buildLineageGraph for any crew members without lineage data,
- * capped at 20 per run to keep the job short.
+ * capped at CREW_BATCH_SIZE per run to keep the job short.
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
@@ -17,11 +17,17 @@ import { enrichTitleWithNarrative } from './enrich-title-narrative'
 import { buildLineageGraph } from './build-lineage-graph'
 
 const TITLE_BATCH_SIZE = 1    // STRICTLY serial — one enrichment call at a time
-const CREW_BATCH_SIZE = 20    // crew lineage rows per run — with titles (20) fits
-                              // inside the cron route's maxDuration = 800s
-const BATCH_DELAY_MS = 5000   // ~5s between calls → ~10 req/min ≈ 30-40K TPM, safely
-                              // inside Mistral's free tier (measured 50K TPM / 50 req-min,
-                              // no daily wall). Serial keeps bursts impossible.
+const TITLE_LIMIT = 10        // titles enriched per run
+const CREW_BATCH_SIZE = 5     // crew lineage rows per run
+// Sized so a full run finishes well inside the cron's 300s cap. Honest budget:
+// each title = generateObject + embed (2 calls); each crew = getPerson +
+// generateObject + parallel searches. With BATCH_DELAY_MS between every serial
+// call (9 title gaps + 4 crew gaps = 13*5s = 65s of delay) plus ~5-7s work per
+// item, a run is ~200s — comfortable margin under 300s even with retries /
+// free-tier latency variance. The Dream drain loop re-invokes until empty, so
+// a small per-run slice costs nothing but iterations.
+const BATCH_DELAY_MS = 5000   // ~5s between calls → ~10 req/min, safely inside
+                              // Mistral's free tier (50K TPM / 50 req-min). Serial.
 
 export interface EnrichmentReport {
   titles_processed: number
@@ -43,12 +49,10 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
   // ── Phase 1: Enrich pending titles ───────────────────────
   const { data: pendingTitles } = await supabase
     .from('titles')
-    .select('tmdb_id, title')
+    .select('tmdb_id, title, type')
     .is('enriched_at', null)
     .order('created_at', { ascending: true })
-    .limit(20)   // small per-run batch: at ~25s/title serial, keeps a full run
-                 // (titles + crew) inside the caller's timeout. The drain loop
-                 // re-invokes until the backlog is empty.
+    .limit(TITLE_LIMIT)
 
   const titleQueue = pendingTitles ?? []
 
@@ -56,9 +60,9 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
     const batch = titleQueue.slice(i, i + TITLE_BATCH_SIZE)
 
     await Promise.allSettled(
-      batch.map(async ({ tmdb_id, title }) => {
+      batch.map(async ({ tmdb_id, title, type }) => {
         try {
-          const ok = await enrichTitleWithNarrative(tmdb_id)
+          const ok = await enrichTitleWithNarrative(tmdb_id, type as 'movie' | 'tv')
           if (ok) {
             titles_processed++
           } else {
