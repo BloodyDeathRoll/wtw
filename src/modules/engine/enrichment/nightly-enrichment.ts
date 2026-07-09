@@ -9,7 +9,7 @@
  * src/lib/ai-models.ts for the current provider and its measured limits.
  *
  * Also runs buildLineageGraph for any crew members without lineage data,
- * capped at 20 per run to keep the job short.
+ * capped at CREW_BATCH_SIZE per run to keep the job short.
  */
 
 import { createServiceClient } from '@/lib/supabase/service'

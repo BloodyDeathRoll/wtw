@@ -133,7 +133,8 @@ async function main() {
           ? await getMovie(row.tmdb_id as string)
           : await getTV(row.tmdb_id as string)
       if (detail?.poster_path) {
-        await db.from('titles').update({ poster_path: detail.poster_path }).eq('tmdb_id', row.tmdb_id)
+        await db.from('titles').update({ poster_path: detail.poster_path })
+          .eq('tmdb_id', row.tmdb_id).eq('type', row.type)  // composite key (0008)
         postersBackfilled++
       }
     } catch {
