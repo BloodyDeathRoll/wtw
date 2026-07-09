@@ -1,7 +1,8 @@
 /**
  * buildLineageGraph
  *
- * Given a crew member's TMDB person ID, uses Groq to identify their
+ * Given a crew member's TMDB person ID, uses the enrichment LLM
+ * (MODELS.enrichment) to identify their
  * creative influence relationships (who they were influenced by, who
  * they went on to influence) and stores the result in crew_members.
  *
@@ -18,21 +19,22 @@
  */
 
 import { generateObject } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
+import { createMistral } from '@ai-sdk/mistral'
+import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
 import { getPerson } from '@/lib/tmdb'
 import { createServiceClient } from '@/lib/supabase/service'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 
-function groq() {
-  const key = process.env.GROQ_API_KEY
-  if (!key) throw new Error('GROQ_API_KEY is not set')
-  return createGroq({ apiKey: key })
+function mistral() {
+  const key = process.env.MISTRAL_API_KEY
+  if (!key) throw new Error('MISTRAL_API_KEY is not set')
+  return createMistral({ apiKey: key })
 }
 
 // ─────────────────────────────────────────────
-// Zod schema for Groq lineage extraction
+// Zod schema for LLM lineage extraction
 // ─────────────────────────────────────────────
 
 const lineagePersonSchema = z.object({
@@ -103,7 +105,7 @@ export async function buildLineageGraph(tmdb_person_id: string): Promise<boolean
     .map(kf => `"${kf.title}" (${kf.type})`)
     .join(', ')
 
-  // ── 3. Extract lineage via Groq ───────────────────────────
+  // ── 3. Extract lineage via the enrichment LLM ─────────────
   const prompt = `You are a film historian. Identify creative lineage connections for this filmmaker.
 
 Name: ${person.name}
@@ -119,7 +121,7 @@ If you are uncertain about a connection, omit it rather than speculate.
 Focus on directors, writers, and cinematographers — not studios or movements.`
 
   const { object: lineage } = await generateObject({
-    model: groq()('llama-3.3-70b-versatile'),
+    model: mistral()(MODELS.enrichment),
     schema: lineageSchema,
     prompt,
   })

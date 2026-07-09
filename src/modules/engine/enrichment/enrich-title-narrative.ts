@@ -1,7 +1,8 @@
 /**
  * enrichTitleWithNarrative
  *
- * Given a title already in the `titles` table, calls Groq to extract
+ * Given a title already in the `titles` table, calls the enrichment LLM
+ * (MODELS.enrichment) to extract
  * structured narrative dimensions (strand_b-aligned), then generates a
  * Mistral embedding of those dimensions for pgvector cosine similarity.
  *
@@ -15,9 +16,9 @@
  */
 
 import { generateObject } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
 import { embed } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
+import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { TitleRow, NarrativeExtractionResult } from '../types'
@@ -26,12 +27,6 @@ import type { TitleRow, NarrativeExtractionResult } from '../types'
 // AI provider instances
 // ─────────────────────────────────────────────
 
-function groq() {
-  const key = process.env.GROQ_API_KEY
-  if (!key) throw new Error('GROQ_API_KEY is not set')
-  return createGroq({ apiKey: key })
-}
-
 function mistral() {
   const key = process.env.MISTRAL_API_KEY
   if (!key) throw new Error('MISTRAL_API_KEY is not set')
@@ -39,21 +34,24 @@ function mistral() {
 }
 
 // ─────────────────────────────────────────────
-// Zod schema for Groq structured extraction
+// Zod schema for LLM structured extraction
 // ─────────────────────────────────────────────
 
 const narrativeLevel = z.enum(['low', 'medium', 'medium_high', 'high'])
 const confidence = z.number().min(0).max(1)
 
+// Product tone vocabulary. Referenced by the schema, the prompt, AND the
+// validation-repair step — keep the three in sync by editing only this list.
+const TONE_VALUES = ['cynical', 'warm', 'dark', 'comedic', 'hopeful', 'tense',
+                     'melancholic', 'whimsical', 'gritty', 'romantic', 'satirical',
+                     'surreal', 'nostalgic'] as const
+
 const narrativeSchema = z.object({
   pacing_tag: z.enum(['slow_burn', 'moderate', 'high_octane'])
     .describe('Overall narrative pacing of the title'),
 
-  tone_tags: z.array(
-    z.enum(['cynical', 'warm', 'dark', 'comedic', 'hopeful', 'tense',
-            'melancholic', 'whimsical', 'gritty', 'romantic', 'satirical',
-            'surreal', 'nostalgic'])
-  ).min(1).max(4).describe('Primary tonal qualities (1–4 that apply most strongly)'),
+  tone_tags: z.array(z.enum(TONE_VALUES))
+    .min(1).max(4).describe('Primary tonal qualities (1–4 that apply most strongly)'),
 
   narrative_metadata: z.object({
     moral_ambiguity: z.object({
@@ -147,7 +145,7 @@ export async function enrichTitleWithNarrative(tmdb_id: string): Promise<boolean
 
   if (fetchError || !title) return false
 
-  // ── 2. Build Groq prompt ──────────────────────────────────
+  // ── 2. Build extraction prompt ────────────────────────────
   const genreNames = title.genres.map(g => g.name).join(', ')
   const directorNames = title.crew.directors.map(d => d.name).join(', ')
   const writerNames = title.crew.writers.map(w => w.name).join(', ')
@@ -162,20 +160,49 @@ Synopsis: ${title.synopsis || 'No synopsis available'}
 
 Extract the narrative dimensions based on what you know about this title and the synopsis provided.
 Use your knowledge of the actual film/show — the synopsis alone may be incomplete.
+tone_tags must be chosen ONLY from this exact list (pick the closest matches, never invent new values): ${TONE_VALUES.join(', ')}.
 Be precise: confidence values should reflect genuine certainty (0.5 = uncertain, 0.9 = very certain).`
 
-  // ── 3. LLM extraction (Groq) ─────────────────────────────
-  const { object: extracted } = await generateObject({
-    model: groq()('llama-3.3-70b-versatile'),
-    schema: narrativeSchema,
-    prompt,
-  })
+  // ── 3. LLM extraction (Mistral) ──────────────────────────
+  // If the model still sneaks an off-vocabulary tone past the prompt (e.g.
+  // "mysterious" for a Mystery-genre title), don't fail the title forever:
+  // strip unknown tones from the raw output and re-validate. Only rethrow
+  // when the repair can't produce a valid object.
+  let extracted: z.infer<typeof narrativeSchema>
+  try {
+    const { object } = await generateObject({
+      model: mistral()(MODELS.enrichment),
+      schema: narrativeSchema,
+      prompt,
+    })
+    extracted = object
+  } catch (err) {
+    const e = err as Error & { text?: unknown }
+    if (typeof e.text !== 'string') throw err
+    let raw: unknown
+    try {
+      raw = JSON.parse(e.text)
+    } catch {
+      throw err
+    }
+    const candidate = raw as { tone_tags?: unknown }
+    if (Array.isArray(candidate.tone_tags)) {
+      candidate.tone_tags = candidate.tone_tags.filter(
+        (t: unknown): t is (typeof TONE_VALUES)[number] =>
+          (TONE_VALUES as readonly string[]).includes(t as string),
+      )
+    }
+    const repaired = narrativeSchema.safeParse(candidate)
+    if (!repaired.success) throw err
+    console.warn(`[enrich] repaired off-vocabulary tone_tags for ${tmdb_id}`)
+    extracted = repaired.data
+  }
 
   // ── 4. Generate embedding (Mistral) ──────────────────────
   const embeddingText = narrativeToEmbeddingText(extracted as NarrativeExtractionResult)
 
   const { embedding } = await embed({
-    model: mistral().textEmbeddingModel('mistral-embed'),
+    model: mistral().textEmbeddingModel(MODELS.embedding),
     value: embeddingText,
   })
 

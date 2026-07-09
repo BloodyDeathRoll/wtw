@@ -138,6 +138,7 @@ export interface TMDBMovieDetail {
   tmdb_rating: number       // 0.0 – 10.0
   tmdb_vote_count: number
   imdb_id: string | null    // for OMDB lookup
+  poster_path: string | null // TMDB relative path, e.g. '/abc.jpg'
   crew: TMDBCrewSnapshot
 }
 
@@ -152,7 +153,20 @@ export interface TMDBTVDetail {
   tmdb_rating: number
   tmdb_vote_count: number
   imdb_id: string | null
+  poster_path: string | null // TMDB relative path, e.g. '/abc.jpg'
   crew: TMDBCrewSnapshot
+}
+
+/**
+ * Build a full TMDB poster URL from the stored relative path.
+ * Single source of truth for the image CDN base + size — callers pass
+ * `titles.poster_path` and get a ready-to-render URL (or null to fall back).
+ */
+export function tmdbPosterUrl(
+  poster_path: string | null | undefined,
+  size: 'w342' | 'w500' | 'w780' | 'original' = 'w500',
+): string | null {
+  return poster_path ? `https://image.tmdb.org/t/p/${size}${poster_path}` : null
 }
 
 export interface TMDBDiscoverItem {
@@ -186,6 +200,7 @@ export async function getMovie(tmdb_id: string): Promise<TMDBMovieDetail | null>
     runtime: number | null
     vote_average: number
     vote_count: number
+    poster_path: string | null
     credits: TMDBCredits
     external_ids: TMDBExternalIds
   }>(`/movie/${tmdb_id}`, { append_to_response: 'credits,external_ids' })
@@ -203,6 +218,7 @@ export async function getMovie(tmdb_id: string): Promise<TMDBMovieDetail | null>
     tmdb_rating: raw.vote_average,
     tmdb_vote_count: raw.vote_count,
     imdb_id: raw.external_ids?.imdb_id ?? null,
+    poster_path: raw.poster_path ?? null,
     crew: normaliseCredits(raw.credits),
   }
 }
@@ -220,6 +236,7 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     episode_run_time: number[]  // e.g. [42] or [25, 30]
     vote_average: number
     vote_count: number
+    poster_path: string | null
     created_by: { id: number; name: string }[]
     credits: TMDBCredits
     external_ids: TMDBExternalIds
@@ -242,6 +259,7 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     tmdb_rating: raw.vote_average,
     tmdb_vote_count: raw.vote_count,
     imdb_id: raw.external_ids?.imdb_id ?? null,
+    poster_path: raw.poster_path ?? null,
     crew: normaliseCredits(raw.credits, raw.created_by),
   }
 }
@@ -297,6 +315,48 @@ export async function discoverMovies(page = 1): Promise<TMDBDiscoverItem[]> {
     title: r.title,
     type: 'movie',
   }))
+}
+
+/**
+ * Search TMDB for a title by name and resolve it to a tmdb_id.
+ * Used by the Session Brain to turn a film/show mentioned in conversation
+ * into a real TMDB id so it can become a DNASignal.
+ *
+ * `type` narrows the search endpoint; omit to search both and take the
+ * most popular match across movies + TV.
+ * Returns null when TMDB has no match.
+ */
+export async function searchTitle(
+  name: string,
+  type?: 'movie' | 'tv',
+): Promise<TMDBDiscoverItem | null> {
+  const query = name.trim()
+  if (!query) return null
+
+  const endpoints: ('movie' | 'tv')[] = type ? [type] : ['movie', 'tv']
+  let best: { tmdb_id: string; title: string; type: 'movie' | 'tv'; popularity: number } | null = null
+
+  for (const kind of endpoints) {
+    const raw = await tmdbFetch<{
+      results: { id: number; title?: string; name?: string; popularity?: number }[]
+    }>(`/search/${kind}`, { query, page: '1' })
+
+    const top = raw?.results?.[0]
+    if (!top) continue
+
+    const popularity = top.popularity ?? 0
+    if (!best || popularity > best.popularity) {
+      best = {
+        tmdb_id: String(top.id),
+        title: top.title ?? top.name ?? query,
+        type: kind,
+        popularity,
+      }
+    }
+  }
+
+  if (!best) return null
+  return { tmdb_id: best.tmdb_id, title: best.title, type: best.type }
 }
 
 /**

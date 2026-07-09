@@ -12,15 +12,16 @@
  */
 
 import { generateObject } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
+import { createMistral } from '@ai-sdk/mistral'
+import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
 
-function groq() {
-  const key = process.env.GROQ_API_KEY
-  if (!key) throw new Error('GROQ_API_KEY is not set')
-  return createGroq({ apiKey: key })
+function mistral() {
+  const key = process.env.MISTRAL_API_KEY
+  if (!key) throw new Error('MISTRAL_API_KEY is not set')
+  return createMistral({ apiKey: key })
 }
 
 // ─────────────────────────────────────────────
@@ -112,7 +113,7 @@ Return ALL ${top50.length} titles in your preferred order with a brief rationale
 Be specific: reference the viewer's actual preferences, not generic praise for the title.`
 
   const { object } = await generateObject({
-    model: groq()('llama-3.3-70b-versatile'),
+    model: mistral()(MODELS.structured),
     schema: rerankSchema,
     prompt,
   })

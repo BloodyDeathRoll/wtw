@@ -17,6 +17,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
 
+// A full serial run (20 titles + 20 crew at ~13s per LLM call) takes ~8-9 min.
+// Vercel's default function timeout is 300s — raise to the Fluid Compute max
+// so the nightly run isn't killed mid-batch.
+export const maxDuration = 800
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   const secret = process.env.CRON_SECRET

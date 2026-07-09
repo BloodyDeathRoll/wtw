@@ -57,6 +57,7 @@ export async function fetchAndCacheTitle(
         tmdb_rating: detail.tmdb_rating,
         tmdb_vote_count: detail.tmdb_vote_count,
         omdb_rating,
+        poster_path: detail.poster_path,
         crew: detail.crew,
         // narrative fields (pacing_tag, tone_tags, narrative_metadata,
         // narrative_embedding, enriched_at) are left null — filled by

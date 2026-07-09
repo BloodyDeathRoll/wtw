@@ -668,6 +668,9 @@ export default function WTWApp({
   // the greeting yields to "continue: <last AI question>" so we don't
   // re-greet mid-flow. Reset only by a page reload.
   const [hasInteracted, setHasInteracted] = useState(false);
+  // While the fingerprint is being built + recs generated (on the way into
+  // the recommendations view), we show a brief building state.
+  const [buildingRecs, setBuildingRecs] = useState(false);
 
   // Hydrate Movies/Series + voice from localStorage after mount. SSR-safe
   // (window check happens only here). Brief race on first paint is fine.
@@ -685,6 +688,13 @@ export default function WTWApp({
   useEffect(() => {
     window.localStorage.setItem("wtw:voice", voice);
   }, [voice]);
+
+  // Ensure the user has a DNA fingerprint row. Idempotent + fire-and-forget:
+  // the first login bootstraps a blank fingerprint so the engine has
+  // something to read; later logins no-op.
+  useEffect(() => {
+    void fetch("/api/dna/bootstrap", { method: "POST" }).catch(() => {});
+  }, []);
 
   const { messages, append, setMessages, status, error, reload } = useChat({
     api: "/api/conversation/message",
@@ -730,9 +740,33 @@ export default function WTWApp({
     );
   }
 
-  function handleRecommend() {
+  // Asking for recommendations is the end of a "session": build the
+  // fingerprint from the conversation so far and generate fresh recs
+  // (cached server-side), then open the view — which now reads live recs
+  // instead of mocks. If it fails, we still open the view (it falls back
+  // to mocks) so the user is never blocked.
+  async function handleRecommend() {
     setVoiceOpen(false);
-    setStage("recommendations");
+    setBuildingRecs(true);
+    try {
+      const res = await fetch("/api/session/end", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversation.id }),
+      });
+      // fetch() resolves (doesn't throw) on 4xx/5xx — surface those so a failed
+      // fingerprint/rec build is visible in logs rather than silently opening
+      // the view to mocks. UX intent is still "never blocked", so we don't
+      // interrupt the user; we just log.
+      if (!res.ok) {
+        console.error(`[session/end] HTTP ${res.status}`, await res.text().catch(() => ""));
+      }
+    } catch (e) {
+      console.error("[session/end] failed", e);
+    } finally {
+      setBuildingRecs(false);
+      setStage("recommendations");
+    }
   }
 
   function handleFastLearning() {
@@ -814,7 +848,29 @@ export default function WTWApp({
 
   return (
     <AppShell>
-      {voiceOpen ? (
+      {buildingRecs ? (
+        <div className={styles.shell}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.75rem",
+              height: "100%",
+              textAlign: "center",
+              opacity: 0.85,
+            }}
+          >
+            <div style={{ fontSize: "1.05rem", fontWeight: 600 }}>
+              Reading your taste…
+            </div>
+            <div style={{ fontSize: "0.85rem", opacity: 0.7, maxWidth: "22rem" }}>
+              Updating your fingerprint and finding matches from what you&rsquo;ve told us.
+            </div>
+          </div>
+        </div>
+      ) : voiceOpen ? (
         <VoiceMode
           onExit={() => {
             setVoiceOpen(false);

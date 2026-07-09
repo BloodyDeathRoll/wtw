@@ -5,6 +5,7 @@
 // client wiring can drop in without server changes.
 
 import { groq } from "@ai-sdk/groq";
+import { MODELS } from "@/lib/ai-models";
 import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: groq("llama-3.3-70b-versatile"),
+    model: groq(MODELS.text),
     system: SYSTEM_PROMPT,
     messages: convertToCoreMessages(messages),
     onFinish: async ({ text }) => {

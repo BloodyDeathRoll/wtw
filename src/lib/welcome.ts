@@ -7,6 +7,7 @@
 // time-of-day / day-of-week, never read from a fixed pool.
 
 import { groq } from "@ai-sdk/groq";
+import { MODELS } from "@/lib/ai-models";
 import { generateText } from "ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -123,7 +124,7 @@ Hard rules:
 
   try {
     const result = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq(MODELS.text),
       system: systemPrompt,
       prompt: `Greet ${displayName} and ask the question.`,
     });

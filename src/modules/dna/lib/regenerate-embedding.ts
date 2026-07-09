@@ -1,5 +1,6 @@
 import { embed } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
+import { MODELS } from '@/lib/ai-models'
 import { createServiceClient } from '@/lib/supabase/service'
 import { strandBToEmbeddingText } from '@/modules/engine/scoring/narrative-match'
 import type { DNASchema } from '@/types/dna'
@@ -31,7 +32,7 @@ export async function regenerateEmbedding(
   )
 
   const { embedding } = await embed({
-    model: getMistral().textEmbeddingModel('mistral-embed'),
+    model: getMistral().textEmbeddingModel(MODELS.embedding),
     value: text,
   })
 

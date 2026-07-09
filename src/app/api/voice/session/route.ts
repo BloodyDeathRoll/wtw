@@ -8,11 +8,12 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { MODELS } from "@/lib/ai-models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VOICE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
+const VOICE_MODEL = MODELS.voice;
 
 const SYSTEM_PROMPT = `You are WTW (What To Watch) — a friendly conversational guide helping the user calibrate their film and TV taste through a short voice conversation.
 

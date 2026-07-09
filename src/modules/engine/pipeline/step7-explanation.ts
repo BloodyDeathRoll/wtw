@@ -16,15 +16,16 @@
  */
 
 import { generateObject } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
+import { createMistral } from '@ai-sdk/mistral'
+import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
 import type { RecommendationResult } from '@/types/dna'
 import type { ScoredTitleWithPayload } from './step6-reason-payload'
 
-function groq() {
-  const key = process.env.GROQ_API_KEY
-  if (!key) throw new Error('GROQ_API_KEY is not set')
-  return createGroq({ apiKey: key })
+function mistral() {
+  const key = process.env.MISTRAL_API_KEY
+  if (!key) throw new Error('MISTRAL_API_KEY is not set')
+  return createMistral({ apiKey: key })
 }
 
 const explanationSchema = z.object({
@@ -100,7 +101,7 @@ ${titlesList}
 Return explanations for all ${items.length} titles.`
 
   const { object } = await generateObject({
-    model: groq()('llama-3.3-70b-versatile'),
+    model: mistral()(MODELS.structured),
     schema: explanationSchema,
     prompt,
   })
