@@ -1,0 +1,62 @@
+/* Fingerprint loader (Android swirl style) — from public/fingerprint-loader.html.
+   Theming: --fp-color / --fp-size are set inline by the component. */
+
+.loader {
+  width: var(--fp-size, 48px);
+  height: var(--fp-size, 48px);
+  display: inline-block;
+}
+
+.loader svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Faint static print underneath = the "track" */
+.track path {
+  fill: none;
+  stroke: var(--fp-color, #ffffff);
+  stroke-opacity: 0.14;
+  stroke-width: 4.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Animated strokes drawing on top */
+.live path {
+  fill: none;
+  stroke: var(--fp-color, #ffffff);
+  stroke-width: 4.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: fp-draw 2.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+/* Stagger: outer arc, bottom sweep, then the spiral coils in */
+.live path:nth-child(1) { animation-delay: 0s; }
+.live path:nth-child(2) { animation-delay: 0.12s; }
+.live path:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes fp-draw {
+  0%       { stroke-dashoffset: 1; opacity: 0; }
+  8%       { opacity: 1; }
+  55%      { stroke-dashoffset: 0; opacity: 1; }
+  78%      { stroke-dashoffset: 0; opacity: 1; }
+  95%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* Accessibility: no motion -> show the full print, gently pulsing */
+@media (prefers-reduced-motion: reduce) {
+  .live path {
+    animation: fp-pulse 2s ease-in-out infinite;
+    stroke-dashoffset: 0;
+  }
+  @keyframes fp-pulse {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 1; }
+  }
+}

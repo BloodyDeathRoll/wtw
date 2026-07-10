@@ -23,6 +23,7 @@ import type {
   Recommendation,
 } from "@/types/recommendation";
 import styles from "./RecommendationsView.module.css";
+import { FingerprintLoader } from "../components/FingerprintLoader";
 
 type Mode = "recommendations" | "learning";
 
@@ -36,6 +37,13 @@ interface Props {
    *                     skip-without-rating (swipe in full view).
    */
   mode?: Mode;
+  /**
+   * When provided, a "Find more" CTA renders at the end of the list. It runs
+   * this callback (session-end: fingerprint rebuild + fresh rec generation —
+   * every like/dislike feeds the fingerprint, so the new batch reflects them),
+   * then clears and refetches the list.
+   */
+  onFindMore?: () => Promise<void>;
 }
 
 type ViewMode = "compact" | "full";
@@ -51,11 +59,13 @@ export default function RecommendationsView({
   onBack,
   contentType,
   mode = "recommendations",
+  onFindMore,
 }: Props) {
   const [view, setView] = useState<ViewMode>("compact");
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullIndex, setFullIndex] = useState(0);
   // Once a card has been rated we hide its buttons (and in the full view,
@@ -118,6 +128,27 @@ export default function RecommendationsView({
     loadingRef.current = false;
     void loadMore();
   }, [contentType, loadMore]);
+
+  // "Find more": rebuild the fingerprint (feedback so far included) and
+  // regenerate recs server-side, then restart the list from the fresh cache.
+  async function handleFindMore() {
+    if (!onFindMore || refreshing) return;
+    setRefreshing(true);
+    try {
+      await onFindMore();
+      setRecs([]);
+      setFullIndex(0);
+      offsetRef.current = 0;
+      hasMoreRef.current = true;
+      setHasMore(true);
+      await loadMore();
+    } catch (e) {
+      console.error("[recs] find-more failed", e);
+      setError("Couldn't refresh right now");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function handleFeedback(rec: Recommendation, rating: FeedbackRating) {
     setFeedbackGiven((prev) => ({ ...prev, [rec.id]: rating }));
@@ -182,6 +213,8 @@ export default function RecommendationsView({
           feedbackGiven={feedbackGiven}
           onLoadMore={loadMore}
           onFeedback={handleFeedback}
+          onFindMore={onFindMore ? handleFindMore : undefined}
+          refreshing={refreshing}
         />
       ) : (
         <FullSwiper
@@ -211,6 +244,8 @@ function CompactList({
   feedbackGiven,
   onLoadMore,
   onFeedback,
+  onFindMore,
+  refreshing = false,
 }: {
   recs: Recommendation[];
   loading: boolean;
@@ -219,6 +254,8 @@ function CompactList({
   feedbackGiven: Record<string, FeedbackRating>;
   onLoadMore: () => void;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
+  onFindMore?: () => void;
+  refreshing?: boolean;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -248,9 +285,23 @@ function CompactList({
         />
       ))}
       <div ref={sentinelRef} className={styles.sentinel}>
-        {loading && <span className={styles.muted}>Loading more…</span>}
-        {!loading && !hasMore && recs.length > 0 && (
-          <span className={styles.muted}>That&rsquo;s everything we found.</span>
+        {refreshing && (
+          <div className={styles.findMoreLoading}>
+            <FingerprintLoader size={40} />
+            <span className={styles.muted}>Updating your fingerprint…</span>
+          </div>
+        )}
+        {!refreshing && loading && <span className={styles.muted}>Loading more…</span>}
+        {!refreshing && !loading && !hasMore && recs.length > 0 && (
+          onFindMore ? (
+            // Every like/dislike above fed the fingerprint — this rebuilds it
+            // and generates a fresh batch that reflects those choices.
+            <button className={styles.findMoreBtn} onClick={onFindMore}>
+              Find more
+            </button>
+          ) : (
+            <span className={styles.muted}>That&rsquo;s everything we found.</span>
+          )
         )}
         {error && <span className={styles.error}>{error}</span>}
       </div>

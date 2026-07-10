@@ -19,6 +19,7 @@ import AppShell from "./AppShell";
 import RecommendPill from "./RecommendPill";
 import RecommendationsView from "../recommendations/RecommendationsView";
 import VoiceMode from "../voice/VoiceMode";
+import { FingerprintLoader } from "./FingerprintLoader";
 import type { AppUser, Conversation, Welcome } from "../types";
 import styles from "./WTWApp.module.css";
 
@@ -745,9 +746,10 @@ export default function WTWApp({
   // (cached server-side), then open the view — which now reads live recs
   // instead of mocks. If it fails, we still open the view (it falls back
   // to mocks) so the user is never blocked.
-  async function handleRecommend() {
-    setVoiceOpen(false);
-    setBuildingRecs(true);
+  // Runs the session-end pipeline: fingerprint rebuild + fresh rec generation
+  // (cached server-side at the new taste_version). Shared by the initial
+  // "Recommend" entry and the in-list "Find More" refresh.
+  async function endSessionAndGenerate() {
     try {
       const res = await fetch("/api/session/end", {
         method: "POST",
@@ -763,6 +765,14 @@ export default function WTWApp({
       }
     } catch (e) {
       console.error("[session/end] failed", e);
+    }
+  }
+
+  async function handleRecommend() {
+    setVoiceOpen(false);
+    setBuildingRecs(true);
+    try {
+      await endSessionAndGenerate();
     } finally {
       setBuildingRecs(false);
       setStage("recommendations");
@@ -868,6 +878,7 @@ export default function WTWApp({
             <div style={{ fontSize: "0.85rem", opacity: 0.7, maxWidth: "22rem" }}>
               Updating your fingerprint and finding matches from what you&rsquo;ve told us.
             </div>
+            <FingerprintLoader size={48} />
           </div>
         </div>
       ) : voiceOpen ? (
@@ -893,6 +904,7 @@ export default function WTWApp({
             onBack={() => setStage("onboard")}
             contentType={contentType}
             mode="recommendations"
+            onFindMore={endSessionAndGenerate}
           />
         </div>
       ) : stage === "learning" ? (
