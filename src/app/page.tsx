@@ -1,10 +1,10 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateActiveConversation } from "@/lib/conversations";
 import { buildWelcomeData } from "@/lib/welcome";
 import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
+import LoginScreen from "./login/LoginScreen";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -12,8 +12,11 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Signed-out visitors get the public homepage in place — no redirect.
+  // Google's site-verification crawler fetches the root URL anonymously and
+  // must receive a 200 with the verification meta tag, not a 307 to /login.
   if (!user) {
-    redirect("/login");
+    return <LoginScreen />;
   }
 
   // Browser-style UTC offset written by the inline script in layout.tsx.

@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   title: "WTW — What To Watch",
   description: "AI-powered film and TV recommendations that actually know you.",
   manifest: "/manifest.json",
+  // Renders <meta name="google-site-verification" content="…"> on every page,
+  // including the public homepage Google fetches to verify the app.
+  verification: {
+    google: "hFIgijC7YgPtriU1TbH0iquvIFujxYm3X6LsEdoQ3pY",
+  },
 };
 
 export const viewport: Viewport = {

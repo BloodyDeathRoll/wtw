@@ -54,6 +54,9 @@ export default function LoginScreen() {
               />
               <span className={styles.welcomeLogoName}>WTW</span>
             </div>
+            <h1 className={styles.heroTitle}>
+              Recommendations for you, not the average Joe
+            </h1>
             <p className={styles.onboardHint}>Sign in to calibrate your taste.</p>
             <button
               type="button"
