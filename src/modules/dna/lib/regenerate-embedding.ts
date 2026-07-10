@@ -5,9 +5,6 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { strandBToEmbeddingText } from '@/modules/engine/scoring/narrative-match'
 import type { DNASchema } from '@/types/dna'
 
-// Keep only the last N embedding snapshots per user (for fingerprint history + rollback)
-const MAX_SNAPSHOTS = 5
-
 function getMistral() {
   const key = process.env.MISTRAL_API_KEY
   if (!key) throw new Error('MISTRAL_API_KEY is not set')
@@ -16,8 +13,12 @@ function getMistral() {
 
 /**
  * Generates a fresh Mistral embedding from the user's current strand_b + strand_c,
- * stores it in the fingerprint_embeddings table, prunes old snapshots,
- * and updates metadata.fingerprint_embedding_ref in the DNA object (caller must save).
+ * UPSERTS it as the single live embedding row for the user, and updates
+ * metadata.fingerprint_embedding_ref in the DNA object (caller must save).
+ *
+ * fingerprint_embeddings has a UNIQUE(user_id) constraint (migration 0006):
+ * ONE live embedding per user, overwritten each regen. Versioned fingerprint
+ * history lives in dna_snapshots, not here — so there is nothing to prune.
  *
  * Uses the same text template as the engine's narrative-match scorer so that
  * cosine similarity between user and title embeddings is meaningful.
@@ -38,33 +39,26 @@ export async function regenerateEmbedding(
 
   const db = createServiceClient()
 
-  // Insert new snapshot
-  const { data: inserted, error: insertError } = await db
+  // Upsert the single live embedding row for this user. The UNIQUE(user_id)
+  // constraint means a plain insert fails on the 2nd write ("duplicate key");
+  // onConflict updates the existing row in place instead.
+  const { data: upserted, error: upsertError } = await db
     .from('fingerprint_embeddings')
-    .insert({
-      user_id,
-      embedding,
-      taste_version: dna.metadata.taste_version,
-    })
+    .upsert(
+      {
+        user_id,
+        embedding,
+        taste_version: dna.metadata.taste_version,
+      },
+      { onConflict: 'user_id' },
+    )
     .select('id')
     .single<{ id: string }>()
 
-  if (insertError || !inserted) {
-    throw new Error(`regenerateEmbedding insert failed: ${insertError?.message}`)
+  if (upsertError || !upserted) {
+    throw new Error(`regenerateEmbedding upsert failed: ${upsertError?.message}`)
   }
 
   // Update fingerprint_embedding_ref in the DNA (caller must saveDNA after this)
-  dna.metadata.fingerprint_embedding_ref = inserted.id
-
-  // Prune — keep only the last MAX_SNAPSHOTS per user
-  const { data: snapshots } = await db
-    .from('fingerprint_embeddings')
-    .select('id, created_at')
-    .eq('user_id', user_id)
-    .order('created_at', { ascending: false })
-
-  if (snapshots && snapshots.length > MAX_SNAPSHOTS) {
-    const toDelete = snapshots.slice(MAX_SNAPSHOTS).map((s: { id: string }) => s.id)
-    await db.from('fingerprint_embeddings').delete().in('id', toDelete)
-  }
+  dna.metadata.fingerprint_embedding_ref = upserted.id
 }

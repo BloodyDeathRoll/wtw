@@ -1,5 +1,9 @@
 import type { DNASchema } from '@/types/dna'
-import { createClient } from '@/lib/supabase/server'
+// Service-role client: snapshot writes are trusted server-side operations and
+// dna_snapshots has RLS enabled with a SELECT-only policy (migration 0006 —
+// "service role handles all writes"). The cookie-based server client is subject
+// to RLS and its INSERT is denied (42501); the service client bypasses RLS.
+import { createServiceClient } from '@/lib/supabase/service'
 
 /** Maximum number of snapshots to retain per user */
 const MAX_SNAPSHOTS = 5
@@ -19,7 +23,7 @@ export async function storeSnapshot(
   userId: string,
   dna: DNASchema,
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   // Insert the new snapshot
   const { error: insertError } = await supabase
@@ -65,7 +69,7 @@ export async function storeSnapshot(
  * Used by the rollback UI and the "Why this?" explanation flow.
  */
 export async function getSnapshots(userId: string): Promise<DNASchema[]> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('dna_snapshots')
@@ -91,7 +95,7 @@ export async function rollbackToSnapshot(
   userId: string,
   tasteVersion: number,
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('dna_snapshots')
