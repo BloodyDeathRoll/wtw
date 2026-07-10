@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "generate-voice-samples": "node --env-file=.env.local scripts/generate-voice-samples.mjs",
-    "grow-catalog": "node --env-file=.env.local --import tsx scripts/grow-catalog.mts"
+    "grow-catalog": "node --env-file=.env.local --import tsx scripts/grow-catalog.mts",
+    "generate-icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@ai-sdk/groq": "^1",
@@ -49,6 +50,7 @@
     "eslint-config-next": "^15",
     "jsdom": "^26.1.0",
     "postcss": "^8",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3",
     "tsx": "^4.23.0",
     "typescript": "^5",
