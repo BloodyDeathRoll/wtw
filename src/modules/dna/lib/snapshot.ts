@@ -67,6 +67,11 @@ export async function storeSnapshot(
 /**
  * Returns the last MAX_SNAPSHOTS snapshots for a user, newest first.
  * Used by the rollback UI and the "Why this?" explanation flow.
+ *
+ * ⚠️ SECURITY INVARIANT: this (and rollbackToSnapshot) use the service-role
+ * client, which BYPASSES RLS — the .eq('user_id', ...) filter is the only
+ * thing scoping the query. If either is ever exposed via a route, the userId
+ * MUST come from the authenticated session, never from the request body.
  */
 export async function getSnapshots(userId: string): Promise<DNASchema[]> {
   const supabase = createServiceClient()

@@ -28,6 +28,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
+import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import type { DNASchema, Reaction } from '@/types/dna'
 
 const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
@@ -143,6 +144,13 @@ export async function POST(req: NextRequest) {
     console.error('[recommendations/feedback] DNA update failed:', updateError.message)
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
   }
+
+  // The write above bypassed saveDNA, so bust the 60s loadDNA cache BEFORE the
+  // hooks below — they all read via cache-first loadDNA. Without this, a
+  // rating within 60s of the on-load warm-up (which populates the cache) made
+  // the light merge read a stale snapshot: usually a silent no-op, worst case
+  // saving the stale object back over this request's own write.
+  await invalidateDNACache(user.id)
 
   // ── Incremental fingerprint update (cheap, no version bump) ─
   // Fold this rating into DNA signals + strand A/C NOW, so by the time the

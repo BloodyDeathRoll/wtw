@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
+import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
@@ -110,6 +111,11 @@ export async function POST(req: NextRequest) {
   if (folded > 0) console.log(`[session/end] folded ${folded} card ratings into signals`)
 
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────
+  // This route read/bootstrapped users.dna DIRECTLY (bypassing saveDNA), and
+  // the feedback route also writes directly — so bust the 60s loadDNA cache
+  // first: updateSchemaFromSession loads via cache-first loadDNA and must see
+  // the freshest history/ratings, not a warm-up-era snapshot.
+  await invalidateDNACache(user.id)
   let taste_version: number
   try {
     const updated = await updateSchemaFromSession(user.id, summary)

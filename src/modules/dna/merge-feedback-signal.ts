@@ -27,6 +27,10 @@ import { applyStrandCUpdate } from './lib/update-strand-c'
 export async function mergeFeedbackSignalsLight(user_id: string): Promise<number> {
   const dna: DNASchema = await loadDNA(user_id)
 
+  // Dedup on tmdb_id alone (NOT tmdb_id:source like the session merge):
+  // intentional — if a title is already signaled from any source (e.g. the
+  // user praised it in chat), a card rating must not double-count its crew
+  // and visceral weights with a second signal.
   const signaled = new Set(dna.signals.map((s) => s.tmdb_id))
   const pending = dna.learning_loop.recommendation_history.filter(
     (h) => h.rating != null && !signaled.has(h.tmdb_id),
@@ -41,9 +45,9 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
     if (!title) continue // not in catalog yet — session-end fold will retry
 
     const signal: DNASignal = {
-      title: (title as unknown as { title?: string }).title ?? h.tmdb_id,
+      title: title.title,
       tmdb_id: h.tmdb_id,
-      type: (title as unknown as { type?: 'movie' | 'tv' }).type ?? 'movie',
+      type: title.type,
       reaction: h.rating!,
       quick_rating: null,
       regret_signal: null,

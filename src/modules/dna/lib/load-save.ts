@@ -12,6 +12,8 @@ export type TitleCrew = {
 }
 export type TitleRow = {
   tmdb_id:            string
+  title:              string
+  type:               'movie' | 'tv'
   crew:               TitleCrew
   pacing_tag:         string | null
   tone_tags:          string[]

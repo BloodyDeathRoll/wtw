@@ -21,6 +21,8 @@ export async function foldRatedHistoryIntoSummary(
   dna: DNASchema,
   summary: SessionSummary,
 ): Promise<number> {
+  // Dedup on tmdb_id alone (intentional, matches mergeFeedbackSignalsLight):
+  // a title signaled from any source must not be double-counted by a rating.
   const alreadySignaled = new Set(dna.signals.map((s) => s.tmdb_id))
   for (const s of summary.new_signals) alreadySignaled.add(s.tmdb_id)
 
