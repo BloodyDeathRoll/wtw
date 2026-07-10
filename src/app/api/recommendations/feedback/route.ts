@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
   let action: FeedbackAction
   let is_stretch_pick: boolean
   let reaction: Reaction | undefined
+  let title: string | undefined
+  let media_type: string | undefined
 
   try {
     const body = await req.json()
@@ -53,6 +55,8 @@ export async function POST(req: NextRequest) {
     action         = body.action
     is_stretch_pick = body.is_stretch_pick ?? false
     reaction       = body.reaction
+    title          = typeof body.title === 'string' ? body.title : undefined
+    media_type     = body.media_type === 'movie' || body.media_type === 'tv' ? body.media_type : undefined
 
     if (!tmdb_id || typeof tmdb_id !== 'string') {
       return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
@@ -97,17 +101,21 @@ export async function POST(req: NextRequest) {
         rating: reaction ?? null,
       }
     } else if (action === 'skipped') {
-      history[entryIndex] = { ...entry, accepted: false }
+      // Keep the reaction — a "Don't like" is a negative fingerprint signal,
+      // not just a decline. Dropping it here made dislikes vanish entirely.
+      history[entryIndex] = { ...entry, accepted: false, rating: reaction ?? entry.rating ?? null }
     }
     // 'regret' and 'glad_watched' update regret_signal, handled by Assignment 3 below
-  } else if (action === 'watched') {
-    // Recommendation wasn't in history yet (e.g. user found it through browsing)
+  } else if (action === 'watched' || action === 'skipped') {
+    // Recommendation wasn't in history yet (e.g. served from the rec cache,
+    // which doesn't append history entries). Record it either way — the
+    // session-end fold converts rated entries into DNA signals.
     history.push({
       session:             dna.metadata.total_sessions,
       recommended:         tmdb_id,
       tmdb_id,
-      accepted:            true,
-      watched:             true,
+      accepted:            action === 'watched',
+      watched:             action === 'watched',
       rating:              reaction ?? null,
       fingerprint_version: dna.metadata.taste_version,
     })
@@ -133,6 +141,21 @@ export async function POST(req: NextRequest) {
   if (updateError) {
     console.error('[recommendations/feedback] DNA update failed:', updateError.message)
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
+  }
+
+  // ── Log to recommendation_feedback (best-effort) ──────────
+  // The raw 👍/👎 stream: welcome.ts counts these rows for the maturity
+  // heuristic and the DNA Writer's documented inputs include this table.
+  // Table constraint allows rating in ('liked','disliked') only.
+  if (reaction === 'liked' || reaction === 'disliked') {
+    await serviceClient.from('recommendation_feedback').insert({
+      user_id: user.id,
+      recommendation_id: media_type ? `${media_type}:${tmdb_id}` : tmdb_id,
+      title: title ?? null,
+      rating: reaction,
+    }).then(({ error }) => {
+      if (error) console.warn('[feedback] recommendation_feedback insert failed (non-fatal):', error.message)
+    })
   }
 
   // ── DNA Writer hooks ──────────────────────────────────────

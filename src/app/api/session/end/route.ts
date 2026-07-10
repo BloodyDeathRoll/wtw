@@ -22,6 +22,7 @@ import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
 import { generateRecommendations } from '@/modules/engine'
 import { analyzeSession } from '@/modules/session/analyze-session'
+import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import type { DNASchema } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -81,6 +82,16 @@ export async function POST(req: NextRequest) {
 
   // ── 3. Transcript → SessionSummary (real signals) ────────────
   const summary = await analyzeSession(messages ?? [], sessionNumber)
+
+  // ── 3b. Fold 👍/👎 card ratings into signals ──────────────────
+  // Likes/dislikes land in recommendation_history at click time; converting
+  // them to DNASignals here is what makes them shift scores and drop rated
+  // titles from the next batch's candidates.
+  const folded = await foldRatedHistoryIntoSummary(dna, summary).catch((err) => {
+    console.warn('[session/end] feedback fold failed (non-fatal):', err)
+    return 0
+  })
+  if (folded > 0) console.log(`[session/end] folded ${folded} card ratings into signals`)
 
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────
   let taste_version: number

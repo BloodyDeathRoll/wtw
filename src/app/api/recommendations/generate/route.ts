@@ -80,6 +80,7 @@ async function toUIRecommendations(
       match: Math.max(0, Math.min(1, r.composite_score)),
       reason: r.explanation || "Matched to your fingerprint",
       where: null,
+      is_stretch_pick: r.is_stretch_pick,
       motif: MOTIFS[h % MOTIFS.length],
       palette: PALETTES[h % PALETTES.length],
     };

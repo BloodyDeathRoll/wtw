@@ -153,15 +153,26 @@ export default function RecommendationsView({
   async function handleFeedback(rec: Recommendation, rating: FeedbackRating) {
     setFeedbackGiven((prev) => ({ ...prev, [rec.id]: rating }));
     try {
-      await fetch("/api/recommendations/feedback", {
+      // The feedback route's contract is { tmdb_id, action, reaction, ... }.
+      // (The UI used to send { recommendation_id, rating } — every click
+      // silently 400'd and no rating ever reached the fingerprint.)
+      // rec.id is "type:tmdb_id" for engine recs, a slug for mocks.
+      const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
+      const res = await fetch("/api/recommendations/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          recommendation_id: rec.id,
+          tmdb_id,
+          media_type: rec.type,
           title: rec.title,
-          rating,
+          action: rating === "liked" ? "watched" : "skipped",
+          reaction: rating,
+          is_stretch_pick: rec.is_stretch_pick ?? false,
         }),
       });
+      if (!res.ok) {
+        console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+      }
     } catch (e) {
       console.error("[recs] feedback failed", e);
     }
