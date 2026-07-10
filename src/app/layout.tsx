@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: "WTW — What To Watch",
   description: "AI-powered film and TV recommendations that actually know you.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png", // iOS ignores manifest icons — needs this link
+  },
   // Renders <meta name="google-site-verification" content="…"> on every page,
   // including the public homepage Google fetches to verify the app.
   verification: {
