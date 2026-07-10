@@ -42,4 +42,6 @@ export interface Recommendation {
   palette: [string, string];
 }
 
-export type FeedbackRating = "liked" | "disliked";
+/** Mirrors the DNA contract's Reaction enum — the four levels the scoring
+ *  pipeline already consumes (see reaction weights in the DNA module). */
+export type FeedbackRating = "loved" | "liked" | "mixed" | "disliked";

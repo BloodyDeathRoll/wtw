@@ -150,17 +150,17 @@ export async function POST(req: NextRequest) {
   // session-end only bumps the version + regenerates. No bump here keeps the
   // rec cache the user is scrolling valid. The UI serializes feedback clicks,
   // so these read-modify-writes don't race.
-  if (reaction === 'liked' || reaction === 'disliked') {
+  if (reaction) {
     await mergeFeedbackSignalsLight(user.id).catch(err =>
       console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
     )
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────
-  // The raw 👍/👎 stream: welcome.ts counts these rows for the maturity
+  // The raw reaction stream: welcome.ts counts these rows for the maturity
   // heuristic and the DNA Writer's documented inputs include this table.
-  // Table constraint allows rating in ('liked','disliked') only.
-  if (reaction === 'liked' || reaction === 'disliked') {
+  // Migration 0009 widened the rating constraint to the full Reaction enum.
+  if (reaction) {
     await serviceClient.from('recommendation_feedback').insert({
       user_id: user.id,
       recommendation_id: media_type ? `${media_type}:${tmdb_id}` : tmdb_id,

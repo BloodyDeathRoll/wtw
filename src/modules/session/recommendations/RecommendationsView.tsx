@@ -174,7 +174,9 @@ export default function RecommendationsView({
             tmdb_id,
             media_type: rec.type,
             title: rec.title,
-            action: rating === "liked" ? "watched" : "skipped",
+            // disliked = "not for me" (skip); loved/liked/mixed imply they
+            // watched it and are post-watch reactions.
+            action: rating === "disliked" ? "skipped" : "watched",
             reaction: rating,
             is_stretch_pick: rec.is_stretch_pick ?? false,
           }),
@@ -511,68 +513,52 @@ function FeedbackRow({
 }) {
   if (rated) {
     return (
-      <div className={styles.feedbackAcked}>
-        {rated === "liked" ? "Saved to your taste" : "Won't show this kind"}
-      </div>
+      <div className={styles.feedbackAcked}>{RATED_MESSAGE[rated]}</div>
     );
   }
   return (
     <div
       className={`${styles.feedback} ${compact ? styles.feedbackCompact : ""}`}
     >
-      <button
-        type="button"
-        className={styles.feedbackLike}
-        onClick={() => onFeedback(rec, "liked")}
-      >
-        {IconThumbsUp}
-        <span>Seen &amp; liked</span>
-      </button>
-      <button
-        type="button"
-        className={styles.feedbackDislike}
-        onClick={() => onFeedback(rec, "disliked")}
-      >
-        {IconThumbsDown}
-        <span>Don&rsquo;t like</span>
-      </button>
+      {REACTIONS.map((r) => (
+        <button
+          key={r.value}
+          type="button"
+          className={styles.reactionBtn}
+          onClick={() => onFeedback(rec, r.value)}
+          aria-label={r.aria}
+          title={r.aria}
+        >
+          <span className={styles.reactionEmoji}>{r.emoji}</span>
+          <span className={styles.reactionLabel}>{r.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
 
-const IconThumbsUp = (
-  <svg
-    viewBox="0 0 24 24"
-    width="16"
-    height="16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M7 10v12" />
-    <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H7v-12L11 2a3 3 0 0 1 4 4z" />
-  </svg>
-);
+// The four levels map 1:1 onto the DNA Reaction enum — richer signal than the
+// old binary buttons at the same one-tap cost.
+const REACTIONS: {
+  value: FeedbackRating;
+  emoji: string;
+  label: string;
+  aria: string;
+}[] = [
+  { value: "loved", emoji: "❤️", label: "Loved", aria: "Loved it" },
+  { value: "liked", emoji: "👍", label: "Liked", aria: "Liked it" },
+  { value: "mixed", emoji: "😐", label: "Mixed", aria: "Mixed feelings" },
+  { value: "disliked", emoji: "👎", label: "Pass", aria: "Not for me" },
+];
 
-const IconThumbsDown = (
-  <svg
-    viewBox="0 0 24 24"
-    width="16"
-    height="16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M17 14V2" />
-    <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H17v12l-4 8a3 3 0 0 1-4-4z" />
-  </svg>
-);
+const RATED_MESSAGE: Record<FeedbackRating, string> = {
+  loved: "Loved — weighted strongly into your taste",
+  liked: "Saved to your taste",
+  mixed: "Noted — mixed feelings",
+  disliked: "Won't show this kind",
+};
+
+
 
 function PosterTile({
   rec,

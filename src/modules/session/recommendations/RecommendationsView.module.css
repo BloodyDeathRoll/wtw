@@ -201,42 +201,45 @@
   margin-top: 10px;
   min-height: 34px;
 }
-.feedbackCompact .feedbackLike,
-.feedbackCompact .feedbackDislike {
-  font-size: 12px;
-  padding: 7px 10px;
-}
-.feedbackLike,
-.feedbackDislike {
+/* Four one-tap reactions (loved / liked / mixed / pass) — same enum the
+   scoring pipeline consumes. Emoji on top, tiny label under. */
+.reactionBtn {
   flex: 1;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 2px;
   border: 0;
-  color: var(--wtw-fg);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.feedbackLike {
-  background: #000;
-  color: var(--wtw-fg);
-}
-.feedbackLike:hover {
-  background: #111;
-}
-.feedbackDislike {
   background: #000;
   color: var(--wtw-fg-muted);
-  font-weight: 500;
+  padding: 7px 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
-.feedbackDislike:hover {
+.reactionBtn:hover {
   background: #111;
   color: var(--wtw-fg);
+  transform: translateY(-1px);
+}
+.reactionEmoji {
+  font-size: 16px;
+  line-height: 1;
+}
+.reactionLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.feedbackCompact .reactionBtn {
+  padding: 6px 2px;
+}
+.feedbackCompact .reactionEmoji {
+  font-size: 14px;
+}
+.feedbackCompact .reactionLabel {
+  font-size: 10px;
 }
 .feedbackAcked {
   margin-top: 8px;
