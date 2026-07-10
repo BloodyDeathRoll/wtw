@@ -690,11 +690,28 @@ export default function WTWApp({
     window.localStorage.setItem("wtw:voice", voice);
   }, [voice]);
 
-  // Ensure the user has a DNA fingerprint row. Idempotent + fire-and-forget:
-  // the first login bootstraps a blank fingerprint so the engine has
-  // something to read; later logins no-op.
+  // Warm-up on load: bootstrap the DNA row (idempotent), then pre-generate
+  // recommendations in the background. POST /generate returns the cached set
+  // when it's still fresh (cheap no-op) and otherwise runs the pipeline and
+  // caches — so by the time the user taps the rec pill, results are ready
+  // and the tap is instant. handleRecommend awaits warmPromiseRef only when
+  // the warm-up hasn't finished yet.
+  const warmDoneRef = useRef(false);
+  const warmPromiseRef = useRef<Promise<void>>(Promise.resolve());
+  // Whether the user added chat/voice content THIS page-load — only then does
+  // "Recommend" need the full session-end (transcript analysis) path.
+  const chattedThisLoadRef = useRef(false);
+
   useEffect(() => {
-    void fetch("/api/dna/bootstrap", { method: "POST" }).catch(() => {});
+    warmPromiseRef.current = (async () => {
+      try {
+        await fetch("/api/dna/bootstrap", { method: "POST" });
+      } catch {} // idempotent; a failure just means the old cold path
+      try {
+        await fetch("/api/recommendations/generate", { method: "POST" });
+      } catch {}
+      warmDoneRef.current = true;
+    })();
   }, []);
 
   const { messages, append, setMessages, status, error, reload } = useChat({
@@ -728,6 +745,7 @@ export default function WTWApp({
     const nextStage: Stage = "conversation";
 
     setHasInteracted(true);
+    chattedThisLoadRef.current = true; // new transcript content → next Recommend needs session-end
     if (isFirstOnboard) setFavorites(text);
     setStage(nextStage);
 
@@ -775,9 +793,30 @@ export default function WTWApp({
 
   async function handleRecommend() {
     setVoiceOpen(false);
+
+    // Nothing new said this page-load → nothing to analyze. Serve the
+    // warm-up's pre-generated recs: instant when it finished, a short loader
+    // if it's still running. Never falls back to mocks.
+    if (!chattedThisLoadRef.current) {
+      if (warmDoneRef.current) {
+        setStage("recommendations");
+        return;
+      }
+      setBuildingRecs(true);
+      try {
+        await warmPromiseRef.current;
+      } finally {
+        setBuildingRecs(false);
+        setStage("recommendations");
+      }
+      return;
+    }
+
+    // New chat/voice content → full session-end (analyze + merge + generate).
     setBuildingRecs(true);
     try {
       await endSessionAndGenerate();
+      chattedThisLoadRef.current = false; // transcript consumed — next tap is instant
     } finally {
       setBuildingRecs(false);
       setStage("recommendations");
@@ -840,6 +879,7 @@ export default function WTWApp({
     // First voice turn from onboard flips stage like the text path does.
     const wasOnboard = stage === "onboard";
     if (wasOnboard) setStage("conversation");
+    chattedThisLoadRef.current = true; // voice content also feeds the transcript
 
     void fetch("/api/voice/transcript", {
       method: "POST",
