@@ -73,7 +73,11 @@ const rerankSchema = z.object({
   ranked: z.array(
     z.object({
       tmdb_id:   z.string(),
-      rationale: z.string().max(250)
+      // No .max() — a hard length cap here made ONE verbose rationale (out of
+      // 50) invalidate the entire response and kill the pipeline (seen live:
+      // mistral writes ~350-char rationales despite "brief"). We ask for short
+      // in the prompt and truncate in code instead of failing validation.
+      rationale: z.string()
         .describe('1-2 sentences: why this fits THIS user specifically. Be specific about what resonates.'),
     })
   ).min(1),
@@ -109,18 +113,28 @@ CANDIDATES (currently ranked by numeric score):
 ${candidateList}
 
 Re-rank these titles from best to worst fit for THIS viewer. You may dramatically reorder them — the numeric score misses nuance.
-Return ALL ${top50.length} titles in your preferred order with a brief rationale for each.
+Return ALL ${top50.length} titles in your preferred order with a brief rationale for each (1-2 sentences, under 200 characters).
 Be specific: reference the viewer's actual preferences, not generic praise for the title.`
 
-  const { object } = await generateObject({
-    model: mistral()(MODELS.structured),
-    schema: rerankSchema,
-    prompt,
-  })
+  // GRACEFUL DEGRADATION: a rerank failure must never kill the pipeline.
+  // Composite scoring (step 2) already produced a good order — the LLM pass
+  // only refines it. On any LLM/validation error, fall back to that order.
+  let ranked: { tmdb_id: string; rationale: string }[]
+  try {
+    const { object } = await generateObject({
+      model: mistral()(MODELS.structured),
+      schema: rerankSchema,
+      prompt,
+    })
+    ranked = object.ranked
+  } catch (err) {
+    console.warn('[rerank] LLM rerank failed — falling back to composite order:', err instanceof Error ? err.message : err)
+    return top50.slice(0, 20).map(item => ({ ...item, groq_rationale: '' }))
+  }
 
-  // Build a map from Groq's ranked list
+  // Build a map from the ranked list (rationales truncated in code, not schema)
   const rankMap = new Map<string, { rank: number; rationale: string }>(
-    object.ranked.map((r, i) => [r.tmdb_id, { rank: i, rationale: r.rationale }])
+    ranked.map((r, i) => [r.tmdb_id, { rank: i, rationale: r.rationale.slice(0, 250) }])
   )
 
   // Apply Groq's ordering, preserving original numeric order for unranked titles

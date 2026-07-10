@@ -56,8 +56,14 @@ export async function generateRecommendations(
   const dna = await loadDNA(userId)
   if (!dna) throw new Error(`No DNA found for user ${userId}`)
 
-  // ── Step 8 (read): check cache ────────────────────────────
+  // ── Step 8 (read): check cache — BEST-EFFORT ─────────────
+  // A Redis outage/auth failure must not kill generation (seen live: a
+  // WRONGPASS on this read aborted the whole pipeline before the engine ran).
   const cached = await getCachedRecommendations(userId, dna.metadata.taste_version)
+    .catch(err => {
+      console.warn('[generate] cache read failed (non-fatal):', err instanceof Error ? err.message : err)
+      return null
+    })
   if (cached) {
     // Session context modifiers (mood, immediate request) bypass the cache
     // when session_override_active — re-run soft modifiers only, don't re-score
@@ -98,7 +104,12 @@ export async function generateRecommendations(
   // Don't cache when session override is active (mood-specific results
   // shouldn't be served to future sessions without that mood context)
   if (!sessionContext?.session_override_active) {
+    // Best-effort: a failed cache write degrades to "GET serves mocks until
+    // the next successful run" — it must not throw away generated results.
     await cacheRecommendations(userId, dna.metadata.taste_version, versioned)
+      .catch(err => {
+        console.warn('[generate] cache write failed (non-fatal):', err instanceof Error ? err.message : err)
+      })
   }
 
   return versioned
