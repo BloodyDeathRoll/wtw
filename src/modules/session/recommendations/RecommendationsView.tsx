@@ -23,6 +23,7 @@ import type {
   Recommendation,
 } from "@/types/recommendation";
 import styles from "./RecommendationsView.module.css";
+import { FingerprintLoader } from "../components/FingerprintLoader";
 
 type Mode = "recommendations" | "learning";
 
@@ -36,6 +37,13 @@ interface Props {
    *                     skip-without-rating (swipe in full view).
    */
   mode?: Mode;
+  /**
+   * When provided, a "Find more" CTA renders at the end of the list. It runs
+   * this callback (session-end: fingerprint rebuild + fresh rec generation —
+   * every like/dislike feeds the fingerprint, so the new batch reflects them),
+   * then clears and refetches the list.
+   */
+  onFindMore?: () => Promise<void>;
 }
 
 type ViewMode = "compact" | "full";
@@ -51,11 +59,13 @@ export default function RecommendationsView({
   onBack,
   contentType,
   mode = "recommendations",
+  onFindMore,
 }: Props) {
   const [view, setView] = useState<ViewMode>("compact");
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullIndex, setFullIndex] = useState(0);
   // Once a card has been rated we hide its buttons (and in the full view,
@@ -71,6 +81,10 @@ export default function RecommendationsView({
   const loadingRef = useRef(false);
   const offsetRef = useRef(0);
   const hasMoreRef = useRef(true);
+  // Serializes feedback POSTs: each click's server-side fingerprint merge is a
+  // read-modify-write on the DNA, so requests must not overlap. Find More
+  // awaits this chain so every rating is merged before regeneration.
+  const feedbackQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -119,21 +133,61 @@ export default function RecommendationsView({
     void loadMore();
   }, [contentType, loadMore]);
 
+  // "Find more": rebuild the fingerprint (feedback so far included) and
+  // regenerate recs server-side, then APPEND the fresh batch — existing cards
+  // (rated or not) stay in place; loadMore's id-dedup keeps only new titles.
+  async function handleFindMore() {
+    if (!onFindMore || refreshing) return;
+    setRefreshing(true);
+    try {
+      // Let any in-flight rating merges land first so they're in the rebuild.
+      await feedbackQueueRef.current;
+      await onFindMore();
+      offsetRef.current = 0; // re-page through the NEW cache from the top
+      hasMoreRef.current = true;
+      setHasMore(true);
+      await loadMore();
+    } catch (e) {
+      console.error("[recs] find-more failed", e);
+      setError("Couldn't refresh right now");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function handleFeedback(rec: Recommendation, rating: FeedbackRating) {
     setFeedbackGiven((prev) => ({ ...prev, [rec.id]: rating }));
-    try {
-      await fetch("/api/recommendations/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recommendation_id: rec.id,
-          title: rec.title,
-          rating,
-        }),
-      });
-    } catch (e) {
-      console.error("[recs] feedback failed", e);
-    }
+    // Queue the POST (don't block the UI on it): the route folds each rating
+    // into the fingerprint incrementally, and those merges must run one at a
+    // time. The UI card state was already flipped above.
+    feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
+      try {
+        // The feedback route's contract is { tmdb_id, action, reaction, ... }.
+        // (The UI used to send { recommendation_id, rating } — every click
+        // silently 400'd and no rating ever reached the fingerprint.)
+        // rec.id is "type:tmdb_id" for engine recs, a slug for mocks.
+        const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
+        const res = await fetch("/api/recommendations/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tmdb_id,
+            media_type: rec.type,
+            title: rec.title,
+            // disliked = "not for me" (skip); loved/liked/mixed imply they
+            // watched it and are post-watch reactions.
+            action: rating === "disliked" ? "skipped" : "watched",
+            reaction: rating,
+            is_stretch_pick: rec.is_stretch_pick ?? false,
+          }),
+        });
+        if (!res.ok) {
+          console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+        }
+      } catch (e) {
+        console.error("[recs] feedback failed", e);
+      }
+    });
     // In full view, advance to next after feedback.
     if (view === "full") {
       setFullIndex((i) => Math.min(i + 1, recs.length - 1));
@@ -182,6 +236,8 @@ export default function RecommendationsView({
           feedbackGiven={feedbackGiven}
           onLoadMore={loadMore}
           onFeedback={handleFeedback}
+          onFindMore={onFindMore ? handleFindMore : undefined}
+          refreshing={refreshing}
         />
       ) : (
         <FullSwiper
@@ -211,6 +267,8 @@ function CompactList({
   feedbackGiven,
   onLoadMore,
   onFeedback,
+  onFindMore,
+  refreshing = false,
 }: {
   recs: Recommendation[];
   loading: boolean;
@@ -219,6 +277,8 @@ function CompactList({
   feedbackGiven: Record<string, FeedbackRating>;
   onLoadMore: () => void;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
+  onFindMore?: () => void;
+  refreshing?: boolean;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -248,9 +308,23 @@ function CompactList({
         />
       ))}
       <div ref={sentinelRef} className={styles.sentinel}>
-        {loading && <span className={styles.muted}>Loading more…</span>}
-        {!loading && !hasMore && recs.length > 0 && (
-          <span className={styles.muted}>That&rsquo;s everything we found.</span>
+        {refreshing && (
+          <div className={styles.findMoreLoading}>
+            <FingerprintLoader size={40} />
+            <span className={styles.muted}>Updating your fingerprint…</span>
+          </div>
+        )}
+        {!refreshing && loading && <span className={styles.muted}>Loading more…</span>}
+        {!refreshing && !loading && !hasMore && recs.length > 0 && (
+          onFindMore ? (
+            // Every like/dislike above fed the fingerprint — this rebuilds it
+            // and generates a fresh batch that reflects those choices.
+            <button className={styles.findMoreBtn} onClick={onFindMore}>
+              Find more
+            </button>
+          ) : (
+            <span className={styles.muted}>That&rsquo;s everything we found.</span>
+          )
         )}
         {error && <span className={styles.error}>{error}</span>}
       </div>
@@ -439,68 +513,52 @@ function FeedbackRow({
 }) {
   if (rated) {
     return (
-      <div className={styles.feedbackAcked}>
-        {rated === "liked" ? "Saved to your taste" : "Won't show this kind"}
-      </div>
+      <div className={styles.feedbackAcked}>{RATED_MESSAGE[rated]}</div>
     );
   }
   return (
     <div
       className={`${styles.feedback} ${compact ? styles.feedbackCompact : ""}`}
     >
-      <button
-        type="button"
-        className={styles.feedbackLike}
-        onClick={() => onFeedback(rec, "liked")}
-      >
-        {IconThumbsUp}
-        <span>Seen &amp; liked</span>
-      </button>
-      <button
-        type="button"
-        className={styles.feedbackDislike}
-        onClick={() => onFeedback(rec, "disliked")}
-      >
-        {IconThumbsDown}
-        <span>Don&rsquo;t like</span>
-      </button>
+      {REACTIONS.map((r) => (
+        <button
+          key={r.value}
+          type="button"
+          className={styles.reactionBtn}
+          onClick={() => onFeedback(rec, r.value)}
+          aria-label={r.aria}
+          title={r.aria}
+        >
+          <span className={styles.reactionEmoji}>{r.emoji}</span>
+          <span className={styles.reactionLabel}>{r.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
 
-const IconThumbsUp = (
-  <svg
-    viewBox="0 0 24 24"
-    width="16"
-    height="16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M7 10v12" />
-    <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H7v-12L11 2a3 3 0 0 1 4 4z" />
-  </svg>
-);
+// The four levels map 1:1 onto the DNA Reaction enum — richer signal than the
+// old binary buttons at the same one-tap cost.
+const REACTIONS: {
+  value: FeedbackRating;
+  emoji: string;
+  label: string;
+  aria: string;
+}[] = [
+  { value: "loved", emoji: "❤️", label: "Loved", aria: "Loved it" },
+  { value: "liked", emoji: "👍", label: "Liked", aria: "Liked it" },
+  { value: "mixed", emoji: "😐", label: "Mixed", aria: "Mixed feelings" },
+  { value: "disliked", emoji: "👎", label: "Pass", aria: "Not for me" },
+];
 
-const IconThumbsDown = (
-  <svg
-    viewBox="0 0 24 24"
-    width="16"
-    height="16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M17 14V2" />
-    <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H17v12l-4 8a3 3 0 0 1-4-4z" />
-  </svg>
-);
+const RATED_MESSAGE: Record<FeedbackRating, string> = {
+  loved: "Loved — weighted strongly into your taste",
+  liked: "Saved to your taste",
+  mixed: "Noted — mixed feelings",
+  disliked: "Won't show this kind",
+};
+
+
 
 function PosterTile({
   rec,

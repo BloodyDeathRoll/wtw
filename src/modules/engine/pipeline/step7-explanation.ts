@@ -100,15 +100,20 @@ ${titlesList}
 
 Return explanations for all ${items.length} titles.`
 
-  const { object } = await generateObject({
-    model: mistral()(MODELS.structured),
-    schema: explanationSchema,
-    prompt,
-  })
-
-  const explanationMap = new Map(
-    object.explanations.map(e => [e.tmdb_id, e.explanation])
-  )
+  // GRACEFUL DEGRADATION: explanation failure must never kill the pipeline.
+  // Every item already has a fallback (reason_payload.groq_rationale) below,
+  // so on any LLM/validation error we just ship recs without LLM blurbs.
+  let explanationMap = new Map<string, string>()
+  try {
+    const { object } = await generateObject({
+      model: mistral()(MODELS.structured),
+      schema: explanationSchema,
+      prompt,
+    })
+    explanationMap = new Map(object.explanations.map(e => [e.tmdb_id, e.explanation]))
+  } catch (err) {
+    console.warn('[explanation] LLM explanations failed — using payload fallbacks:', err instanceof Error ? err.message : err)
+  }
 
   const now = new Date().toISOString()
 

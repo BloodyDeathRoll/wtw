@@ -602,6 +602,18 @@
   box-shadow: 0 0 0 2px rgba(var(--wtw-rgb), 0.5);
 }
 
+.heroTitle {
+  margin: 0;
+  color: var(--wtw-fg);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  max-width: 380px;
+  text-wrap: balance;
+  animation: fadeUp 0.7s 0.1s ease both;
+}
+
 .onboardHint {
   margin: 0;
   color: var(--wtw-fg);

@@ -34,9 +34,14 @@ export interface Recommendation {
   reason: string;
   /** Streaming provider, or null if unknown. */
   where: string | null;
+  /** True when the engine flagged this as a stretch pick — feedback on it is
+   *  itself a fingerprint signal, so it rides through to the feedback API. */
+  is_stretch_pick?: boolean;
   /** Motif + palette used when poster_url is null or fails to load. */
   motif: MotifKind;
   palette: [string, string];
 }
 
-export type FeedbackRating = "liked" | "disliked";
+/** Mirrors the DNA contract's Reaction enum — the four levels the scoring
+ *  pipeline already consumes (see reaction weights in the DNA module). */
+export type FeedbackRating = "loved" | "liked" | "mixed" | "disliked";

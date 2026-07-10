@@ -27,6 +27,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
+import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
+import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import type { DNASchema, Reaction } from '@/types/dna'
 
 const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
@@ -46,6 +48,8 @@ export async function POST(req: NextRequest) {
   let action: FeedbackAction
   let is_stretch_pick: boolean
   let reaction: Reaction | undefined
+  let title: string | undefined
+  let media_type: string | undefined
 
   try {
     const body = await req.json()
@@ -53,6 +57,8 @@ export async function POST(req: NextRequest) {
     action         = body.action
     is_stretch_pick = body.is_stretch_pick ?? false
     reaction       = body.reaction
+    title          = typeof body.title === 'string' ? body.title : undefined
+    media_type     = body.media_type === 'movie' || body.media_type === 'tv' ? body.media_type : undefined
 
     if (!tmdb_id || typeof tmdb_id !== 'string') {
       return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
@@ -97,17 +103,21 @@ export async function POST(req: NextRequest) {
         rating: reaction ?? null,
       }
     } else if (action === 'skipped') {
-      history[entryIndex] = { ...entry, accepted: false }
+      // Keep the reaction — a "Don't like" is a negative fingerprint signal,
+      // not just a decline. Dropping it here made dislikes vanish entirely.
+      history[entryIndex] = { ...entry, accepted: false, rating: reaction ?? entry.rating ?? null }
     }
     // 'regret' and 'glad_watched' update regret_signal, handled by Assignment 3 below
-  } else if (action === 'watched') {
-    // Recommendation wasn't in history yet (e.g. user found it through browsing)
+  } else if (action === 'watched' || action === 'skipped') {
+    // Recommendation wasn't in history yet (e.g. served from the rec cache,
+    // which doesn't append history entries). Record it either way — the
+    // session-end fold converts rated entries into DNA signals.
     history.push({
       session:             dna.metadata.total_sessions,
       recommended:         tmdb_id,
       tmdb_id,
-      accepted:            true,
-      watched:             true,
+      accepted:            action === 'watched',
+      watched:             action === 'watched',
       rating:              reaction ?? null,
       fingerprint_version: dna.metadata.taste_version,
     })
@@ -133,6 +143,40 @@ export async function POST(req: NextRequest) {
   if (updateError) {
     console.error('[recommendations/feedback] DNA update failed:', updateError.message)
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
+  }
+
+  // The write above bypassed saveDNA, so bust the 60s loadDNA cache BEFORE the
+  // hooks below — they all read via cache-first loadDNA. Without this, a
+  // rating within 60s of the on-load warm-up (which populates the cache) made
+  // the light merge read a stale snapshot: usually a silent no-op, worst case
+  // saving the stale object back over this request's own write.
+  await invalidateDNACache(user.id)
+
+  // ── Incremental fingerprint update (cheap, no version bump) ─
+  // Fold this rating into DNA signals + strand A/C NOW, so by the time the
+  // user hits "Find more" most of the fingerprint work is already done and
+  // session-end only bumps the version + regenerates. No bump here keeps the
+  // rec cache the user is scrolling valid. The UI serializes feedback clicks,
+  // so these read-modify-writes don't race.
+  if (reaction) {
+    await mergeFeedbackSignalsLight(user.id).catch(err =>
+      console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
+    )
+  }
+
+  // ── Log to recommendation_feedback (best-effort) ──────────
+  // The raw reaction stream: welcome.ts counts these rows for the maturity
+  // heuristic and the DNA Writer's documented inputs include this table.
+  // Migration 0009 widened the rating constraint to the full Reaction enum.
+  if (reaction) {
+    await serviceClient.from('recommendation_feedback').insert({
+      user_id: user.id,
+      recommendation_id: media_type ? `${media_type}:${tmdb_id}` : tmdb_id,
+      title: title ?? null,
+      rating: reaction,
+    }).then(({ error }) => {
+      if (error) console.warn('[feedback] recommendation_feedback insert failed (non-fatal):', error.message)
+    })
   }
 
   // ── DNA Writer hooks ──────────────────────────────────────

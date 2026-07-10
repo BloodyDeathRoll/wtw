@@ -1,5 +1,10 @@
 import type { DNASchema } from '@/types/dna'
-import { createClient } from '@/lib/supabase/server'
+// Service-role client: snapshot writes are trusted server-side operations and
+// dna_snapshots has RLS enabled with a SELECT-only policy (migration 0006 —
+// "service role handles all writes"). The cookie-based server client is subject
+// to RLS and its INSERT is denied (42501); the service client bypasses RLS.
+import { createServiceClient } from '@/lib/supabase/service'
+import { invalidateDNACache } from './load-save'
 
 /** Maximum number of snapshots to retain per user */
 const MAX_SNAPSHOTS = 5
@@ -19,7 +24,7 @@ export async function storeSnapshot(
   userId: string,
   dna: DNASchema,
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   // Insert the new snapshot
   const { error: insertError } = await supabase
@@ -63,9 +68,14 @@ export async function storeSnapshot(
 /**
  * Returns the last MAX_SNAPSHOTS snapshots for a user, newest first.
  * Used by the rollback UI and the "Why this?" explanation flow.
+ *
+ * ⚠️ SECURITY INVARIANT: this (and rollbackToSnapshot) use the service-role
+ * client, which BYPASSES RLS — the .eq('user_id', ...) filter is the only
+ * thing scoping the query. If either is ever exposed via a route, the userId
+ * MUST come from the authenticated session, never from the request body.
  */
 export async function getSnapshots(userId: string): Promise<DNASchema[]> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('dna_snapshots')
@@ -91,7 +101,7 @@ export async function rollbackToSnapshot(
   userId: string,
   tasteVersion: number,
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('dna_snapshots')
@@ -112,5 +122,10 @@ export async function rollbackToSnapshot(
 
   if (updateError) {
     console.error('[snapshot] Failed to write rollback to users:', updateError)
+    return
   }
+
+  // Direct users.dna write — bust the 60s loadDNA cache so readers don't
+  // serve the pre-rollback fingerprint (same invariant as the routes).
+  await invalidateDNACache(userId)
 }

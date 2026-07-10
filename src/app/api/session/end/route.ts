@@ -20,9 +20,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
+import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
 import { analyzeSession } from '@/modules/session/analyze-session'
-import type { DNASchema } from '@/types/dna'
+import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
+import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
 
@@ -38,6 +40,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const conversationId: string | undefined = body.conversation_id
+  // "Find more" sets this: the chat didn't change while the user was rating
+  // cards, so re-running the LLM transcript extraction (~5-10s) would only
+  // produce signals that dedup away. Ratings are folded regardless.
+  const skipTranscript: boolean = body.skip_transcript === true
   if (!conversationId) {
     return NextResponse.json({ error: 'conversation_id required' }, { status: 400 })
   }
@@ -80,9 +86,36 @@ export async function POST(req: NextRequest) {
   const sessionNumber = (dna.metadata.total_sessions ?? 0) + 1
 
   // ── 3. Transcript → SessionSummary (real signals) ────────────
-  const summary = await analyzeSession(messages ?? [], sessionNumber)
+  // Skipped on "Find more" (no new chat since the last run — the extraction
+  // LLM call is the slowest part and its output would dedup to nothing).
+  const summary: SessionSummary = skipTranscript
+    ? {
+        session_number: sessionNumber,
+        new_signals: [],
+        dimension_updates: {},
+        open_questions_resolved: [],
+        new_open_questions: [],
+        recommendation_made: null,
+        recommendation_accepted: null,
+      }
+    : await analyzeSession(messages ?? [], sessionNumber)
+
+  // ── 3b. Fold 👍/👎 card ratings into signals ──────────────────
+  // Likes/dislikes land in recommendation_history at click time; converting
+  // them to DNASignals here is what makes them shift scores and drop rated
+  // titles from the next batch's candidates.
+  const folded = await foldRatedHistoryIntoSummary(dna, summary).catch((err) => {
+    console.warn('[session/end] feedback fold failed (non-fatal):', err)
+    return 0
+  })
+  if (folded > 0) console.log(`[session/end] folded ${folded} card ratings into signals`)
 
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────
+  // This route read/bootstrapped users.dna DIRECTLY (bypassing saveDNA), and
+  // the feedback route also writes directly — so bust the 60s loadDNA cache
+  // first: updateSchemaFromSession loads via cache-first loadDNA and must see
+  // the freshest history/ratings, not a warm-up-era snapshot.
+  await invalidateDNACache(user.id)
   let taste_version: number
   try {
     const updated = await updateSchemaFromSession(user.id, summary)

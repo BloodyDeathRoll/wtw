@@ -12,6 +12,8 @@ export type TitleCrew = {
 }
 export type TitleRow = {
   tmdb_id:            string
+  title:              string
+  type:               'movie' | 'tv'
   crew:               TitleCrew
   pacing_tag:         string | null
   tone_tags:          string[]
@@ -94,7 +96,7 @@ export async function fetchTitleCrew(tmdb_ids: string[]): Promise<Map<string, Ti
   const db = createServiceClient()
   const { data, error } = await db
     .from('titles')
-    .select('tmdb_id, crew, pacing_tag, tone_tags, narrative_metadata')
+    .select('tmdb_id, title, type, crew, pacing_tag, tone_tags, narrative_metadata')
     .in('tmdb_id', tmdb_ids)
 
   if (error) throw new Error(`fetchTitleCrew: ${error.message}`)
