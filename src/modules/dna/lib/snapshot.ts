@@ -4,6 +4,7 @@ import type { DNASchema } from '@/types/dna'
 // "service role handles all writes"). The cookie-based server client is subject
 // to RLS and its INSERT is denied (42501); the service client bypasses RLS.
 import { createServiceClient } from '@/lib/supabase/service'
+import { invalidateDNACache } from './load-save'
 
 /** Maximum number of snapshots to retain per user */
 const MAX_SNAPSHOTS = 5
@@ -121,5 +122,10 @@ export async function rollbackToSnapshot(
 
   if (updateError) {
     console.error('[snapshot] Failed to write rollback to users:', updateError)
+    return
   }
+
+  // Direct users.dna write — bust the 60s loadDNA cache so readers don't
+  // serve the pre-rollback fingerprint (same invariant as the routes).
+  await invalidateDNACache(userId)
 }
