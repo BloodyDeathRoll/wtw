@@ -27,6 +27,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
+import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
 import type { DNASchema, Reaction } from '@/types/dna'
 
 const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
@@ -141,6 +142,18 @@ export async function POST(req: NextRequest) {
   if (updateError) {
     console.error('[recommendations/feedback] DNA update failed:', updateError.message)
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
+  }
+
+  // ── Incremental fingerprint update (cheap, no version bump) ─
+  // Fold this rating into DNA signals + strand A/C NOW, so by the time the
+  // user hits "Find more" most of the fingerprint work is already done and
+  // session-end only bumps the version + regenerates. No bump here keeps the
+  // rec cache the user is scrolling valid. The UI serializes feedback clicks,
+  // so these read-modify-writes don't race.
+  if (reaction === 'liked' || reaction === 'disliked') {
+    await mergeFeedbackSignalsLight(user.id).catch(err =>
+      console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
+    )
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────

@@ -749,12 +749,17 @@ export default function WTWApp({
   // Runs the session-end pipeline: fingerprint rebuild + fresh rec generation
   // (cached server-side at the new taste_version). Shared by the initial
   // "Recommend" entry and the in-list "Find More" refresh.
-  async function endSessionAndGenerate() {
+  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean }) {
     try {
       const res = await fetch("/api/session/end", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversation.id }),
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          // "Find more": chat didn't change while rating cards — skip the
+          // slow transcript re-analysis; per-click merges did the rest.
+          skip_transcript: opts?.skipTranscript ?? false,
+        }),
       });
       // fetch() resolves (doesn't throw) on 4xx/5xx — surface those so a failed
       // fingerprint/rec build is visible in logs rather than silently opening
@@ -904,7 +909,7 @@ export default function WTWApp({
             onBack={() => setStage("onboard")}
             contentType={contentType}
             mode="recommendations"
-            onFindMore={endSessionAndGenerate}
+            onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
           />
         </div>
       ) : stage === "learning" ? (

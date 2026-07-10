@@ -81,6 +81,10 @@ export default function RecommendationsView({
   const loadingRef = useRef(false);
   const offsetRef = useRef(0);
   const hasMoreRef = useRef(true);
+  // Serializes feedback POSTs: each click's server-side fingerprint merge is a
+  // read-modify-write on the DNA, so requests must not overlap. Find More
+  // awaits this chain so every rating is merged before regeneration.
+  const feedbackQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -130,15 +134,16 @@ export default function RecommendationsView({
   }, [contentType, loadMore]);
 
   // "Find more": rebuild the fingerprint (feedback so far included) and
-  // regenerate recs server-side, then restart the list from the fresh cache.
+  // regenerate recs server-side, then APPEND the fresh batch — existing cards
+  // (rated or not) stay in place; loadMore's id-dedup keeps only new titles.
   async function handleFindMore() {
     if (!onFindMore || refreshing) return;
     setRefreshing(true);
     try {
+      // Let any in-flight rating merges land first so they're in the rebuild.
+      await feedbackQueueRef.current;
       await onFindMore();
-      setRecs([]);
-      setFullIndex(0);
-      offsetRef.current = 0;
+      offsetRef.current = 0; // re-page through the NEW cache from the top
       hasMoreRef.current = true;
       setHasMore(true);
       await loadMore();
@@ -152,30 +157,35 @@ export default function RecommendationsView({
 
   async function handleFeedback(rec: Recommendation, rating: FeedbackRating) {
     setFeedbackGiven((prev) => ({ ...prev, [rec.id]: rating }));
-    try {
-      // The feedback route's contract is { tmdb_id, action, reaction, ... }.
-      // (The UI used to send { recommendation_id, rating } — every click
-      // silently 400'd and no rating ever reached the fingerprint.)
-      // rec.id is "type:tmdb_id" for engine recs, a slug for mocks.
-      const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
-      const res = await fetch("/api/recommendations/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tmdb_id,
-          media_type: rec.type,
-          title: rec.title,
-          action: rating === "liked" ? "watched" : "skipped",
-          reaction: rating,
-          is_stretch_pick: rec.is_stretch_pick ?? false,
-        }),
-      });
-      if (!res.ok) {
-        console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+    // Queue the POST (don't block the UI on it): the route folds each rating
+    // into the fingerprint incrementally, and those merges must run one at a
+    // time. The UI card state was already flipped above.
+    feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
+      try {
+        // The feedback route's contract is { tmdb_id, action, reaction, ... }.
+        // (The UI used to send { recommendation_id, rating } — every click
+        // silently 400'd and no rating ever reached the fingerprint.)
+        // rec.id is "type:tmdb_id" for engine recs, a slug for mocks.
+        const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
+        const res = await fetch("/api/recommendations/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tmdb_id,
+            media_type: rec.type,
+            title: rec.title,
+            action: rating === "liked" ? "watched" : "skipped",
+            reaction: rating,
+            is_stretch_pick: rec.is_stretch_pick ?? false,
+          }),
+        });
+        if (!res.ok) {
+          console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+        }
+      } catch (e) {
+        console.error("[recs] feedback failed", e);
       }
-    } catch (e) {
-      console.error("[recs] feedback failed", e);
-    }
+    });
     // In full view, advance to next after feedback.
     if (view === "full") {
       setFullIndex((i) => Math.min(i + 1, recs.length - 1));
