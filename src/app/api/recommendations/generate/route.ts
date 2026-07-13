@@ -118,8 +118,14 @@ export async function GET(req: Request) {
     if (data?.dna) {
       cachedRecs = await getCachedRecommendations(user.id, data.dna.metadata.taste_version)
     }
-  } catch {
-    // Redis or DB unavailable — fall through to mocks
+  } catch (err) {
+    // Redis or DB unavailable — fall through to mocks. Log so a genuine auth
+    // failure (e.g. WRONGPASS from a bad Upstash token) is distinguishable
+    // from a cold/unseeded cache, which otherwise look identical here.
+    console.error(
+      "[recommendations/generate] cache read failed, serving mocks:",
+      err instanceof Error ? err.message : err,
+    );
   }
 
   if (cachedRecs && cachedRecs.length > 0) {
