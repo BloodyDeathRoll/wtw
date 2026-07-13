@@ -51,3 +51,6 @@ coverage/
 
 # Session Skill
 handoff.md
+
+# Local code-review reports (kept out of the repo)
+docs/code-review-*
