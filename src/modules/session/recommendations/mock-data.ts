@@ -20,6 +20,9 @@ export const MOCK_RECOMMENDATIONS: Recommendation[] = [
     match: 0.96,
     reason: "Slow-burn ensemble · sibling chemistry · darkly funny",
     where: "Apple TV+",
+    // Placeholder to demo the enabled Play button — real trailers arrive with
+    // the trailer-ingestion feature; until then most recs have null here.
+    trailer_url: "https://www.youtube.com/results?search_query=Bad+Sisters+trailer",
     motif: "circle",
     palette: ["#1B2A28", "#C7B8FF"],
   },
@@ -34,6 +37,7 @@ export const MOCK_RECOMMENDATIONS: Recommendation[] = [
     match: 0.92,
     reason: "Case-of-the-week · Rian Johnson DNA · warm lead",
     where: "Peacock",
+    trailer_url: "https://www.youtube.com/results?search_query=Poker+Face+trailer",
     motif: "spades",
     palette: ["#2A1810", "#E8C547"],
   },
