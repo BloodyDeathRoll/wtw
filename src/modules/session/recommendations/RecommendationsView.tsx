@@ -506,6 +506,10 @@ function TrailerButton({
 // Full-screen card view
 // ─────────────────────────────────────────────────────────────
 
+// Snap easing for the release animation — a soft ease-out so the card glides
+// to rest instead of stopping abruptly.
+const SLIDE_TRANSITION = "transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1)";
+
 function FullSwiper({
   recs,
   index,
@@ -529,16 +533,30 @@ function FullSwiper({
   onRemove: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
 }) {
+  const stageRef = useRef<HTMLDivElement>(null);
   const startX = useRef<number | null>(null);
-  const SWIPE_THRESHOLD = 50;
-  // Which side the incoming card slides from. Derived from index changes
-  // so it works for swipes AND parent-driven advances (after feedback).
+  const widthRef = useRef(0);
+  const SWIPE_THRESHOLD = 60;
+
+  // Live drag: dragX is the current horizontal offset in px (null when idle);
+  // dir is which neighbour is being revealed (+1 next via left-drag, -1 prev
+  // via right-drag), kept for the whole release animation; settling flips a
+  // CSS transition on so the card glides to its snap target on release.
+  const [dragX, setDragX] = useState<number | null>(null);
+  const [dir, setDir] = useState<0 | 1 | -1>(0);
+  const [settling, setSettling] = useState(false);
+
+  // Entrance animation for programmatic (feedback-driven) advances only — a
+  // manual drag-commit already animated the card into place, so we suppress
+  // the keyframe in that case (dragCommit).
   const [slideDir, setSlideDir] = useState<"left" | "right">("right");
   const lastIndexRef = useRef(index);
+  const dragCommit = useRef(false);
   useEffect(() => {
     if (index > lastIndexRef.current) setSlideDir("right");
     else if (index < lastIndexRef.current) setSlideDir("left");
     lastIndexRef.current = index;
+    dragCommit.current = false; // consumed by this render
   }, [index]);
 
   // Prefetch the next page when the user is two cards from the end.
@@ -549,23 +567,55 @@ function FullSwiper({
   }, [index, recs.length, loading, hasMore, onLoadMore]);
 
   const rec = recs[index];
+  const nextRec = recs[index + 1];
+  const prevRec = recs[index - 1];
 
-  // Pointer events handle touch + mouse drag in one path. Buttons inside
-  // the card still receive their own clicks first; the pointer-down
-  // listener is on the outer container, not the buttons.
+  // Pointer events handle touch + mouse drag in one path. Buttons inside the
+  // card receive their own clicks first (we bail when the gesture starts on
+  // one), so tapping a reaction never reads as a swipe.
   function handlePointerDown(e: React.PointerEvent) {
-    // Skip drag-tracking when the gesture starts on an interactive child
-    // (so tapping feedback buttons doesn't get interpreted as a swipe).
     if ((e.target as HTMLElement).closest("button")) return;
+    if (settling) return;
+    widthRef.current = stageRef.current?.clientWidth ?? 0;
     startX.current = e.clientX;
+    setDragX(0);
+    setDir(0);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture unsupported — pointerup on the element still fires */
+    }
   }
-  function handlePointerUp(e: React.PointerEvent) {
+  function handlePointerMove(e: React.PointerEvent) {
+    if (startX.current == null || settling) return;
+    let dx = e.clientX - startX.current;
+    // Rubber-band at the ends where there's no neighbour to reveal.
+    if ((dx > 0 && !prevRec) || (dx < 0 && !nextRec)) dx = dx / 3;
+    setDragX(dx);
+    setDir(dx < 0 ? 1 : dx > 0 ? -1 : 0);
+  }
+  function handlePointerUp() {
     if (startX.current == null) return;
-    const dx = e.clientX - startX.current;
     startX.current = null;
-    if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-    if (dx < 0 && index < recs.length - 1) setIndex((i) => i + 1);
-    if (dx > 0 && index > 0) setIndex((i) => i - 1);
+    const dx = dragX ?? 0;
+    const W = widthRef.current || 1;
+    const goNext = dx <= -SWIPE_THRESHOLD && !!nextRec;
+    const goPrev = dx >= SWIPE_THRESHOLD && !!prevRec;
+    // Glide to the snap target: fully off-screen to commit, or back to 0.
+    setSettling(true);
+    setDragX(goNext ? -W : goPrev ? W : 0);
+    window.setTimeout(() => {
+      setSettling(false);
+      setDragX(null);
+      setDir(0);
+      if (goNext) {
+        dragCommit.current = true;
+        setIndex((i) => i + 1);
+      } else if (goPrev) {
+        dragCommit.current = true;
+        setIndex((i) => i - 1);
+      }
+    }, 340);
   }
 
   if (!rec) {
@@ -576,12 +626,25 @@ function FullSwiper({
     );
   }
 
+  const dragging = dragX !== null;
+  const W = widthRef.current;
+  const trans = settling ? SLIDE_TRANSITION : "none";
+  const entranceClass =
+    dragging || dragCommit.current
+      ? ""
+      : slideDir === "right"
+        ? styles.slideRight
+        : styles.slideLeft;
+
+  const shared = { onFeedback, onRemove, onWhy };
+
   return (
     <div
       className={styles.full}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={() => (startX.current = null)}
+      onPointerCancel={handlePointerUp}
     >
       <div className={styles.fullProgress}>
         {recs.map((_, i) => (
@@ -594,42 +657,101 @@ function FullSwiper({
         ))}
       </div>
 
-      <div
-        key={rec.id}
-        className={`${styles.fullCard} ${
-          slideDir === "right" ? styles.slideRight : styles.slideLeft
-        }`}
-      >
-        <PosterTile rec={rec} size="lg" />
-        <div className={styles.fullGradient} />
-        <div className={styles.fullContent}>
-          <div className={styles.cardMatch}>
-            <span className={styles.matchDot} />
-            {Math.round(rec.match * 100)}% match
-          </div>
-          <h2 className={styles.fullTitle}>{rec.title}</h2>
-          <div className={styles.cardMeta}>
-            <span>{rec.year}</span>
-            <span className={styles.dot} />
-            <span>{rec.meta}</span>
-            <span className={styles.dot} />
-            <span>★ {rec.rating.toFixed(1)}</span>
-          </div>
-          {rec.where && (
-            <div className={styles.fullWhere}>Watch on {rec.where}</div>
-          )}
-          <div className={styles.fullReason}>
-            <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-            <span>{rec.reason}</span>
-          </div>
-          <FeedbackRow
-            rec={rec}
-            rated={feedbackGiven[rec.id]}
-            onFeedback={onFeedback}
-            onRemove={onRemove}
-            onWhy={onWhy}
+      <div className={styles.fullStage} ref={stageRef}>
+        {/* Incoming neighbour, revealed as the current card is dragged aside. */}
+        {dragging && dir === 1 && nextRec && (
+          <FullCard
+            key={nextRec.id}
+            rec={nextRec}
+            rated={feedbackGiven[nextRec.id]}
+            style={{ transform: `translateX(${(dragX ?? 0) + W}px)`, transition: trans }}
+            {...shared}
           />
+        )}
+        {dragging && dir === -1 && prevRec && (
+          <FullCard
+            key={prevRec.id}
+            rec={prevRec}
+            rated={feedbackGiven[prevRec.id]}
+            style={{ transform: `translateX(${(dragX ?? 0) - W}px)`, transition: trans }}
+            {...shared}
+          />
+        )}
+        <FullCard
+          key={rec.id}
+          rec={rec}
+          rated={feedbackGiven[rec.id]}
+          className={entranceClass}
+          style={
+            dragging ? { transform: `translateX(${dragX ?? 0}px)`, transition: trans } : undefined
+          }
+          {...shared}
+        />
+      </div>
+    </div>
+  );
+}
+
+// One full-bleed card: poster background, gradient scrim, a circular match
+// badge (matching the "Why this?" detail hero), and the bottom content column
+// with a "Why this pick?" pill under the title/meta and the reaction row.
+function FullCard({
+  rec,
+  rated,
+  onFeedback,
+  onRemove,
+  onWhy,
+  className = "",
+  style,
+}: {
+  rec: Recommendation;
+  rated: FeedbackRating | undefined;
+  onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
+  onRemove: (rec: Recommendation) => void;
+  onWhy: (rec: Recommendation) => void;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div className={`${styles.fullCard} ${className}`} style={style}>
+      <PosterTile rec={rec} size="lg" />
+      <div className={styles.fullGradient} />
+      {/* Circular match badge — same look as the detail-view hero. */}
+      <div className={`${styles.heroMatch} ${styles.fullMatch}`}>
+        <span className={styles.heroMatchPct}>{Math.round(rec.match * 100)}</span>
+        <span className={styles.heroMatchLabel}>match</span>
+      </div>
+      <div className={styles.fullContent}>
+        <h2 className={styles.fullTitle}>{rec.title}</h2>
+        <div className={styles.cardMeta}>
+          <span>{rec.year}</span>
+          <span className={styles.dot} />
+          <span>{rec.meta}</span>
+          <span className={styles.dot} />
+          <span>★ {rec.rating.toFixed(1)}</span>
         </div>
+        {/* "Why this pick?" pill under the title/meta block. */}
+        <button
+          type="button"
+          className={`${styles.whyPill} ${styles.whyPillStrong}`}
+          onClick={() => onWhy(rec)}
+          aria-label={`Why we picked ${rec.title}`}
+        >
+          <span aria-hidden>🤔</span>
+          <span>Why this pick?</span>
+        </button>
+        {rec.where && <div className={styles.fullWhere}>Watch on {rec.where}</div>}
+        <div className={styles.fullReason}>
+          <span className={styles.reasonEyebrow}>FINGERPRINT</span>
+          <span>{rec.reason}</span>
+        </div>
+        {/* No onWhy here — the Why control is the pill above, not a CTA button. */}
+        <FeedbackRow
+          rec={rec}
+          rated={rated}
+          onFeedback={onFeedback}
+          onRemove={onRemove}
+        />
       </div>
     </div>
   );

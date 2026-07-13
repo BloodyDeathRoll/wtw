@@ -415,16 +415,29 @@
 .fullProgressDotActive {
   background: var(--wtw-green);
 }
-/* The card is a positioning context for the full-bleed poster, the
-   gradient overlay, and the bottom-aligned content. No internal scroll. */
-.fullCard {
+/* Stage — the swipe viewport. Cards are absolutely-positioned layers inside
+   it so the outgoing card and the incoming neighbour can slide across it
+   together during a drag. */
+.fullStage {
   position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+  /* Swipes shouldn't select the card's text. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Each card fills the stage; the full-bleed poster, gradient scrim, match
+   badge and bottom content all position against it. No internal scroll. */
+.fullCard {
+  position: absolute;
+  inset: 0;
   border-radius: 18px;
   overflow: hidden;
   background: #0a0a0a;
   isolation: isolate;
+  will-change: transform;
 }
 .fullCard.slideRight {
   animation: slideFromRight 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -472,6 +485,26 @@
   flex-direction: column;
   gap: 8px;
   padding: 16px 18px 20px;
+  color: var(--wtw-fg);
+}
+/* Circular match badge, pinned to the card's top-right over the poster —
+   same 84px circle as the "Why this?" detail hero (.heroMatch). */
+.fullMatch {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 4;
+}
+/* "Why this pick?" pill in the full view sits over the poster, so give it a
+   darker, blurred backing than the compact card's translucent pill. */
+.whyPillStrong {
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--wtw-fg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.whyPillStrong:hover {
+  background: rgba(0, 0, 0, 0.68);
   color: var(--wtw-fg);
 }
 .fullTitle {
@@ -696,9 +729,4 @@
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid var(--wtw-border);
   text-align: center;
-}
-
-/* % match is the hero stat in the full-poster view — bump it there. */
-.fullContent .cardMatch {
-  font-size: 15.5px;
 }
