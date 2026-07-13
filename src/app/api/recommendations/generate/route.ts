@@ -104,10 +104,6 @@ async function toUIRecommendations(
       match: Math.max(0, Math.min(1, r.composite_score)),
       reason: r.explanation || "Matched to your fingerprint",
       where: null,
-      // trailer_url is supplied by the trailer-harvesting branch
-      // (fix/session-rec-reliability-trailers) via youtubeTrailerUrl(trailer_key);
-      // omitted here so this branch doesn't collide with that wiring. Absent →
-      // the card's Play button renders disabled.
       is_stretch_pick: r.is_stretch_pick,
       motif: MOTIFS[h % MOTIFS.length],
       palette: PALETTES[h % PALETTES.length],
