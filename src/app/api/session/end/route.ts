@@ -24,6 +24,7 @@ import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
+import { hasMaterialChange } from '@/modules/session/session-change'
 import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -122,12 +123,7 @@ export async function POST(req: NextRequest) {
   // If nothing material changed, skip the update + regeneration entirely and
   // return immediately. The existing cache (at the unchanged taste_version) is
   // already warm, so GET keeps serving it — turning a ~10s click into a no-op.
-  const hasMaterialChange =
-    summary.new_signals.length > 0 ||
-    Object.keys(summary.dimension_updates).length > 0 ||
-    summary.open_questions_resolved.length > 0 ||
-    summary.new_open_questions.length > 0
-  if (!hasMaterialChange) {
+  if (!hasMaterialChange(summary)) {
     return NextResponse.json({
       ok: true,
       taste_version: dna.metadata.taste_version,

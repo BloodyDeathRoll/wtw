@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
 import { createClient } from "@/lib/supabase/client";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import AppShell from "./AppShell";
 import RecommendPill from "./RecommendPill";
 import RecommendationsView from "../recommendations/RecommendationsView";
@@ -593,25 +594,6 @@ type Stage =
   | "conversation"
   | "recommendations"
   | "learning";
-
-// fetch with a hard timeout. The rec-build loader ("Reading your taste…") is
-// cleared in a `finally`, which only runs once the awaited fetch SETTLES — a
-// request that hangs forever (e.g. a stalled LLM call inside /api/session/end
-// with no server-side timeout) would otherwise leave the loader up permanently.
-// AbortController guarantees the promise always settles so the loader clears.
-async function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init: RequestInit = {},
-  ms = 45000,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function InputBar({
   value,

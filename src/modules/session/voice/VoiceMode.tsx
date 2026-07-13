@@ -396,6 +396,22 @@ export default function VoiceMode({
         </div>
       )}
 
+      {status === "closed" && (
+        // The Live socket ended cleanly (Gemini closed the session without an
+        // error event). Without this branch the user would be left with only
+        // the exit-to-home button — offer the same chat-log recovery as error.
+        <div className={styles.errorOverlay}>
+          <div className={styles.errorText}>Voice session ended.</div>
+          <button
+            type="button"
+            className={styles.errorBtn}
+            onClick={onBackToChat}
+          >
+            Back to chat
+          </button>
+        </div>
+      )}
+
       {showRecommend && (
         <RecommendPill onClick={onRecommend} className={styles.recommendPos} />
       )}
