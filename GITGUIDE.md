@@ -63,9 +63,9 @@ That's the whole setup — you do **not** create a permanent personal branch any
 - **One task = one short-lived branch = one small PR.** A branch is born off the latest `main`, does one thing, gets reviewed, merges, and is deleted. You'll often have two or three in a week.
 - **Branches are named by the work, not by the person.** `feat/wire-dna-on-session-end`, not `feature/eran`.
 - **Module ownership still holds.** Only the owner edits their `src/modules/` folder:
-  - `src/modules/session/` → Assignment 1
-  - `src/modules/engine/` → Assignment 2
-  - `src/modules/dna/` → Assignment 3
+  - `src/modules/session/` → Assignment 1 - Shahar
+  - `src/modules/engine/` → Assignment 2 - Alon
+  - `src/modules/dna/` → Assignment 3 - Eran
 - **Shared areas need a heads-up.** `src/app/`, `src/lib/` — one person at a time; say so in the group chat before you start. `src/types/dna.ts` needs **all three** to approve any change.
 - **Foundation changes land on main first.** Anything everyone builds on — root config (`package.json`, `vitest.config.ts`, `tsconfig`, eslint), the test harness under `tests/`, shared mocks — is owned by one person, goes in as a small **priority PR**, and merges before the work that depends on it. Don't scaffold shared tooling inside a feature branch; three people doing that in parallel is a guaranteed conflict.
 

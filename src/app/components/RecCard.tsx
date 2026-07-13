@@ -11,7 +11,7 @@
  * "Why this?" (?) button toggles the WhyPanel inline at any state.
  */
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { RecommendationResult, Reaction } from "@/types/dna"
 import { addToRegretQueue } from "@/lib/regret-queue"
 import DeepSurvey from "./DeepSurvey"
@@ -157,8 +157,7 @@ function PosterTile({ title, palette, motif, size = "md" }: {
 const REACTIONS: { value: Reaction; label: string; icon: React.ReactNode; color: string }[] = [
   { value: "loved",    label: "Loved it",    icon: I.heart,     color: "#D49B3A" },
   { value: "liked",    label: "Liked it",    icon: I.thumbUp,   color: "#C7B8FF" },
-  { value: "mixed",    label: "Mixed",       icon: I.mixed,     color: "#8A8A8E" },
-  { value: "disliked", label: "Didn't like", icon: I.thumbDown, color: "#E07C5A" },
+  { value: "disliked", label: "Dislike",     icon: I.thumbDown, color: "#E07C5A" },
 ]
 
 // Need React import for ReactNode
@@ -218,8 +217,16 @@ const SCORE_SEGMENTS = [
   { key: "recency",   label: "Recency",   weight: 5,  color: "#8A8A8E" },
 ]
 
-function WhyPanel({ result }: { result: RecommendationResult }) {
+export function WhyPanel({ result }: { result: RecommendationResult }) {
   const p = result.reason_payload
+
+  // Bars grow from 0 → value once mounted. Start collapsed, then flip on the
+  // next frame so the CSS width transition has a 0-width state to animate from.
+  const [grown, setGrown] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setGrown(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   const crewScore = p.crew_matches.length > 0
     ? p.crew_matches.reduce((s, m) => s + m.affinity_score, 0) / p.crew_matches.length
@@ -248,7 +255,7 @@ function WhyPanel({ result }: { result: RecommendationResult }) {
               <span className={styles.scoreWeight}>{seg.weight}%</span>
             </div>
             <div className={styles.scoreTrack}>
-              <div className={styles.scoreFill} style={{ width: `${scores[seg.key] * 100}%`, background: seg.color }} />
+              <div className={styles.scoreFill} style={{ width: grown ? `${scores[seg.key] * 100}%` : 0, background: seg.color }} />
             </div>
             <span className={styles.scoreNum}>{Math.round(scores[seg.key] * 100)}</span>
           </div>
@@ -265,7 +272,7 @@ function WhyPanel({ result }: { result: RecommendationResult }) {
                 <span className={styles.crewRole}>{m.role}</span>
               </div>
               <div className={styles.crewTrack}>
-                <div className={styles.crewFill} style={{ width: `${m.affinity_score * 100}%` }} />
+                <div className={styles.crewFill} style={{ width: grown ? `${m.affinity_score * 100}%` : 0 }} />
               </div>
               <span className={styles.crewPct}>{Math.round(m.affinity_score * 100)}%</span>
             </div>
@@ -310,12 +317,26 @@ type CardState = "idle" | "rating" | "done"
 interface RecCardProps {
   result: RecommendationResult
   onFeedback?: (action: "watched" | "skipped", reaction?: Reaction) => void
+  /** Open the WhyPanel expanded on mount — used when the card is the
+   *  "Why this?" detail surface rather than a browsable feed card. */
+  initialWhyOpen?: boolean
+  /**
+   * "card" (default) — self-contained feed card with its own motif poster tile.
+   * "hero" — transparent content column, no poster tile; the parent supplies
+   *          the real poster as a fixed background behind it.
+   */
+  variant?: "card" | "hero"
 }
 
-export default function RecCard({ result, onFeedback }: RecCardProps) {
+export default function RecCard({
+  result,
+  onFeedback,
+  initialWhyOpen = false,
+  variant = "card",
+}: RecCardProps) {
   const [cardState, setCardState] = useState<CardState>("idle")
   const [reaction, setReaction] = useState<Reaction | null>(null)
-  const [whyOpen, setWhyOpen] = useState(false)
+  const [whyOpen, setWhyOpen] = useState(initialWhyOpen)
   const [surveyOpen, setSurveyOpen] = useState(false)
 
   const h = hashId(result.tmdb_id)
@@ -361,18 +382,23 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
   }
 
   const isDone = cardState === "done"
+  const isHero = variant === "hero"
 
   return (
-    <div className={`${styles.rec} ${whyOpen ? styles.recExp : ""} ${isDone ? styles.recDone : ""}`}>
+    <div
+      className={`${styles.rec} ${isHero ? styles.heroCard : ""} ${whyOpen ? styles.recExp : ""} ${isDone ? styles.recDone : ""}`}
+    >
 
       {/* ── Main row ── */}
       <div className={styles.recMain}>
-        <PosterTile
-          title={result.title}
-          palette={palette}
-          motif={motif}
-          size={whyOpen ? "lg" : "md"}
-        />
+        {!isHero && (
+          <PosterTile
+            title={result.title}
+            palette={palette}
+            motif={motif}
+            size={whyOpen ? "lg" : "md"}
+          />
+        )}
 
         <div className={styles.recBody}>
           <div className={styles.recHead}>

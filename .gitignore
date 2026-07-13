@@ -48,3 +48,6 @@ coverage/
 # Claude Code local session data
 .claude/
 .env*.local
+
+# Session Skill
+handoff.md

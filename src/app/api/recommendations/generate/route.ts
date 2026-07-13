@@ -38,6 +38,29 @@ function hashId(id: string): number {
 }
 
 /**
+ * The user's suppression list as a Set of `${media_type}:${tmdb_id}` keys —
+ * the same shape as a Recommendation.id and `${result.type}:${tmdb_id}`.
+ * Removed titles are filtered out of every served page so a title the user
+ * "Removed" is never shown again, even if it's still in the Redis cache.
+ */
+async function getRemovedKeys(userId: string): Promise<Set<string>> {
+  try {
+    const db = createServiceClient();
+    const { data } = await db
+      .from("removed_titles")
+      .select("tmdb_id, media_type")
+      .eq("user_id", userId);
+    return new Set((data ?? []).map((r) => `${r.media_type}:${r.tmdb_id}`));
+  } catch (err) {
+    console.error(
+      "[recommendations/generate] removed-list read failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return new Set();
+  }
+}
+
+/**
  * Adapt engine RecommendationResult → the UI's Recommendation shape
  * (src/types/recommendation.ts). The engine result is the shared contract and
  * carries no display fields; per that type's comment, THIS route adapts the
@@ -80,6 +103,10 @@ async function toUIRecommendations(
       match: Math.max(0, Math.min(1, r.composite_score)),
       reason: r.explanation || "Matched to your fingerprint",
       where: null,
+      // trailer_url is supplied by the trailer-harvesting branch
+      // (fix/session-rec-reliability-trailers) via youtubeTrailerUrl(trailer_key);
+      // omitted here so this branch doesn't collide with that wiring. Absent →
+      // the card's Play button renders disabled.
       is_stretch_pick: r.is_stretch_pick,
       motif: MOTIFS[h % MOTIFS.length],
       palette: PALETTES[h % PALETTES.length],
@@ -103,6 +130,9 @@ export async function GET(req: Request) {
     ? Math.max(0, Number(offsetParam))
     : 0;
   const contentType = url.searchParams.get("type"); // "movies" | "series"
+
+  // Titles the user has "Removed" — filtered out of every page below.
+  const removed = await getRemovedKeys(user.id);
 
   // Try Redis cache — requires knowing the user's current taste_version
   let cachedRecs: RecommendationResult[] | null = null
@@ -129,12 +159,16 @@ export async function GET(req: Request) {
   }
 
   if (cachedRecs && cachedRecs.length > 0) {
-    const filtered =
+    const typeFiltered =
       contentType === "movies"
         ? cachedRecs.filter((r) => r.type === "movie")
         : contentType === "series"
           ? cachedRecs.filter((r) => r.type === "tv")
           : cachedRecs;
+    // Drop removed titles before paginating so pages stay full-sized.
+    const filtered = typeFiltered.filter(
+      (r) => !removed.has(`${r.type}:${r.tmdb_id}`),
+    );
     const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;
@@ -143,12 +177,13 @@ export async function GET(req: Request) {
   }
 
   // Fall back to mocks (DB not yet seeded)
-  const mockFiltered =
+  const mockTypeFiltered =
     contentType === "movies"
       ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "movie")
       : contentType === "series"
         ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "tv")
         : MOCK_RECOMMENDATIONS;
+  const mockFiltered = mockTypeFiltered.filter((r) => !removed.has(r.id));
 
   const { items, nextOffset, hasMore } = pageOf(mockFiltered, offset, DEFAULT_PAGE_SIZE);
 

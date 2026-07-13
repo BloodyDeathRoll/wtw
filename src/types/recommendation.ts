@@ -24,6 +24,9 @@ export interface Recommendation {
   year: number;
   /** Full TMDB poster URL (or null → fall back to motif/palette). */
   poster_url: string | null;
+  /** YouTube watch URL for the trailer (or null/absent → hide the trailer CTA).
+   *  Optional so mock data and cards that don't render trailers still type. */
+  trailer_url?: string | null;
   /** Compact metadata line: "10 ep · S1" or "1h 45m". */
   meta: string;
   /** External aggregate rating, 0–10 scale. */
@@ -42,6 +45,9 @@ export interface Recommendation {
   palette: [string, string];
 }
 
-/** Mirrors the DNA contract's Reaction enum — the four levels the scoring
- *  pipeline already consumes (see reaction weights in the DNA module). */
-export type FeedbackRating = "loved" | "liked" | "mixed" | "disliked";
+/** The three taste reactions the recommendation cards offer. A subset of the
+ *  DNA contract's Reaction enum (which still includes "mixed" for the deep
+ *  survey / historical signals) — the quick cards dropped "mixed" as it
+ *  carries no useful taste signal. "Remove" is a separate suppression action,
+ *  not a rating, so it is not part of this type. */
+export type FeedbackRating = "loved" | "liked" | "disliked";
