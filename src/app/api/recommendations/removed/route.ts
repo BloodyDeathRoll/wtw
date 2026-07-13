@@ -43,12 +43,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Upsert so re-removing the same title is a harmless no-op.
+  // Upsert so re-removing the same title is a harmless no-op. ignoreDuplicates
+  // makes the conflict path DO NOTHING (not DO UPDATE): re-removal needs no
+  // change, and DO UPDATE would require an UPDATE RLS policy this table
+  // deliberately doesn't grant (see 0010_removed_titles.sql).
   const { error } = await supabase
     .from("removed_titles")
     .upsert(
       { user_id: user.id, tmdb_id, media_type, title },
-      { onConflict: "user_id,tmdb_id,media_type" },
+      { onConflict: "user_id,tmdb_id,media_type", ignoreDuplicates: true },
     );
 
   if (error) {

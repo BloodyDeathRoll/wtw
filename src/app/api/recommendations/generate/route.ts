@@ -183,7 +183,13 @@ export async function GET(req: Request) {
       : contentType === "series"
         ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "tv")
         : MOCK_RECOMMENDATIONS;
-  const mockFiltered = mockTypeFiltered.filter((r) => !removed.has(r.id));
+  // `removed` is keyed `${media_type}:${tmdb_id}`. Mock ids are bare slugs with
+  // no `type:` prefix (unlike engine rec ids), and handleRemove persists them as
+  // tmdb_id = the bare id, so reconstruct the same key here — using r.id
+  // directly would never match and the removed mock would reappear.
+  const mockFiltered = mockTypeFiltered.filter(
+    (r) => !removed.has(`${r.type}:${r.id}`),
+  );
 
   const { items, nextOffset, hasMore } = pageOf(mockFiltered, offset, DEFAULT_PAGE_SIZE);
 

@@ -317,26 +317,12 @@ type CardState = "idle" | "rating" | "done"
 interface RecCardProps {
   result: RecommendationResult
   onFeedback?: (action: "watched" | "skipped", reaction?: Reaction) => void
-  /** Open the WhyPanel expanded on mount — used when the card is the
-   *  "Why this?" detail surface rather than a browsable feed card. */
-  initialWhyOpen?: boolean
-  /**
-   * "card" (default) — self-contained feed card with its own motif poster tile.
-   * "hero" — transparent content column, no poster tile; the parent supplies
-   *          the real poster as a fixed background behind it.
-   */
-  variant?: "card" | "hero"
 }
 
-export default function RecCard({
-  result,
-  onFeedback,
-  initialWhyOpen = false,
-  variant = "card",
-}: RecCardProps) {
+export default function RecCard({ result, onFeedback }: RecCardProps) {
   const [cardState, setCardState] = useState<CardState>("idle")
   const [reaction, setReaction] = useState<Reaction | null>(null)
-  const [whyOpen, setWhyOpen] = useState(initialWhyOpen)
+  const [whyOpen, setWhyOpen] = useState(false)
   const [surveyOpen, setSurveyOpen] = useState(false)
 
   const h = hashId(result.tmdb_id)
@@ -382,23 +368,18 @@ export default function RecCard({
   }
 
   const isDone = cardState === "done"
-  const isHero = variant === "hero"
 
   return (
-    <div
-      className={`${styles.rec} ${isHero ? styles.heroCard : ""} ${whyOpen ? styles.recExp : ""} ${isDone ? styles.recDone : ""}`}
-    >
+    <div className={`${styles.rec} ${whyOpen ? styles.recExp : ""} ${isDone ? styles.recDone : ""}`}>
 
       {/* ── Main row ── */}
       <div className={styles.recMain}>
-        {!isHero && (
-          <PosterTile
-            title={result.title}
-            palette={palette}
-            motif={motif}
-            size={whyOpen ? "lg" : "md"}
-          />
-        )}
+        <PosterTile
+          title={result.title}
+          palette={palette}
+          motif={motif}
+          size={whyOpen ? "lg" : "md"}
+        />
 
         <div className={styles.recBody}>
           <div className={styles.recHead}>
