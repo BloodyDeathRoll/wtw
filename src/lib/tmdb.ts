@@ -74,6 +74,41 @@ interface TMDBExternalIds {
   imdb_id: string | null
 }
 
+interface TMDBVideo {
+  key: string
+  site: string          // 'YouTube' | 'Vimeo' | ...
+  type: string          // 'Trailer' | 'Teaser' | 'Clip' | 'Featurette' | ...
+  official: boolean
+  published_at: string  // ISO date
+}
+
+interface TMDBVideos {
+  results: TMDBVideo[]
+}
+
+/**
+ * Pick the best trailer YouTube key from a TMDB videos block.
+ * Preference: official Trailer → any Trailer → official Teaser → any Teaser,
+ * most recently published breaking ties. Clips/Featurettes are ignored.
+ * Returns null when nothing embeddable exists. YouTube only (the UI embeds it).
+ */
+function pickTrailerKey(videos: TMDBVideos | undefined): string | null {
+  const yt = (videos?.results ?? []).filter((v) => v.site === 'YouTube' && v.key)
+  if (yt.length === 0) return null
+  const rank = (v: TMDBVideo): number => {
+    if (v.type === 'Trailer') return v.official ? 0 : 1
+    if (v.type === 'Teaser') return v.official ? 2 : 3
+    return 4 // Clip / Featurette / Behind the Scenes — not a trailer
+  }
+  yt.sort((a, b) => {
+    const r = rank(a) - rank(b)
+    if (r !== 0) return r
+    return (b.published_at ?? '').localeCompare(a.published_at ?? '')
+  })
+  const best = yt[0]
+  return rank(best) <= 3 ? best.key : null
+}
+
 // ─────────────────────────────────────────────
 // Normalised crew shape (matches titles.crew JSONB)
 // ─────────────────────────────────────────────
@@ -139,6 +174,7 @@ export interface TMDBMovieDetail {
   tmdb_vote_count: number
   imdb_id: string | null    // for OMDB lookup
   poster_path: string | null // TMDB relative path, e.g. '/abc.jpg'
+  trailer_key: string | null // YouTube key of the best trailer, or null
   crew: TMDBCrewSnapshot
 }
 
@@ -154,6 +190,7 @@ export interface TMDBTVDetail {
   tmdb_vote_count: number
   imdb_id: string | null
   poster_path: string | null // TMDB relative path, e.g. '/abc.jpg'
+  trailer_key: string | null // YouTube key of the best trailer, or null
   crew: TMDBCrewSnapshot
 }
 
@@ -167,6 +204,22 @@ export function tmdbPosterUrl(
   size: 'w342' | 'w500' | 'w780' | 'original' = 'w500',
 ): string | null {
   return poster_path ? `https://image.tmdb.org/t/p/${size}${poster_path}` : null
+}
+
+/**
+ * Build a YouTube URL from a stored trailer key. Single source of truth for the
+ * trailer host — callers pass `titles.trailer_key` and get a ready-to-use URL
+ * (or null to hide the trailer CTA). 'embed' for an inline iframe/player,
+ * 'watch' for opening YouTube directly.
+ */
+export function youtubeTrailerUrl(
+  trailer_key: string | null | undefined,
+  mode: 'watch' | 'embed' = 'watch',
+): string | null {
+  if (!trailer_key) return null
+  return mode === 'embed'
+    ? `https://www.youtube.com/embed/${trailer_key}`
+    : `https://www.youtube.com/watch?v=${trailer_key}`
 }
 
 export interface TMDBDiscoverItem {
@@ -203,7 +256,8 @@ export async function getMovie(tmdb_id: string): Promise<TMDBMovieDetail | null>
     poster_path: string | null
     credits: TMDBCredits
     external_ids: TMDBExternalIds
-  }>(`/movie/${tmdb_id}`, { append_to_response: 'credits,external_ids' })
+    videos: TMDBVideos
+  }>(`/movie/${tmdb_id}`, { append_to_response: 'credits,external_ids,videos' })
 
   if (!raw) return null
 
@@ -219,6 +273,7 @@ export async function getMovie(tmdb_id: string): Promise<TMDBMovieDetail | null>
     tmdb_vote_count: raw.vote_count,
     imdb_id: raw.external_ids?.imdb_id ?? null,
     poster_path: raw.poster_path ?? null,
+    trailer_key: pickTrailerKey(raw.videos),
     crew: normaliseCredits(raw.credits),
   }
 }
@@ -240,7 +295,8 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     created_by: { id: number; name: string }[]
     credits: TMDBCredits
     external_ids: TMDBExternalIds
-  }>(`/tv/${tmdb_id}`, { append_to_response: 'credits,external_ids' })
+    videos: TMDBVideos
+  }>(`/tv/${tmdb_id}`, { append_to_response: 'credits,external_ids,videos' })
 
   if (!raw) return null
 
@@ -260,6 +316,7 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     tmdb_vote_count: raw.vote_count,
     imdb_id: raw.external_ids?.imdb_id ?? null,
     poster_path: raw.poster_path ?? null,
+    trailer_key: pickTrailerKey(raw.videos),
     crew: normaliseCredits(raw.credits, raw.created_by),
   }
 }

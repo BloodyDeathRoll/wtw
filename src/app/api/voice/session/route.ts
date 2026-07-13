@@ -90,28 +90,44 @@ export async function POST(req: Request) {
   // Gemini Live duration.
   const expireTime = new Date(Date.now() + 2 * 60 * 1000).toISOString();
 
-  const token = await ai.authTokens.create({
-    config: {
-      uses: 1,
-      expireTime,
-      liveConnectConstraints: {
-        model: VOICE_MODEL,
-        config: {
-          responseModalities: [Modality.AUDIO],
-          systemInstruction: SYSTEM_PROMPT,
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: voice },
+  // The Google call is the one part that can fail at runtime (bad/rotated key,
+  // v1alpha token API hiccup, preview model unavailable, quota). Guard it so a
+  // Google-side failure returns a clean 502 the client can degrade on, rather
+  // than a raw unhandled 500 — and log the real cause so it's diagnosable.
+  let token: { name?: string };
+  try {
+    token = await ai.authTokens.create({
+      config: {
+        uses: 1,
+        expireTime,
+        liveConnectConstraints: {
+          model: VOICE_MODEL,
+          config: {
+            responseModalities: [Modality.AUDIO],
+            systemInstruction: SYSTEM_PROMPT,
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voice },
+              },
             },
           },
         },
+        // Empty array means: lock exactly the fields above; client cannot change them.
+        lockAdditionalFields: [],
       },
-      // Empty array means: lock exactly the fields above; client cannot change them.
-      lockAdditionalFields: [],
-    },
-  });
+    });
+  } catch (err) {
+    console.error(
+      "[voice/session] authTokens.create failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return NextResponse.json(
+      { error: "voice token creation failed" },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({
     token: token.name,

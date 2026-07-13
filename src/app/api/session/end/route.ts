@@ -110,6 +110,33 @@ export async function POST(req: NextRequest) {
   })
   if (folded > 0) console.log(`[session/end] folded ${folded} card ratings into signals`)
 
+  // ── 3c. No-op fast path (the "Find more" slowness fix) ───────
+  // "Find more" POSTs here with skip_transcript. When the user rated nothing
+  // and said nothing new, there is genuinely nothing to merge — yet the old
+  // code still ran updateSchemaFromSession (which unconditionally bumps
+  // taste_version) and a full cold recommendation pipeline (3 serial LLM
+  // round-trips), only to hand back the same ~20 titles. The version bump
+  // busted both the rec cache AND the embedding cache (both keyed by version),
+  // guaranteeing that cold run every single click.
+  //
+  // If nothing material changed, skip the update + regeneration entirely and
+  // return immediately. The existing cache (at the unchanged taste_version) is
+  // already warm, so GET keeps serving it — turning a ~10s click into a no-op.
+  const hasMaterialChange =
+    summary.new_signals.length > 0 ||
+    Object.keys(summary.dimension_updates).length > 0 ||
+    summary.open_questions_resolved.length > 0 ||
+    summary.new_open_questions.length > 0
+  if (!hasMaterialChange) {
+    return NextResponse.json({
+      ok: true,
+      taste_version: dna.metadata.taste_version,
+      signal_count: 0,
+      rec_count: 0,
+      unchanged: true,
+    })
+  }
+
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────
   // This route read/bootstrapped users.dna DIRECTLY (bypassing saveDNA), and
   // the feedback route also writes directly — so bust the 60s loadDNA cache

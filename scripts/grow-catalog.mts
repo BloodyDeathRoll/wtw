@@ -30,10 +30,11 @@ import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrich
 const key = (type: string, tmdb_id: string) => `${type}:${tmdb_id}`
 
 // ── Tunables (env-overridable; Dream's run.sh sets these) ───────────────────
-const SEED_COUNT     = intEnv('SEED_COUNT', 40)        // new titles to add per run
-const TARGET_CATALOG = intEnv('TARGET_CATALOG', 2000)  // stop growing at this size
-const ENRICH_MAX     = intEnv('ENRICH_MAX', 200)       // max titles to enrich per run
-const DISCOVER_CAP   = intEnv('DISCOVER_CAP', 30)      // max TMDB discover pages to scan
+const SEED_COUNT       = intEnv('SEED_COUNT', 120)       // new titles to add per run
+const TARGET_CATALOG   = intEnv('TARGET_CATALOG', 15000) // stop growing at this size
+const ENRICH_MAX       = intEnv('ENRICH_MAX', 300)       // max titles to enrich per run
+const DISCOVER_CAP     = intEnv('DISCOVER_CAP', 40)      // max TMDB discover pages to scan
+const TRAILER_BACKFILL = intEnv('TRAILER_BACKFILL', 150) // trailer_key NULL rows to re-check per run
 
 function intEnv(name: string, def: number): number {
   const v = process.env[name]
@@ -143,6 +144,46 @@ async function main() {
     await sleep(150)
   }
 
+  // ── 3b. Backfill trailers for a ROTATING slice of the NULL backlog ────────
+  // New titles capture trailer_key at seed time (fetchAndCacheTitle). This heals
+  // the pre-trailer backlog + catches trailers that appear after release. The
+  // window rotates by catalog size each night so successive runs sweep the whole
+  // NULL set over time rather than re-checking the same first N forever. Titles
+  // with genuinely no trailer stay NULL and get re-checked on a later sweep —
+  // cheap TMDB calls (append_to_response=videos rides the existing detail fetch).
+  let trailersBackfilled = 0
+  if (TRAILER_BACKFILL > 0) {
+    const { count: nullCount } = await db
+      .from('titles')
+      .select('tmdb_id', { count: 'exact', head: true })
+      .is('trailer_key', null)
+    if (nullCount && nullCount > 0) {
+      const windowStart = startCount % nullCount
+      const { data: rows } = await db
+        .from('titles')
+        .select('tmdb_id, type')
+        .is('trailer_key', null)
+        .order('tmdb_id', { ascending: true })
+        .range(windowStart, windowStart + TRAILER_BACKFILL - 1)
+      for (const row of rows ?? []) {
+        try {
+          const detail =
+            row.type === 'movie'
+              ? await getMovie(row.tmdb_id as string)
+              : await getTV(row.tmdb_id as string)
+          if (detail?.trailer_key) {
+            await db.from('titles').update({ trailer_key: detail.trailer_key })
+              .eq('tmdb_id', row.tmdb_id).eq('type', row.type) // composite key (0008)
+            trailersBackfilled++
+          }
+        } catch {
+          /* best-effort */
+        }
+        await sleep(260) // TMDB courtesy (40 req / 10s)
+      }
+    }
+  }
+
   // ── 4. Final counts + JSON summary (LAST line) ────────────────────────────
   const [{ count: total }, { count: enrichedTotal }] = await Promise.all([
     db.from('titles').select('tmdb_id', { count: 'exact', head: true }),
@@ -156,12 +197,13 @@ async function main() {
     enriched,
     enrich_failures: enrichFailures,
     posters_backfilled: postersBackfilled,
+    trailers_backfilled: trailersBackfilled,
     total_titles: total ?? null,
     enriched_total: enrichedTotal ?? null,
     target: TARGET_CATALOG,
     growth_complete: (total ?? 0) >= TARGET_CATALOG,
   }
-  console.log('[grow] done:', `seeded=${seeded} enriched=${enriched} total=${total}/${TARGET_CATALOG}`)
+  console.log('[grow] done:', `seeded=${seeded} enriched=${enriched} trailers=${trailersBackfilled} total=${total}/${TARGET_CATALOG}`)
   console.log(JSON.stringify(summary))
 }
 

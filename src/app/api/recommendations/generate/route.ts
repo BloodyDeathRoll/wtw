@@ -12,7 +12,7 @@ import {
 } from "@/modules/session/recommendations/mock-data";
 import { generateRecommendations } from "@/modules/engine";
 import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
-import { tmdbPosterUrl } from "@/lib/tmdb";
+import { tmdbPosterUrl, youtubeTrailerUrl } from "@/lib/tmdb";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 import type { Recommendation, MotifKind } from "@/types/recommendation";
 
@@ -51,7 +51,7 @@ async function toUIRecommendations(
   const db = createServiceClient();
   const { data } = await db
     .from("titles")
-    .select("tmdb_id, type, poster_path, release_year, runtime_minutes, tmdb_rating")
+    .select("tmdb_id, type, poster_path, trailer_key, release_year, runtime_minutes, tmdb_rating")
     .in("tmdb_id", recs.map((r) => r.tmdb_id));
   const byKey = new Map(
     (data ?? []).map((t) => [`${t.type}:${t.tmdb_id}`, t]),
@@ -75,6 +75,7 @@ async function toUIRecommendations(
       type: r.type,
       year: (t?.release_year as number | null) ?? 0,
       poster_url: tmdbPosterUrl(t?.poster_path as string | null | undefined),
+      trailer_url: youtubeTrailerUrl(t?.trailer_key as string | null | undefined),
       meta,
       rating: (t?.tmdb_rating as number | null) ?? 0,
       match: Math.max(0, Math.min(1, r.composite_score)),
