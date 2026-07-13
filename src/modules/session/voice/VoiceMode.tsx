@@ -26,6 +26,9 @@ import styles from "./VoiceMode.module.css";
 interface VoiceModeProps {
   onExit: () => void;
   onBack: () => void;
+  /** Recovery from a failed/closed voice session: drop the user into the text
+   * chat log (not the home screen), where they can keep going by typing. */
+  onBackToChat: () => void;
   onRecommend: () => void;
   onTurnComplete: (userText: string, assistantText: string) => void;
   /** Threshold-met flag computed by the parent (modality-agnostic) */
@@ -45,6 +48,7 @@ type Status = "connecting" | "live" | "error" | "closed";
 export default function VoiceMode({
   onExit,
   onBack,
+  onBackToChat,
   onRecommend,
   onTurnComplete,
   recommendVisible,
@@ -385,7 +389,23 @@ export default function VoiceMode({
           <button
             type="button"
             className={styles.errorBtn}
-            onClick={onExit}
+            onClick={onBackToChat}
+          >
+            Back to chat
+          </button>
+        </div>
+      )}
+
+      {status === "closed" && (
+        // The Live socket ended cleanly (Gemini closed the session without an
+        // error event). Without this branch the user would be left with only
+        // the exit-to-home button — offer the same chat-log recovery as error.
+        <div className={styles.errorOverlay}>
+          <div className={styles.errorText}>Voice session ended.</div>
+          <button
+            type="button"
+            className={styles.errorBtn}
+            onClick={onBackToChat}
           >
             Back to chat
           </button>

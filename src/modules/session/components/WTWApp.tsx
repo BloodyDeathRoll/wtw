@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
 import { createClient } from "@/lib/supabase/client";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import AppShell from "./AppShell";
 import RecommendPill from "./RecommendPill";
 import RecommendationsView from "../recommendations/RecommendationsView";
@@ -705,10 +706,10 @@ export default function WTWApp({
   useEffect(() => {
     warmPromiseRef.current = (async () => {
       try {
-        await fetch("/api/dna/bootstrap", { method: "POST" });
-      } catch {} // idempotent; a failure just means the old cold path
+        await fetchWithTimeout("/api/dna/bootstrap", { method: "POST" });
+      } catch {} // idempotent; a failure/timeout just means the old cold path
       try {
-        await fetch("/api/recommendations/generate", { method: "POST" });
+        await fetchWithTimeout("/api/recommendations/generate", { method: "POST" });
       } catch {}
       warmDoneRef.current = true;
     })();
@@ -769,7 +770,7 @@ export default function WTWApp({
   // "Recommend" entry and the in-list "Find More" refresh.
   async function endSessionAndGenerate(opts?: { skipTranscript?: boolean }) {
     try {
-      const res = await fetch("/api/session/end", {
+      const res = await fetchWithTimeout("/api/session/end", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -936,6 +937,14 @@ export default function WTWApp({
             setVoiceOpen(false);
             setVoicePrimer(null);
             backToOnboard();
+          }}
+          onBackToChat={() => {
+            // Voice failed/closed → recover into the text chat log so the user
+            // can keep going by typing, instead of being dumped on the home
+            // screen with no obvious way back into the conversation.
+            setVoiceOpen(false);
+            setVoicePrimer(null);
+            setStage("conversation");
           }}
           onTurnComplete={handleVoiceTurn}
           onRecommend={handleRecommend}

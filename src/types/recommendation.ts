@@ -24,6 +24,9 @@ export interface Recommendation {
   year: number;
   /** Full TMDB poster URL (or null → fall back to motif/palette). */
   poster_url: string | null;
+  /** YouTube watch URL for the trailer (or null/absent → hide the trailer CTA).
+   *  Optional so mock data and cards that don't render trailers still type. */
+  trailer_url?: string | null;
   /** Compact metadata line: "10 ep · S1" or "1h 45m". */
   meta: string;
   /** External aggregate rating, 0–10 scale. */

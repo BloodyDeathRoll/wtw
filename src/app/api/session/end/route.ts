@@ -24,6 +24,7 @@ import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
+import { hasMaterialChange } from '@/modules/session/session-change'
 import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -109,6 +110,28 @@ export async function POST(req: NextRequest) {
     return 0
   })
   if (folded > 0) console.log(`[session/end] folded ${folded} card ratings into signals`)
+
+  // ── 3c. No-op fast path (the "Find more" slowness fix) ───────
+  // "Find more" POSTs here with skip_transcript. When the user rated nothing
+  // and said nothing new, there is genuinely nothing to merge — yet the old
+  // code still ran updateSchemaFromSession (which unconditionally bumps
+  // taste_version) and a full cold recommendation pipeline (3 serial LLM
+  // round-trips), only to hand back the same ~20 titles. The version bump
+  // busted both the rec cache AND the embedding cache (both keyed by version),
+  // guaranteeing that cold run every single click.
+  //
+  // If nothing material changed, skip the update + regeneration entirely and
+  // return immediately. The existing cache (at the unchanged taste_version) is
+  // already warm, so GET keeps serving it — turning a ~10s click into a no-op.
+  if (!hasMaterialChange(summary)) {
+    return NextResponse.json({
+      ok: true,
+      taste_version: dna.metadata.taste_version,
+      signal_count: 0,
+      rec_count: 0,
+      unchanged: true,
+    })
+  }
 
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────
   // This route read/bootstrapped users.dna DIRECTLY (bypassing saveDNA), and
