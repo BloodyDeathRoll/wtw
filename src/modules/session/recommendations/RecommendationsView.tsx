@@ -618,6 +618,32 @@ function FullSwiper({
     }, 340);
   }
 
+  // Chevron nav: run the same cross-slide the drag uses, driven by code. Render
+  // the pair at rest first (dragX 0), then flip the transition on and animate to
+  // the snap target on the next frame so the browser has a start state to move
+  // from. `direction` is +1 (next) or -1 (prev).
+  function slideTo(direction: 1 | -1) {
+    if (settling || dragX !== null) return;
+    if (direction === 1 ? !nextRec : !prevRec) return;
+    const W = stageRef.current?.clientWidth ?? 0;
+    widthRef.current = W;
+    setDir(direction);
+    setDragX(0);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        setSettling(true);
+        setDragX(direction === 1 ? -W : W);
+        window.setTimeout(() => {
+          setSettling(false);
+          setDragX(null);
+          setDir(0);
+          dragCommit.current = true;
+          setIndex((i) => Math.min(Math.max(i + direction, 0), recs.length - 1));
+        }, 340);
+      }),
+    );
+  }
+
   if (!rec) {
     return (
       <div className={styles.fullEmpty}>
@@ -687,6 +713,32 @@ function FullSwiper({
           }
           {...shared}
         />
+
+        {/* Edge chevrons — animate to the neighbour with the same slide. */}
+        {prevRec && (
+          <button
+            type="button"
+            className={`${styles.fullNav} ${styles.fullNavLeft}`}
+            onClick={() => slideTo(-1)}
+            aria-label="Previous recommendation"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+        {nextRec && (
+          <button
+            type="button"
+            className={`${styles.fullNav} ${styles.fullNavRight}`}
+            onClick={() => slideTo(1)}
+            aria-label="Next recommendation"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -716,12 +768,13 @@ function FullCard({
     <div className={`${styles.fullCard} ${className}`} style={style}>
       <PosterTile rec={rec} size="lg" />
       <div className={styles.fullGradient} />
-      {/* Circular match badge — same look as the detail-view hero. */}
-      <div className={`${styles.heroMatch} ${styles.fullMatch}`}>
-        <span className={styles.heroMatchPct}>{Math.round(rec.match * 100)}</span>
-        <span className={styles.heroMatchLabel}>match</span>
-      </div>
       <div className={styles.fullContent}>
+        {/* Circular match badge — same look as the detail-view hero — sits
+            just above the title, left-aligned. */}
+        <div className={styles.heroMatch}>
+          <span className={styles.heroMatchPct}>{Math.round(rec.match * 100)}</span>
+          <span className={styles.heroMatchLabel}>match</span>
+        </div>
         <h2 className={styles.fullTitle}>{rec.title}</h2>
         <div className={styles.cardMeta}>
           <span>{rec.year}</span>

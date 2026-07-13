@@ -487,13 +487,34 @@
   padding: 16px 18px 20px;
   color: var(--wtw-fg);
 }
-/* Circular match badge, pinned to the card's top-right over the poster —
-   same 84px circle as the "Why this?" detail hero (.heroMatch). */
-.fullMatch {
+/* Edge nav chevrons — vertically centred over the card, above the content. */
+.fullNav {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 4;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.42);
+  color: var(--wtw-fg);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: background 0.15s ease;
+}
+.fullNav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+.fullNavLeft {
+  left: 10px;
+}
+.fullNavRight {
+  right: 10px;
 }
 /* "Why this pick?" pill in the full view sits over the poster, so give it a
    darker, blurred backing than the compact card's translucent pill. */
