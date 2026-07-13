@@ -144,43 +144,48 @@ async function main() {
     await sleep(150)
   }
 
-  // ── 3b. Backfill trailers for a ROTATING slice of the NULL backlog ────────
-  // New titles capture trailer_key at seed time (fetchAndCacheTitle). This heals
-  // the pre-trailer backlog + catches trailers that appear after release. The
-  // window rotates by catalog size each night so successive runs sweep the whole
-  // NULL set over time rather than re-checking the same first N forever. Titles
-  // with genuinely no trailer stay NULL and get re-checked on a later sweep —
-  // cheap TMDB calls (append_to_response=videos rides the existing detail fetch).
+  // ── 3b. Backfill trailers for the least-recently-checked slice of the NULL
+  // backlog. New titles capture trailer_key at seed time (fetchAndCacheTitle);
+  // this heals the pre-trailer backlog and catches trailers published after a
+  // title's release. Ordering by last_trailer_check (NULLS FIRST = never
+  // checked) is a fair round-robin that keeps sweeping even after catalog growth
+  // stops — every NULL row is eventually re-checked, oldest first. We stamp
+  // last_trailer_check on every row we successfully look up (trailer found or
+  // not) so the cursor always advances; titles with genuinely no trailer rotate
+  // to the back instead of being re-fetched every night. Cheap TMDB calls —
+  // append_to_response=videos rides the existing detail fetch. Requires
+  // migration 0012 (last_trailer_check); without it the ordered query returns
+  // no rows and this step is a harmless no-op.
   let trailersBackfilled = 0
   if (TRAILER_BACKFILL > 0) {
-    const { count: nullCount } = await db
+    const { data: rows } = await db
       .from('titles')
-      .select('tmdb_id', { count: 'exact', head: true })
+      .select('tmdb_id, type')
       .is('trailer_key', null)
-    if (nullCount && nullCount > 0) {
-      const windowStart = startCount % nullCount
-      const { data: rows } = await db
-        .from('titles')
-        .select('tmdb_id, type')
-        .is('trailer_key', null)
-        .order('tmdb_id', { ascending: true })
-        .range(windowStart, windowStart + TRAILER_BACKFILL - 1)
-      for (const row of rows ?? []) {
-        try {
-          const detail =
-            row.type === 'movie'
-              ? await getMovie(row.tmdb_id as string)
-              : await getTV(row.tmdb_id as string)
-          if (detail?.trailer_key) {
-            await db.from('titles').update({ trailer_key: detail.trailer_key })
-              .eq('tmdb_id', row.tmdb_id).eq('type', row.type) // composite key (0008)
-            trailersBackfilled++
-          }
-        } catch {
-          /* best-effort */
+      .order('last_trailer_check', { ascending: true, nullsFirst: true })
+      .limit(TRAILER_BACKFILL)
+    const checkedAt = new Date().toISOString()
+    for (const row of rows ?? []) {
+      try {
+        const detail =
+          row.type === 'movie'
+            ? await getMovie(row.tmdb_id as string)
+            : await getTV(row.tmdb_id as string)
+        // Stamp the check (plus the key if one was found) so the rotation cursor
+        // advances. A thrown fetch leaves the row unstamped → retried next run.
+        const patch: { last_trailer_check: string; trailer_key?: string } = {
+          last_trailer_check: checkedAt,
         }
-        await sleep(260) // TMDB courtesy (40 req / 10s)
+        if (detail?.trailer_key) {
+          patch.trailer_key = detail.trailer_key
+          trailersBackfilled++
+        }
+        await db.from('titles').update(patch)
+          .eq('tmdb_id', row.tmdb_id).eq('type', row.type) // composite key (0008)
+      } catch {
+        /* best-effort — transient TMDB/DB error; row stays unstamped for retry */
       }
+      await sleep(260) // TMDB courtesy (40 req / 10s)
     }
   }
 
