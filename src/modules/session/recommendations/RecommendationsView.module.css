@@ -289,7 +289,7 @@
   margin-top: 10px;
   min-height: 34px;
 }
-/* Four one-tap reactions (loved / liked / mixed / pass) — same enum the
+/* One-tap reactions (loved / liked / disliked / pass) — same enum the
    scoring pipeline consumes. Emoji on top, tiny label under. */
 .reactionBtn {
   flex: 1;

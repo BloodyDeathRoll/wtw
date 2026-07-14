@@ -11,7 +11,7 @@
  *   tmdb_id:         string
  *   action:          'watched' | 'skipped' | 'regret' | 'glad_watched'
  *   is_stretch_pick: boolean         (default false)
- *   reaction?:       'loved' | 'liked' | 'mixed' | 'disliked'  // when action = 'watched'
+ *   reaction?:       'loved' | 'liked' | 'disliked'  // when action = 'watched'
  * }
  *
  * What each action does:
@@ -167,7 +167,8 @@ export async function POST(req: NextRequest) {
   // ── Log to recommendation_feedback (best-effort) ──────────
   // The raw reaction stream: welcome.ts counts these rows for the maturity
   // heuristic and the DNA Writer's documented inputs include this table.
-  // Migration 0009 widened the rating constraint to the full Reaction enum.
+  // Migration 0013 narrowed the rating constraint to loved / liked / disliked
+  // (the "mixed" level was dropped; see the Reaction enum in src/types/dna.ts).
   if (reaction) {
     await serviceClient.from('recommendation_feedback').insert({
       user_id: user.id,

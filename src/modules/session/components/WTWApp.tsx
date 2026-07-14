@@ -19,6 +19,7 @@ import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import AppShell from "./AppShell";
 import RecommendPill from "./RecommendPill";
 import RecommendationsView from "../recommendations/RecommendationsView";
+import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
 import { FingerprintLoader } from "./FingerprintLoader";
 import type { AppUser, Conversation, Welcome } from "../types";
@@ -147,6 +148,7 @@ function TopBar({
   onBack,
   onOpenChat,
   onFastLearning,
+  onRatings,
   user,
   onSignOut,
   contentType,
@@ -159,6 +161,7 @@ function TopBar({
   onBack: () => void;
   onOpenChat: () => void;
   onFastLearning: () => void;
+  onRatings: () => void;
   user: AppUser;
   onSignOut: () => void;
   contentType: ContentType;
@@ -361,6 +364,18 @@ function TopBar({
                 }}
               >
                 <span>Fast learning</span>
+                <span className={styles.userMenuTrail}>{I.chevRight}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.userMenuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onRatings();
+                }}
+              >
+                <span>Your ratings</span>
                 <span className={styles.userMenuTrail}>{I.chevRight}</span>
               </button>
               <button
@@ -593,7 +608,8 @@ type Stage =
   | "welcome"
   | "conversation"
   | "recommendations"
-  | "learning";
+  | "learning"
+  | "ratings";
 
 function InputBar({
   value,
@@ -829,6 +845,11 @@ export default function WTWApp({
     setStage("learning");
   }
 
+  function handleRatings() {
+    setVoiceOpen(false);
+    setStage("ratings");
+  }
+
   const assistantTurns = messages.filter((m) => m.role === "assistant").length;
   // Mature users see the rec pill from the start (the server-side signals
   // count says they have enough fingerprint to act on). Cold users still
@@ -969,6 +990,10 @@ export default function WTWApp({
             mode="learning"
           />
         </div>
+      ) : stage === "ratings" ? (
+        <div className={styles.shell}>
+          <RatingsView onBack={() => setStage("onboard")} />
+        </div>
       ) : (
         <div className={styles.shell}>
           <TopBar
@@ -977,6 +1002,7 @@ export default function WTWApp({
             onBack={backToOnboard}
             onOpenChat={() => setStage("conversation")}
             onFastLearning={handleFastLearning}
+            onRatings={handleRatings}
             user={user}
             onSignOut={signOut}
             contentType={contentType}

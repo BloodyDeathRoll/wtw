@@ -9,14 +9,12 @@ type TitleMeta = {
 const PACING_DELTA: Record<Reaction, number> = {
   loved:    +0.04,
   liked:    +0.02,
-  mixed:    -0.01,
   disliked: -0.02,
 }
 
 const TONE_DELTA: Record<Reaction, number> = {
   loved:    +0.03,
   liked:    +0.015,
-  mixed:    -0.005,
   disliked: -0.015,
 }
 

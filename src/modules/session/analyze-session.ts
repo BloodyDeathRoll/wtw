@@ -42,7 +42,7 @@ const extractionSchema = z.object({
     z.object({
       title: z.string().describe('The film or show title as the user referred to it'),
       media_type: z.enum(['movie', 'tv']),
-      reaction: z.enum(['loved', 'liked', 'mixed', 'disliked']),
+      reaction: z.enum(['loved', 'liked', 'disliked']),
       reason: z.string().describe('One short phrase: why they felt that way'),
       quick_rating: z.number().min(1).max(5).nullable(),
       dimensions_reinforced: z.array(z.string()),
@@ -56,7 +56,7 @@ const extractionSchema = z.object({
 
 const SYSTEM_PROMPT = `You extract structured taste signals from a conversation between a user and a film/TV recommendation assistant.
 
-Return ONLY titles the USER expressed a real reaction to (loved / liked / mixed / disliked). Do not invent titles, and do not include titles the assistant merely suggested unless the user reacted to them.
+Return ONLY titles the USER expressed a real reaction to (loved / liked / disliked). Map anything lukewarm or ambivalent to "disliked". Do not invent titles, and do not include titles the assistant merely suggested unless the user reacted to them.
 
 For each title, judge which narrative dimensions it reinforced or contradicted, choosing ONLY from this exact list:
 moral_ambiguity, narrative_complexity, emotional_demand, originality_weight, humor_style, protagonist_type, ensemble_vs_solo
