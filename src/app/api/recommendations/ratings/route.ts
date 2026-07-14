@@ -105,16 +105,22 @@ export async function GET() {
     ...dedupedFeedback.map((r) => r.tmdb_id),
     ...(removedRows ?? []).map((r) => r.tmdb_id),
   ]
-  const posterByTmdbId = new Map<string, string | null>()
+  // titles is uniquely keyed on (tmdb_id, type) — a movie and a TV show can
+  // share a numeric tmdb_id (migration 0008) — so key posters by the composite
+  // to avoid attaching the wrong artwork. Legacy bare ids (media_type null) are
+  // mock ids absent from titles, so they resolve to no poster.
+  const posterByKey = new Map<string, string | null>()
   if (tmdbIds.length > 0) {
     const { data: titleRows } = await supabase
       .from('titles')
-      .select('tmdb_id, poster_path')
+      .select('tmdb_id, type, poster_path')
       .in('tmdb_id', [...new Set(tmdbIds)])
     for (const t of titleRows ?? []) {
-      posterByTmdbId.set(t.tmdb_id as string, tmdbPosterUrl(t.poster_path as string | null))
+      posterByKey.set(`${t.tmdb_id}:${t.type}`, tmdbPosterUrl(t.poster_path as string | null))
     }
   }
+  const posterFor = (tmdb_id: string, media_type: MediaType | null): string | null =>
+    media_type ? posterByKey.get(`${tmdb_id}:${media_type}`) ?? null : null
 
   const items: RatingItem[] = dedupedFeedback.map((r) => ({
     id: r.key,
@@ -123,7 +129,7 @@ export async function GET() {
     created_at: r.created_at,
     tmdb_id: r.tmdb_id,
     media_type: r.media_type,
-    poster_url: posterByTmdbId.get(r.tmdb_id) ?? null,
+    poster_url: posterFor(r.tmdb_id, r.media_type),
   }))
 
   const removed: RemovedItem[] = (removedRows ?? []).map((r) => ({
@@ -131,7 +137,7 @@ export async function GET() {
     tmdb_id: r.tmdb_id,
     media_type: r.media_type as MediaType,
     removed_at: r.removed_at,
-    poster_url: posterByTmdbId.get(r.tmdb_id) ?? null,
+    poster_url: posterFor(r.tmdb_id, r.media_type as MediaType),
   }))
 
   const summary: RatingsSummary = { counts, items, removed }
