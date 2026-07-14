@@ -40,12 +40,31 @@ export class MicCapture {
   }
 
   async start(): Promise<void> {
+    // On phones, the browser's voice-processing constraints (echoCancellation
+    // et al.) put the OS audio session into "communication" mode, which routes
+    // playback to the *earpiece* on the low in-call volume stream — the user
+    // has to hold the phone to their ear and it's still too quiet. Dropping
+    // them keeps the session in normal media playback (loudspeaker + media
+    // volume), i.e. speakerphone. We don't lose echo protection: VoiceMode
+    // already gates mic audio while the AI is speaking (`isPlaying()`), so
+    // Gemini never hears the playback bleed regardless of browser AEC.
+    // Desktop keeps AEC — no earpiece route there, and the constraint is cheap.
+    const isMobile =
+      typeof navigator !== "undefined" &&
+      (navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent));
+
     this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
+      audio: isMobile
+        ? {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          }
+        : {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
     });
 
     // The browser's mic sample rate is usually 44.1k or 48k; we'll resample
