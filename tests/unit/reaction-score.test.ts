@@ -39,9 +39,8 @@ describe('lineageBoost', () => {
 })
 
 describe('REACTION_SCORE', () => {
-  it('orders reactions loved > liked > mixed > disliked', () => {
+  it('orders reactions loved > liked > disliked', () => {
     expect(REACTION_SCORE.loved).toBeGreaterThan(REACTION_SCORE.liked)
-    expect(REACTION_SCORE.liked).toBeGreaterThan(REACTION_SCORE.mixed)
-    expect(REACTION_SCORE.mixed).toBeGreaterThan(REACTION_SCORE.disliked)
+    expect(REACTION_SCORE.liked).toBeGreaterThan(REACTION_SCORE.disliked)
   })
 })

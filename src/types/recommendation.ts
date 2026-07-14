@@ -45,9 +45,7 @@ export interface Recommendation {
   palette: [string, string];
 }
 
-/** The three taste reactions the recommendation cards offer. A subset of the
- *  DNA contract's Reaction enum (which still includes "mixed" for the deep
- *  survey / historical signals) — the quick cards dropped "mixed" as it
- *  carries no useful taste signal. "Remove" is a separate suppression action,
+/** The three taste reactions the recommendation cards offer — identical to the
+ *  DNA contract's Reaction enum. "Remove" is a separate suppression action,
  *  not a rating, so it is not part of this type. */
 export type FeedbackRating = "loved" | "liked" | "disliked";

@@ -118,7 +118,7 @@ export interface ContextualLogic {
 // SIGNALS
 // ─────────────────────────────────────────────
 
-export type Reaction = 'loved' | 'liked' | 'mixed' | 'disliked'
+export type Reaction = 'loved' | 'liked' | 'disliked'
 export type RegretSignal = 'glad_watched' | 'neutral' | 'regret'
 export type SignalSource = 'onboarding' | `session_${number}` | 'recommendation_accepted' | 'manual'
 export type SignalFlag = 'reason_needed' | 'rewatch_candidate' | 'contradicts_profile'

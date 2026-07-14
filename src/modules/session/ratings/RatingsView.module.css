@@ -1,0 +1,276 @@
+.view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Sub-header (back / title) — mirrors RecommendationsView ─── */
+.header {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+.headerBtn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--wtw-fg);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.headerBtn:first-child {
+  justify-self: start;
+}
+.headerBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.headerTitle {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wtw-fg);
+  letter-spacing: -0.005em;
+}
+
+/* ─── Reviewed total (aggregate of all four buckets) ─── */
+.reviewed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 16px 14px 18px;
+  flex-shrink: 0;
+}
+.reviewedNum {
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--wtw-fg);
+  letter-spacing: -0.03em;
+}
+.reviewedLabel {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--wtw-fg-muted);
+}
+
+/* ─── Segmented tabs (Loved / Liked / Disliked / Removed) ───
+   2×2 grid of larger stat tiles, each with its reaction icon. */
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 4px 14px 12px;
+  flex-shrink: 0;
+}
+.tab {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 14px 6px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  color: var(--wtw-fg-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.tabActive {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--wtw-fg);
+}
+/* Random bucket poster, filling the tile behind the content at 20% opacity. */
+.tabBg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.2;
+  pointer-events: none;
+}
+.tabTop {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tabLabel {
+  position: relative;
+  z-index: 1;
+}
+.tabIcon {
+  display: inline-flex;
+}
+.tabCount {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--wtw-fg);
+}
+.tabLabel {
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+}
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 16px 28px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.note,
+.empty {
+  color: var(--wtw-fg-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 32px 8px;
+  line-height: 1.5;
+}
+
+/* ─── Per-title list ─── */
+.list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+/* Whole title line is the click target (toggles the editor). */
+.rowMain {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.rowMain:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.rowIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.rowTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--wtw-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editBtn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--wtw-fg-muted);
+  transition: color 0.15s ease;
+}
+.rowMain:hover .editBtn {
+  color: var(--wtw-fg);
+}
+
+/* ─── Inline editor (the "reloaded" card) ─── */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 12px 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.editorHint {
+  font-size: 12px;
+  color: var(--wtw-fg-muted);
+  padding-top: 9px;
+}
+.editorPicks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.pick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--wtw-fg);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.pick:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+.pick:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.pickCurrent {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.restoreBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: rgba(var(--wtw-rgb), 0.16);
+  border: 1px solid rgba(var(--wtw-rgb), 0.3);
+  color: var(--wtw-fg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.restoreBtn:hover:not(:disabled) {
+  background: rgba(var(--wtw-rgb), 0.26);
+}
+.restoreBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

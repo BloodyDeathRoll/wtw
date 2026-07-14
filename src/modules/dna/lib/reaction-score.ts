@@ -3,7 +3,6 @@ import type { Reaction } from '@/types/dna'
 export const REACTION_SCORE: Record<Reaction, number> = {
   loved:    +0.30,
   liked:    +0.15,
-  mixed:    -0.05,
   disliked: -0.20,
 }
 

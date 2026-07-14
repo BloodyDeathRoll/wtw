@@ -5,7 +5,7 @@
  *
  * Card state machine:
  *   idle   → normal view, "Watched it" + "?" + skip buttons
- *   rating → reaction picker: loved / liked / mixed / disliked
+ *   rating → reaction picker: loved / liked / disliked
  *   done   → confirmation message, fingerprint updated
  *
  * "Why this?" (?) button toggles the WhyPanel inline at any state.
@@ -71,11 +71,6 @@ const I = {
   thumbUp: (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M7 22V11M2 13v7a2 2 0 0 0 2 2h3V11H4a2 2 0 0 0-2 2Zm5-2V8a3 3 0 0 1 3-3l1 5h6.5a2 2 0 0 1 2 2.3l-1.5 7a2 2 0 0 1-2 1.7H7" />
-    </svg>
-  ),
-  mixed: (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M5 12h14" />
     </svg>
   ),
   thumbDown: (
@@ -193,7 +188,6 @@ function ReactionPicker({ onPick, onSkip }: {
 const DONE_MESSAGES: Record<Reaction | "none", string> = {
   loved:    "Fingerprint updated — more like this",
   liked:    "Good signal — noted in your fingerprint",
-  mixed:    "Mixed noted — we'll calibrate",
   disliked: "Got it — steering away from this",
   none:     "Marked as watched",
 }

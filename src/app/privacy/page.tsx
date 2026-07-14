@@ -34,7 +34,7 @@ export default function PrivacyPolicy() {
           <li>
             <strong>Viewing history and ratings</strong> — titles you tell us
             you have watched, your ratings (1–5 scale), and your reactions
-            (loved / liked / mixed / disliked).
+            (loved / liked / disliked).
           </li>
           <li>
             <strong>Taste profile (&ldquo;DNA&rdquo;)</strong> — a machine-generated
