@@ -49,9 +49,15 @@ export class MicCapture {
     // already gates mic audio while the AI is speaking (`isPlaying()`), so
     // Gemini never hears the playback bleed regardless of browser AEC.
     // Desktop keeps AEC — no earpiece route there, and the constraint is cheap.
-    const isMobile =
-      typeof navigator !== "undefined" &&
-      (navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent));
+    // Match phones/tablets only: a bare `maxTouchPoints > 0` would also catch
+    // touchscreen laptops (Surface, Chromebooks), which have no earpiece route
+    // and would needlessly lose noise suppression. iPadOS Safari reports a
+    // desktop UA, so disambiguate it via platform + touch points.
+    const ua = navigator.userAgent;
+    const isIOS =
+      /iPhone|iPad|iPod/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isMobile = isIOS || /Mobi|Android/i.test(ua);
 
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: isMobile
