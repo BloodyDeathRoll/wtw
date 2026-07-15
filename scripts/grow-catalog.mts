@@ -72,6 +72,9 @@ async function main() {
       .from('titles')
       .select('tmdb_id, type')
       .order('tmdb_id', { ascending: true })
+      .order('type', { ascending: true }) // (tmdb_id, type) is the composite unique
+                                           // key — tmdb_id alone ties (movie/TV share
+                                           // ids), so page order must span both.
       .range(from, from + PAGE - 1)
     if (error) throw new Error(`Cannot read titles: ${error.message}`)
     for (const r of rows ?? []) known.add(key(r.type as string, r.tmdb_id as string))
