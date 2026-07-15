@@ -10,8 +10,14 @@
  *   - the title lands in dna.signals, which step1 candidate generation
  *     excludes — so rated titles drop out of the next batch.
  *
- * Ratings-as-signals only happen here (not at click time): clicks are cheap
- * history writes; the expensive merge runs once per session-end.
+ * Ratings are pre-merged into dna.signals at click time by
+ * mergeFeedbackSignalsLight (cheap strand math, no version bump), so by the
+ * time this runs most rated titles are ALREADY signaled and dedup away to zero
+ * here — this fold only catches ratings that couldn't be light-merged (e.g. the
+ * title wasn't in the catalog yet). Because the fold can legitimately return 0
+ * after rating, session/end must NOT treat "folded 0" as "nothing to do": it
+ * separately checks whether the served cache still holds a rated title before
+ * skipping regeneration (see the stale-cache guard in session/end/route.ts).
  */
 
 import { createServiceClient } from '@/lib/supabase/service'

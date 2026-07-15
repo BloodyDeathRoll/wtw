@@ -22,6 +22,7 @@ import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
+import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import { hasMaterialChange } from '@/modules/session/session-change'
@@ -123,14 +124,46 @@ export async function POST(req: NextRequest) {
   // If nothing material changed, skip the update + regeneration entirely and
   // return immediately. The existing cache (at the unchanged taste_version) is
   // already warm, so GET keeps serving it — turning a ~10s click into a no-op.
+  //
+  // BUT "nothing material" here means "the fold added no NEW signals" — and a
+  // card rating gets pre-merged into dna.signals at click time
+  // (mergeFeedbackSignalsLight), so the fold above dedups it to zero. Without
+  // the guard below, a "Find more" after rating would take this fast path and
+  // keep serving a cache that STILL contains the just-rated titles — the user's
+  // like/dislike never drops them from the feed. So before skipping, check
+  // whether the warm cache still holds any rated title; if it does, the cache
+  // is stale and we must fall through to regenerate (candidate-gen excludes
+  // signaled titles). This self-clears: once regenerated, no rated title
+  // survives, so the next empty "Find more" correctly takes the fast path.
   if (!hasMaterialChange(summary)) {
-    return NextResponse.json({
-      ok: true,
-      taste_version: dna.metadata.taste_version,
-      signal_count: 0,
-      rec_count: 0,
-      unchanged: true,
-    })
+    const ratedIds = new Set(
+      dna.learning_loop.recommendation_history
+        .filter((h) => h.rating != null)
+        .map((h) => h.tmdb_id),
+    )
+    let cacheHasRated = false
+    if (ratedIds.size > 0) {
+      try {
+        const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+        cacheHasRated = (cached ?? []).some((r) => ratedIds.has(r.tmdb_id))
+      } catch (err) {
+        // Cache read failed — don't wrongly fast-path past a possibly-stale
+        // cache; fall through and regenerate to be safe.
+        console.warn('[session/end] stale-cache check failed, regenerating:', err instanceof Error ? err.message : err)
+        cacheHasRated = true
+      }
+    }
+
+    if (!cacheHasRated) {
+      return NextResponse.json({
+        ok: true,
+        taste_version: dna.metadata.taste_version,
+        signal_count: 0,
+        rec_count: 0,
+        unchanged: true,
+      })
+    }
+    // else: rated titles still in the served cache — fall through to regenerate.
   }
 
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────

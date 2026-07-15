@@ -9,11 +9,15 @@ import type { SessionSummary } from '@/types/dna'
  * embedding caches — and the cold recommendation pipeline, returning the warm
  * cache instantly instead.
  *
- * Card ratings are folded into `new_signals` (see foldRatedHistoryIntoSummary)
- * BEFORE this check, so a "Find more" after rating correctly takes the slow
- * path. `recommendation_made` is included defensively: analyzeSession leaves it
- * null today, but if it's ever populated, skipping the update here would
- * otherwise silently drop the acceptance/stretch-pick history it feeds.
+ * NOTE: this is necessary but NOT sufficient to decide the fast path. Card
+ * ratings are pre-merged into dna.signals at click time, so the session-end
+ * fold dedups them to zero and they don't appear in `new_signals` — meaning a
+ * "Find more" after rating returns false here even though the served rec cache
+ * still contains the rated titles. session/end therefore pairs this with a
+ * stale-cache check (does the cache still hold a rated title?) before skipping
+ * regeneration. `recommendation_made` is included defensively: analyzeSession
+ * leaves it null today, but if it's ever populated, skipping the update here
+ * would otherwise silently drop the acceptance/stretch-pick history it feeds.
  */
 export function hasMaterialChange(summary: SessionSummary): boolean {
   return (
