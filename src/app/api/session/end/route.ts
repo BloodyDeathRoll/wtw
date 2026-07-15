@@ -125,36 +125,39 @@ export async function POST(req: NextRequest) {
   // return immediately. The existing cache (at the unchanged taste_version) is
   // already warm, so GET keeps serving it — turning a ~10s click into a no-op.
   //
-  // BUT "nothing material" here means "the fold added no NEW signals" — and a
-  // card rating gets pre-merged into dna.signals at click time
-  // (mergeFeedbackSignalsLight), so the fold above dedups it to zero. Without
-  // the guard below, a "Find more" after rating would take this fast path and
-  // keep serving a cache that STILL contains the just-rated titles — the user's
-  // like/dislike never drops them from the feed. So before skipping, check
-  // whether the warm cache still holds any rated title; if it does, the cache
-  // is stale and we must fall through to regenerate (candidate-gen excludes
-  // signaled titles). This self-clears: once regenerated, no rated title
-  // survives, so the next empty "Find more" correctly takes the fast path.
+  // The fast path is only safe when we can POSITIVELY confirm the warm cache is
+  // still good to serve — i.e. it exists AND holds no title the user has since
+  // rated. Two ways it can be wrong that hasMaterialChange() alone misses:
+  //   1. Rated titles pre-merged at click time (mergeFeedbackSignalsLight puts
+  //      the rating into dna.signals with no version bump), so the fold above
+  //      dedups it to zero and hasMaterialChange returns false — yet the cache
+  //      still contains that title, so a "Find more" wouldn't drop it.
+  //   2. The cache is cold (6h TTL expired / never generated). Returning
+  //      "unchanged" then leaves GET with nothing to serve, and it falls back
+  //      to MOCKS — which we must never show a user who has a fingerprint.
+  // So: fast-path ONLY when the cache is warm and rated-free; otherwise fall
+  // through to regenerate (candidate-gen excludes signaled titles). This
+  // self-clears — after a regen no rated title survives, so the next empty
+  // "Find more" reads a warm, clean cache and correctly takes the fast path.
   if (!hasMaterialChange(summary)) {
     const ratedIds = new Set(
       dna.learning_loop.recommendation_history
         .filter((h) => h.rating != null)
         .map((h) => h.tmdb_id),
     )
-    let cacheHasRated = false
-    if (ratedIds.size > 0) {
-      try {
-        const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version)
-        cacheHasRated = (cached ?? []).some((r) => ratedIds.has(r.tmdb_id))
-      } catch (err) {
-        // Cache read failed — don't wrongly fast-path past a possibly-stale
-        // cache; fall through and regenerate to be safe.
-        console.warn('[session/end] stale-cache check failed, regenerating:', err instanceof Error ? err.message : err)
-        cacheHasRated = true
-      }
+    let cacheWarmAndClean = false
+    try {
+      const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+      cacheWarmAndClean =
+        !!cached && cached.length > 0 && !cached.some((r) => ratedIds.has(r.tmdb_id))
+    } catch (err) {
+      // Cache read failed — fail safe: regenerate rather than risk serving a
+      // stale cache or dropping to mocks.
+      console.warn('[session/end] cache check failed, regenerating:', err instanceof Error ? err.message : err)
+      cacheWarmAndClean = false
     }
 
-    if (!cacheHasRated) {
+    if (cacheWarmAndClean) {
       return NextResponse.json({
         ok: true,
         taste_version: dna.metadata.taste_version,
@@ -163,7 +166,8 @@ export async function POST(req: NextRequest) {
         unchanged: true,
       })
     }
-    // else: rated titles still in the served cache — fall through to regenerate.
+    // else: cache is stale (holds a rated title) or cold — fall through to
+    // regenerate so the served feed is fresh, real recs (never mocks).
   }
 
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────
