@@ -59,12 +59,27 @@ const DECADES: [number, number][] = [
 async function main() {
   const db = createServiceClient()
 
-  // ── 0. Current catalog size + known (tmdb_id, type) keys (one query) ───────
-  const { data: existing, error } = await db.from('titles').select('tmdb_id, type')
-  if (error) throw new Error(`Cannot read titles: ${error.message}`)
-  const known = new Set<string>(
-    (existing ?? []).map((r) => key(r.type as string, r.tmdb_id as string)),
-  )
+  // ── 0. Current catalog size + known (tmdb_id, type) keys ────────────────────
+  // PostgREST caps a single select at 1000 rows, so an unpaginated query silently
+  // sees only the first 1000 titles — dedup then goes blind past that and re-seeds
+  // (upserts) existing rows, inflating `seeded` with no net growth (started_titles
+  // froze at 1000 while the catalog grew; fixed 2026-07-15). Page through .range()
+  // until a short page returns so `known` holds the WHOLE catalog.
+  const known = new Set<string>()
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data: rows, error } = await db
+      .from('titles')
+      .select('tmdb_id, type')
+      .order('tmdb_id', { ascending: true })
+      .order('type', { ascending: true }) // (tmdb_id, type) is the composite unique
+                                           // key — tmdb_id alone ties (movie/TV share
+                                           // ids), so page order must span both.
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(`Cannot read titles: ${error.message}`)
+    for (const r of rows ?? []) known.add(key(r.type as string, r.tmdb_id as string))
+    if ((rows?.length ?? 0) < PAGE) break
+  }
   const startCount = known.size
 
   // ── 1. Seed new titles (variety sweep), bounded by budget + target ────────
