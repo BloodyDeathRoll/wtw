@@ -131,32 +131,52 @@ export async function GET(req: Request) {
   // Titles the user has "Removed" — filtered out of every page below.
   const removed = await getRemovedKeys(user.id);
 
-  // Try Redis cache — requires knowing the user's current taste_version
   let cachedRecs: RecommendationResult[] | null = null
   let dna: DNASchema | null = null
+  // Distinguishes "read the DNA and the user genuinely has none" (→ mocks are
+  // the correct pre-first-session placeholder) from "couldn't read the DNA at
+  // all" (→ fingerprint status unknown, so we must NOT risk serving mocks).
+  let dnaReadFailed = false
 
+  // ── Read the fingerprint (its own try: a DB failure here is different from a
+  //    Redis failure below) ─────────────────────────────────────────────────
   try {
     const db = createServiceClient()
-    const { data } = await db
+    const { data, error } = await db
       .from("users")
       .select("dna")
       .eq("id", user.id)
       .single<{ dna: DNASchema | null }>()
 
-    dna = data?.dna ?? null
-    if (dna) {
-      cachedRecs = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = no row = determinate "not onboarded" (fine → mocks). Any
+      // other error means we couldn't determine fingerprint status → fail
+      // closed below rather than guess.
+      dnaReadFailed = true
+      console.error("[recommendations/generate] DNA read failed:", error.message)
+    } else {
+      dna = data?.dna ?? null
     }
   } catch (err) {
-    // Redis or DB unavailable. Log so a genuine auth failure (e.g. WRONGPASS
-    // from a bad Upstash token) is distinguishable from a cold/unseeded cache,
-    // which otherwise look identical here. A fingerprinted user still won't get
-    // mocks below — regen runs on the cold path; only a truly fingerprint-less
-    // user falls all the way through to the placeholder mocks.
+    dnaReadFailed = true
     console.error(
-      "[recommendations/generate] cache read failed:",
+      "[recommendations/generate] DNA read threw:",
       err instanceof Error ? err.message : err,
-    );
+    )
+  }
+
+  // ── Read the rec cache (a Redis blip here is non-fatal: dna is already known,
+  //    so the cold path below still routes a fingerprinted user to regen, never
+  //    to mocks) ───────────────────────────────────────────────────────────
+  if (dna) {
+    try {
+      cachedRecs = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+    } catch (err) {
+      console.error(
+        "[recommendations/generate] cache read failed:",
+        err instanceof Error ? err.message : err,
+      )
+    }
   }
 
   // Type-filter → drop removed titles → paginate → adapt to the UI shape. Used
@@ -182,6 +202,16 @@ export async function GET(req: Request) {
 
   if (cachedRecs && cachedRecs.length > 0) {
     return servePage(cachedRecs, "cache");
+  }
+
+  // Couldn't read the DNA (DB outage) — fingerprint status is unknown, so fail
+  // closed: a fingerprinted user must NEVER see mocks, and we can't rule that
+  // out here. Return a retryable error instead of guessing.
+  if (dnaReadFailed) {
+    return NextResponse.json(
+      { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
+      { status: 503 },
+    );
   }
 
   // Cold cache. Mocks are a PRE-FIRST-SESSION placeholder only — a user who

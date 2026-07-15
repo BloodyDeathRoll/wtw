@@ -25,7 +25,7 @@ import { generateRecommendations } from '@/modules/engine'
 import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
-import { hasMaterialChange } from '@/modules/session/session-change'
+import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
 import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -140,16 +140,11 @@ export async function POST(req: NextRequest) {
   // self-clears — after a regen no rated title survives, so the next empty
   // "Find more" reads a warm, clean cache and correctly takes the fast path.
   if (!hasMaterialChange(summary)) {
-    const ratedIds = new Set(
-      dna.learning_loop.recommendation_history
-        .filter((h) => h.rating != null)
-        .map((h) => h.tmdb_id),
-    )
+    const ratedIds = ratedTmdbIds(dna.learning_loop.recommendation_history)
     let cacheWarmAndClean = false
     try {
       const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version)
-      cacheWarmAndClean =
-        !!cached && cached.length > 0 && !cached.some((r) => ratedIds.has(r.tmdb_id))
+      cacheWarmAndClean = cacheServableUnchanged(ratedIds, cached)
     } catch (err) {
       // Cache read failed — fail safe: regenerate rather than risk serving a
       // stale cache or dropping to mocks.

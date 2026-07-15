@@ -1,4 +1,8 @@
-import type { SessionSummary } from '@/types/dna'
+import type {
+  SessionSummary,
+  RecommendationRecord,
+  RecommendationResult,
+} from '@/types/dna'
 
 /**
  * Does this session summary carry anything worth merging into the fingerprint?
@@ -27,4 +31,38 @@ export function hasMaterialChange(summary: SessionSummary): boolean {
     summary.new_open_questions.length > 0 ||
     summary.recommendation_made != null
   )
+}
+
+/**
+ * The set of tmdb_ids the user has rated (👍/👎), read from
+ * recommendation_history. These are the titles that must not survive in the
+ * served rec cache after a "Find more".
+ */
+export function ratedTmdbIds(history: RecommendationRecord[]): Set<string> {
+  return new Set(history.filter((h) => h.rating != null).map((h) => h.tmdb_id))
+}
+
+/**
+ * The second half of the session/end fast-path decision (split out from the
+ * route so it's unit-testable without Redis/Supabase): can the currently-warm
+ * rec cache still be served AS-IS, or must it be regenerated?
+ *
+ * Returns true — safe to keep serving, take the no-op fast path — ONLY when the
+ * cache both exists (non-empty) AND holds no title the user has since rated:
+ *   - a cold/empty cache → false, so the route regenerates rather than letting
+ *     GET fall back to mocks for a fingerprinted user;
+ *   - a cache still holding a rated title → false, so the route regenerates and
+ *     candidate-gen drops that title from the next batch.
+ *
+ * Matches on tmdb_id alone (RecommendationRecord carries no `type`). The
+ * direction is fail-safe: a cross-type id collision only forces an unnecessary
+ * regen, never a missed one — unlike the candidate-gen exclusion (issue #30),
+ * where the same collision can wrongly drop a valid title.
+ */
+export function cacheServableUnchanged(
+  ratedIds: Set<string>,
+  cached: RecommendationResult[] | null | undefined,
+): boolean {
+  if (!cached || cached.length === 0) return false
+  return !cached.some((r) => ratedIds.has(r.tmdb_id))
 }
