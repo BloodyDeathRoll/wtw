@@ -22,9 +22,10 @@ import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
+import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
-import { hasMaterialChange } from '@/modules/session/session-change'
+import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
 import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -123,14 +124,45 @@ export async function POST(req: NextRequest) {
   // If nothing material changed, skip the update + regeneration entirely and
   // return immediately. The existing cache (at the unchanged taste_version) is
   // already warm, so GET keeps serving it — turning a ~10s click into a no-op.
+  //
+  // The fast path is only safe when we can POSITIVELY confirm the warm cache is
+  // still good to serve — i.e. it exists AND holds no title the user has since
+  // rated. Two ways it can be wrong that hasMaterialChange() alone misses:
+  //   1. Rated titles pre-merged at click time (mergeFeedbackSignalsLight puts
+  //      the rating into dna.signals with no version bump), so the fold above
+  //      dedups it to zero and hasMaterialChange returns false — yet the cache
+  //      still contains that title, so a "Find more" wouldn't drop it.
+  //   2. The cache is cold (6h TTL expired / never generated). Returning
+  //      "unchanged" then leaves GET with nothing to serve, and it falls back
+  //      to MOCKS — which we must never show a user who has a fingerprint.
+  // So: fast-path ONLY when the cache is warm and rated-free; otherwise fall
+  // through to regenerate (candidate-gen excludes signaled titles). This
+  // self-clears — after a regen no rated title survives, so the next empty
+  // "Find more" reads a warm, clean cache and correctly takes the fast path.
   if (!hasMaterialChange(summary)) {
-    return NextResponse.json({
-      ok: true,
-      taste_version: dna.metadata.taste_version,
-      signal_count: 0,
-      rec_count: 0,
-      unchanged: true,
-    })
+    const ratedIds = ratedTmdbIds(dna.learning_loop.recommendation_history)
+    let cacheWarmAndClean = false
+    try {
+      const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+      cacheWarmAndClean = cacheServableUnchanged(ratedIds, cached)
+    } catch (err) {
+      // Cache read failed — fail safe: regenerate rather than risk serving a
+      // stale cache or dropping to mocks.
+      console.warn('[session/end] cache check failed, regenerating:', err instanceof Error ? err.message : err)
+      cacheWarmAndClean = false
+    }
+
+    if (cacheWarmAndClean) {
+      return NextResponse.json({
+        ok: true,
+        taste_version: dna.metadata.taste_version,
+        signal_count: 0,
+        rec_count: 0,
+        unchanged: true,
+      })
+    }
+    // else: cache is stale (holds a rated title) or cold — fall through to
+    // regenerate so the served feed is fresh, real recs (never mocks).
   }
 
   // ── 4. Merge into the fingerprint (bumps taste_version) ──────

@@ -131,37 +131,64 @@ export async function GET(req: Request) {
   // Titles the user has "Removed" — filtered out of every page below.
   const removed = await getRemovedKeys(user.id);
 
-  // Try Redis cache — requires knowing the user's current taste_version
   let cachedRecs: RecommendationResult[] | null = null
+  let dna: DNASchema | null = null
+  // Distinguishes "read the DNA and the user genuinely has none" (→ mocks are
+  // the correct pre-first-session placeholder) from "couldn't read the DNA at
+  // all" (→ fingerprint status unknown, so we must NOT risk serving mocks).
+  let dnaReadFailed = false
 
+  // ── Read the fingerprint (its own try: a DB failure here is different from a
+  //    Redis failure below) ─────────────────────────────────────────────────
   try {
     const db = createServiceClient()
-    const { data } = await db
+    const { data, error } = await db
       .from("users")
       .select("dna")
       .eq("id", user.id)
       .single<{ dna: DNASchema | null }>()
 
-    if (data?.dna) {
-      cachedRecs = await getCachedRecommendations(user.id, data.dna.metadata.taste_version)
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = no row = determinate "not onboarded" (fine → mocks). Any
+      // other error means we couldn't determine fingerprint status → fail
+      // closed below rather than guess.
+      dnaReadFailed = true
+      console.error("[recommendations/generate] DNA read failed:", error.message)
+    } else {
+      dna = data?.dna ?? null
     }
   } catch (err) {
-    // Redis or DB unavailable — fall through to mocks. Log so a genuine auth
-    // failure (e.g. WRONGPASS from a bad Upstash token) is distinguishable
-    // from a cold/unseeded cache, which otherwise look identical here.
+    dnaReadFailed = true
     console.error(
-      "[recommendations/generate] cache read failed, serving mocks:",
+      "[recommendations/generate] DNA read threw:",
       err instanceof Error ? err.message : err,
-    );
+    )
   }
 
-  if (cachedRecs && cachedRecs.length > 0) {
+  // ── Read the rec cache (a Redis blip here is non-fatal: dna is already known,
+  //    so the cold path below still routes a fingerprinted user to regen, never
+  //    to mocks) ───────────────────────────────────────────────────────────
+  if (dna) {
+    try {
+      cachedRecs = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+    } catch (err) {
+      console.error(
+        "[recommendations/generate] cache read failed:",
+        err instanceof Error ? err.message : err,
+      )
+    }
+  }
+
+  // Type-filter → drop removed titles → paginate → adapt to the UI shape. Used
+  // for both the warm cache and a freshly regenerated list so their handling
+  // can't drift apart.
+  async function servePage(recs: RecommendationResult[], source: string) {
     const typeFiltered =
       contentType === "movies"
-        ? cachedRecs.filter((r) => r.type === "movie")
+        ? recs.filter((r) => r.type === "movie")
         : contentType === "series"
-          ? cachedRecs.filter((r) => r.type === "tv")
-          : cachedRecs;
+          ? recs.filter((r) => r.type === "tv")
+          : recs;
     // Drop removed titles before paginating so pages stay full-sized.
     const filtered = typeFiltered.filter(
       (r) => !removed.has(`${r.type}:${r.tmdb_id}`),
@@ -170,10 +197,63 @@ export async function GET(req: Request) {
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;
     const uiRecs = await toUIRecommendations(items);
-    return NextResponse.json({ recommendations: uiRecs, next_offset: nextOffset, has_more: hasMore, source: "cache" });
+    return NextResponse.json({ recommendations: uiRecs, next_offset: nextOffset, has_more: hasMore, source });
   }
 
-  // Fall back to mocks (DB not yet seeded)
+  if (cachedRecs && cachedRecs.length > 0) {
+    return servePage(cachedRecs, "cache");
+  }
+
+  // Couldn't read the DNA (DB outage) — fingerprint status is unknown, so fail
+  // closed: a fingerprinted user must NEVER see mocks, and we can't rule that
+  // out here. Return a retryable error instead of guessing.
+  if (dnaReadFailed) {
+    return NextResponse.json(
+      { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
+      { status: 503 },
+    );
+  }
+
+  // Cold cache. Mocks are a PRE-FIRST-SESSION placeholder only — a user who
+  // already has a fingerprint must never see them. A blank DNA carries
+  // taste_version 1 but total_sessions 0, so key off sessions/signals, not
+  // version. When fingerprinted, regenerate on demand: generateRecommendations
+  // writes the Redis cache, so subsequent paginated GETs hit the warm path
+  // above; here we serve the fresh list directly.
+  const hasFingerprint =
+    !!dna && (dna.metadata.total_sessions > 0 || dna.signals.length > 0);
+
+  if (hasFingerprint) {
+    try {
+      await generateRecommendations(user.id);
+      const fresh = await getCachedRecommendations(user.id, dna!.metadata.taste_version);
+      if (fresh && fresh.length > 0) {
+        return servePage(fresh, "regenerated");
+      }
+      // Regen legitimately produced nothing (e.g. every candidate is watched or
+      // removed). Return an empty page — NOT mocks.
+      return NextResponse.json({
+        recommendations: [],
+        next_offset: offset,
+        has_more: false,
+        source: "regenerated_empty",
+      });
+    } catch (err) {
+      // A fingerprinted user must never see mocks — surface a retryable error
+      // instead of fabricated titles.
+      console.error(
+        "[recommendations/generate] cold regen failed:",
+        err instanceof Error ? err.message : err,
+      );
+      return NextResponse.json(
+        { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
+        { status: 503 },
+      );
+    }
+  }
+
+  // Genuinely no fingerprint yet (pre-first-session) — mocks are the intended
+  // placeholder here, and ONLY here.
   const mockTypeFiltered =
     contentType === "movies"
       ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "movie")
