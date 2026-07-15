@@ -33,7 +33,13 @@ const key = (type: string, tmdb_id: string) => `${type}:${tmdb_id}`
 const SEED_COUNT       = intEnv('SEED_COUNT', 120)       // new titles to add per run
 const TARGET_CATALOG   = intEnv('TARGET_CATALOG', 15000) // stop growing at this size
 const ENRICH_MAX       = intEnv('ENRICH_MAX', 300)       // max titles to enrich per run
-const DISCOVER_CAP     = intEnv('DISCOVER_CAP', 40)      // max TMDB discover pages to scan
+const DISCOVER_CAP     = intEnv('DISCOVER_CAP', 40)      // max discover slices/attempts to scan
+const DISCOVER_PAGES   = Math.max(1, intEnv('DISCOVER_PAGES', 5)) // TMDB page depth per genre×decade
+                                                         // slice. Sets the REACHABLE pool:
+                                                         // types×genres×decades×PAGES×20.
+                                                         // 5 → ~12.6k (< 15k target); 15 →
+                                                         // ~37.8k. Higher pages = less
+                                                         // popular titles (vote_count.gte 40).
 const TRAILER_BACKFILL = intEnv('TRAILER_BACKFILL', 150) // trailer_key NULL rows to re-check per run
 
 function intEnv(name: string, def: number): number {
@@ -75,7 +81,7 @@ async function main() {
       const genres = type === 'movie' ? MOVIE_GENRES : TV_GENRES
       const genreId = genres[salt % genres.length]
       const [yearGte, yearLte] = DECADES[salt % DECADES.length]
-      const page = (Math.floor(salt / DECADES.length) % 5) + 1
+      const page = (Math.floor(salt / DECADES.length) % DISCOVER_PAGES) + 1
 
       let candidates
       try {
