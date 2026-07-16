@@ -19,8 +19,12 @@ export async function getCandidates(
   dna: DNASchema,
   sessionContext?: SessionContext
 ): Promise<TitleRow[]> {
-  // ── Build watched ID list ─────────────────────────────────
-  const watchedIds = dna.signals.map(s => s.tmdb_id)
+  // ── Build watched key list ────────────────────────────────
+  // Exclude on the composite (tmdb_id, type), not tmdb_id alone: TMDB movie and
+  // TV ids share a namespace, so a bare id would also drop an unrelated same-id
+  // title of the other type the user never watched (issue #30). Signals always
+  // carry `type`. Keys match the RPC's `type || ':' || tmdb_id`.
+  const watchedKeys = dna.signals.map(s => `${s.type}:${s.tmdb_id}`)
 
   // ── Parse session-level hard filters ─────────────────────
   let titleType: string | null = null
@@ -36,7 +40,7 @@ export async function getCandidates(
   // ── Fetch from DB ─────────────────────────────────────────
   const supabase = createServiceClient()
   const { data, error } = await supabase.rpc('get_candidate_titles', {
-    watched_ids:  watchedIds,
+    watched_keys: watchedKeys,
     excluded_ids: [],          // person/genre exclusions are done in TypeScript below
     title_type:   titleType,
     max_runtime:  maxRuntime,
