@@ -23,7 +23,12 @@ drop function if exists public.get_candidate_titles(text[], text[], text, intege
 
 create function public.get_candidate_titles(
   watched_keys  text[],   -- '${type}:${tmdb_id}' composite keys to exclude
-  excluded_ids  text[],   -- bare tmdb_ids (person/genre exclusions are done in TS)
+  -- NOTE: excluded_ids compares on BARE tmdb_id, so it carries the same
+  -- cross-type collision bug this migration fixes for watched_keys (a movie id
+  -- would also drop the same-id TV title). Inert today — the only caller always
+  -- passes [] (person/genre exclusion is a TS post-filter). If you ever populate
+  -- it directly, switch it to composite 'type:tmdb_id' keys too (see #30).
+  excluded_ids  text[],
   title_type    text    default null,
   max_runtime   integer default null
 )
