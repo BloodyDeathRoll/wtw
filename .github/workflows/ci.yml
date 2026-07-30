@@ -26,6 +26,10 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Least privilege, matching claude.yml / claude-code-review.yml: this job only
+    # reads the repo and runs npm scripts — it never writes anything.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
