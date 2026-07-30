@@ -98,6 +98,47 @@
   border-color: rgba(255, 255, 255, 0.28);
 }
 
+/* Empty-state CTA into the feed — carries the blue gradient + glow of the
+   Recommendations button it navigates to, so the two read as the same action. */
+.browseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  background: linear-gradient(135deg, #2563eb 0%, #0b0b0c 95%);
+  color: var(--wtw-fg);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 11px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow:
+    0 0 22px rgba(37, 99, 235, 0.5),
+    0 0 56px rgba(37, 99, 235, 0.22),
+    0 6px 18px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.browseBtn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 30px rgba(37, 99, 235, 0.65),
+    0 0 72px rgba(37, 99, 235, 0.28),
+    0 8px 22px rgba(0, 0, 0, 0.55);
+}
+
+/* Empty list (watchlist with nothing saved yet). */
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
 .muted {
   color: var(--wtw-fg-muted);
   font-size: 12.5px;
@@ -113,10 +154,16 @@
   display: flex;
   flex-direction: column;
   gap: 11px;
-  padding: 12px;
+  padding: 16px 18px;
   background: rgba(20, 20, 22, 0.6);
   border: 0;
   border-radius: 14px;
+  /* Faint amber glow so each card lifts off the black backdrop, plus a soft
+     dark drop shadow underneath to keep it grounded. */
+  box-shadow:
+    0 0 26px rgba(var(--wtw-rgb), 0.12),
+    0 0 64px rgba(var(--wtw-rgb), 0.06),
+    0 6px 18px rgba(0, 0, 0, 0.45);
   animation: cardIn 0.25s ease both;
 }
 /* Row 1: title+meta | % match | play */
@@ -198,6 +245,77 @@
   background: rgba(var(--wtw-rgb), 0.14);
   color: var(--wtw-fg);
 }
+/* Row pairing the "Why this pick?" pill with the watchlist CTA across from it.
+   The CTA is deliberately the heavier of the two — accent fill, larger type. */
+.ctaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+/* Two equal halves. The pill drops its own top margin and its flex-start
+   self-alignment (which would pin it to the row's top) and grows to match. */
+.ctaRow .whyPill {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  justify-content: center;
+  margin-top: 0;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+/* Same geometry as the pill across from it — the CTA earns its dominance from
+   the accent fill and heavier text, not from being bigger. */
+.watchlistBtn {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: rgba(var(--wtw-rgb), 0.18);
+  border: 0;
+  border-radius: 999px;
+  color: var(--wtw-fg);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.watchlistBtn svg {
+  flex-shrink: 0;
+}
+.watchlistBtn:hover {
+  background: rgba(var(--wtw-rgb), 0.3);
+}
+/* Saved — inverted fill so the "on" state is unmistakable and reads as a
+   toggle the user can tap again to undo. */
+.watchlistBtnSaved {
+  background: rgb(var(--wtw-rgb));
+  color: #0b0b0c;
+}
+.watchlistBtnSaved:hover {
+  background: rgba(var(--wtw-rgb), 0.85);
+}
+/* Full-view variant — sits over the poster, so it needs a blurred backing like
+   .whyPillStrong does. */
+.watchlistBtnStrong {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+/* Detail overlay — no pill beside it, so it spans the column. */
+.watchlistBtnBlock {
+  width: 100%;
+  justify-content: center;
+  padding: 11px 14px;
+  font-size: 13.5px;
+}
 @keyframes cardIn {
   from {
     opacity: 0;
@@ -269,7 +387,6 @@
   flex-direction: column;
   gap: 3px;
   padding: 9px 11px;
-  background: rgba(255, 255, 255, 0.025);
   border-radius: 8px;
   color: var(--wtw-fg);
   font-size: 14px;

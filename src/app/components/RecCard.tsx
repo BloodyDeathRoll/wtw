@@ -332,6 +332,11 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tmdb_id: result.tmdb_id,
+        // Keys the logged row as `${type}:${tmdb_id}`. Omitting it collapsed a
+        // film and a series sharing a tmdb_id into a single ratings-screen entry.
+        media_type: result.type,
+        // The ratings screen's row label — without it the row reads "Untitled".
+        title: result.title,
         action,
         is_stretch_pick: result.is_stretch_pick,
         reaction: r ?? undefined,
