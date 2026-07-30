@@ -255,8 +255,11 @@
 }
 /* Two equal halves. The pill drops its own top margin and its flex-start
    self-alignment (which would pin it to the row's top) and grows to match. */
+/* Sized to its own text, not to half the row: "Remove from watchlist" is the
+   longer label of the two, so an even split left the pill with slack while the
+   CTA clipped. The pill takes what it needs and the CTA absorbs the rest. */
 .ctaRow .whyPill {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   align-self: stretch;
   justify-content: center;
@@ -269,8 +272,9 @@
 /* Same geometry as the pill across from it — the CTA earns its dominance from
    the accent fill and heavier text, not from being bigger. */
 .watchlistBtn {
-  flex: 1;
-  min-width: 0;
+  /* Grows into the leftover space but never shrinks below its label — the pill
+     across from it yields first, so "Remove from watchlist" can't get clipped. */
+  flex: 1 0 auto;
   align-self: stretch;
   display: inline-flex;
   align-items: center;
