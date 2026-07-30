@@ -8,6 +8,11 @@
  * rather than trusting a user id from the request body.
  *
  * Response (POST): { code, expires_at }
+ *
+ * `expires_at` is deliberately close — an unclaimed room lives 5 minutes, because
+ * a 4-digit code is a small space to sweep and joining a room is what grants
+ * sight of the host's taste. Surface it in the UI: the code is short-lived, and
+ * POST /api/cowatch/room/join extends it once the guest actually arrives.
  */
 
 import { NextResponse } from 'next/server'

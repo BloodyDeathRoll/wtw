@@ -6,9 +6,14 @@
  *
  * Joining is what makes a co-watch intersection legal: until both slots are
  * filled, POST /api/recommendations/cowatch has no partner to score against and
- * refuses. Codes are short and guessable by design, so the blast radius of a
- * guessed code is deliberately small — a joiner can only ever pair their OWN
- * fingerprint with the host's, and the host has to be actively hosting.
+ * refuses.
+ *
+ * Codes are only 4 digits, so the whole space is ~10,000 guesses and joining is
+ * NOT a low-stakes action: a member receives co-watch explanations that describe
+ * the other person's taste in prose. The defence is time, not entropy — a room
+ * is joinable for 5 minutes (migration 0015), which is about as long as it takes
+ * to read the digits out loud. Claiming the slot extends it to the full session
+ * length below, so the pair aren't rushed once they're actually paired.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -16,6 +21,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
 export const runtime = 'nodejs'
+
+// How long a room lives once both viewers are in it. The short unclaimed window
+// only has to cover reading the code out loud; a paired session needs an evening.
+const SESSION_MS = 2 * 60 * 60 * 1000
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -60,10 +69,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Conditional update: `is('guest_id', null)` makes this a compare-and-set, so
-  // two people racing for the last slot can't both win.
+  // two people racing for the last slot can't both win. Claiming also lifts the
+  // room off the short unclaimed window onto a full session.
   const { data: claimed, error: claimError } = await db
     .from('cowatch_rooms')
-    .update({ guest_id: user.id })
+    .update({
+      guest_id: user.id,
+      expires_at: new Date(Date.now() + SESSION_MS).toISOString(),
+    })
     .eq('code', code)
     .is('guest_id', null)
     .select('code, expires_at')
