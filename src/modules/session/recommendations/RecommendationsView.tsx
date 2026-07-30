@@ -260,7 +260,7 @@ export default function RecommendationsView({
     // the engine's cache. addToWatchlist backfills the snapshot idempotently.
     try {
       const res = await fetch(
-        `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdbIdOf(rec.id))}`,
+        `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdbIdOf(rec.id))}&type=${rec.type}`,
       );
       if (!res.ok) return;
       const data = (await res.json()) as ExplainData;
@@ -1229,7 +1229,9 @@ function WhyDetailOverlay({
     (async () => {
       try {
         const res = await fetch(
-          `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdb_id)}`,
+          // `type` disambiguates a colliding movie/TV tmdb_id — without it the
+          // route can only take the first bare-id match in the cached batch.
+          `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdb_id)}&type=${rec.type}`,
         );
         if (cancelled) return;
         if (!res.ok) {
