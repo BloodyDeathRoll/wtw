@@ -1,24 +1,38 @@
 /**
  * POST /api/recommendations/cowatch
  *
- * Generates co-watch recommendations for two users in a room.
- * The authenticated user is User A. User B is identified by their user_id.
+ * Generates co-watch recommendations for the two members of a room. The
+ * authenticated caller is User A; User B is whoever else is in the room.
  *
  * Body:
  * {
  *   room_code: string    // 4-digit code identifying the co-watch session
- *   user_id_b: string    // Supabase user ID of the second viewer
  * }
  *
  * Response: CowatchResult[]
  *
  * Scores both users independently (Steps 1–3), then merges by geometric mean.
  * Cached in Redis keyed by room_code + both taste_versions.
+ *
+ * SECURITY — this route used to take `user_id_b` from the request body and hand
+ * it to the engine, which loads that user's DNA with the service-role client
+ * (bypassing RLS). `room_code` was never checked against anything; it only ever
+ * seeded the Redis cache key. Any authenticated user could therefore read any
+ * other user's taste profile by guessing a user id.
+ *
+ * The fix is structural rather than a validation bolt-on: the partner is now
+ * DERIVED from room membership (see migration 0015 / POST /api/cowatch/room), so
+ * there is no client-supplied user id left to abuse. A caller who is not a member
+ * of the room gets 403 and no information about who is.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import { resolvePartner, type CowatchRoomRow } from '@/lib/cowatch-room'
 import { generateCowatchRecommendations } from '@/modules/engine'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────
@@ -30,26 +44,43 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Parse body ────────────────────────────────────────────
-  let room_code: string
-  let user_id_b: string
-
-  try {
-    const body = await req.json()
-    room_code = body.room_code
-    user_id_b = body.user_id_b
-
-    if (!room_code || typeof room_code !== 'string') {
-      return NextResponse.json({ error: 'room_code is required' }, { status: 400 })
-    }
-    if (!user_id_b || typeof user_id_b !== 'string') {
-      return NextResponse.json({ error: 'user_id_b is required' }, { status: 400 })
-    }
-    if (user_id_b === user.id) {
-      return NextResponse.json({ error: 'Cannot co-watch with yourself' }, { status: 400 })
-    }
-  } catch {
+  const body = await req.json().catch(() => null)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
+  const room_code = typeof body.room_code === 'string' ? body.room_code.trim() : null
+  if (!room_code || !/^\d{4}$/.test(room_code)) {
+    return NextResponse.json({ error: 'A 4-digit room_code is required' }, { status: 400 })
+  }
+
+  // ── Authorise via room membership ─────────────────────────
+  // Service-role read: a room has to be looked up by code before we can know
+  // whether the caller belongs to it, which RLS can't express.
+  const db = createServiceClient()
+  const { data: room, error: roomError } = await db
+    .from('cowatch_rooms')
+    .select('host_id, guest_id, expires_at')
+    .eq('code', room_code)
+    .maybeSingle<CowatchRoomRow>()
+
+  if (roomError) {
+    console.error('[recommendations/cowatch] room lookup failed:', roomError.message)
+    return NextResponse.json({ error: 'Failed to generate co-watch recommendations' }, { status: 500 })
+  }
+
+  // One response for "no such room", "expired", and "not your room". A non-member
+  // must learn nothing — not even whether the code is live.
+  const resolved = resolvePartner(room, user.id, new Date())
+  if (resolved.status === 'denied') {
+    return NextResponse.json({ error: 'That room is not available' }, { status: 403 })
+  }
+  if (resolved.status === 'waiting') {
+    return NextResponse.json(
+      { error: 'Waiting for the other viewer to join' },
+      { status: 409 },
+    )
+  }
+  const user_id_b = resolved.partnerId
 
   // ── Run co-watch pipeline ─────────────────────────────────
   try {
