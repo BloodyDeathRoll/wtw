@@ -16,8 +16,10 @@ import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { getUnsyncedIds, markSynced, watchlistCount } from "@/lib/watchlist";
+import { getPendingRegretChecks, type RegretEntry } from "@/lib/regret-queue";
+import RegretPrompt from "@/app/components/RegretPrompt";
 import AppShell from "./AppShell";
-import RecommendPill from "./RecommendPill";
 import RecommendationsView from "../recommendations/RecommendationsView";
 import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
@@ -123,6 +125,19 @@ const I = {
       <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   ),
+  // Home-screen circles. Sparkle = the fingerprint's picks; bookmark matches the
+  // "Add to watchlist" CTA on the cards.
+  sparkle: (
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
+    </svg>
+  ),
+  bookmark: (
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
 };
 
 const IconPlay = (
@@ -147,8 +162,11 @@ function TopBar({
   hasMessages,
   onBack,
   onOpenChat,
+  onRecommend,
+  onWatchlist,
   onFastLearning,
   onRatings,
+  onProfile,
   user,
   onSignOut,
   contentType,
@@ -160,8 +178,11 @@ function TopBar({
   hasMessages: boolean;
   onBack: () => void;
   onOpenChat: () => void;
+  onRecommend: () => void;
+  onWatchlist: () => void;
   onFastLearning: () => void;
   onRatings: () => void;
+  onProfile: () => void;
   user: AppUser;
   onSignOut: () => void;
   contentType: ContentType;
@@ -360,6 +381,30 @@ function TopBar({
                 className={styles.userMenuItem}
                 onClick={() => {
                   setMenuOpen(false);
+                  onRecommend();
+                }}
+              >
+                <span>Recommendations</span>
+                <span className={styles.userMenuTrail}>{I.chevRight}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.userMenuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onWatchlist();
+                }}
+              >
+                <span>Watchlist</span>
+                <span className={styles.userMenuTrail}>{I.chevRight}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.userMenuItem}
+                onClick={() => {
+                  setMenuOpen(false);
                   onFastLearning();
                 }}
               >
@@ -376,6 +421,18 @@ function TopBar({
                 }}
               >
                 <span>Your ratings</span>
+                <span className={styles.userMenuTrail}>{I.chevRight}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.userMenuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onProfile();
+                }}
+              >
+                <span>Your taste DNA</span>
                 <span className={styles.userMenuTrail}>{I.chevRight}</span>
               </button>
               <button
@@ -608,8 +665,56 @@ type Stage =
   | "welcome"
   | "conversation"
   | "recommendations"
+  | "watchlist"
   | "learning"
   | "ratings";
+
+// The home screen's two primary destinations. Replaces the old
+// "Recommendations Ready" pill (which VoiceMode still uses on its own surface).
+function HomeCircles({
+  onRecommend,
+  onWatchlist,
+  showRecommend,
+  watchlistN,
+}: {
+  onRecommend: () => void;
+  onWatchlist: () => void;
+  showRecommend: boolean;
+  watchlistN: number;
+}) {
+  return (
+    <div className={styles.circleRow}>
+      {showRecommend && (
+        <div className={styles.circleItem}>
+          <button
+            type="button"
+            className={`${styles.circleBtn} ${styles.circleBtnRecs}`}
+            onClick={onRecommend}
+            aria-label="Recommendations"
+          >
+            {I.sparkle}
+          </button>
+          <span className={styles.circleLabel}>Recommendations</span>
+        </div>
+      )}
+      {/* Only once something is saved — an empty watchlist has nothing to show. */}
+      {watchlistN > 0 && (
+        <div className={styles.circleItem}>
+          <button
+            type="button"
+            className={`${styles.circleBtn} ${styles.circleBtnWatchlist}`}
+            onClick={onWatchlist}
+            aria-label={`Watchlist, ${watchlistN} saved`}
+          >
+            {I.bookmark}
+            <span className={styles.circleBadge}>{watchlistN}</span>
+          </button>
+          <span className={styles.circleLabel}>Watchlist</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function InputBar({
   value,
@@ -689,6 +794,12 @@ export default function WTWApp({
   // While the fingerprint is being built + recs generated (on the way into
   // the recommendations view), we show a brief building state.
   const [buildingRecs, setBuildingRecs] = useState(false);
+  // Saved-card count, for the home circle + its badge. Re-read on every stage
+  // change so returning from the watchlist reflects what just left it.
+  const [watchlistN, setWatchlistN] = useState(0);
+  // Titles watched 48hr+ ago that haven't had their check-in yet. Read once per
+  // page load; the queue is filled when a title is rated off the watchlist.
+  const [regretChecks, setRegretChecks] = useState<RegretEntry[]>([]);
 
   // Hydrate Movies/Series + voice from localStorage after mount. SSR-safe
   // (window check happens only here). Brief race on first paint is fine.
@@ -706,6 +817,14 @@ export default function WTWApp({
   useEffect(() => {
     window.localStorage.setItem("wtw:voice", voice);
   }, [voice]);
+
+  useEffect(() => {
+    setWatchlistN(watchlistCount());
+  }, [stage]);
+
+  useEffect(() => {
+    setRegretChecks(getPendingRegretChecks());
+  }, []);
 
   // Warm-up on load: bootstrap the DNA row (idempotent), then pre-generate
   // recommendations in the background. POST /generate returns the cached set
@@ -785,6 +904,9 @@ export default function WTWApp({
   // (cached server-side at the new taste_version). Shared by the initial
   // "Recommend" entry and the in-list "Find More" refresh.
   async function endSessionAndGenerate(opts?: { skipTranscript?: boolean }) {
+    // Watchlist saves ride along on this request rather than posting their own —
+    // saving a card is supposed to cost zero extra calls.
+    const savedIds = getUnsyncedIds();
     try {
       const res = await fetchWithTimeout("/api/session/end", {
         method: "POST",
@@ -794,8 +916,12 @@ export default function WTWApp({
           // "Find more": chat didn't change while rating cards — skip the
           // slow transcript re-analysis; per-click merges did the rest.
           skip_transcript: opts?.skipTranscript ?? false,
+          watchlist_added: savedIds,
         }),
       });
+      // Only clear the pending flags once the server confirms — a failed call
+      // leaves them queued for the next session end.
+      if (res.ok) markSynced(savedIds);
       // fetch() resolves (doesn't throw) on 4xx/5xx — surface those so a failed
       // fingerprint/rec build is visible in logs rather than silently opening
       // the view to mocks. UX intent is still "never blocked", so we don't
@@ -838,6 +964,24 @@ export default function WTWApp({
       setBuildingRecs(false);
       setStage("recommendations");
     }
+  }
+
+  // Leaving the cards behind is the moment to report what got saved. Without
+  // this, the most ordinary flow — open Recommendations, save a few, go back,
+  // never chat and never tap "Find more" — left every save stuck locally,
+  // because endSessionAndGenerate was only reachable from those two paths.
+  // Fire-and-forget: the route records the intent before its no-op fast path, so
+  // this is a read + write and an early return, and the user isn't waiting on it.
+  function leaveCards() {
+    if (getUnsyncedIds().length > 0) {
+      void endSessionAndGenerate({ skipTranscript: true });
+    }
+    setStage("onboard");
+  }
+
+  function handleWatchlist() {
+    setVoiceOpen(false);
+    setStage("watchlist");
   }
 
   function handleFastLearning() {
@@ -976,10 +1120,19 @@ export default function WTWApp({
       ) : stage === "recommendations" ? (
         <div className={styles.shell}>
           <RecommendationsView
-            onBack={() => setStage("onboard")}
+            onBack={leaveCards}
             contentType={contentType}
             mode="recommendations"
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
+          />
+        </div>
+      ) : stage === "watchlist" ? (
+        <div className={styles.shell}>
+          <RecommendationsView
+            onBack={leaveCards}
+            contentType={contentType}
+            mode="watchlist"
+            onBrowse={handleRecommend}
           />
         </div>
       ) : stage === "learning" ? (
@@ -1001,8 +1154,11 @@ export default function WTWApp({
             hasMessages={messages.length > 0}
             onBack={backToOnboard}
             onOpenChat={() => setStage("conversation")}
+            onRecommend={handleRecommend}
+            onWatchlist={handleWatchlist}
             onFastLearning={handleFastLearning}
             onRatings={handleRatings}
+            onProfile={() => router.push("/profile/dna")}
             user={user}
             onSignOut={signOut}
             contentType={contentType}
@@ -1059,9 +1215,35 @@ export default function WTWApp({
             )}
           </div>
 
-          {showRecommend && (
+          {/* 48-hour check-in, one at a time so the home screen never stacks
+              cards. Only on the onboard view: it's where every session lands, and
+              a time-sensitive prompt buried in a scrolling feed gets missed.
+              RegretPrompt marks the queue entry itself; we just drop it from
+              state once its confirmation has played. */}
+          {stage === "onboard" && regretChecks[0] && (
+            <div className={styles.regretBar}>
+              <RegretPrompt
+                key={`${regretChecks[0].type}:${regretChecks[0].tmdb_id}`}
+                entry={regretChecks[0]}
+                onDone={(done) =>
+                  setRegretChecks((prev) =>
+                    prev.filter(
+                      (e) => !(e.tmdb_id === done.tmdb_id && e.type === done.type),
+                    ),
+                  )
+                }
+              />
+            </div>
+          )}
+
+          {(showRecommend || watchlistN > 0) && (
             <div className={styles.recommendBar}>
-              <RecommendPill onClick={handleRecommend} />
+              <HomeCircles
+                onRecommend={handleRecommend}
+                onWatchlist={handleWatchlist}
+                showRecommend={showRecommend}
+                watchlistN={watchlistN}
+              />
             </div>
           )}
 

@@ -31,8 +31,16 @@ import {
   setCachedExplain,
   type ExplainData,
 } from "@/lib/explain-cache";
+import {
+  getWatchlist,
+  addToWatchlist,
+  removeFromWatchlist,
+  setWatchlistRating,
+  type WatchlistRating,
+} from "@/lib/watchlist";
+import { addToRegretQueue } from "@/lib/regret-queue";
 
-type Mode = "recommendations" | "learning";
+type Mode = "recommendations" | "learning" | "watchlist";
 
 interface Props {
   onBack: () => void;
@@ -42,6 +50,11 @@ interface Props {
    * "learning"        = rapid taste-training stream; identical UI but the
    *                     header label changes and the user is encouraged to
    *                     skip-without-rating (swipe in full view).
+   * "watchlist"       = the user's saved cards, read from localStorage instead
+   *                     of the API. Identical layout. Rating a card feeds the
+   *                     fingerprint through the same call the feed uses but
+   *                     LEAVES it here, tagged with the outcome; only the card's
+   *                     own "Remove from watchlist" button takes it off.
    */
   mode?: Mode;
   /**
@@ -51,22 +64,32 @@ interface Props {
    * then clears and refetches the list.
    */
   onFindMore?: () => Promise<void>;
+  /** Watchlist mode only — action on the empty state that opens the rec feed. */
+  onBrowse?: () => void;
 }
 
 type ViewMode = "compact" | "full";
 
 const PAGE_FETCH_LIMIT = 50; // hard cap; the mock list is short anyway
+const WATCHLIST_PAGE_SIZE = 6; // matches the API's page size so scrolling feels the same
 
 const HEADER_TITLE: Record<Mode, string> = {
   recommendations: "For You",
   learning: "Fast Learning",
+  watchlist: "Watchlist",
 };
+
+/** rec.id is "type:tmdb_id" for engine recs, a bare slug for pre-session mocks. */
+function tmdbIdOf(id: string): string {
+  return id.includes(":") ? id.split(":")[1] : id;
+}
 
 export default function RecommendationsView({
   onBack,
   contentType,
   mode = "recommendations",
   onFindMore,
+  onBrowse,
 }: Props) {
   const [view, setView] = useState<ViewMode>("compact");
   const [recs, setRecs] = useState<Recommendation[]>([]);
@@ -77,11 +100,15 @@ export default function RecommendationsView({
   const [fullIndex, setFullIndex] = useState(0);
   // The card whose "Why this?" detail overlay is open (null = closed).
   const [detail, setDetail] = useState<Recommendation | null>(null);
-  // Once a card has been rated we hide its buttons (and in the full view,
-  // we auto-advance). Local-only — survives until the view closes.
+  // Once a card has been judged we swap its buttons for the outcome tag (and in
+  // the full view, we auto-advance). Seeded from the watchlist so a saved card's
+  // tag survives leaving and re-opening the view.
   const [feedbackGiven, setFeedbackGiven] = useState<
-    Record<string, FeedbackRating>
+    Record<string, WatchlistRating>
   >({});
+  // Watchlist membership by rec.id, seeded from localStorage on mount so the
+  // CTA renders in the right state without re-reading storage per card.
+  const [saved, setSaved] = useState<Set<string>>(new Set());
 
   // Refs mirror loading/offset/hasMore so loadMore doesn't depend on
   // those changing via setState (which would create stale closures and
@@ -94,6 +121,10 @@ export default function RecommendationsView({
   // read-modify-write on the DNA, so requests must not overlap. Find More
   // awaits this chain so every rating is merged before regeneration.
   const feedbackQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // Watchlist mode pages over a snapshot taken when the view opens, NOT over
+  // live storage: rating a card removes it from storage, which would otherwise
+  // shift the cursor and make the pager skip the next entry.
+  const watchlistRef = useRef<Recommendation[]>([]);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -101,6 +132,26 @@ export default function RecommendationsView({
     setLoading(true);
     setError(null);
     try {
+      // Saved cards are stored whole, so this needs no network and no type
+      // filter — the watchlist deliberately shows everything the user saved.
+      if (mode === "watchlist") {
+        const all = watchlistRef.current;
+        const items = all.slice(
+          offsetRef.current,
+          offsetRef.current + WATCHLIST_PAGE_SIZE,
+        );
+        setRecs((prev) => {
+          const seen = new Set(prev.map((r) => r.id));
+          const incoming = items.filter((r) => !seen.has(r.id));
+          return incoming.length ? [...prev, ...incoming] : prev;
+        });
+        offsetRef.current += items.length;
+        const more = offsetRef.current < all.length;
+        hasMoreRef.current = more;
+        setHasMore(more);
+        return;
+      }
+
       const res = await fetch(
         `/api/recommendations/generate?type=${contentType}&offset=${offsetRef.current}`,
       );
@@ -128,17 +179,29 @@ export default function RecommendationsView({
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [contentType]);
+  }, [contentType, mode]);
 
   // Initial load + reload when content type changes.
   useEffect(() => {
     setRecs([]);
     setHasMore(true);
     setFullIndex(0);
-    setFeedbackGiven({});
     offsetRef.current = 0;
     hasMoreRef.current = true;
     loadingRef.current = false;
+    // Seed the membership set (all modes — the feed shows saved state too), the
+    // stored outcome tags, and the watchlist pager's snapshot, before the first
+    // page is read.
+    const entries = getWatchlist();
+    setSaved(new Set(entries.map((e) => e.rec.id)));
+    setFeedbackGiven(
+      Object.fromEntries(
+        entries
+          .filter((e) => e.rating != null)
+          .map((e) => [e.rec.id, e.rating as WatchlistRating]),
+      ),
+    );
+    watchlistRef.current = entries.map((e) => e.rec);
     void loadMore();
   }, [contentType, loadMore]);
 
@@ -164,7 +227,74 @@ export default function RecommendationsView({
     }
   }
 
+  // Add / remove the card in the local watchlist. The card is stored whole, so
+  // the watchlist view renders it without a refetch. We also snapshot the "Why
+  // this pick?" payload: /api/recommendations/explain reads the Redis rec cache,
+  // which expires, so without a snapshot the Why button 404s on old saves.
+  async function toggleWatchlist(rec: Recommendation) {
+    if (saved.has(rec.id)) {
+      removeFromWatchlist(rec.id);
+      setSaved((prev) => {
+        const next = new Set(prev);
+        next.delete(rec.id);
+        return next;
+      });
+      // Drop the stored tag too, so re-saving the title later offers the
+      // reactions again instead of the old outcome.
+      setFeedbackGiven((prev) => {
+        if (!(rec.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[rec.id];
+        return next;
+      });
+      if (mode === "watchlist") dropCard(rec);
+      return;
+    }
+
+    const cached = getCachedExplain(rec.id);
+    addToWatchlist(rec, cached); // save first — never block the click on a fetch
+    setSaved((prev) => new Set(prev).add(rec.id));
+    if (cached) return;
+
+    // No breakdown cached yet: fetch it once, now, while the title is still in
+    // the engine's cache. addToWatchlist backfills the snapshot idempotently.
+    try {
+      const res = await fetch(
+        `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdbIdOf(rec.id))}&type=${rec.type}`,
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as ExplainData;
+      setCachedExplain(rec.id, data);
+      addToWatchlist(rec, data);
+    } catch (e) {
+      // Best-effort — the entry is already saved, just without a breakdown.
+      console.error("[recs] watchlist explain snapshot failed", e);
+    }
+  }
+
+  // Pull a card out of the rendered list — used when a title genuinely leaves
+  // this surface: removed from the feed, or unsaved from the watchlist.
+  function dropCard(rec: Recommendation) {
+    setRecs((prev) => prev.filter((r) => r.id !== rec.id));
+    setFullIndex((i) => Math.max(0, Math.min(i, recs.length - 2)));
+  }
+
   async function handleFeedback(rec: Recommendation, rating: FeedbackRating) {
+    // Rating does NOT take a title off the watchlist — it stays, tagged with the
+    // outcome, and only its own "Remove from watchlist" button removes it. The
+    // tag is persisted so it survives leaving and re-opening the view.
+    setWatchlistRating(rec.id, rating);
+    if (mode === "watchlist") {
+      // Rating something off the watchlist means the user actually watched it —
+      // the one place in this view where that's unambiguous (a feed rating can
+      // be a reaction to a title they saw long ago). Queue the 48-hour
+      // glad/neutral/regret check-in, same as RecCard does on "watched".
+      // Not for "disliked": they've already told us how it landed.
+      if (rating === "loved" || rating === "liked") {
+        addToRegretQueue(tmdbIdOf(rec.id), rec.title, rec.type);
+      }
+    }
+
     setFeedbackGiven((prev) => ({ ...prev, [rec.id]: rating }));
     // Queue the POST (don't block the UI on it): the route folds each rating
     // into the fingerprint incrementally, and those merges must run one at a
@@ -197,8 +327,9 @@ export default function RecommendationsView({
         console.error("[recs] feedback failed", e);
       }
     });
-    // In full view, advance to next after feedback.
-    if (view === "full") {
+    // In full view, advance to next after feedback. Not in watchlist mode: the
+    // card stays put with its tag, so the user should stay on it too.
+    if (view === "full" && mode !== "watchlist") {
       setFullIndex((i) => Math.min(i + 1, recs.length - 1));
     }
   }
@@ -207,8 +338,15 @@ export default function RecommendationsView({
   // drop the card immediately, then persist to the removed list server-side.
   // Tracked in Supabase so a future "Removed" screen can restore it.
   function handleRemove(rec: Recommendation) {
-    setRecs((prev) => prev.filter((r) => r.id !== rec.id));
-    setFullIndex((i) => Math.max(0, Math.min(i, recs.length - 2)));
+    // "Never recommend this again" is a suppression, not a rating — but like a
+    // rating it leaves the saved card in place, tagged. In the feed the card
+    // still disappears; there, that IS the point of the control.
+    setWatchlistRating(rec.id, "removed");
+    if (mode === "watchlist") {
+      setFeedbackGiven((prev) => ({ ...prev, [rec.id]: "removed" }));
+    } else {
+      dropCard(rec);
+    }
     const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
     void fetch("/api/recommendations/removed", {
       method: "POST",
@@ -272,6 +410,14 @@ export default function RecommendationsView({
           onWhy={setDetail}
           onFindMore={onFindMore ? handleFindMore : undefined}
           refreshing={refreshing}
+          saved={saved}
+          onToggleWatchlist={toggleWatchlist}
+          emptyMessage={
+            mode === "watchlist"
+              ? "Nothing saved yet. Tap “Add to watchlist” on a recommendation to keep it here."
+              : undefined
+          }
+          onBrowse={mode === "watchlist" ? onBrowse : undefined}
         />
       ) : (
         <FullSwiper
@@ -285,6 +431,8 @@ export default function RecommendationsView({
           onFeedback={handleFeedback}
           onRemove={handleRemove}
           onWhy={setDetail}
+          saved={saved}
+          onToggleWatchlist={toggleWatchlist}
         />
       )}
 
@@ -292,6 +440,8 @@ export default function RecommendationsView({
         <WhyDetailOverlay
           rec={detail}
           rated={feedbackGiven[detail.id]}
+          saved={saved.has(detail.id)}
+          onToggleWatchlist={toggleWatchlist}
           onFeedback={handleFeedback}
           onRemove={(r) => {
             setDetail(null);
@@ -320,18 +470,27 @@ function CompactList({
   onWhy,
   onFindMore,
   refreshing = false,
+  saved,
+  onToggleWatchlist,
+  emptyMessage,
+  onBrowse,
 }: {
   recs: Recommendation[];
   loading: boolean;
   hasMore: boolean;
   error: string | null;
-  feedbackGiven: Record<string, FeedbackRating>;
+  feedbackGiven: Record<string, WatchlistRating>;
   onLoadMore: () => void;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
   onFindMore?: () => void;
   refreshing?: boolean;
+  saved: Set<string>;
+  onToggleWatchlist: (rec: Recommendation) => void;
+  /** Shown instead of the list when there's nothing to render (watchlist). */
+  emptyMessage?: string;
+  onBrowse?: () => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -365,6 +524,21 @@ function CompactList({
     return () => cancelAnimationFrame(id);
   }, [refreshing]);
 
+  if (emptyMessage && recs.length === 0 && !loading) {
+    return (
+      <div className={styles.list}>
+        <div className={styles.emptyState}>
+          <span className={styles.muted}>{emptyMessage}</span>
+          {onBrowse && (
+            <button type="button" className={styles.browseBtn} onClick={onBrowse}>
+              Browse recommendations
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div ref={listRef} className={styles.list}>
       {recs.map((rec) => (
@@ -375,6 +549,8 @@ function CompactList({
           onFeedback={onFeedback}
           onRemove={onRemove}
           onWhy={onWhy}
+          saved={saved.has(rec.id)}
+          onToggleWatchlist={onToggleWatchlist}
         />
       ))}
       <div ref={sentinelRef} className={styles.sentinel}>
@@ -408,16 +584,20 @@ function CompactCard({
   onFeedback,
   onRemove,
   onWhy,
+  saved,
+  onToggleWatchlist,
 }: {
   rec: Recommendation;
-  rated: FeedbackRating | undefined;
+  rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
+  saved: boolean;
+  onToggleWatchlist: (rec: Recommendation) => void;
 }) {
   return (
     <article className={styles.card}>
-      {/* Row 1 — title + meta + Why pill | % match | trailer */}
+      {/* Row 1 — title + meta | % match | trailer */}
       <div className={styles.cardTop}>
         <div className={styles.cardTitleBlock}>
           <h3 className={styles.cardTitle}>{rec.title}</h3>
@@ -428,15 +608,6 @@ function CompactCard({
             <span className={styles.dot} />
             <span>★ {rec.rating.toFixed(1)}</span>
           </div>
-          <button
-            type="button"
-            className={styles.whyPill}
-            onClick={() => onWhy(rec)}
-            aria-label={`Why we picked ${rec.title}`}
-          >
-            <span aria-hidden>🤔</span>
-            <span>Why this pick?</span>
-          </button>
         </div>
         <div className={styles.cardMatch}>
           <span className={styles.matchDot} />
@@ -445,7 +616,21 @@ function CompactCard({
         <TrailerButton rec={rec} />
       </div>
 
-      {/* Row 2 — poster | fingerprint text */}
+      {/* Row 2 — Why pill | watchlist CTA across from it */}
+      <div className={styles.ctaRow}>
+        <button
+          type="button"
+          className={styles.whyPill}
+          onClick={() => onWhy(rec)}
+          aria-label={`Why we picked ${rec.title}`}
+        >
+          <span aria-hidden>🤔</span>
+          <span>Why this pick?</span>
+        </button>
+        <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} />
+      </div>
+
+      {/* Row 3 — poster | fingerprint text */}
       <div className={styles.cardMid}>
         <PosterTile rec={rec} size="md" />
         <div className={styles.cardReason}>
@@ -454,7 +639,7 @@ function CompactCard({
         </div>
       </div>
 
-      {/* Row 3 — the four reactions */}
+      {/* Row 4 — the four reactions */}
       <FeedbackRow
         rec={rec}
         rated={rated}
@@ -463,6 +648,55 @@ function CompactCard({
         compact
       />
     </article>
+  );
+}
+
+// The card's primary CTA — deliberately heavier than the "Why this pick?" pill
+// it sits across from. Toggles: saved cards offer removal instead.
+function WatchlistButton({
+  rec,
+  saved,
+  onToggle,
+  variant,
+}: {
+  rec: Recommendation;
+  saved: boolean;
+  onToggle: (rec: Recommendation) => void;
+  /** "strong" = over a poster (blurred backing); "block" = full-width column. */
+  variant?: "strong" | "block";
+}) {
+  const label = saved ? "Remove from watchlist" : "Add to watchlist";
+  return (
+    <button
+      type="button"
+      className={[
+        styles.watchlistBtn,
+        saved ? styles.watchlistBtnSaved : "",
+        variant === "strong" ? styles.watchlistBtnStrong : "",
+        variant === "block" ? styles.watchlistBtnBlock : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      onClick={() => onToggle(rec)}
+      aria-pressed={saved}
+      aria-label={`${label}: ${rec.title}`}
+      title={label}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="15"
+        height="15"
+        fill={saved ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      </svg>
+      <span>{label}</span>
+    </button>
   );
 }
 
@@ -521,17 +755,21 @@ function FullSwiper({
   onFeedback,
   onRemove,
   onWhy,
+  saved,
+  onToggleWatchlist,
 }: {
   recs: Recommendation[];
   index: number;
   setIndex: (i: number | ((p: number) => number)) => void;
   loading: boolean;
   hasMore: boolean;
-  feedbackGiven: Record<string, FeedbackRating>;
+  feedbackGiven: Record<string, WatchlistRating>;
   onLoadMore: () => void;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
+  saved: Set<string>;
+  onToggleWatchlist: (rec: Recommendation) => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const startX = useRef<number | null>(null);
@@ -662,7 +900,7 @@ function FullSwiper({
         ? styles.slideRight
         : styles.slideLeft;
 
-  const shared = { onFeedback, onRemove, onWhy };
+  const shared = { onFeedback, onRemove, onWhy, onToggleWatchlist };
 
   return (
     <div
@@ -690,6 +928,7 @@ function FullSwiper({
             key={nextRec.id}
             rec={nextRec}
             rated={feedbackGiven[nextRec.id]}
+            saved={saved.has(nextRec.id)}
             style={{ transform: `translateX(${(dragX ?? 0) + W}px)`, transition: trans }}
             {...shared}
           />
@@ -699,6 +938,7 @@ function FullSwiper({
             key={prevRec.id}
             rec={prevRec}
             rated={feedbackGiven[prevRec.id]}
+            saved={saved.has(prevRec.id)}
             style={{ transform: `translateX(${(dragX ?? 0) - W}px)`, transition: trans }}
             {...shared}
           />
@@ -707,6 +947,7 @@ function FullSwiper({
           key={rec.id}
           rec={rec}
           rated={feedbackGiven[rec.id]}
+          saved={saved.has(rec.id)}
           className={entranceClass}
           style={
             dragging ? { transform: `translateX(${dragX ?? 0}px)`, transition: trans } : undefined
@@ -753,14 +994,18 @@ function FullCard({
   onFeedback,
   onRemove,
   onWhy,
+  saved,
+  onToggleWatchlist,
   className = "",
   style,
 }: {
   rec: Recommendation;
-  rated: FeedbackRating | undefined;
+  rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
+  saved: boolean;
+  onToggleWatchlist: (rec: Recommendation) => void;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -783,16 +1028,25 @@ function FullCard({
           <span className={styles.dot} />
           <span>★ {rec.rating.toFixed(1)}</span>
         </div>
-        {/* "Why this pick?" pill under the title/meta block. */}
-        <button
-          type="button"
-          className={`${styles.whyPill} ${styles.whyPillStrong}`}
-          onClick={() => onWhy(rec)}
-          aria-label={`Why we picked ${rec.title}`}
-        >
-          <span aria-hidden>🤔</span>
-          <span>Why this pick?</span>
-        </button>
+        {/* "Why this pick?" pill under the title/meta block, watchlist CTA
+            across from it. */}
+        <div className={styles.ctaRow}>
+          <button
+            type="button"
+            className={`${styles.whyPill} ${styles.whyPillStrong}`}
+            onClick={() => onWhy(rec)}
+            aria-label={`Why we picked ${rec.title}`}
+          >
+            <span aria-hidden>🤔</span>
+            <span>Why this pick?</span>
+          </button>
+          <WatchlistButton
+            rec={rec}
+            saved={saved}
+            onToggle={onToggleWatchlist}
+            variant="strong"
+          />
+        </div>
         {rec.where && <div className={styles.fullWhere}>Watch on {rec.where}</div>}
         <div className={styles.fullReason}>
           <span className={styles.reasonEyebrow}>FINGERPRINT</span>
@@ -823,7 +1077,7 @@ function FeedbackRow({
   compact,
 }: {
   rec: Recommendation;
-  rated: FeedbackRating | undefined;
+  rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   /** When set, a leading "Why" button (same size/style as the reactions) is
@@ -898,10 +1152,11 @@ const REACTIONS: {
   { value: "disliked", emoji: "👎", label: "Dislike", aria: "Watched it, didn't like it" },
 ];
 
-const RATED_MESSAGE: Record<FeedbackRating, string> = {
+const RATED_MESSAGE: Record<WatchlistRating, string> = {
   loved: "Loved — weighted strongly into your taste",
   liked: "Saved to your taste",
   disliked: "Noted — not to your taste",
+  removed: "Removed — won't be recommended again",
 };
 
 // Build a complete RecommendationResult from an explain payload + the card
@@ -927,12 +1182,16 @@ function toResult(data: ExplainData, rec: Recommendation): RecommendationResult 
 function WhyDetailOverlay({
   rec,
   rated,
+  saved,
+  onToggleWatchlist,
   onFeedback,
   onRemove,
   onClose,
 }: {
   rec: Recommendation;
-  rated: FeedbackRating | undefined;
+  rated: WatchlistRating | undefined;
+  saved: boolean;
+  onToggleWatchlist: (rec: Recommendation) => void;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onClose: () => void;
@@ -956,10 +1215,23 @@ function WhyDetailOverlay({
       return;
     }
 
+    // Then the snapshot taken when the card was saved. The engine's rec cache
+    // expires, so for a watchlisted title this is often the ONLY copy left —
+    // without it the network call below 404s.
+    const snapshot = getWatchlist().find((e) => e.rec.id === rec.id)?.explain;
+    if (snapshot) {
+      setCachedExplain(rec.id, snapshot);
+      setResult(toResult(snapshot, rec));
+      setStatus("ready");
+      return;
+    }
+
     (async () => {
       try {
         const res = await fetch(
-          `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdb_id)}`,
+          // `type` disambiguates a colliding movie/TV tmdb_id — without it the
+          // route can only take the first bare-id match in the cached batch.
+          `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdb_id)}&type=${rec.type}`,
         );
         if (cancelled) return;
         if (!res.ok) {
@@ -1063,6 +1335,12 @@ function WhyDetailOverlay({
                 <span className={styles.reasonEyebrow}>FINGERPRINT</span>
                 <span>{result.explanation}</span>
               </div>
+              <WatchlistButton
+                rec={rec}
+                saved={saved}
+                onToggle={onToggleWatchlist}
+                variant="block"
+              />
               <FeedbackRow
                 rec={rec}
                 rated={rated}
