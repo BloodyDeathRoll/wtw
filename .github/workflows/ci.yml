@@ -1,0 +1,50 @@
+name: CI
+
+# Why this exists:
+# Nothing mechanically verified a PR before this. Reviews (human or agent) had to
+# take "type-check clean, tests green" on the author's word — every Claude review
+# so far has ended with a "couldn't run vitest/tsc in this sandbox" caveat. This
+# job runs the same three commands a developer runs locally, so a reviewer can
+# read the result instead of trusting the description.
+#
+# Needs no secrets: type-check, lint and the unit suite are all offline. The
+# tests stub Supabase/Redis/the LLMs via tests/mocks, and vitest runs in jsdom.
+# Deliberately does NOT run `next build` — that needs the real env vars, and the
+# production build already runs on merge via the Vercel deploy hook.
+
+on:
+  pull_request:
+    branches: ['**']
+  push:
+    branches: [main]
+
+# A new push supersedes the previous run on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Node 24 LTS the project develops and deploys on.
+          node-version: 24
+          cache: npm
+
+      # `ci` not `install`: respects package-lock.json exactly, so a run can't
+      # pass on a dependency tree nobody has locally.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
