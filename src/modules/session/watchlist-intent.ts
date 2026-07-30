@@ -53,6 +53,10 @@ export function markSavedInHistory(
   if (ids.length === 0) return history
 
   const next = [...history]
+  // Returning a fresh array unconditionally would defeat the caller's
+  // `updated !== history` skip-check, so a retried request would rewrite an
+  // identical DNA row, bust the cache, and report saves it didn't record.
+  let changed = false
 
   for (const id of ids) {
     const tmdb_id = tmdbIdOf(id)
@@ -68,9 +72,11 @@ export function markSavedInHistory(
       if (entry.watched || entry.rating != null) continue
       if (entry.accepted) continue // already marked saved
       next[at] = { ...entry, accepted: true }
+      changed = true
       continue
     }
 
+    changed = true
     next.push({
       session: ctx.session,
       recommended: tmdb_id,
@@ -82,5 +88,6 @@ export function markSavedInHistory(
     })
   }
 
-  return next
+  // Same reference when nothing moved, so the caller can skip the write.
+  return changed ? next : history
 }

@@ -966,6 +966,19 @@ export default function WTWApp({
     }
   }
 
+  // Leaving the cards behind is the moment to report what got saved. Without
+  // this, the most ordinary flow — open Recommendations, save a few, go back,
+  // never chat and never tap "Find more" — left every save stuck locally,
+  // because endSessionAndGenerate was only reachable from those two paths.
+  // Fire-and-forget: the route records the intent before its no-op fast path, so
+  // this is a read + write and an early return, and the user isn't waiting on it.
+  function leaveCards() {
+    if (getUnsyncedIds().length > 0) {
+      void endSessionAndGenerate({ skipTranscript: true });
+    }
+    setStage("onboard");
+  }
+
   function handleWatchlist() {
     setVoiceOpen(false);
     setStage("watchlist");
@@ -1107,7 +1120,7 @@ export default function WTWApp({
       ) : stage === "recommendations" ? (
         <div className={styles.shell}>
           <RecommendationsView
-            onBack={() => setStage("onboard")}
+            onBack={leaveCards}
             contentType={contentType}
             mode="recommendations"
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
@@ -1116,7 +1129,7 @@ export default function WTWApp({
       ) : stage === "watchlist" ? (
         <div className={styles.shell}>
           <RecommendationsView
-            onBack={() => setStage("onboard")}
+            onBack={leaveCards}
             contentType={contentType}
             mode="watchlist"
             onBrowse={handleRecommend}

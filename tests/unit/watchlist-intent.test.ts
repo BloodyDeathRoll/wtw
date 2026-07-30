@@ -130,4 +130,17 @@ describe('id handling', () => {
     expect(twice).toHaveLength(1)
     expect(twice[0].accepted).toBe(true)
   })
+
+  // The caller skips its DB write on `updated !== history`, so "no change" has
+  // to mean the SAME reference, not just equal contents.
+  it('returns the original array when nothing was marked', () => {
+    const alreadySaved = [entry({ accepted: true })]
+    expect(markSavedInHistory(alreadySaved, ['movie:1396'], CTX)).toBe(alreadySaved)
+
+    const watched = [entry({ watched: true, rating: 'loved' as Reaction })]
+    expect(markSavedInHistory(watched, ['movie:1396'], CTX)).toBe(watched)
+
+    const empty: RecommendationRecord[] = []
+    expect(markSavedInHistory(empty, [''], CTX)).toBe(empty)
+  })
 })
