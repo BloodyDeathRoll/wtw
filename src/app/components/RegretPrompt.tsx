@@ -7,7 +7,7 @@
  * Fires POST /api/recommendations/feedback with action: 'glad_watched' | 'regret'.
  *
  * Usage:
- *   <RegretPrompt entry={entry} onDone={() => removeFromList(entry.tmdb_id)} />
+ *   <RegretPrompt entry={entry} onDone={(e) => removeFromList(e)} />
  */
 
 import { useState } from "react"
@@ -50,7 +50,9 @@ const DONE_MESSAGES: Record<RegretAction, string> = {
 
 interface RegretPromptProps {
   entry: RegretEntry
-  onDone: (tmdb_id: string) => void
+  /** Hands back the whole entry: a title is identified by (tmdb_id, type), and
+   *  a bare id would let the parent drop the wrong one on a collision. */
+  onDone: (entry: RegretEntry) => void
 }
 
 export default function RegretPrompt({ entry, onDone }: RegretPromptProps) {
@@ -60,7 +62,7 @@ export default function RegretPrompt({ entry, onDone }: RegretPromptProps) {
   async function handleResponse(a: RegretAction) {
     setAction(a)
     setResponded(true)
-    markRegretReacted(entry.tmdb_id)
+    markRegretReacted(entry.tmdb_id, entry.type)
 
     // Fire feedback API — best-effort
     fetch("/api/recommendations/feedback", {
@@ -68,13 +70,17 @@ export default function RegretPrompt({ entry, onDone }: RegretPromptProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tmdb_id: entry.tmdb_id,
+        // Without this the row is keyed on the bare tmdb_id, so a film and a
+        // series sharing an id (TMDB numbers them separately) collapse into one
+        // entry on the ratings screen — and neither resolves a poster.
+        media_type: entry.type,
         action: a,
         is_stretch_pick: false,
       }),
     }).catch(() => {})
 
     // Remove from parent list after brief confirmation
-    setTimeout(() => onDone(entry.tmdb_id), 1800)
+    setTimeout(() => onDone(entry), 1800)
   }
 
   if (responded && action) {
