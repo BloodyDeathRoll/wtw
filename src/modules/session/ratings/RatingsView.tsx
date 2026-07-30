@@ -20,6 +20,7 @@ import type {
   RatingItem,
   RemovedItem,
 } from "@/app/api/recommendations/ratings/route";
+import { setWatchlistRating } from "@/lib/watchlist";
 import styles from "./RatingsView.module.css";
 import React from "react";
 
@@ -127,6 +128,11 @@ export default function RatingsView({ onBack }: { onBack: () => void }) {
         }),
       });
       if (!res.ok) throw new Error(String(res.status));
+      // Keep a re-rated title on the watchlist but re-tag it, so the two screens
+      // agree. The watchlist keys on the composite `type:tmdb_id` (engine recs)
+      // or a bare id (mocks) — try both; a miss is a no-op.
+      if (item.media_type) setWatchlistRating(`${item.media_type}:${item.tmdb_id}`, next);
+      setWatchlistRating(item.tmdb_id, next);
       setData((d) => {
         if (!d) return d;
         const prev = item.rating;

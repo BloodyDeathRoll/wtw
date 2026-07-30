@@ -11,8 +11,9 @@
  * After this returns, GET /api/recommendations/generate serves live,
  * poster-bearing recommendations (source: "cache") instead of mocks.
  *
- * Body: { conversation_id: string }
- * Response: { ok, taste_version, signal_count, rec_count }
+ * Body: { conversation_id: string, skip_transcript?: boolean,
+ *         watchlist_added?: string[] }   // "type:tmdb_id" — see step 2b
+ * Response: { ok, taste_version, signal_count, rec_count, watchlist_recorded }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -26,6 +27,7 @@ import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
+import { markSavedInHistory } from '@/modules/session/watchlist-intent'
 import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -46,6 +48,11 @@ export async function POST(req: NextRequest) {
   // cards, so re-running the LLM transcript extraction (~5-10s) would only
   // produce signals that dedup away. Ratings are folded regardless.
   const skipTranscript: boolean = body.skip_transcript === true
+  // Watchlist adds the client hasn't reported yet, piggybacked on this request
+  // so saving a card costs no round-trip of its own. Ids are "type:tmdb_id".
+  const watchlistAdded: string[] = Array.isArray(body.watchlist_added)
+    ? body.watchlist_added.filter((v: unknown): v is string => typeof v === 'string')
+    : []
   if (!conversationId) {
     return NextResponse.json({ error: 'conversation_id required' }, { status: 400 })
   }
@@ -86,6 +93,40 @@ export async function POST(req: NextRequest) {
   }
 
   const sessionNumber = (dna.metadata.total_sessions ?? 0) + 1
+
+  // ── 2b. Record watchlist saves (an interest signal) ──────────
+  // Written and persisted here, separately from the session merge, for two
+  // reasons: the no-op fast path below can return before any DNA write happens
+  // (a save must not be lost just because nothing else changed), and a save must
+  // NOT bump taste_version — it isn't a taste change, and a bump would bust both
+  // the rec cache and the embedding cache, which are keyed by version.
+  //
+  // Saved entries carry rating: null, so ratedTmdbIds() ignores them and the fast
+  // path stays fast — which is intended: a saved title keeps showing in the feed
+  // with a "Remove from watchlist" CTA rather than disappearing from it.
+  let watchlistRecorded = 0
+  if (watchlistAdded.length > 0) {
+    const history = dna.learning_loop.recommendation_history
+    const updated = markSavedInHistory(history, watchlistAdded, {
+      session: dna.metadata.total_sessions,
+      fingerprintVersion: dna.metadata.taste_version,
+    })
+    if (updated !== history) {
+      dna.learning_loop.recommendation_history = updated
+      const { error } = await db
+        .from('users')
+        .update({ dna, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+      if (error) {
+        console.error('[session/end] watchlist intent write failed (non-fatal):', error.message)
+      } else {
+        watchlistRecorded = watchlistAdded.length
+        // We wrote users.dna directly, so drop the 60s loadDNA cache — otherwise
+        // the merge below could load a pre-write snapshot and lose these marks.
+        await invalidateDNACache(user.id)
+      }
+    }
+  }
 
   // ── 3. Transcript → SessionSummary (real signals) ────────────
   // Skipped on "Find more" (no new chat since the last run — the extraction
@@ -159,6 +200,7 @@ export async function POST(req: NextRequest) {
         signal_count: 0,
         rec_count: 0,
         unchanged: true,
+        watchlist_recorded: watchlistRecorded,
       })
     }
     // else: cache is stale (holds a rated title) or cold — fall through to
@@ -193,6 +235,7 @@ export async function POST(req: NextRequest) {
       taste_version,
       signal_count: summary.new_signals.length,
       rec_count: 0,
+      watchlist_recorded: watchlistRecorded,
       warning: 'Fingerprint updated but recommendation generation failed',
     })
   }
@@ -202,5 +245,6 @@ export async function POST(req: NextRequest) {
     taste_version,
     signal_count: summary.new_signals.length,
     rec_count,
+    watchlist_recorded: watchlistRecorded,
   })
 }
