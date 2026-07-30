@@ -33,10 +33,21 @@ function writeQueue(queue: RegretEntry[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(queue))
 }
 
+/**
+ * Entries are identified by (tmdb_id, type), never tmdb_id alone: TMDB numbers
+ * movies and TV separately and the ranges collide (1396 is both a film and
+ * Breaking Bad). On a bare-id match a queued film would suppress the series'
+ * check-in — and answering one would silently mark the other reacted. Same class
+ * of bug as the candidate-exclusion fix in migration 0014.
+ */
+function sameTitle(e: RegretEntry, tmdb_id: string, type: "movie" | "tv"): boolean {
+  return e.tmdb_id === tmdb_id && e.type === type
+}
+
 /** Call when a user marks a title as watched. */
 export function addToRegretQueue(tmdb_id: string, title: string, type: "movie" | "tv") {
   const queue = readQueue()
-  if (queue.find(e => e.tmdb_id === tmdb_id)) return  // already queued
+  if (queue.find(e => sameTitle(e, tmdb_id, type))) return  // already queued
   writeQueue([...queue, { tmdb_id, title, type, watched_at: Date.now(), reacted: false }])
 }
 
@@ -46,8 +57,10 @@ export function getPendingRegretChecks(): RegretEntry[] {
 }
 
 /** Mark an entry as responded to so it stops surfacing. */
-export function markRegretReacted(tmdb_id: string) {
-  writeQueue(readQueue().map(e => e.tmdb_id === tmdb_id ? { ...e, reacted: true } : e))
+export function markRegretReacted(tmdb_id: string, type: "movie" | "tv") {
+  writeQueue(
+    readQueue().map(e => (sameTitle(e, tmdb_id, type) ? { ...e, reacted: true } : e)),
+  )
 }
 
 /**
