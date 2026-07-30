@@ -10,6 +10,12 @@
  *
  * Query params:
  *   tmdb_id  (required) — the TMDB content ID
+ *   type     (optional) — 'movie' | 'tv'. Pass it: TMDB numbers movies and TV
+ *                         separately and the ranges collide (1396 is both a film
+ *                         and Breaking Bad), so tmdb_id alone can match the wrong
+ *                         cached recommendation and show the wrong breakdown.
+ *                         Optional only for backwards compatibility with callers
+ *                         that don't send it yet.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -32,6 +38,8 @@ export async function GET(req: NextRequest) {
   if (!tmdb_id) {
     return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
   }
+  const typeParam = req.nextUrl.searchParams.get('type')
+  const type = typeParam === 'movie' || typeParam === 'tv' ? typeParam : null
 
   // ── Get current taste_version from DNA ───────────────────
   // Needed to construct the correct Redis cache key
@@ -60,7 +68,19 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const recommendation = cached.find(r => r.tmdb_id === tmdb_id)
+  // Match on the composite (tmdb_id, type) when the caller tells us the type.
+  // Without it we can only take the first bare-id match, which is exactly how a
+  // colliding movie/TV pair ends up showing each other's breakdown — so warn
+  // loudly when the cache actually holds an ambiguous pair.
+  const matches = cached.filter(r => r.tmdb_id === tmdb_id)
+  if (!type && matches.length > 1) {
+    console.warn(
+      `[recommendations/explain] ambiguous tmdb_id ${tmdb_id}: ${matches.length} cached recs share it and no type was given`,
+    )
+  }
+  const recommendation = type
+    ? matches.find(r => r.type === type)
+    : matches[0]
 
   if (!recommendation) {
     return NextResponse.json(
