@@ -179,9 +179,29 @@ export async function GET(req: Request) {
     }
   }
 
-  // Type-filter → drop removed titles → paginate → adapt to the UI shape. Used
-  // for both the warm cache and a freshly regenerated list so their handling
-  // can't drift apart.
+  /**
+   * Titles the user has already judged, as `${type}:${tmdb_id}` keys.
+   *
+   * dna.signals is the same set step1 candidate-gen excludes, so a title that
+   * has been loved / liked / disliked (or named in chat) is never generated
+   * again. But the SERVED list can still hold one: the Redis cache was built
+   * before the rating, and a plain GET has no reason to regenerate. Filtering
+   * here is what makes "once judged, never recommended again" hold on the read
+   * path too, not just the write path.
+   *
+   * Composite key, never a bare tmdb_id — TMDB movie and TV ids collide, and
+   * keying on the id alone would drop an unrelated title of the other type
+   * (issue #30 / migration 0014).
+   *
+   * Removal is tracked separately in removed_titles, so restoring a title there
+   * genuinely brings it back — unless it was also rated, which is its own,
+   * stronger judgement.
+   */
+  const judged = new Set((dna?.signals ?? []).map((s) => `${s.type}:${s.tmdb_id}`))
+
+  // Type-filter → drop removed + already-judged titles → paginate → adapt to the
+  // UI shape. Used for both the warm cache and a freshly regenerated list so
+  // their handling can't drift apart.
   async function servePage(recs: RecommendationResult[], source: string) {
     const typeFiltered =
       contentType === "movies"
@@ -189,10 +209,12 @@ export async function GET(req: Request) {
         : contentType === "series"
           ? recs.filter((r) => r.type === "tv")
           : recs;
-    // Drop removed titles before paginating so pages stay full-sized.
-    const filtered = typeFiltered.filter(
-      (r) => !removed.has(`${r.type}:${r.tmdb_id}`),
-    );
+    // Drop removed + already-judged titles before paginating so pages stay
+    // full-sized.
+    const filtered = typeFiltered.filter((r) => {
+      const key = `${r.type}:${r.tmdb_id}`;
+      return !removed.has(key) && !judged.has(key);
+    });
     const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;
