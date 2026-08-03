@@ -145,9 +145,11 @@ Then on GitHub:
 4. **If your PR touches `src/types/dna.ts`, request all three — no merge without all three approvals.**
 5. One approval → **Squash and merge** → **delete the branch** (GitHub offers a button; do it).
 
-### 4. Update CLAUDE.md at a milestone
+### 4. Update the integration checklist at a milestone
 
-When you finish a meaningful chunk, update the **Current Status** section for your assignment in `CLAUDE.md` (tick off what's done, note what's next). Fold it into your task PR or a small `chore/` PR. This is how the next Claude Code session starts productively instead of re-discovering state.
+When you finish a meaningful chunk, update `docs/INTEGRATION.md` (tick off what's done, note what's next). Fold it into your task PR or a small `chore/` PR. This is how the next Claude Code session starts productively instead of re-discovering state.
+
+`CLAUDE.md` itself is now a short always-loaded index — leave it alone unless a standing rule or an ownership boundary actually changed.
 
 ---
 
