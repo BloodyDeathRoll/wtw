@@ -51,11 +51,11 @@ The other two run `git merge origin/main` at the start of their next session and
 
 A conflict happens when two people changed the **same line of the same file** on different branches, and Git can't figure out which version to keep. It asks you to decide.
 
-This should be rare if everyone sticks to their own folders. The most likely place it happens is `CLAUDE.md` since everyone updates it. If you get a conflict:
+This should be rare if everyone sticks to their own folders. The most likely place it happens is `docs/INTEGRATION.md` since everyone updates it. If you get a conflict:
 
 ```bash
 git merge origin/main
-# Git will say "CONFLICT in CLAUDE.md"
+# Git will say "CONFLICT in docs/INTEGRATION.md"
 ```
 
 Open the file. Git marks the conflict like this:
@@ -71,8 +71,8 @@ their version of the line
 Delete the markers, keep whichever version is correct (or combine both), save, then:
 
 ```bash
-git add CLAUDE.md
-git commit -m "fix: resolve merge conflict in CLAUDE.md"
+git add docs/INTEGRATION.md
+git commit -m "fix: resolve merge conflict in docs/INTEGRATION.md"
 ```
 
 Message the group when this happens — don't guess.
@@ -108,7 +108,7 @@ Message the group when this happens — don't guess.
 - `feat: add ConversationInterface streaming`
 - `feat: build scoring pipeline steps 1–3`
 - `fix: confidence weighting off by one`
-- `chore: update CLAUDE.md session status`
+- `chore: update the integration checklist`
 
 **Bad:**
 - `update`
