@@ -120,10 +120,21 @@ const VOTE_FLOOR: Record<'movie' | 'tv', Record<number, number>> = {
 // PAGES=15 — under the 15,000 target once cross-genre duplicates are removed,
 // which is why growth asymptotes short of it).
 //
-// Ordered decade-fastest, then type, then genre, then page: any contiguous
-// window of ≥12 slices spans both types and all six decades, so a partial
-// night still seeds for breadth, and page 1 (the most popular titles) is swept
-// before page 2.
+// Ordered decade-fastest, then type, then genre, then page, so a partial night
+// still seeds for breadth and page 1 (the most popular titles) is swept before
+// page 2. Every contiguous window of ≥6 slices spans all six decades.
+//
+// It does NOT guarantee both types in every window: MOVIE_GENRES is 13 long
+// and TV_GENRES only 8, so the genre indices past the short list emit movies
+// alone — the last 30 slices of each page (g=8..12 × 6 decades) are movie-only.
+// Harmless at the DISCOVER_CAP the nightly job actually uses (400 — see Dream's
+// assignments/wtw-catalog/manifest.yaml), which spans >3 pages and cannot land
+// inside that tail. A hand-run with a cap under ~30 starting in the tail would
+// seed no series that run; widen the cap rather than reordering. Do NOT "fix"
+// it by cycling the short list (`genres[g % genres.length]`) — that re-emits
+// TV genres 0–4 as 30 duplicate slices per page, spending the discover call
+// twice for a near-100% dupe rate and inflating slice_space with slices that
+// cannot yield.
 type Slice = {
   type: 'movie' | 'tv'
   genreId: number
