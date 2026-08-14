@@ -39,8 +39,34 @@ const DISCOVER_PAGES   = Math.max(1, intEnv('DISCOVER_PAGES', 5)) // TMDB page d
                                                          // types×genres×decades×PAGES×20.
                                                          // 5 → ~12.6k (< 15k target); 15 →
                                                          // ~37.8k. Higher pages = less
-                                                         // popular titles (vote_count.gte 40).
+                                                         // popular titles (see VOTE_FLOOR).
+                                                         // DO NOT turn this knob on a theory —
+                                                         // it has been raised twice on a dupe
+                                                         // rate back-inferred from an assumed
+                                                         // pages×20, and the formula above was
+                                                         // simply FALSE until the SLICES table
+                                                         // below made it true. It counts SLOTS,
+                                                         // not distinct titles: a title with two
+                                                         // genres fills a slot in two slices of
+                                                         // the same decade, and that
+                                                         // de-duplication factor has never been
+                                                         // measured. The summary now reports
+                                                         // slices_scanned and seed_attempts, so
+                                                         // seeded/(slices_scanned×20) is
+                                                         // observable nightly — take two or
+                                                         // three nights of it, then set this
+                                                         // from the measured ratio.
+const DISCOVER_OFFSET  = intEnv('DISCOVER_OFFSET', -1)   // resume cursor into SLICES, owned and
+                                                         // persisted by the caller (Dream's
+                                                         // run.sh). < 0 or unset → fall back to
+                                                         // the old catalog-size anchor so a
+                                                         // hand-run still behaves as before.
 const TRAILER_BACKFILL = intEnv('TRAILER_BACKFILL', 150) // trailer_key NULL rows to re-check per run
+const POSTER_BACKFILL  = intEnv('POSTER_BACKFILL', 150)  // poster_path NULL rows to re-check per run.
+                                                         // Deliberately NOT derived from SEED_COUNT —
+                                                         // the poster backlog is unrelated to the seed
+                                                         // budget, and an enrich-only run (SEED_COUNT=0)
+                                                         // used to shrink this batch to 50.
 
 function intEnv(name: string, def: number): number {
   const v = process.env[name]
@@ -55,6 +81,91 @@ const TV_GENRES    = [10759, 16, 35, 80, 18, 9648, 10765, 37]
 const DECADES: [number, number][] = [
   [2020, 2029], [2010, 2019], [2000, 2009], [1990, 1999], [1980, 1989], [1970, 1979],
 ]
+
+// Minimum TMDB vote count per (type, decade). discoverVaried defaults to 40,
+// which is the right floor for a recommendation catalog — it keeps unrated
+// noise out — but spending it UNIFORMLY biases toward blockbusters exactly
+// where the breadth goal cares most: TMDB simply holds fewer well-voted titles
+// the further back you go, so a flat 40 caps the thin decades far below the
+// page depth DISCOVER_PAGES already pays for.
+//
+// Measured against live TMDB 2026-08-14 — count of slices (genre×decade) whose
+// whole pool is under DISCOVER_PAGES×20 = 300 titles, i.e. where page depth is
+// wasted because the floor binds first:
+//
+//   movie  2020s 1/13   2010s 1/13   2000s 1/13   1990s 3/13   1980s 4/13   1970s 7/13
+//   tv     2020s 1/8    2010s 1/8    2000s 4/8    1990s 8/8    1980s 8/8    1970s 8/8
+//
+// The floors below are the loosest value that stops the floor from being the
+// binding constraint in that decade (1970s/80s TV is genuinely tiny — 154 and
+// 286 titles all-genres — so no floor rescues it; 10 is where it stops
+// improving). Relaxing only where the pool is thin is what makes this safe:
+// aggregate reachable titles go from ~44,988 to ~51,360 (+14%), and every one
+// of those 6,372 is pre-2000. Do not flatten this to a single lower number —
+// that trades quality for breadth in the decades that never needed it.
+const VOTE_FLOOR: Record<'movie' | 'tv', Record<number, number>> = {
+  movie: { 2020: 40, 2010: 40, 2000: 40, 1990: 25, 1980: 25, 1970: 15 },
+  tv:    { 2020: 40, 2010: 40, 2000: 25, 1990: 15, 1980: 10, 1970: 10 },
+}
+
+// The sweep space, enumerated as the FULL product table.
+//
+// It used to be derived arithmetically from a single `salt`: type = salt%3,
+// decade = salt%6. Those are not independent — 6 is a multiple of 3, so the
+// decade index DICTATED the type. Only 60 of the 126 type×genre×decade
+// combinations were reachable and the split was total: movies only from the
+// 1970s/80s/2000s/2010s, TV only from the 1990s/2020s. No 2020s film and no
+// 2010s series could EVER be seeded, and the pool was 60×PAGES×20, not the
+// 126×PAGES×20 the DISCOVER_PAGES note above assumes (18k vs 37.8k at
+// PAGES=15 — under the 15,000 target once cross-genre duplicates are removed,
+// which is why growth asymptotes short of it).
+//
+// Ordered decade-fastest, then type, then genre, then page, so a partial night
+// still seeds for breadth and page 1 (the most popular titles) is swept before
+// page 2. Every contiguous window of ≥6 slices spans all six decades.
+//
+// It does NOT guarantee both types in every window: MOVIE_GENRES is 13 long
+// and TV_GENRES only 8, so the genre indices past the short list emit movies
+// alone — the last 30 slices of each page (g=8..12 × 6 decades) are movie-only.
+// Harmless at the DISCOVER_CAP the nightly job actually uses (400 — see Dream's
+// assignments/wtw-catalog/manifest.yaml), which spans >3 pages and cannot land
+// inside that tail. A hand-run with a cap under ~30 starting in the tail would
+// seed no series that run; widen the cap rather than reordering. Do NOT "fix"
+// it by cycling the short list (`genres[g % genres.length]`) — that re-emits
+// TV genres 0–4 as 30 duplicate slices per page, spending the discover call
+// twice for a near-100% dupe rate and inflating slice_space with slices that
+// cannot yield.
+type Slice = {
+  type: 'movie' | 'tv'
+  genreId: number
+  yearGte: number
+  yearLte: number
+  page: number
+  voteCountGte: number
+}
+const SLICES: Slice[] = (() => {
+  const out: Slice[] = []
+  const byType = [['movie', MOVIE_GENRES], ['tv', TV_GENRES]] as const
+  const maxGenres = Math.max(MOVIE_GENRES.length, TV_GENRES.length)
+  for (let page = 1; page <= DISCOVER_PAGES; page++) {
+    for (let g = 0; g < maxGenres; g++) {
+      for (const [type, genres] of byType) {
+        if (g >= genres.length) continue
+        for (const [yearGte, yearLte] of DECADES) {
+          out.push({
+            type,
+            genreId: genres[g],
+            yearGte,
+            yearLte,
+            page,
+            voteCountGte: VOTE_FLOOR[type][yearGte] ?? 40,
+          })
+        }
+      }
+    }
+  }
+  return out
+})()
 
 async function main() {
   const db = createServiceClient()
@@ -87,21 +198,38 @@ async function main() {
   const remainingToTarget = Math.max(0, TARGET_CATALOG - startCount)
   const seedBudget = Math.min(SEED_COUNT, remainingToTarget)
 
+  // Where tonight's sweep resumes in SLICES. The caller owns this cursor
+  // because only the caller survives between runs; it advances it by the
+  // slices we report as SCANNED. Anchoring to startCount (the old behaviour,
+  // still the fallback for a hand-run) advances the window by titles SEEDED
+  // while it scans DISCOVER_CAP slices, which is a different unit — the window
+  // slides back onto itself as yield falls.
+  const cursorBase = DISCOVER_OFFSET >= 0 ? DISCOVER_OFFSET : startCount
+  let slicesScanned = 0
+  // Spend + failure accounting. `seeded` counts SUCCESSES, but the binding
+  // ceiling (OMDB, 1,000 lookups/day) is spent per ATTEMPT: fetchAndCacheTitle
+  // calls OMDB before the upsert that can throw, so every failed attempt costs
+  // a lookup that `seeded` never sees. Nothing else meters this — the exit code
+  // is swallowed by design and the summary is all the operator gets — so the
+  // counts have to reach the summary or a cap overrun is silent.
+  let seedAttempts = 0
+  let seedFailures = 0
+  let discoverFailures = 0
+
   if (seedBudget > 0) {
     outer: for (let attempt = 0; attempt < DISCOVER_CAP; attempt++) {
-      // Rotate a deterministic slice: type × genre × decade × page, offset by
-      // how many titles exist so successive nights explore fresh combinations.
-      const salt = startCount + attempt
-      const type: 'movie' | 'tv' = salt % 3 === 0 ? 'tv' : 'movie'
-      const genres = type === 'movie' ? MOVIE_GENRES : TV_GENRES
-      const genreId = genres[salt % genres.length]
-      const [yearGte, yearLte] = DECADES[salt % DECADES.length]
-      const page = (Math.floor(salt / DECADES.length) % DISCOVER_PAGES) + 1
+      const { type, genreId, yearGte, yearLte, page, voteCountGte } =
+        SLICES[(cursorBase + attempt) % SLICES.length]
+      // Count the slice as scanned as soon as we commit to it: a `break outer`
+      // below happens mid-slice, and the caller must not be told to resume ON
+      // this slice (it would re-scan) nor past it.
+      slicesScanned = attempt + 1
 
       let candidates
       try {
-        candidates = await discoverVaried(type, { genreId, yearGte, yearLte, page })
+        candidates = await discoverVaried(type, { genreId, yearGte, yearLte, page, voteCountGte })
       } catch (e) {
+        discoverFailures++
         console.error(`[grow] discover slice failed (${type} g${genreId} ${yearGte}s p${page}):`, e)
         await sleep(1000) // back off before the next slice — a TMDB 429/5xx
                           // shouldn't trigger DISCOVER_CAP rapid-fire retries
@@ -110,14 +238,19 @@ async function main() {
 
       for (const item of candidates) {
         if (known.has(key(item.type, item.tmdb_id))) continue
+        seedAttempts++
         try {
           const ok = await fetchAndCacheTitle(item.tmdb_id, item.type)
           if (ok) {
             known.add(key(item.type, item.tmdb_id))
             seeded++
             if (seeded >= seedBudget) break outer
+          } else {
+            seedFailures++ // TMDB 404 — no OMDB call, but the title is not in
+                           // `known` either, so the next sweep retries it
           }
         } catch (e) {
+          seedFailures++
           console.error(`[grow] cache ${item.type} ${item.tmdb_id} failed:`, e)
         }
         await sleep(260) // TMDB rate-limit courtesy (40 req / 10s)
@@ -141,28 +274,53 @@ async function main() {
     if (report.titles_processed === 0 && report.crew_processed === 0) break
   }
 
-  // ── 3. Backfill posters for any rows still missing one ────────────────────
+  // ── 3. Backfill posters for the least-recently-checked slice of the NULL
+  // backlog. Identical rotation to §3b below, and for the same reason: this
+  // step used to select `poster_path IS NULL` in unspecified order and write
+  // back only when TMDB HAD a poster, so a title with genuinely no poster was
+  // never recorded as checked — it stayed in the NULL set, re-filled the limit
+  // window every night, and the rows behind it were never reached. Measured:
+  // `posters_backfilled` was 0 on 19 of 19 committed nightly summaries.
+  // Stamping last_poster_check on every successful lookup (poster found or not)
+  // advances the cursor, so dead ends rotate to the back instead of being
+  // re-fetched forever. Requires migration 0016 (last_poster_check); without it
+  // the ordered query returns no rows and this step is a harmless no-op.
+  //
+  // The batch size is POSTER_BACKFILL, not SEED_COUNT + 50: the poster backlog
+  // has nothing to do with the seed budget, and an enrich-only re-run
+  // (SEED_COUNT=0) used to silently shrink this batch to 50.
   let postersBackfilled = 0
-  const { data: noPoster } = await db
-    .from('titles')
-    .select('tmdb_id, type')
-    .is('poster_path', null)
-    .limit(SEED_COUNT + 50)
-  for (const row of noPoster ?? []) {
-    try {
-      const detail =
-        row.type === 'movie'
-          ? await getMovie(row.tmdb_id as string)
-          : await getTV(row.tmdb_id as string)
-      if (detail?.poster_path) {
-        await db.from('titles').update({ poster_path: detail.poster_path })
+  if (POSTER_BACKFILL > 0) {
+    const { data: noPoster } = await db
+      .from('titles')
+      .select('tmdb_id, type')
+      .is('poster_path', null)
+      .order('last_poster_check', { ascending: true, nullsFirst: true })
+      .limit(POSTER_BACKFILL)
+    const checkedAt = new Date().toISOString()
+    for (const row of noPoster ?? []) {
+      try {
+        const detail =
+          row.type === 'movie'
+            ? await getMovie(row.tmdb_id as string)
+            : await getTV(row.tmdb_id as string)
+        // Stamp the check (plus the poster if one was found) so the rotation
+        // cursor advances. A thrown fetch leaves the row unstamped → retried
+        // next run.
+        const patch: { last_poster_check: string; poster_path?: string } = {
+          last_poster_check: checkedAt,
+        }
+        if (detail?.poster_path) {
+          patch.poster_path = detail.poster_path
+          postersBackfilled++
+        }
+        await db.from('titles').update(patch)
           .eq('tmdb_id', row.tmdb_id).eq('type', row.type)  // composite key (0008)
-        postersBackfilled++
+      } catch {
+        /* best-effort — transient TMDB/DB error; row stays unstamped for retry */
       }
-    } catch {
-      /* best-effort */
+      await sleep(150)
     }
-    await sleep(150)
   }
 
   // ── 3b. Backfill trailers for the least-recently-checked slice of the NULL
@@ -228,6 +386,20 @@ async function main() {
     enriched_total: enrichedTotal ?? null,
     target: TARGET_CATALOG,
     growth_complete: (total ?? 0) >= TARGET_CATALOG,
+    // Sweep accounting for the caller's persisted cursor. `discover_next` is
+    // offset + slices SCANNED, never offset + DISCOVER_CAP: the loop breaks
+    // early once the budget is met, and advancing by the cap would skip every
+    // slice it never reached. null when we did no seeding at all, so the
+    // caller leaves its cursor where it is.
+    slices_scanned: slicesScanned,
+    slice_space: SLICES.length,
+    discover_next: slicesScanned > 0 ? cursorBase + slicesScanned : null,
+    // Spend + failure legibility. seed_attempts is the OMDB-costing number
+    // (successes AND failures); discover_failures separates "TMDB is down"
+    // from "the pool is exhausted", which seeded=0 alone cannot.
+    seed_attempts: seedAttempts,
+    seed_failures: seedFailures,
+    discover_failures: discoverFailures,
   }
   console.log('[grow] done:', `seeded=${seeded} enriched=${enriched} trailers=${trailersBackfilled} total=${total}/${TARGET_CATALOG}`)
   console.log(JSON.stringify(summary))

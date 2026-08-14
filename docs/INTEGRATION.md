@@ -12,8 +12,10 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
 
 ## ⚠️ Open now
 
-- **Migration `0015` must be run in the Supabase SQL editor** — the co-watch IDOR fix is in code but the `cowatch_rooms` table it needs does not exist until this runs. See §3b.
+- **Read the first nightly summary after the seeding fix** — see §5. `seed_attempts` vs the OMDB 1,000/day ceiling is the number that matters; `discover_pages` must not be touched until 2–3 nights of it exist.
 - **Three seam decisions are waiting on their owners** — see §1. Each is a "keep it or retire it" call, not a bug.
+
+*(Migrations `0015` and `0016` were run in the SQL editor 2026-08-14 and verified live — `cowatch_rooms` responds and `titles.last_poster_check` orders. Nothing is waiting on the database.)*
 
 ---
 
@@ -39,12 +41,27 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
 - [ ] `writeDNA` E2E with a real `SessionSummary` against a live Supabase dev instance
 - [x] Repo-wide `npm run type-check` clean (verified 2026-07-30) — the `@google/genai` module errors in `src/app/api/voice/session/route.ts` and `src/modules/session/voice/VoiceMode.tsx` no longer reproduce; the dep resolves from `package.json`
 
-## 3b. Security — fixed, needs the migration run
-- [x] **Co-watch IDOR closed** (2026-07-30) — `POST /api/recommendations/cowatch` took `user_id_b` from the request body and the engine loaded that user's DNA with the service-role client, so any authed user could read anyone's taste by guessing a user id (`room_code` was only a Redis cache key). The partner is now derived from room membership: new `cowatch_rooms` table (**migration `0015` — must be run in the Supabase SQL editor**), `POST/GET /api/cowatch/room` to open one, `POST /api/cowatch/room/join` to join, and the decision itself in `src/lib/cowatch-room.ts` (`resolvePartner`, 10 tests). No client-supplied user id remains. There is no co-watch UI yet, so nothing consumed the old contract.
+## 3b. Security — ✅ fixed and migrated
+- [x] **Co-watch IDOR closed** (2026-07-30) — `POST /api/recommendations/cowatch` took `user_id_b` from the request body and the engine loaded that user's DNA with the service-role client, so any authed user could read anyone's taste by guessing a user id (`room_code` was only a Redis cache key). The partner is now derived from room membership: new `cowatch_rooms` table (migration `0015`), `POST/GET /api/cowatch/room` to open one, `POST /api/cowatch/room/join` to join, and the decision itself in `src/lib/cowatch-room.ts` (`resolvePartner`, 10 tests). No client-supplied user id remains. There is no co-watch UI yet, so nothing consumed the old contract.
+  - Migration `0015` **run 2026-08-14** and verified against live Supabase (`cowatch_rooms` selectable; the primary key column is `code`, not `room_code`).
 
 ## 4. Non-blocking — independent, any time
 - [ ] Generate the 30 voice WAV samples (`npm run generate-voice-samples`) over several days (Gemini free-tier 10/day); drop the `disabled` attribute on the voice play buttons once present · A1
 - [ ] Voice "Recommend" handoff: re-enter the recs view with an explicit query mode once the engine exposes one · A1
+
+## 5. Nightly catalog job (`scripts/grow-catalog.mts`) — ✅ seeding fix landed 2026-08-14
+Dream's overnight reviewer surfaced why nightly seeding was dying: 900/night budget, actual yield fell 523 (08-06) → 76 (08-13) with the catalog stuck at ~9.8k of 15,000. All of the below is red→green against the real script driven offline (report: `~/Projects/Dream/assignments/codebase-reviewer/reports/2026-08-14/wtw/`).
+
+- [x] **The sweep could only reach 60 of 126 `type × genre × decade` combinations** — `type = salt % 3` and `DECADES[salt % 6]` shared a salt, so the decade *dictated* the type: no 2020s film and no 2010s/2000s/1980s/1970s series could ever be seeded. Pool was 18,000 slots, not the 37,800 the `DISCOVER_PAGES` comment claimed — under the 15,000 target after cross-genre dedup, so `growth_complete` never fired. Replaced with an explicit `SLICES` product table (126 combos, 1,890 slices). ⚠️ **1,890 is the production figure** — 126 × `discover_pages`, and Dream's `manifest.yaml` sets that to 15. The script's own default is 5, so a bare hand-run enumerates 630. Same for `discover_cap`: 400 in the manifest, 40 in the script.
+- [x] **`DISCOVER_OFFSET` / `discover_next` cursor contract honoured** — Dream's `run.sh` already persisted a cursor and read `discover_next` back; the script read and emitted neither, so both halves were no-ops. `discover_next` is now `offset + slices SCANNED` (never `+ cap` — the loop breaks early on budget and the caller must not skip what it never reached). Unset/negative offset falls back to the old catalog-size anchor, so a hand-run is unchanged.
+- [x] **Spend + failure counters reach the summary** — `seed_attempts`, `seed_failures`, `discover_failures`, `slices_scanned`, `slice_space`. The exit code is swallowed by design, so the summary is all the operator sees: previously "TMDB is down" and "the pool is exhausted" produced byte-identical output, and OMDB lookups spent on failed attempts were invisible (`seeded` counts successes only).
+- [x] **Per-`(type, decade)` vote floor** (`VOTE_FLOOR`) — `discoverVaried` always accepted `voteCountGte` and the call site never passed it, so a flat 40 applied to 1970s Westerns and 2020s blockbusters alike. Measured live against TMDB 2026-08-14 (slices whose whole pool is under `DISCOVER_PAGES×20`): movie 1970s 7/13 short, tv 1990s–1970s 8/8 short. Floors relaxed **only** pre-2000; aggregate reachable titles ~44,988 → ~51,360 (+14%), all of it pre-2000.
+- [x] **Poster backfill given the trailer backfill's rotation cursor** — migration `0016` (`last_poster_check`, run 2026-08-14), stamps every successful lookup so dead ends rotate to the back, batch size decoupled from `SEED_COUNT` via `POSTER_BACKFILL`. 📌 **Measured after applying: `poster_path IS NULL` = 0 rows.** So the claimed gain (up to 950 wasted TMDB requests/night) is **zero today** — `posters_backfilled: 0` on 19/19 nights was an empty backlog, not the re-fetch trap. Kept as insurance; costs nothing while the backlog is empty. (`trailer_key IS NULL` = 1,134 by contrast — that loop is doing real work.)
+
+**Open — read the first night's summary:**
+- [ ] `seed_attempts` vs OMDB's **1,000 lookups/day**. `seed_count` is 900, leaving ~100 headroom, and `seed_attempts` counts failed attempts that still cost a lookup. Above ~11% failure rate the cap is blown, with no platform alarm. This rate has never been measurable — it is exactly what the new counters exist to expose. If it comes back near 1,000, drop `seed_count` before the next night.
+- [ ] `discover_failures` non-zero = TMDB trouble, not an exhausted pool.
+- [ ] **Do not touch `discover_pages`.** It has been raised twice on a dupe rate back-inferred from an assumed `pages × 20`. Take 2–3 nights of `seeded / (slices_scanned × 20)` and set it from the measured ratio. The reviewer's growth model reaches 15,000 in 17 nights at 2 genres/title but lands 14,322 at 3 — the de-duplication factor decides it, and it has never been measured.
 
 ## Standing handoff notes
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
