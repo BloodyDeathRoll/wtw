@@ -51,17 +51,55 @@ const DISCOVER_PAGES   = Math.max(1, intEnv('DISCOVER_PAGES', 5)) // TMDB page d
                                                          // the same decade, and that
                                                          // de-duplication factor has never been
                                                          // measured. The summary now reports
-                                                         // slices_scanned and seed_attempts, so
-                                                         // seeded/(slices_scanned×20) is
+                                                         // slices_scanned, candidates_seen and
+                                                         // seed_attempts, so BOTH halves are
                                                          // observable nightly — take two or
-                                                         // three nights of it, then set this
-                                                         // from the measured ratio.
+                                                         // three nights of them, then set this
+                                                         // from the measured ratios:
+                                                         //   depth = candidates_seen/slices_scanned
+                                                         //           (how full a page really is;
+                                                         //            << 20 means the pool at this
+                                                         //            depth is already exhausted
+                                                         //            and MORE pages buy nothing)
+                                                         //   dupes = 1 - seed_attempts/candidates_seen
+                                                         //           (how much of a full page we
+                                                         //            already hold; high with a
+                                                         //            full depth means deeper
+                                                         //            pages WOULD hold new titles)
+                                                         // Do NOT use seeded/(slices_scanned×20):
+                                                         // the ×20 is the same assumed page size
+                                                         // this note warns about above, and it
+                                                         // gives the SAME number for both cases,
+                                                         // which want opposite knob moves.
 const DISCOVER_OFFSET  = intEnv('DISCOVER_OFFSET', -1)   // resume cursor into SLICES, owned and
                                                          // persisted by the caller (Dream's
                                                          // run.sh). < 0 or unset → fall back to
                                                          // the old catalog-size anchor so a
                                                          // hand-run still behaves as before.
+const SEED_ATTEMPT_CAP = intEnv('SEED_ATTEMPT_CAP', 0)   // hard ceiling on OMDB-costing seed
+                                                         // ATTEMPTS. SEED_COUNT caps successes,
+                                                         // but fetchAndCacheTitle spends the OMDB
+                                                         // lookup before the upsert that can
+                                                         // throw, so a night with a failure rate
+                                                         // keeps paying until SEED_COUNT titles
+                                                         // land. Measured with a 1-in-3 upsert
+                                                         // failure rate: 1,349 lookups for a 900
+                                                         // budget — 35% over the 1,000/day OMDB
+                                                         // ceiling that budget was sized against.
+                                                         // 0 → derive as ceil(seedBudget × 1.1),
+                                                         // which keeps 900 inside 1,000 while
+                                                         // absorbing a 10% failure rate without
+                                                         // costing yield.
 const TRAILER_BACKFILL = intEnv('TRAILER_BACKFILL', 150) // trailer_key NULL rows to re-check per run
+const TRAILER_RECHECK_DAYS = intEnv('TRAILER_RECHECK_DAYS', 30)
+                                                         // minimum age before a trailerless row is
+                                                         // re-checked. The rotation alone cycles the
+                                                         // 1,134-row NULL backlog every 7.6 nights at
+                                                         // 150/run — ~4 re-fetches a month per row for
+                                                         // a measured yield of 10 trailers per ~2,700
+                                                         // calls (18 committed summaries). A 30-day
+                                                         // floor makes that ~1/month. 0 → no floor
+                                                         // (pre-proposal behaviour).
 const POSTER_BACKFILL  = intEnv('POSTER_BACKFILL', 150)  // poster_path NULL rows to re-check per run.
                                                          // Deliberately NOT derived from SEED_COUNT —
                                                          // the poster backlog is unrelated to the seed
@@ -206,6 +244,25 @@ async function main() {
   // slides back onto itself as yield falls.
   const cursorBase = DISCOVER_OFFSET >= 0 ? DISCOVER_OFFSET : startCount
   let slicesScanned = 0
+  // How far the cursor may safely advance. NOT the same as slicesScanned: a
+  // slice whose discoverVaried threw (TMDB 429/5xx/401 — the only errors it
+  // raises; a 404 comes back as an empty list) was never actually read, and
+  // telling the caller to resume past it hands it a hole. So the cursor stops
+  // at the FIRST such slice and the sweep re-reads from there next run.
+  //
+  // The cost of that is bounded and cheap: the slices after the failure are
+  // re-scanned, which costs one discover call each and no OMDB spend, since
+  // `known` dedupes everything they return. The cost of NOT doing it is a
+  // 400-slice hole that does not come round again for a full sweep cycle
+  // (slice_space / DISCOVER_CAP ≈ 5 nights at the current settings).
+  //
+  // A permanently-failing single slice cannot pin the sweep here, because
+  // discoverVaried only throws on transport/auth errors, which are global and
+  // transient — a slice with bad params comes back 200-with-no-results, not an
+  // error. A night where TMDB is down end-to-end leaves the cursor exactly
+  // where it started, which is what you want: nothing was seeded either.
+  let slicesAdvanced = 0
+  let sweepInterrupted = false
   // Spend + failure accounting. `seeded` counts SUCCESSES, but the binding
   // ceiling (OMDB, 1,000 lookups/day) is spent per ATTEMPT: fetchAndCacheTitle
   // calls OMDB before the upsert that can throw, so every failed attempt costs
@@ -215,6 +272,18 @@ async function main() {
   let seedAttempts = 0
   let seedFailures = 0
   let discoverFailures = 0
+  // How many candidates discover actually handed back. Without it a night where
+  // every page came back FULL of titles we already hold is indistinguishable in
+  // the summary from one where the pages came back nearly EMPTY — same seeded,
+  // same slices_scanned, same seed_attempts — and those two want opposite moves
+  // on DISCOVER_PAGES (deeper vs. no point going deeper).
+  let candidatesSeen = 0
+  // The attempt ceiling this run must not cross, and whether it did.
+  // seedBudget + 10%, in integer arithmetic — `Math.ceil(900 * 1.1)` is 991,
+  // not 990, and this number is a spend ceiling, so it does not get to round up.
+  const attemptCap =
+    SEED_ATTEMPT_CAP > 0 ? SEED_ATTEMPT_CAP : seedBudget + Math.ceil(seedBudget / 10)
+  let spendCapped = false
 
   if (seedBudget > 0) {
     outer: for (let attempt = 0; attempt < DISCOVER_CAP; attempt++) {
@@ -225,10 +294,23 @@ async function main() {
       // this slice (it would re-scan) nor past it.
       slicesScanned = attempt + 1
 
+      // Space the discover calls themselves. The 260 ms courtesy below sits on
+      // the SEED path, which a dupe-heavy night barely touches: a slice whose
+      // 20 candidates are all already in `known` falls straight through the
+      // `continue` with no delay, so the next discover fires immediately.
+      // Measured on the saturated night the sweep converges to (every
+      // candidate a dupe): DISCOVER_CAP=400 discover requests, all of them
+      // back-to-back — 400 in a 10 s window against the 40 req/10 s this file
+      // cites three times. Even at 19-of-20 dupes it peaks at 78. One sleep
+      // here costs DISCOVER_CAP × 260 ms ≈ 104 s of a ~90 min run.
+      if (attempt > 0) await sleep(260)
+
       let candidates
       try {
         candidates = await discoverVaried(type, { genreId, yearGte, yearLte, page, voteCountGte })
+        if (!sweepInterrupted) slicesAdvanced = attempt + 1
       } catch (e) {
+        sweepInterrupted = true // the cursor stops here; see slicesAdvanced above
         discoverFailures++
         console.error(`[grow] discover slice failed (${type} g${genreId} ${yearGte}s p${page}):`, e)
         await sleep(1000) // back off before the next slice — a TMDB 429/5xx
@@ -236,6 +318,7 @@ async function main() {
         continue
       }
 
+      candidatesSeen += candidates.length
       for (const item of candidates) {
         if (known.has(key(item.type, item.tmdb_id))) continue
         seedAttempts++
@@ -252,6 +335,14 @@ async function main() {
         } catch (e) {
           seedFailures++
           console.error(`[grow] cache ${item.type} ${item.tmdb_id} failed:`, e)
+        }
+        // Stop on SPEND, not just on yield. Every iteration above has already
+        // cost an OMDB lookup whether or not it produced a title, and OMDB is
+        // the one ceiling no gate on either side can see.
+        if (seedAttempts >= attemptCap) {
+          spendCapped = true
+          console.error(`[grow] seed attempt cap ${attemptCap} reached (seeded ${seeded}/${seedBudget}) — stopping to stay under the OMDB daily ceiling`)
+          break outer
         }
         await sleep(260) // TMDB rate-limit courtesy (40 req / 10s)
       }
@@ -335,12 +426,25 @@ async function main() {
   // append_to_response=videos rides the existing detail fetch. Requires
   // migration 0012 (last_trailer_check); without it the ordered query returns
   // no rows and this step is a harmless no-op.
+  // TRAILER_RECHECK_DAYS puts a floor on the cadence: the rotation is fair but
+  // it is not paced, so a genuinely trailerless title is re-fetched every time
+  // the backlog cycles. Never-checked rows (last_trailer_check IS NULL) stay
+  // eligible always — hence `.or()` and not a bare `.lt()`, which would drop
+  // them (SQL `NULL < x` is NULL, not true). Nothing due → no rows → no-op,
+  // the same shape this step already has when migration 0012 is absent.
   let trailersBackfilled = 0
   if (TRAILER_BACKFILL > 0) {
-    const { data: rows } = await db
+    const recheckBefore = new Date(
+      Date.now() - TRAILER_RECHECK_DAYS * 86_400_000,
+    ).toISOString()
+    let q = db
       .from('titles')
       .select('tmdb_id, type')
       .is('trailer_key', null)
+    if (TRAILER_RECHECK_DAYS > 0) {
+      q = q.or(`last_trailer_check.is.null,last_trailer_check.lt.${recheckBefore}`)
+    }
+    const { data: rows } = await q
       .order('last_trailer_check', { ascending: true, nullsFirst: true })
       .limit(TRAILER_BACKFILL)
     const checkedAt = new Date().toISOString()
@@ -374,32 +478,60 @@ async function main() {
     db.from('titles').select('tmdb_id', { count: 'exact', head: true }).not('enriched_at', 'is', null),
   ])
 
+  // KEY ORDER IS LOAD-BEARING, not cosmetic. The exit code is swallowed by
+  // design, so this JSON is all the operator ever sees — and the digest prints
+  // only `head -c 400` of it (dream-runner.sh:343). run.sh then prepends
+  // ok/seed_yield/growth_stalling, which costs ~106 of those bytes on exactly
+  // the nights that matter (a stalling night is the one you need to read).
+  // Measured on 2026-08-14's real shape: at the previous key order the summary
+  // was 482 bytes and `seed_failures` (byte 402) and `discover_failures` (byte
+  // 422) fell OUTSIDE the window — the two keys that exist so an OMDB-costing
+  // failure run and a TMDB outage stay legible were invisible in the only
+  // place anyone looks. So: diagnosis first (what went wrong, what it cost),
+  // then the sweep state, then the totals that can be recomputed from
+  // Supabase at any time. Adding a key means checking the window again —
+  // reports/2026-08-15/wtw/tests/test_digest_window.py measures it.
   const summary = {
     ok: true,
     started_titles: startCount,
     seeded,
-    enriched,
-    enrich_failures: enrichFailures,
-    posters_backfilled: postersBackfilled,
-    trailers_backfilled: trailersBackfilled,
-    total_titles: total ?? null,
-    enriched_total: enrichedTotal ?? null,
-    target: TARGET_CATALOG,
-    growth_complete: (total ?? 0) >= TARGET_CATALOG,
-    // Sweep accounting for the caller's persisted cursor. `discover_next` is
-    // offset + slices SCANNED, never offset + DISCOVER_CAP: the loop breaks
-    // early once the budget is met, and advancing by the cap would skip every
-    // slice it never reached. null when we did no seeding at all, so the
-    // caller leaves its cursor where it is.
-    slices_scanned: slicesScanned,
-    slice_space: SLICES.length,
-    discover_next: slicesScanned > 0 ? cursorBase + slicesScanned : null,
     // Spend + failure legibility. seed_attempts is the OMDB-costing number
     // (successes AND failures); discover_failures separates "TMDB is down"
     // from "the pool is exhausted", which seeded=0 alone cannot.
     seed_attempts: seedAttempts,
     seed_failures: seedFailures,
     discover_failures: discoverFailures,
+    // Present ONLY when the attempt ceiling actually stopped the run, so it
+    // costs nothing in the digest's 400-byte window on a normal night and is
+    // impossible to miss on the night it matters.
+    ...(spendCapped ? { spend_capped: attemptCap } : {}),
+    // Sweep accounting for the caller's persisted cursor. `discover_next` is
+    // offset + slices SCANNED, never offset + DISCOVER_CAP: the loop breaks
+    // early once the budget is met, and advancing by the cap would skip every
+    // slice it never reached. null when we did no seeding at all, so the
+    // caller leaves its cursor where it is.
+    slices_scanned: slicesScanned,
+    // candidates_seen is the denominator the other two need: it is the only
+    // number that separates "the pages are empty" (candidates_seen well under
+    // slices_scanned×20 → the pool at this depth is exhausted) from "the pages
+    // are full of titles we already hold" (candidates_seen ≈ slices_scanned×20
+    // with seed_attempts low → deeper pages would help). See the DISCOVER_PAGES
+    // note above; without it that knob can only be re-derived from an assumed
+    // page size, which is what put it where it is.
+    candidates_seen: candidatesSeen,
+    discover_next: slicesAdvanced > 0 ? cursorBase + slicesAdvanced : null,
+    growth_complete: (total ?? 0) >= TARGET_CATALOG,
+    total_titles: total ?? null,
+    target: TARGET_CATALOG,
+    enriched,
+    enrich_failures: enrichFailures,
+    // Past here is beyond the 400-byte digest window on a stalling night, by
+    // choice: all four are either constant, recomputable from Supabase, or
+    // (the two backfills) have read 0/0 on every committed summary to date.
+    enriched_total: enrichedTotal ?? null,
+    posters_backfilled: postersBackfilled,
+    trailers_backfilled: trailersBackfilled,
+    slice_space: SLICES.length,
   }
   console.log('[grow] done:', `seeded=${seeded} enriched=${enriched} trailers=${trailersBackfilled} total=${total}/${TARGET_CATALOG}`)
   console.log(JSON.stringify(summary))
