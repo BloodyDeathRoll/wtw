@@ -76,7 +76,7 @@ const DISCOVER_OFFSET  = intEnv('DISCOVER_OFFSET', -1)   // resume cursor into S
                                                          // run.sh). < 0 or unset → fall back to
                                                          // the old catalog-size anchor so a
                                                          // hand-run still behaves as before.
-const SEED_ATTEMPT_CAP = intEnv('SEED_ATTEMPT_CAP', 0)   // hard ceiling on OMDB-costing seed
+const SEED_ATTEMPT_CAP = intEnv('SEED_ATTEMPT_CAP', -1)  // hard ceiling on OMDB-costing seed
                                                          // ATTEMPTS. SEED_COUNT caps successes,
                                                          // but fetchAndCacheTitle spends the OMDB
                                                          // lookup before the upsert that can
@@ -86,10 +86,13 @@ const SEED_ATTEMPT_CAP = intEnv('SEED_ATTEMPT_CAP', 0)   // hard ceiling on OMDB
                                                          // failure rate: 1,349 lookups for a 900
                                                          // budget — 35% over the 1,000/day OMDB
                                                          // ceiling that budget was sized against.
-                                                         // 0 → derive as ceil(seedBudget × 1.1),
-                                                         // which keeps 900 inside 1,000 while
-                                                         // absorbing a 10% failure rate without
-                                                         // costing yield.
+                                                         // -1 (unset) → derive as
+                                                         // ceil(seedBudget × 1.1), which keeps 900
+                                                         // inside 1,000 while absorbing a 10%
+                                                         // failure rate without costing yield.
+                                                         // 0 → NO cap, same as every other 0-means-
+                                                         // off knob in this file. Use it only with
+                                                         // OMDB headroom you have checked.
 const TRAILER_BACKFILL = intEnv('TRAILER_BACKFILL', 150) // trailer_key NULL rows to re-check per run
 const TRAILER_RECHECK_DAYS = intEnv('TRAILER_RECHECK_DAYS', 30)
                                                          // minimum age before a trailerless row is
@@ -281,8 +284,14 @@ async function main() {
   // The attempt ceiling this run must not cross, and whether it did.
   // seedBudget + 10%, in integer arithmetic — `Math.ceil(900 * 1.1)` is 991,
   // not 990, and this number is a spend ceiling, so it does not get to round up.
+  // 0 disables the cap outright (Infinity), matching the 0-means-off knobs
+  // above; only an unset -1 derives the default.
   const attemptCap =
-    SEED_ATTEMPT_CAP > 0 ? SEED_ATTEMPT_CAP : seedBudget + Math.ceil(seedBudget / 10)
+    SEED_ATTEMPT_CAP < 0
+      ? seedBudget + Math.ceil(seedBudget / 10)
+      : SEED_ATTEMPT_CAP === 0
+        ? Infinity
+        : SEED_ATTEMPT_CAP
   let spendCapped = false
 
   if (seedBudget > 0) {
