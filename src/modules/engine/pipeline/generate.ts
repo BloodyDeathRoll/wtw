@@ -17,6 +17,7 @@
 
 import { after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { getRedis } from '@/lib/redis'
 import { getCandidates }            from './step1-candidate-gen'
 import { scoreCandidates }          from './step2-composite-score'
 import { applySoftModifiers }       from './step3-soft-modifiers'
@@ -135,6 +136,18 @@ export async function generateRecommendations(
     if (rest.length > 0) {
       after(async () => {
         try {
+          // One background patch per (user, taste_version): a double-submit at
+          // the same version would race two read-modify-writes on the cache
+          // key and pay the LLM twice for identical work. NX lock, no release
+          // — once patched there's nothing left to do at this version, and the
+          // TTL clears it if the job dies midway (fallback text remains).
+          const lock = await getRedis().set(
+            `rec_explain_lock:${userId}:${version}`,
+            '1',
+            { nx: true, ex: 300 }
+          )
+          if (lock === null) return
+
           const polished = await generateExplanations(rest)
           const byKey = new Map(
             polished.map(r => [`${r.type}:${r.tmdb_id}`, r.explanation])
