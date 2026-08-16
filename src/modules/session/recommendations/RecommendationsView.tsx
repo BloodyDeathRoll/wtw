@@ -174,6 +174,13 @@ export default function RecommendationsView({
       setHasMore(more);
     } catch (e) {
       console.error("[recs] load failed", e);
+      // Stop paginating on failure: leaving hasMore true kept the sentinel
+      // visible, and the observer re-fired loadMore the instant loading
+      // flipped back — a tight retry loop with no backoff, where each retry
+      // can trigger a full engine regeneration server-side. The "Find more"
+      // button that renders when hasMore is false doubles as manual retry.
+      hasMoreRef.current = false;
+      setHasMore(false);
       setError("Couldn't load more right now");
     } finally {
       loadingRef.current = false;

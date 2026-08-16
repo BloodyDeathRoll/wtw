@@ -109,7 +109,9 @@ export function injectStretchPick(
     dimensions_stretched,
   }
 
-  // ── Replace slot 20 (last position) ─────────────────────
-  const result = [...top20.slice(0, 19), stretchPick]
+  // ── Replace slot 20 (or the last slot for shorter lists) ──
+  // In place, keeping everything after it — the list can now be 50 long.
+  const result = [...top20]
+  result[Math.min(19, result.length - 1)] = stretchPick
   return result
 }

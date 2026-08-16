@@ -8,7 +8,7 @@
  * The rationale is stored on ScoredTitle.groq_rationale and later used to build
  * the ReasonPayload in Step 6.
  *
- * Returns the top 20 from Groq's re-ranking with groq_rationale filled.
+ * Returns all 50 in Groq's re-ranked order with groq_rationale filled.
  */
 
 import { generateObject } from 'ai'
@@ -129,7 +129,7 @@ Be specific: reference the viewer's actual preferences, not generic praise for t
     ranked = object.ranked
   } catch (err) {
     console.warn('[rerank] LLM rerank failed — falling back to composite order:', err instanceof Error ? err.message : err)
-    return top50.slice(0, 20).map(item => ({ ...item, groq_rationale: '' }))
+    return top50.map(item => ({ ...item, groq_rationale: '' }))
   }
 
   // Build a map from the ranked list (rationales truncated in code, not schema)
@@ -144,8 +144,8 @@ Be specific: reference the viewer's actual preferences, not generic praise for t
     return ra - rb
   })
 
-  // Return top 20 with groq_rationale filled
-  return reranked.slice(0, 20).map(item => ({
+  // Return all 50 with groq_rationale filled
+  return reranked.map(item => ({
     ...item,
     groq_rationale: rankMap.get(item.title.tmdb_id)?.rationale ?? '',
   }))

@@ -101,7 +101,12 @@ async function toUIRecommendations(
       trailer_url: youtubeTrailerUrl(t?.trailer_key as string | null | undefined),
       meta,
       rating: (t?.tmdb_rating as number | null) ?? 0,
-      match: Math.max(0, Math.min(1, r.composite_score)),
+      // composite_score is a weighted sum whose components can't all reach 1
+      // (narrative cosine sim tops out near 0.8, recency is 0 for older
+      // titles), so its practical ceiling is ~0.8. Rescale for display so a
+      // best-possible fit reads as ~100%, not ~78%. Display-only — feedback
+      // and the engine never read this field back.
+      match: Math.max(0, Math.min(1, r.composite_score / 0.8)),
       reason: r.explanation || "Matched to your fingerprint",
       where: null,
       is_stretch_pick: r.is_stretch_pick,
