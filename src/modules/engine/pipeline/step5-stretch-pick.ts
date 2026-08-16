@@ -69,31 +69,32 @@ function hasDimensionMismatch(
 }
 
 export function injectStretchPick(
-  top20: ScoredTitle[],
+  ranked: ScoredTitle[],
   allCandidates: ScoredTitle[],
   dna: DNASchema
 ): ScoredTitle[] {
   // ── Suppression checks ────────────────────────────────────
   if (
+    ranked.length === 0 ||
     dna.metadata.total_sessions < SUPPRESS_BELOW_SESSIONS ||
     dna.signals.length < SUPPRESS_BELOW_SIGNALS
   ) {
-    return top20  // too early — return unmodified
+    return ranked  // too early (or nothing to inject into) — return unmodified
   }
 
   // ── Find stretch pick candidate ───────────────────────────
-  // Look in the full candidate pool (not in top20 — those are already good fits)
-  const top20Ids = new Set(top20.map(t => t.title.tmdb_id))
+  // Look in the full candidate pool (not in ranked — those are already good fits)
+  const rankedIds = new Set(ranked.map(t => t.title.tmdb_id))
 
   const stretchCandidate = allCandidates.find(candidate => {
-    if (top20Ids.has(candidate.title.tmdb_id))       return false  // already in list
+    if (rankedIds.has(candidate.title.tmdb_id))       return false  // already in list
     if (candidate.composite_score >= MAX_COMPOSITE_SCORE) return false
     if (candidate.external_rating_score < MIN_EXTERNAL_RATING) return false
     const { mismatched } = hasDimensionMismatch(candidate, dna)
     return mismatched
   })
 
-  if (!stretchCandidate) return top20   // no suitable stretch pick found
+  if (!stretchCandidate) return ranked   // no suitable stretch pick found
 
   const { dimensions_stretched } = hasDimensionMismatch(stretchCandidate, dna)
 
@@ -111,7 +112,7 @@ export function injectStretchPick(
 
   // ── Replace slot 20 (or the last slot for shorter lists) ──
   // In place, keeping everything after it — the list can now be 50 long.
-  const result = [...top20]
+  const result = [...ranked]
   result[Math.min(19, result.length - 1)] = stretchPick
   return result
 }
