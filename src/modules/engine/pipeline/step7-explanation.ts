@@ -1,8 +1,8 @@
 /**
  * Step 7 — Plain-language Explanation Generation
  *
- * For each of the final 20 titles, generates a 2–3 sentence "Why this?"
- * explanation in warm, conversational language. Batched into one Groq call.
+ * For each title, generates a 2–3 sentence "Why this?" explanation in warm,
+ * conversational language. Batched into Groq calls of up to 25 titles.
  *
  * Each explanation must:
  *   - Reference at least one positive signal specific to THIS user
@@ -76,11 +76,35 @@ function payloadSummary(item: ScoredTitleWithPayload): string {
   return parts.join('. ')
 }
 
-export async function generateExplanations(
-  items: ScoredTitleWithPayload[]
-): Promise<RecommendationResult[]> {
-  if (items.length === 0) return []
+// One LLM call can't reliably return 50 valid explanations — chunk it.
+const EXPLAIN_CHUNK_SIZE = 25
 
+/**
+ * Adapt scored+payload items to RecommendationResult without any LLM call,
+ * using groq_rationale as the explanation fallback. Used to serve titles
+ * immediately while their real explanations are still generating.
+ */
+export function toResultsWithFallback(
+  items: ScoredTitleWithPayload[],
+  explanationMap: Map<string, string> = new Map()
+): RecommendationResult[] {
+  const now = new Date().toISOString()
+  return items.map(item => ({
+    title:              item.title.title,
+    tmdb_id:            item.title.tmdb_id,
+    type:               item.title.type,
+    composite_score:    item.composite_score,
+    reason_payload:     item.reason_payload,
+    explanation:        explanationMap.get(item.title.tmdb_id) ?? item.reason_payload.groq_rationale,
+    is_stretch_pick:    item.is_stretch_pick,
+    generated_at:       now,
+    fingerprint_version: 0,   // set by generate.ts from dna.metadata.taste_version
+  }))
+}
+
+async function explainChunk(
+  items: ScoredTitleWithPayload[]
+): Promise<Map<string, string>> {
   const titlesList = items
     .map(item =>
       `[${item.title.tmdb_id}] "${item.title.title}" (${item.title.type})\n` +
@@ -101,31 +125,33 @@ ${titlesList}
 Return explanations for all ${items.length} titles.`
 
   // GRACEFUL DEGRADATION: explanation failure must never kill the pipeline.
-  // Every item already has a fallback (reason_payload.groq_rationale) below,
-  // so on any LLM/validation error we just ship recs without LLM blurbs.
-  let explanationMap = new Map<string, string>()
+  // Every item already has a fallback (reason_payload.groq_rationale), so on
+  // any LLM/validation error we just ship this chunk without LLM blurbs.
   try {
     const { object } = await generateObject({
       model: mistral()(MODELS.structured),
       schema: explanationSchema,
       prompt,
     })
-    explanationMap = new Map(object.explanations.map(e => [e.tmdb_id, e.explanation]))
+    return new Map(object.explanations.map(e => [e.tmdb_id, e.explanation]))
   } catch (err) {
     console.warn('[explanation] LLM explanations failed — using payload fallbacks:', err instanceof Error ? err.message : err)
+    return new Map()
+  }
+}
+
+export async function generateExplanations(
+  items: ScoredTitleWithPayload[]
+): Promise<RecommendationResult[]> {
+  if (items.length === 0) return []
+
+  // Sequential chunks, not parallel — the Mistral free tier rate-limits, and a
+  // failed chunk degrades to fallbacks without affecting the others.
+  const explanationMap = new Map<string, string>()
+  for (let i = 0; i < items.length; i += EXPLAIN_CHUNK_SIZE) {
+    const chunkMap = await explainChunk(items.slice(i, i + EXPLAIN_CHUNK_SIZE))
+    for (const [id, text] of chunkMap) explanationMap.set(id, text)
   }
 
-  const now = new Date().toISOString()
-
-  return items.map(item => ({
-    title:              item.title.title,
-    tmdb_id:            item.title.tmdb_id,
-    type:               item.title.type,
-    composite_score:    item.composite_score,
-    reason_payload:     item.reason_payload,
-    explanation:        explanationMap.get(item.title.tmdb_id) ?? item.reason_payload.groq_rationale,
-    is_stretch_pick:    item.is_stretch_pick,
-    generated_at:       now,
-    fingerprint_version: 0,   // set by generate.ts from dna.metadata.taste_version
-  }))
+  return toResultsWithFallback(items, explanationMap)
 }

@@ -20,6 +20,13 @@ export const runtime = "nodejs";
 
 const DEFAULT_PAGE_SIZE = 6;
 
+// Divisor for turning composite_score into the displayed match %. Empirical,
+// not derived from the formula: crew/external/recency components CAN each hit
+// 1.0, but narrative cosine sim and visceral match cluster well below it, so
+// observed composites top out around 0.8. Recalibrate if scoring weights or
+// scorers change. Clamped to 1 at use, so an over-0.8 score just shows 100%.
+const MATCH_DISPLAY_CEILING = 0.8;
+
 // Deterministic motif/palette fallback for titles without a poster —
 // same visual language as the mock cards, keyed stably off tmdb_id.
 const MOTIFS: MotifKind[] = ["spades", "circle", "star", "cross", "dot", "wave"];
@@ -101,7 +108,9 @@ async function toUIRecommendations(
       trailer_url: youtubeTrailerUrl(t?.trailer_key as string | null | undefined),
       meta,
       rating: (t?.tmdb_rating as number | null) ?? 0,
-      match: Math.max(0, Math.min(1, r.composite_score)),
+      // Rescale for display so a best-possible fit reads as ~100%, not ~78%.
+      // Display-only — feedback and the engine never read this field back.
+      match: Math.max(0, Math.min(1, r.composite_score / MATCH_DISPLAY_CEILING)),
       reason: r.explanation || "Matched to your fingerprint",
       where: null,
       is_stretch_pick: r.is_stretch_pick,
