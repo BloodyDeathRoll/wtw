@@ -47,8 +47,8 @@ export default function LoginScreen() {
               <Image
                 src="/logo_vector.svg"
                 alt=""
-                width={24}
-                height={24}
+                width={28}
+                height={28}
                 className={styles.welcomeLogo}
                 priority
               />
