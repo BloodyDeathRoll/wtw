@@ -13,7 +13,10 @@ export const metadata: Metadata = {
   description: "AI-powered film and TV recommendations that actually know you.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon-192.png",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: "/apple-touch-icon.png", // iOS ignores manifest icons — needs this link
   },
   // Renders <meta name="google-site-verification" content="…"> on every page,

@@ -540,7 +540,7 @@ function Onboard({
     <div className={styles.welcome}>
       <div className={styles.welcomeLogoRow}>
         <Image
-          src="/wtw-logo.svg"
+          src="/logo_vector.svg"
           alt=""
           width={24}
           height={24}
@@ -594,7 +594,7 @@ function Welcome({
     <div className={styles.welcome}>
       <div className={styles.welcomeLogoRow}>
         <Image
-          src="/wtw-logo.svg"
+          src="/logo_vector.svg"
           alt=""
           width={24}
           height={24}
@@ -640,7 +640,7 @@ function AIMessage({ children }: { children: ReactNode }) {
   return (
     <div className={`${styles.msgRow} ${styles.msgRowLeft}`}>
       <div className={styles.aiMark}>
-        <Image src="/wtw-logo.svg" alt="wtw" width={18} height={18} />
+        <Image src="/logo_vector.svg" alt="wtw" width={18} height={18} />
       </div>
       <div className={styles.aiBody}>{children}</div>
     </div>
