@@ -45,10 +45,10 @@ export default function LoginScreen() {
           <div className={styles.welcome}>
             <div className={styles.welcomeLogoRow}>
               <Image
-                src="/wtw-logo.svg"
+                src="/logo_vector.svg"
                 alt=""
-                width={24}
-                height={24}
+                width={40}
+                height={40}
                 className={styles.welcomeLogo}
                 priority
               />
