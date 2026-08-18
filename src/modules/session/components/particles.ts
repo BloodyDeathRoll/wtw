@@ -2,8 +2,10 @@
 // Ported from the design handoff (project/particles.js).
 // Each particle is assigned a depth (0 = far, 1 = near).
 // Depth drives size, alpha, vertical speed, parallax drift, and blur.
-// Blur is batched by integer-rounded bucket so ctx.filter only changes
-// a handful of times per frame, not once per particle.
+// Blur is baked into pre-rendered sprites (one per color × blur bucket, plus
+// a glow halo per color) at mount, so the frame loop is plain drawImage +
+// globalAlpha — ctx.filter forces a software raster pass on most mobile
+// browsers and was the main heat source. The loop is also capped at 30fps.
 
 export interface ParticleOptions {
   color?: string; // "r, g, b" — kept for back-compat; superseded by `palette`
@@ -42,6 +44,36 @@ interface Particle {
   color: string;
 }
 
+// Sprites are baked at this multiple of their on-screen size so scaling them
+// down (or slightly up, radii vary within a bucket) stays smooth.
+const SPRITE_SUPERSAMPLE = 6;
+
+// Draw at most this often; motion below is dt-scaled so the apparent speed
+// matches the old 60fps loop.
+const MAX_FPS = 30;
+const MIN_FRAME_MS = 1000 / MAX_FPS;
+
+interface Sprite {
+  canvas: HTMLCanvasElement;
+  half: number; // center offset in sprite px
+  inv: number; // 1 / (reference radius × supersample) — scales r → draw size
+}
+
+function bakeSprite(color: string, radius: number, blur: number): Sprite {
+  const s = SPRITE_SUPERSAMPLE;
+  const baked = Math.max(1, radius * s);
+  const half = Math.ceil(baked + blur * s * 2 + s);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = half * 2;
+  const g = canvas.getContext("2d")!;
+  if (blur > 0) g.filter = `blur(${blur * s}px)`; // once, at bake — never per frame
+  g.fillStyle = `rgb(${color})`;
+  g.beginPath();
+  g.arc(half, half, baked, 0, Math.PI * 2);
+  g.fill();
+  return { canvas, half, inv: 1 / (radius * s) };
+}
+
 export function mountParticles(
   canvas: HTMLCanvasElement,
   opts: ParticleOptions = {},
@@ -68,6 +100,38 @@ export function mountParticles(
   let raf = 0;
   let running = true;
   let lastT = performance.now();
+
+  // Lazily baked per "color|bucket" (and "color|glow") so any palette works.
+  const sprites = new Map<string, Sprite>();
+
+  // Representative on-screen radius for a blur bucket, from inverting
+  // blur = (1 - depth) × maxBlur and r = minRadius + depth × range.
+  function bucketRadius(bucket: number): number {
+    const depth = Math.max(0, Math.min(1, 1 - bucket / cfg.maxBlur));
+    return cfg.minRadius + depth * (cfg.maxRadius - cfg.minRadius);
+  }
+
+  function dotSprite(color: string, bucket: number): Sprite {
+    const key = `${color}|${bucket}`;
+    let spr = sprites.get(key);
+    if (!spr) {
+      spr = bakeSprite(color, bucketRadius(bucket), bucket);
+      sprites.set(key, spr);
+    }
+    return spr;
+  }
+
+  function glowSprite(color: string): Sprite {
+    const key = `${color}|glow`;
+    let spr = sprites.get(key);
+    if (!spr) {
+      // Halo reference: the biggest particle's glow radius, blur 8px (as the
+      // old glow pass used). Smaller particles scale the whole halo down.
+      spr = bakeSprite(color, cfg.maxRadius * 2.6, 8);
+      sprites.set(key, spr);
+    }
+    return spr;
+  }
 
   function size() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -114,20 +178,48 @@ export function mountParticles(
     };
   }
 
+  function particleAlpha(p: Particle): number {
+    const fadeIn = Math.min(1, (h - p.y) / 80);
+    const fadeOut = Math.min(1, p.y / 120);
+    const lifeFrac = p.age / p.lifespan;
+    const lifeEnvelope =
+      lifeFrac < 0.15
+        ? lifeFrac / 0.15
+        : lifeFrac > 0.7
+          ? (1 - lifeFrac) / 0.3
+          : 1;
+    const twinkleAlpha = 0.75 + Math.sin(p.twinkle) * 0.25;
+    return Math.max(
+      0,
+      Math.min(1, p.baseAlpha * fadeIn * fadeOut * twinkleAlpha * lifeEnvelope),
+    );
+  }
+
+  function drawSprite(spr: Sprite, x: number, y: number, r: number) {
+    const k = r * spr.inv;
+    const half = spr.half * k;
+    ctx!.drawImage(spr.canvas, x - half, y - half, half * 2, half * 2);
+  }
+
   function step(now?: number) {
     if (!running) return;
+    raf = requestAnimationFrame(step);
     now = now || performance.now();
+    if (now - lastT < MIN_FRAME_MS) return; // 30fps cap
     const dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
+    // Per-frame velocities were tuned for 60fps — scale by elapsed frames so
+    // the capped loop moves at the same apparent speed.
+    const frames = dt * 60;
     ctx!.clearRect(0, 0, w, h);
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       p.age += dt;
-      p.wobblePhase += p.wobbleSpeed;
-      p.twinkle += p.twinkleSpeed;
-      p.x += p.vx + Math.sin(p.wobblePhase) * p.wobbleAmp;
-      p.y += p.vy;
+      p.wobblePhase += p.wobbleSpeed * frames;
+      p.twinkle += p.twinkleSpeed * frames;
+      p.x += (p.vx + Math.sin(p.wobblePhase) * p.wobbleAmp) * frames;
+      p.y += p.vy * frames;
       if (p.age >= p.lifespan || p.y < -10 || p.x < -20 || p.x > w + 20) {
         particles[i] = spawn(false);
       }
@@ -136,64 +228,21 @@ export function mountParticles(
     particles.sort((a, b) => a.depth - b.depth);
 
     // GLOW PASS — blurred halos for big foreground particles
-    ctx!.filter = "blur(8px)";
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.bucket !== 0 || p.r <= 1.4) continue;
-
-      const fadeIn = Math.min(1, (h - p.y) / 80);
-      const fadeOut = Math.min(1, p.y / 120);
-      const lifeFrac = p.age / p.lifespan;
-      const lifeEnvelope =
-        lifeFrac < 0.15
-          ? lifeFrac / 0.15
-          : lifeFrac > 0.7
-            ? (1 - lifeFrac) / 0.3
-            : 1;
-      const twinkleAlpha = 0.75 + Math.sin(p.twinkle) * 0.25;
-      const a = Math.max(
-        0,
-        Math.min(1, p.baseAlpha * fadeIn * fadeOut * twinkleAlpha * lifeEnvelope),
-      );
-
-      ctx!.beginPath();
-      ctx!.fillStyle = `rgba(${p.color}, ${a * 0.55})`;
-      ctx!.arc(p.x, p.y, p.r * 2.6, 0, Math.PI * 2);
-      ctx!.fill();
+      ctx!.globalAlpha = particleAlpha(p) * 0.55;
+      drawSprite(glowSprite(p.color), p.x, p.y, p.r * 2.6);
     }
 
-    // DOT PASS — depth-of-field crisp/blurred dots, batched by bucket
-    let currentBucket = -1;
+    // DOT PASS — depth-of-field crisp/blurred dots from pre-baked sprites
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
-      if (p.bucket !== currentBucket) {
-        currentBucket = p.bucket;
-        ctx!.filter = currentBucket > 0 ? `blur(${currentBucket}px)` : "none";
-      }
-
-      const fadeIn = Math.min(1, (h - p.y) / 80);
-      const fadeOut = Math.min(1, p.y / 120);
-      const lifeFrac = p.age / p.lifespan;
-      const lifeEnvelope =
-        lifeFrac < 0.15
-          ? lifeFrac / 0.15
-          : lifeFrac > 0.7
-            ? (1 - lifeFrac) / 0.3
-            : 1;
-      const twinkleAlpha = 0.75 + Math.sin(p.twinkle) * 0.25;
-      const a = Math.max(
-        0,
-        Math.min(1, p.baseAlpha * fadeIn * fadeOut * twinkleAlpha * lifeEnvelope),
-      );
-
-      ctx!.beginPath();
-      ctx!.fillStyle = `rgba(${p.color}, ${a})`;
-      ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx!.fill();
+      ctx!.globalAlpha = particleAlpha(p);
+      drawSprite(dotSprite(p.color, p.bucket), p.x, p.y, p.r);
     }
 
-    ctx!.filter = "none";
-    raf = requestAnimationFrame(step);
+    ctx!.globalAlpha = 1;
   }
 
   const ro = new ResizeObserver(size);
