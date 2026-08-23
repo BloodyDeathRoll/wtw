@@ -317,7 +317,16 @@ async function main() {
       let candidates
       try {
         candidates = await discoverVaried(type, { genreId, yearGte, yearLte, page, voteCountGte })
-        if (!sweepInterrupted) slicesAdvanced = attempt + 1
+        if (!sweepInterrupted) {
+          slicesAdvanced = attempt + 1
+          // Recovery marker for the caller's no-summary path (killed at the
+          // wall / OOM, so the summary's discover_next never prints). SAME
+          // semantics as discover_next below — cursorBase + slices safely
+          // advanced — so resuming there never skips an unread slice. Every
+          // 10 keeps the log cheap; recovery granularity is ≤10 slices.
+          if (slicesAdvanced % 10 === 0)
+            console.log(`[grow] cursor=${cursorBase + slicesAdvanced}`)
+        }
       } catch (e) {
         sweepInterrupted = true // the cursor stops here; see slicesAdvanced above
         discoverFailures++
