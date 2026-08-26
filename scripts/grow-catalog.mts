@@ -130,16 +130,15 @@ const PROVIDER_RECHECK_DAYS = intEnv('PROVIDER_RECHECK_DAYS', 45)
                                                          // hence `.or()`, not a bare `.lt()`
                                                          // (SQL `NULL < x` is NULL, not true).
                                                          // 0 → no floor.
-const WATCH_REGIONS = (process.env.WATCH_REGIONS ?? 'US,GB,IL')
-  .split(',').map((r) => r.trim().toUpperCase()).filter(Boolean)
-                                                         // ISO-3166-1 regions to STORE. TMDB
-                                                         // returns ~200 in one response for the
-                                                         // same request cost; we keep a few
-                                                         // because the jsonb is written 15,900
-                                                         // times. Must include whatever
-                                                         // WATCH_REGION the app reads
-                                                         // (generate/route.ts) or the "Watch on …"
-                                                         // line stays hidden forever.
+const WATCH_REGIONS = ['US']                             // ISO-3166-1 regions to STORE. Fixed,
+                                                         // not env (2026-08-26): the app reads
+                                                         // WATCH_REGION = 'US' as a constant
+                                                         // (generate/route.ts), and the two must
+                                                         // agree or "Watch on …" silently never
+                                                         // renders. Change both together. TMDB
+                                                         // returns ~200 regions per call at the
+                                                         // same cost; storing one keeps the jsonb
+                                                         // small across a five-figure catalog.
 
 function intEnv(name: string, def: number): number {
   const v = process.env[name]

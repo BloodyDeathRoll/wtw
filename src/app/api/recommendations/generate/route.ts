@@ -32,11 +32,13 @@ const DEFAULT_PAGE_SIZE = 6;
 // scorers change. Clamped to 1 at use, so an over-0.8 score just shows 100%.
 const MATCH_DISPLAY_CEILING = 0.8;
 
-// Which region's streaming availability the "Watch on …" line reports. One
-// value per deployment: the recs are server-rendered from a shared cache, so
-// this is not per-user. Must be one of the regions grow-catalog.mts stores
-// (WATCH_REGIONS) or every lookup returns null.
-const WATCH_REGION = process.env.WATCH_REGION ?? "US";
+// Which region's streaming availability the "Watch on …" line reports.
+// Deliberately a constant, not an env var (decided 2026-08-26): the nightly
+// script stores exactly this region (WATCH_REGIONS in grow-catalog.mts), and
+// two independently-set env vars would silently blank the line if they ever
+// drifted. Change both together, or better, make it per-user — the recs come
+// from a shared cache, so that means putting the region in the cache key.
+const WATCH_REGION = "US";
 
 // Deterministic motif/palette fallback for titles without a poster —
 // same visual language as the mock cards, keyed stably off tmdb_id.

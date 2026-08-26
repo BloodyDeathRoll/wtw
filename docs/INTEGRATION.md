@@ -107,7 +107,7 @@ Dream's overnight reviewer surfaced why nightly seeding was dying: 900/night bud
 - **`grow-catalog.mts` §3c** — nightly rotation, `PROVIDER_BACKFILL` (150/run) + `PROVIDER_RECHECK_DAYS` (45). Deliberately **not** a `WHERE … IS NULL` backlog like posters/trailers: availability *expires* when a licensing deal lapses, so rows that have providers must still be re-checked. New summary key `providers_backfilled`, placed after the diagnosis keys to keep them inside the 400-byte digest window.
 - **Cost:** one extra TMDB call per row — `/watch/providers` has no `append_to_response` form, so it cannot ride the detail fetch the way `videos` does. 150/night, rate-spaced at 260ms.
 - ⚠️ **Attribution is mandatory.** TMDB sources this from JustWatch and requires it to be visible wherever the data is shown; the "via JustWatch" eyebrow is part of the pill in `RecommendationsView.tsx`, not a footnote. Do not remove it in a layout pass.
-- **Region is per-deployment, not per-user:** `WATCH_REGION` (default `US`) in `generate/route.ts`, because recs are served from a shared cache. It must be one of `WATCH_REGIONS` or every lookup returns null. Per-user regions would need the region in the rec cache key.
+- **Region is `US`, hardcoded in both places (decided 2026-08-26).** `WATCH_REGION` in `generate/route.ts` and `WATCH_REGIONS` in `grow-catalog.mts` are constants, not env vars — the review flagged that two independently-set values would silently blank the line if they drifted. Per-user regions later means putting the region in the rec cache key (recs are served from a shared cache).
 
 ## Standing handoff notes
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
