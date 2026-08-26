@@ -1054,7 +1054,17 @@ function FullCard({
             variant="strong"
           />
         </div>
-        {rec.where && <div className={styles.fullWhere}>Watch on {rec.where}</div>}
+        {/* Streaming availability comes from TMDB, which sources it from
+            JustWatch and requires visible attribution wherever it is shown —
+            hence the eyebrow. Hidden entirely when `where` is null (never
+            checked, or not streaming in this region), so no empty affordance.
+            See migration 0017 and grow-catalog.mts §3c. */}
+        {rec.where && (
+          <div className={styles.fullWhere}>
+            Watch on {rec.where}
+            <span className={styles.whereSource}>via JustWatch</span>
+          </div>
+        )}
         <div className={styles.fullReason}>
           <span className={styles.reasonEyebrow}>FINGERPRINT</span>
           <span>{rec.reason}</span>

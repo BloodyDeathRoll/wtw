@@ -12,7 +12,12 @@ import {
 } from "@/modules/session/recommendations/mock-data";
 import { generateRecommendations } from "@/modules/engine";
 import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
-import { tmdbPosterUrl, youtubeTrailerUrl } from "@/lib/tmdb";
+import {
+  tmdbPosterUrl,
+  youtubeTrailerUrl,
+  primaryWatchProvider,
+  type WatchProviderMap,
+} from "@/lib/tmdb";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 import type { Recommendation, MotifKind } from "@/types/recommendation";
 
@@ -26,6 +31,12 @@ const DEFAULT_PAGE_SIZE = 6;
 // observed composites top out around 0.8. Recalibrate if scoring weights or
 // scorers change. Clamped to 1 at use, so an over-0.8 score just shows 100%.
 const MATCH_DISPLAY_CEILING = 0.8;
+
+// Which region's streaming availability the "Watch on …" line reports. One
+// value per deployment: the recs are server-rendered from a shared cache, so
+// this is not per-user. Must be one of the regions grow-catalog.mts stores
+// (WATCH_REGIONS) or every lookup returns null.
+const WATCH_REGION = process.env.WATCH_REGION ?? "US";
 
 // Deterministic motif/palette fallback for titles without a poster —
 // same visual language as the mock cards, keyed stably off tmdb_id.
@@ -81,7 +92,7 @@ async function toUIRecommendations(
   const db = createServiceClient();
   const { data } = await db
     .from("titles")
-    .select("tmdb_id, type, poster_path, trailer_key, release_year, runtime_minutes, tmdb_rating")
+    .select("tmdb_id, type, poster_path, trailer_key, release_year, runtime_minutes, tmdb_rating, watch_providers")
     .in("tmdb_id", recs.map((r) => r.tmdb_id));
   const byKey = new Map(
     (data ?? []).map((t) => [`${t.type}:${t.tmdb_id}`, t]),
@@ -112,7 +123,14 @@ async function toUIRecommendations(
       // Display-only — feedback and the engine never read this field back.
       match: Math.max(0, Math.min(1, r.composite_score / MATCH_DISPLAY_CEILING)),
       reason: r.explanation || "Matched to your fingerprint",
-      where: null,
+      // Flatrate streaming availability for the deployment's region
+      // (migration 0017, filled nightly by grow-catalog.mts §3c). Null when
+      // the row was never checked or the title streams nowhere here — the UI
+      // hides the line rather than guessing.
+      where: primaryWatchProvider(
+        t?.watch_providers as WatchProviderMap | null | undefined,
+        WATCH_REGION,
+      ),
       is_stretch_pick: r.is_stretch_pick,
       motif: MOTIFS[h % MOTIFS.length],
       palette: PALETTES[h % PALETTES.length],

@@ -10,6 +10,15 @@
  *                                          // rec was a stretch pick, so it gets
  *                                          // recorded in learning_loop.stretch_pick_history
  * }
+ *
+ * ⚠️ DELIBERATELY UNCONSUMED — audited 2026-07-30, decision recorded 2026-08-26.
+ * Nothing in this repo fetches this route: the live path is POST
+ * /api/session/end, which calls updateSchemaFromSession() in-process (no HTTP
+ * hop, no serialization round-trip). This handler is kept as the EXTERNAL
+ * seam — the supported way for something outside the Next.js app to push a
+ * SessionSummary. Do not delete it as dead code, and do not "fix" the
+ * duplication by routing /api/session/end through it. Its response shape is a
+ * superset of the agreed contract: { ok, taste_version, signal_count }.
  */
 
 import { NextRequest, NextResponse } from 'next/server'

@@ -658,6 +658,9 @@
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 .fullWhere {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   font-size: 13px;
   font-weight: 500;
   color: var(--wtw-fg);
@@ -667,6 +670,15 @@
   width: max-content;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+/* JustWatch attribution — TMDB's terms require it to be visible alongside the
+   availability data, so it is part of the pill, not a footnote that a layout
+   change could drop. */
+.whereSource {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  opacity: 0.6;
 }
 .fullReason {
   display: flex;

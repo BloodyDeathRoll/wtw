@@ -22,7 +22,7 @@
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
-import { discoverVaried, getMovie, getTV } from '@/lib/tmdb'
+import { discoverVaried, getMovie, getTV, getWatchProviders } from '@/lib/tmdb'
 import { fetchAndCacheTitle } from '@/modules/engine/enrichment/fetch-and-cache-title'
 import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
 
@@ -108,6 +108,38 @@ const POSTER_BACKFILL  = intEnv('POSTER_BACKFILL', 150)  // poster_path NULL row
                                                          // the poster backlog is unrelated to the seed
                                                          // budget, and an enrich-only run (SEED_COUNT=0)
                                                          // used to shrink this batch to 50.
+const PROVIDER_BACKFILL = intEnv('PROVIDER_BACKFILL', 150)
+                                                         // titles to re-check for streaming
+                                                         // availability per run (migration 0017).
+                                                         // Unlike posters and trailers this is NOT
+                                                         // a NULL backlog that drains: licensing
+                                                         // deals lapse, so a title that HAS
+                                                         // providers still goes stale. The whole
+                                                         // catalog rotates, oldest check first.
+                                                         // At 150/run and 15,900 titles a full
+                                                         // cycle is ~106 nights — too slow for
+                                                         // churn, but this is a fresh column with
+                                                         // 15,900 never-checked rows, so raise it
+                                                         // only once the NULL set is drained and
+                                                         // PROVIDER_RECHECK_DAYS is doing the work.
+                                                         // 0 → skip the step.
+const PROVIDER_RECHECK_DAYS = intEnv('PROVIDER_RECHECK_DAYS', 45)
+                                                         // minimum age before an already-checked
+                                                         // row is looked at again. Never-checked
+                                                         // rows (NULL) stay eligible always —
+                                                         // hence `.or()`, not a bare `.lt()`
+                                                         // (SQL `NULL < x` is NULL, not true).
+                                                         // 0 → no floor.
+const WATCH_REGIONS = (process.env.WATCH_REGIONS ?? 'US,GB,IL')
+  .split(',').map((r) => r.trim().toUpperCase()).filter(Boolean)
+                                                         // ISO-3166-1 regions to STORE. TMDB
+                                                         // returns ~200 in one response for the
+                                                         // same request cost; we keep a few
+                                                         // because the jsonb is written 15,900
+                                                         // times. Must include whatever
+                                                         // WATCH_REGION the app reads
+                                                         // (generate/route.ts) or the "Watch on …"
+                                                         // line stays hidden forever.
 
 function intEnv(name: string, def: number): number {
   const v = process.env[name]
@@ -490,6 +522,60 @@ async function main() {
     }
   }
 
+  // ── 3c. Backfill streaming availability (migration 0017). This is what
+  // makes the "Watch on …" line real: toUIRecommendations hardcoded
+  // `where: null`, so the affordance rendered for the mock list and never
+  // again once a session had run.
+  //
+  // Differs from §3/§3b in one way that matters: those drain a NULL backlog
+  // and stop, but availability EXPIRES — a title leaves Netflix and the row is
+  // now wrong, not merely incomplete. So the rotation covers the whole catalog
+  // (not `WHERE watch_providers IS NULL`), ordered oldest-check-first, with
+  // PROVIDER_RECHECK_DAYS as the cadence floor. Never-checked rows sort first,
+  // so the initial sweep still fills the column before any re-checking starts.
+  //
+  // `{}` is written when a title streams nowhere in WATCH_REGIONS — that is a
+  // real answer and must be stored, or the row looks never-checked and the
+  // rotation re-fetches it forever (exactly the trap 0016 was written to fix).
+  // One extra TMDB call per row: /watch/providers has no append_to_response
+  // form, so this cannot ride the detail fetch the way videos does.
+  let providersBackfilled = 0
+  if (PROVIDER_BACKFILL > 0 && WATCH_REGIONS.length > 0) {
+    const recheckBefore = new Date(
+      Date.now() - PROVIDER_RECHECK_DAYS * 86_400_000,
+    ).toISOString()
+    let q = db.from('titles').select('tmdb_id, type')
+    if (PROVIDER_RECHECK_DAYS > 0) {
+      q = q.or(`last_provider_check.is.null,last_provider_check.lt.${recheckBefore}`)
+    }
+    const { data: rows } = await q
+      .order('last_provider_check', { ascending: true, nullsFirst: true })
+      .limit(PROVIDER_BACKFILL)
+    const checkedAt = new Date().toISOString()
+    for (const row of rows ?? []) {
+      try {
+        const providers = await getWatchProviders(
+          row.type as 'movie' | 'tv',
+          row.tmdb_id as string,
+          WATCH_REGIONS,
+        )
+        // A 404 (null) still counts as checked — the title has no providers
+        // endpoint and re-asking nightly buys nothing. Only a THROWN error
+        // leaves the row unstamped for retry.
+        const patch = {
+          last_provider_check: checkedAt,
+          watch_providers: providers ?? {},
+        }
+        if (providers && Object.keys(providers).length > 0) providersBackfilled++
+        await db.from('titles').update(patch)
+          .eq('tmdb_id', row.tmdb_id).eq('type', row.type) // composite key (0008)
+      } catch {
+        /* best-effort — transient TMDB/DB error; row stays unstamped for retry */
+      }
+      await sleep(260) // TMDB courtesy (40 req / 10s)
+    }
+  }
+
   // ── 4. Final counts + JSON summary (LAST line) ────────────────────────────
   const [{ count: total }, { count: enrichedTotal }] = await Promise.all([
     db.from('titles').select('tmdb_id', { count: 'exact', head: true }),
@@ -549,6 +635,11 @@ async function main() {
     enriched_total: enrichedTotal ?? null,
     posters_backfilled: postersBackfilled,
     trailers_backfilled: trailersBackfilled,
+    // Rows that came back WITH at least one provider — not rows checked. A run
+    // that checks 150 titles streaming nowhere reports 0, same as a run where
+    // migration 0017 is missing. Placed here, with the other backfill counters,
+    // to keep the diagnosis keys above inside the 400-byte digest window.
+    providers_backfilled: providersBackfilled,
     slice_space: SLICES.length,
   }
   console.log('[grow] done:', `seeded=${seeded} enriched=${enriched} trailers=${trailersBackfilled} total=${total}/${TARGET_CATALOG}`)

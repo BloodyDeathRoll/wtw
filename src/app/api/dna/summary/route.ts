@@ -9,6 +9,13 @@
  *   dna:     DNASchema
  *   summary: string   — 2-3 sentence taste profile
  * }
+ *
+ * ⚠️ DELIBERATELY UNCONSUMED — audited 2026-07-30, decision recorded 2026-08-26.
+ * The profile page (/profile/dna) does NOT call this; it is a server component
+ * that reads loadDNA(user.id) directly, which is strictly better here (no HTTP
+ * hop, nothing added to the client bundle). This handler is kept as the
+ * EXTERNAL seam for API consumers outside the app, and it is the only place
+ * the LLM taste summary is generated. Do not delete it as dead code.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
