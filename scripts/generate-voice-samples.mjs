@@ -25,6 +25,12 @@ const TTS_MODEL = "gemini-2.5-flash-preview-tts";
 const SAMPLE_TEXT = "Hi! I'm your WTW guide. This is what I sound like.";
 const OUTPUT_DIR = path.join(PROJECT_ROOT, "public", "voice-samples");
 
+// Free tier is 3 requests/minute for this model, so ~21s of spacing keeps a run
+// just under it. Both are env-overridable for a paid key, where the whole set
+// finishes in one pass.
+const RPM_SPACING_MS = Number(process.env.TTS_SPACING_MS ?? 21_000);
+const RPM_RETRIES = Number(process.env.TTS_RPM_RETRIES ?? 3);
+
 const VOICES = [
   "Aoede",
   "Charon",
@@ -74,6 +80,7 @@ async function main() {
   let generated = 0;
   let skipped = 0;
   let failed = 0;
+  let exhausted = false;
 
   for (const voice of VOICES) {
     const outputPath = path.join(OUTPUT_DIR, `${voice}.wav`);
@@ -86,43 +93,89 @@ async function main() {
       // not present, generate
     }
 
-    try {
-      process.stdout.write(`→ ${voice}…`);
-      const result = await ai.models.generateContent({
-        model: TTS_MODEL,
-        contents: SAMPLE_TEXT,
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
+    // A 429 here is TWO different things wearing one status code, and the
+    // difference decides whether to wait or to stop:
+    //   • per-MINUTE (RPM, free tier = 3/min) — transient. The response
+    //     carries RetryInfo.retryDelay; sleeping it through lets the run
+    //     continue. Treating it as fatal is why a run stopped at 4 of 30.
+    //   • per-DAY — genuinely out of road until the quota resets.
+    // classifyQuotaError() below reads quotaId/quotaMetric to tell them apart.
+    let attempt = 0;
+    // Some voices (Zephyr, seen 2026-08-26) answer a bare transcript with
+    // 400 "Model tried to generate text" — the model treated the sample as a
+    // prompt to reply to. Retry once with the transcript framed as a read-aloud
+    // instruction so it has nothing to answer. UNVERIFIED: the daily quota was
+    // gone before this could be tried; if Zephyr still fails, swap the voice.
+    let contents = SAMPLE_TEXT;
+    for (;;) {
+      try {
+        process.stdout.write(`→ ${voice}…`);
+        const result = await ai.models.generateContent({
+          model: TTS_MODEL,
+          contents,
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
+            },
           },
-        },
-      });
-      const base64 =
-        result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!base64) throw new Error("response had no audio payload");
+        });
+        const base64 =
+          result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (!base64) throw new Error("response had no audio payload");
 
-      const pcm = Buffer.from(base64, "base64");
-      const wav = pcmToWav(pcm);
-      await fs.writeFile(outputPath, wav);
-      console.log(` ok (${(wav.length / 1024).toFixed(1)} KB)`);
-      generated++;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.log(` FAILED`);
-      console.error(`  ${msg}\n`);
-      failed++;
+        const pcm = Buffer.from(base64, "base64");
+        const wav = pcmToWav(pcm);
+        await fs.writeFile(outputPath, wav);
+        console.log(` ok (${(wav.length / 1024).toFixed(1)} KB)`);
+        generated++;
+        break;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        const quota = classifyQuotaError(msg);
 
-      // Quota exhausted — bail so we don't hammer the API for nothing.
-      // The user re-runs after the daily reset and we pick up where we
-      // left off (files we already wrote are skipped on next pass).
-      if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("429")) {
-        console.log(
-          "Daily free-tier quota exhausted. Re-run tomorrow to continue.",
-        );
+        if (/tried to generate text/i.test(msg) && contents === SAMPLE_TEXT) {
+          contents = `Read the following aloud, exactly as written: "${SAMPLE_TEXT}"`;
+          console.log(` model replied with text, retrying as a read-aloud instruction`);
+          await sleep(RPM_SPACING_MS);
+          continue;
+        }
+
+        if (quota.kind === "per-minute" && attempt < RPM_RETRIES) {
+          attempt++;
+          const waitMs = quota.retryMs ?? 60_000;
+          console.log(
+            ` rate-limited, waiting ${Math.ceil(waitMs / 1000)}s` +
+              ` (retry ${attempt}/${RPM_RETRIES})`,
+          );
+          await sleep(waitMs + 1_000); // +1s of slack against clock skew
+          continue;
+        }
+
+        console.log(` FAILED`);
+        console.error(`  ${msg}\n`);
+        failed++;
+
+        if (quota.kind === "per-day") {
+          console.log(
+            "Daily free-tier quota exhausted. Re-run tomorrow to continue.",
+          );
+          exhausted = true;
+        } else if (quota.kind === "per-minute") {
+          console.log(
+            `Still rate-limited after ${RPM_RETRIES} retries — stopping.` +
+              " Re-run to continue; finished voices are skipped.",
+          );
+          exhausted = true;
+        }
         break;
       }
     }
+    if (exhausted) break;
+
+    // Stay under the free-tier RPM instead of sprinting into a 429 and
+    // recovering from it — cheaper than the retry it avoids.
+    await sleep(RPM_SPACING_MS);
   }
 
   console.log(
@@ -131,6 +184,34 @@ async function main() {
   if (generated + skipped < VOICES.length) {
     console.log("Re-run after quota reset to finish.");
   }
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Tell a per-minute 429 from a per-day one, and pull the server's own retry
+ * delay when it offers one.
+ *
+ * The SDK stringifies the JSON error body into e.message, so this parses what
+ * it can and falls back to substring checks. Google names the free-tier RPM
+ * quota `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` and the daily
+ * one `...PerDay...`; when neither appears we return "per-minute", because
+ * waiting on a genuinely daily limit costs one wasted minute, while quitting on
+ * a per-minute limit costs the rest of the run.
+ */
+function classifyQuotaError(msg) {
+  if (!/RESOURCE_EXHAUSTED|429/.test(msg)) return { kind: "other" };
+
+  let retryMs = null;
+  const retry = msg.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  if (retry) retryMs = Math.ceil(parseFloat(retry[1]) * 1000);
+
+  if (/PerDay|per_day|generate_content_free_tier_requests_per_day/i.test(msg)) {
+    return { kind: "per-day", retryMs };
+  }
+  return { kind: "per-minute", retryMs };
 }
 
 /** Wrap raw 24 kHz / 16-bit / mono PCM in a WAV header. */

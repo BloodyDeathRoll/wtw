@@ -134,7 +134,7 @@ export async function generateRecommendations(
     // the cache at that point (never overwrites with our own snapshot), and a
     // failure just leaves the rationale fallbacks in place.
     if (rest.length > 0) {
-      after(async () => {
+      const patchExplanations = async () => {
         try {
           // One background patch per (user, taste_version): a double-submit at
           // the same version would race two read-modify-writes on the cache
@@ -165,7 +165,18 @@ export async function generateRecommendations(
             err instanceof Error ? err.message : err
           )
         }
-      })
+      }
+      // `after` from next/server only works inside a request scope — it throws
+      // from a script, a cron, a worker, or the E2E harness (measured
+      // 2026-08-26: "`after` was called outside a request scope"), and that
+      // throw happened AFTER the cache write, so the caller lost a result that
+      // was already stored. Outside a request there is no response to wait
+      // for, so just run the patch fire-and-forget instead.
+      try {
+        after(patchExplanations)
+      } catch {
+        void patchExplanations()
+      }
     }
   }
 

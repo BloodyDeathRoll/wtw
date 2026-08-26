@@ -5,7 +5,10 @@
  * template as enrichTitleWithNarrative) and runs a pgvector batch cosine
  * similarity against all candidate titles in one SQL query.
  *
- * The user's embedding is Redis-cached by (user_id, taste_version) so it
+ * The user's embedding is read from fingerprint_embeddings when the DNA
+ * Writer has already stored one for this taste_version, and only embedded
+ * via Mistral when it has not. Either way it is Redis-cached by
+ * (user_id, taste_version) so it
  * is only regenerated when the DNA schema changes.
  *
  * Returns a Map<tmdb_id, score> for all enriched candidates.
@@ -93,7 +96,20 @@ async function getUserEmbedding(
   const cached = await redis.get<number[]>(cacheKey)
   if (cached) return cached
 
-  // Generate via Mistral
+  // Then the DNA Writer's stored row. regenerateEmbedding() (A3) embeds the
+  // same strandBToEmbeddingText() after every DNA write and upserts it into
+  // fingerprint_embeddings with the taste_version it was built from — so on a
+  // matching version this IS the vector Mistral would return, one HTTP hop
+  // cheaper. Version must match exactly: an older row means strand_b/c moved
+  // since, and a stale vector would silently score against the wrong taste.
+  const stored = await readStoredEmbedding(userId, tasteVersion)
+  if (stored) {
+    await redis.set(cacheKey, stored, { ex: EMBED_TTL_SECONDS })
+    return stored
+  }
+
+  // Generate via Mistral — no row yet (first session before the writer ran),
+  // or the row is from an earlier taste_version.
   const text = strandBToEmbeddingText(strandB, strandC)
   const { embedding } = await embed({
     model: mistral().textEmbeddingModel(MODELS.embedding),
@@ -104,6 +120,39 @@ async function getUserEmbedding(
   await redis.set(cacheKey, embedding, { ex: EMBED_TTL_SECONDS })
 
   return embedding
+}
+
+/**
+ * The user's live embedding row, only if it was built from `tasteVersion`.
+ * Best-effort: any read error returns null and the caller falls through to
+ * Mistral, because the row is an optimisation, not a source of truth.
+ *
+ * PostgREST serialises pgvector columns as the text form `[0.1,0.2,…]`, not
+ * a JSON array, hence the parse. Length is checked against the column's
+ * declared dimension so a malformed row cannot reach the cosine RPC.
+ */
+const EMBEDDING_DIM = 1024 // vector(1024), migration 0001
+
+async function readStoredEmbedding(
+  userId: string,
+  tasteVersion: number,
+): Promise<number[] | null> {
+  try {
+    const { data } = await createServiceClient()
+      .from('fingerprint_embeddings')
+      .select('embedding')
+      .eq('user_id', userId)
+      .eq('taste_version', tasteVersion)
+      .maybeSingle<{ embedding: string | number[] | null }>()
+    const raw = data?.embedding
+    if (!raw) return null
+    const vec: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIM) return null
+    if (!vec.every((n) => typeof n === 'number' && Number.isFinite(n))) return null
+    return vec as number[]
+  } catch {
+    return null
+  }
 }
 
 // ─────────────────────────────────────────────

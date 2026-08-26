@@ -8,6 +8,7 @@
  *   getPerson(tmdb_id)   → person detail for lineage graph building
  *   discoverMovies(page) → paginated popular movies for seeding the titles cache
  *   discoverTV(page)     → paginated popular TV shows for seeding the titles cache
+ *   getWatchProviders()  → flatrate streaming availability per region (JustWatch)
  *
  * All use ?append_to_response= to batch sub-requests and avoid rate limits.
  * TMDB rate limit: 40 requests / 10 seconds (free tier).
@@ -220,6 +221,25 @@ export function youtubeTrailerUrl(
   return mode === 'embed'
     ? `https://www.youtube.com/embed/${trailer_key}`
     : `https://www.youtube.com/watch?v=${trailer_key}`
+}
+
+/**
+ * Flatrate (subscription) streaming providers per region, e.g.
+ * `{ US: ['Netflix', 'Hulu'] }`. An empty object means "checked, streaming
+ * nowhere in the regions we asked about" — distinct from never having looked.
+ */
+export type WatchProviderMap = Record<string, string[]>
+
+/**
+ * Pick the provider name the "Watch on …" line should show for a region.
+ * First entry wins: getWatchProviders stores TMDB's display_priority order,
+ * which is TMDB's own ranking of where a viewer is most likely to watch.
+ */
+export function primaryWatchProvider(
+  providers: WatchProviderMap | null | undefined,
+  region: string,
+): string | null {
+  return providers?.[region]?.[0] ?? null
 }
 
 export interface TMDBDiscoverItem {
@@ -482,4 +502,41 @@ export async function discoverVaried(
     title: r.title ?? r.name ?? '',
     type,
   }))
+}
+
+/**
+ * Fetch flatrate streaming availability, narrowed to `regions`.
+ *
+ * TMDB returns every region it knows (~200) in one response; we keep only the
+ * ones asked for, because the caller stores this per title across a
+ * five-figure catalog. Rent/buy tiers are dropped on purpose — the UI says
+ * "Watch on X", which has to mean "included with a subscription".
+ *
+ * Returns `{}` when the title streams nowhere in `regions` (a real answer, and
+ * the caller records it as checked), or null on a 404 — same contract as the
+ * other methods here.
+ *
+ * ⚠️ TMDB sources this from JustWatch and requires attribution wherever it is
+ * shown. Do not surface it without that.
+ */
+export async function getWatchProviders(
+  type: 'movie' | 'tv',
+  tmdb_id: string,
+  regions: string[],
+): Promise<WatchProviderMap | null> {
+  const raw = await tmdbFetch<{
+    results: Record<string, { flatrate?: { provider_name: string; display_priority: number }[] }>
+  }>(`/${type}/${tmdb_id}/watch/providers`)
+
+  if (!raw) return null
+
+  const out: WatchProviderMap = {}
+  for (const region of regions) {
+    const flatrate = raw.results?.[region]?.flatrate
+    if (!flatrate?.length) continue
+    out[region] = [...flatrate]
+      .sort((a, b) => a.display_priority - b.display_priority)
+      .map((p) => p.provider_name)
+  }
+  return out
 }
