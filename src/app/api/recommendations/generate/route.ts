@@ -11,6 +11,7 @@ import {
   pageOf,
 } from "@/modules/session/recommendations/mock-data";
 import { generateRecommendations } from "@/modules/engine";
+import { ensureWatchProviders } from "@/modules/engine/enrichment/ensure-watch-providers";
 import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
 import {
   tmdbPosterUrl,
@@ -260,6 +261,19 @@ export async function GET(req: Request) {
     const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;
+    // Streaming availability for THIS page, before it renders: the batch-wide
+    // check runs in the background after generation, so this is usually a
+    // no-op — but a page served before it lands would otherwise show no
+    // "Watch on …" until a refetch. At most one TMDB call per card on the
+    // page (≤6, in parallel); a failure just leaves the line off.
+    try {
+      await ensureWatchProviders(
+        items.map((r) => ({ tmdb_id: r.tmdb_id, type: r.type })),
+        { maxChecks: DEFAULT_PAGE_SIZE },
+      );
+    } catch (err) {
+      console.warn("[recommendations/generate] page provider check failed (non-fatal):", err instanceof Error ? err.message : err);
+    }
     const uiRecs = await toUIRecommendations(items);
     // Remember what this user was actually shown (served_titles, migration
     // 0019): the next batch keeps these out of its "fresh" 80% and draws its
