@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import type { DNASchema, DNASignal, SessionSummary, RecommendationResult } from '@/types/dna'
 import { titleKey } from '@/lib/title-key'
 import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
@@ -13,8 +14,14 @@ export async function updateSchemaFromSession(
   user_id: string,
   summary: SessionSummary,
   recommendation?: RecommendationResult,
+  /**
+   * A DNA the caller just read/wrote (session/end holds one with the
+   * watchlist marks applied). Saves the cache-first re-read. The caller is
+   * responsible for it being the freshest copy.
+   */
+  preloaded?: DNASchema,
 ): Promise<DNASchema> {
-  const dna = await loadDNA(user_id)
+  const dna = preloaded ?? await loadDNA(user_id)
 
   // 1. Append new signals — deduplicate by type:tmdb_id + source
   const sigKey = (s: { type: DNASignal['type']; tmdb_id: string; source: string }) =>
@@ -81,16 +88,25 @@ export async function updateSchemaFromSession(
   // 10. Regenerate Mistral embedding snapshot (fire-and-forget on error)
   //     The engine's Redis cache handles the embedding for scoring —
   //     this persists the historical snapshot in fingerprint_embeddings.
+  //     Skips the Mistral call when the strand text is unchanged (hash).
   await regenerateEmbedding(user_id, dna).catch(err =>
     console.warn('[update-from-session] embedding regen failed:', err)
   )
 
   await saveDNA(user_id, dna)
 
-  // 11. Store a versioned snapshot (keep-last-5, pruned in storeSnapshot)
-  await storeSnapshot(user_id, dna).catch(err =>
-    console.warn('[update-from-session] snapshot store failed:', err)
-  )
+  // 11. Store a versioned snapshot (keep-last-5, pruned in storeSnapshot).
+  //     Archival only — 2-3 DB round trips nobody is waiting on, so after the
+  //     response when there is one (guarded: `after` throws outside a request).
+  const snapshot = () =>
+    storeSnapshot(user_id, dna).catch(err =>
+      console.warn('[update-from-session] snapshot store failed:', err)
+    )
+  try {
+    after(snapshot)
+  } catch {
+    await snapshot()
+  }
 
   return dna
 }

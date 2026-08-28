@@ -64,17 +64,22 @@ export async function getCandidates(
   const [{ data: removedRows, error: removedError }, { data: servedRows, error: servedError }] =
     await Promise.all([
       supabase.from('removed_titles').select('tmdb_id, media_type').eq('user_id', userId),
-      supabase.from('served_titles').select('tmdb_id, media_type').eq('user_id', userId),
+      supabase.from('served_titles').select('tmdb_id, media_type, times_served').eq('user_id', userId),
     ])
   if (removedError) throw new Error(`Candidate generation failed (removed_titles): ${removedError.message}`)
   if (servedError)  throw new Error(`Candidate generation failed (served_titles): ${servedError.message}`)
   for (const r of removedRows ?? []) excluded.add(titleKey(r.media_type as MediaType, r.tmdb_id))
   const excludeKeys = toRpcKeys(excluded)
 
-  // Served-but-unrated: everything served minus everything excluded.
-  const servedKeys = (servedRows ?? [])
-    .map(r => titleKey(r.media_type as MediaType, r.tmdb_id))
-    .filter(k => !excluded.has(k))
+  // Served-but-unrated: everything served minus everything excluded. The
+  // serve count rides along so step3b can rotate the seen slice instead of
+  // re-showing the same ten highest-scoring ones every batch.
+  const timesServed = new Map<string, number>()
+  for (const r of servedRows ?? []) {
+    const k = titleKey(r.media_type as MediaType, r.tmdb_id)
+    if (!excluded.has(k)) timesServed.set(k, r.times_served as number)
+  }
+  const servedKeys = [...timesServed.keys()]
 
   // ── Parse session-level hard filters ─────────────────────
   let titleType: string | null = null
@@ -147,7 +152,11 @@ export async function getCandidates(
   }
   const candidates: TitleRow[] = [
     ...[...fresh.values()].map(t => ({ ...t, previously_served: false })),
-    ...((seenRes.data ?? []) as TitleRow[]).map(t => ({ ...t, previously_served: true })),
+    ...((seenRes.data ?? []) as TitleRow[]).map(t => ({
+      ...t,
+      previously_served: true,
+      times_served: timesServed.get(titleKey(t.type, t.tmdb_id)) ?? 1,
+    })),
   ]
 
   // ── Post-filter: exclusion rules ──────────────────────────

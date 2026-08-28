@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { embed } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
@@ -22,6 +23,13 @@ function getMistral() {
  *
  * Uses the same text template as the engine's narrative-match scorer so that
  * cosine similarity between user and title embeddings is meaningful.
+ *
+ * Skips the Mistral call when the text it would embed is byte-identical to
+ * what the stored row was built from (text_hash, migration 0020): per-click
+ * merges rarely move the dominant pacing / top tones, so most "Find more"
+ * bumps only need the row's taste_version moved forward. The engine's scorer
+ * reads the row by exact version (narrative-match.ts), so the version update
+ * is what keeps it on the DB path instead of re-embedding itself.
  */
 export async function regenerateEmbedding(
   user_id: string,
@@ -31,13 +39,31 @@ export async function regenerateEmbedding(
     dna.strand_b_narrative_dimensions,
     dna.strand_c_visceral_specs,
   )
+  const text_hash = createHash('sha256').update(text).digest('hex')
+  const db = createServiceClient()
 
+  // ── Unchanged text → just move the version forward ───────
+  const { data: existing } = await db
+    .from('fingerprint_embeddings')
+    .select('id, text_hash')
+    .eq('user_id', user_id)
+    .maybeSingle<{ id: string; text_hash: string | null }>()
+
+  if (existing && existing.text_hash === text_hash) {
+    const { error } = await db
+      .from('fingerprint_embeddings')
+      .update({ taste_version: dna.metadata.taste_version })
+      .eq('id', existing.id)
+    if (error) throw new Error(`regenerateEmbedding version update failed: ${error.message}`)
+    dna.metadata.fingerprint_embedding_ref = existing.id
+    return
+  }
+
+  // ── Changed (or never embedded) → Mistral ─────────────────
   const { embedding } = await embed({
     model: getMistral().textEmbeddingModel(MODELS.embedding),
     value: text,
   })
-
-  const db = createServiceClient()
 
   // Upsert the single live embedding row for this user. The UNIQUE(user_id)
   // constraint means a plain insert fails on the 2nd write ("duplicate key");
@@ -49,6 +75,7 @@ export async function regenerateEmbedding(
         user_id,
         embedding,
         taste_version: dna.metadata.taste_version,
+        text_hash,
       },
       { onConflict: 'user_id' },
     )

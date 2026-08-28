@@ -31,8 +31,9 @@
  * id and stored bare, exactly as before.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { precomputeNextBatch } from '@/modules/engine/pipeline/precompute'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isMediaType, recordMatches, titleKey, type MediaType } from '@/lib/title-key'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
@@ -192,6 +193,11 @@ export async function POST(req: NextRequest) {
     await mergeFeedbackSignalsLight(user.id).catch(err =>
       console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
     )
+    // The fingerprint inputs are final for this rating — build the next batch
+    // now, after the response, so "Find more" only has to adopt it
+    // (precompute.ts coalesces bursts; never throws).
+    const userId = user.id
+    after(() => precomputeNextBatch(userId))
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────

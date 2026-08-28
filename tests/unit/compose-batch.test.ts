@@ -62,6 +62,20 @@ describe('composeBatch', () => {
     expect(composeBatch(input)).toBe(input)
   })
 
+  it('rotates the seen slice: least-served first, then score', () => {
+    // 20 served titles: ids 1000-1009 served 3× (and higher-scored), 1010-1019 served once.
+    const heavy = pool(10, true, 1, 1000).map((s) => ({ ...s, title: { ...s.title, times_served: 3 } }))
+    const light = pool(10, true, 0.9, 1010).map((s) => ({ ...s, title: { ...s.title, times_served: 1 } }))
+    const out = composeBatch([...heavy, ...light, ...pool(100, false, 0.5)])
+    const seenIds = out.filter(isSeen).map((s) => Number(s.title.tmdb_id))
+    expect(seenIds).toHaveLength(10)
+    expect(seenIds.every((id) => id >= 1010)).toBe(true)
+    // …and the batch as a whole is still in score order
+    for (let i = 1; i < out.length; i++) {
+      expect(out[i - 1].composite_score).toBeGreaterThanOrEqual(out[i].composite_score)
+    }
+  })
+
   it('respects a custom size and share', () => {
     const out = composeBatch([...pool(50, false), ...pool(50, true, 0.5, 1000)], 20, 0.5)
     expect(out).toHaveLength(20)

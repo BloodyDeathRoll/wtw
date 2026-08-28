@@ -51,6 +51,8 @@ export interface TitleRow {
    * fresh/seen split in step3b-compose-batch.ts.
    */
   previously_served?: boolean
+  /** How many times this user has been served it (served_titles.times_served). */
+  times_served?: number
 }
 
 export interface CrewMemberRow {

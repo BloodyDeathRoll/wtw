@@ -4,11 +4,13 @@
  * Takes the top 50 scored candidates and asks Groq to re-rank them based
  * on nuanced tonal and thematic resonance that numeric scoring can't capture.
  *
- * One Groq call returns the full re-ranked list with a short rationale per title.
- * The rationale is stored on ScoredTitle.groq_rationale and later used to build
- * the ReasonPayload in Step 6.
+ * One structured call (Mistral small — see src/lib/ai-models.ts) returns the
+ * re-ranked list of ids. Since 2026-08-28 it returns ids ONLY: per-title
+ * rationales made it the slowest step of "Find more" and step 7 builds the
+ * interim card text from the reason payload instead. groq_rationale is kept
+ * on the type (ReasonPayload contract) and is always ''.
  *
- * Returns all 50 in Groq's re-ranked order with groq_rationale filled.
+ * Returns all 50 in the model's order; composite order on any failure.
  */
 
 import { generateObject } from 'ai'
@@ -69,17 +71,13 @@ function profileSummary(dna: DNASchema): string {
 // Re-ranking schema
 // ─────────────────────────────────────────────
 
+// Ids only. This call used to return a rationale per title too — ~4K output
+// tokens for 50 titles, the single largest cost of a "Find more" (est. 5-20s,
+// 2026-08-28). The rationales only fed the explanation prompt and the interim
+// card text, both of which step 7 now covers from the reason payload.
 const rerankSchema = z.object({
   ranked: z.array(
-    z.object({
-      tmdb_id:   z.string(),
-      // No .max() — a hard length cap here made ONE verbose rationale (out of
-      // 50) invalidate the entire response and kill the pipeline (seen live:
-      // mistral writes ~350-char rationales despite "brief"). We ask for short
-      // in the prompt and truncate in code instead of failing validation.
-      rationale: z.string()
-        .describe('1-2 sentences: why this fits THIS user specifically. Be specific about what resonates.'),
-    })
+    z.string().describe('The bracketed id exactly as shown, e.g. "movie:603"'),
   ).min(1),
 })
 
@@ -115,13 +113,12 @@ CANDIDATES (currently ranked by numeric score):
 ${candidateList}
 
 Re-rank these titles from best to worst fit for THIS viewer. You may dramatically reorder them — the numeric score misses nuance.
-Return ALL ${top50.length} titles in your preferred order with a brief rationale for each (1-2 sentences, under 200 characters).
-Be specific: reference the viewer's actual preferences, not generic praise for the title.`
+Return ALL ${top50.length} bracketed ids in your preferred order. Ids only — no titles, no commentary.`
 
   // GRACEFUL DEGRADATION: a rerank failure must never kill the pipeline.
   // Composite scoring (step 2) already produced a good order — the LLM pass
   // only refines it. On any LLM/validation error, fall back to that order.
-  let ranked: { tmdb_id: string; rationale: string }[]
+  let ranked: string[]
   try {
     const { object } = await generateObject({
       model: mistral()(MODELS.structured),
@@ -134,25 +131,23 @@ Be specific: reference the viewer's actual preferences, not generic praise for t
     return top50.map(item => ({ ...item, groq_rationale: '' }))
   }
 
-  // Build a map from the ranked list (rationales truncated in code, not schema)
   // Keyed on whatever the model echoed — the composite key we showed it, or a
   // bare id if it trimmed the prefix; the lookup tries the composite first.
-  const rankMap = new Map<string, { rank: number; rationale: string }>(
-    ranked.map((r, i) => [r.tmdb_id.trim(), { rank: i, rationale: r.rationale.slice(0, 250) }])
+  const rankMap = new Map<string, number>(
+    ranked.map((id, i) => [id.trim().replace(/^\[|\]$/g, ''), i])
   )
   const rankOf = (s: ScoredTitle) =>
     rankMap.get(`${s.title.type}:${s.title.tmdb_id}`) ?? rankMap.get(s.title.tmdb_id)
 
-  // Apply Groq's ordering, preserving original numeric order for unranked titles
-  const reranked = [...top50].sort((a, b) => {
-    const ra = rankOf(a)?.rank ?? 999
-    const rb = rankOf(b)?.rank ?? 999
-    return ra - rb
-  })
+  // Apply the LLM's ordering, preserving original numeric order for unranked titles
+  const matched = top50.filter(s => rankOf(s) !== undefined).length
+  console.log(`[rerank] ${matched}/${top50.length} ids matched (${ranked.length} returned)`)
+  if (matched === 0) {
+    // The model returned something we can't map (titles instead of ids?) —
+    // say so loudly rather than silently serving composite order as "reranked".
+    console.warn('[rerank] no ids matched — composite order kept; sample:', ranked.slice(0, 3))
+  }
+  const reranked = [...top50].sort((a, b) => (rankOf(a) ?? 999) - (rankOf(b) ?? 999))
 
-  // Return all 50 with groq_rationale filled
-  return reranked.map(item => ({
-    ...item,
-    groq_rationale: rankOf(item)?.rationale ?? '',
-  }))
+  return reranked.map(item => ({ ...item, groq_rationale: '' }))
 }

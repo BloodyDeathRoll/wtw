@@ -161,9 +161,6 @@ export async function GET(req: Request) {
     : 0;
   const contentType = url.searchParams.get("type"); // "movies" | "series"
 
-  // Titles the user has "Removed" — filtered out of every page below.
-  const removed = await getRemovedKeys(user.id);
-
   let cachedRecs: RecommendationResult[] | null = null
   let dna: DNASchema | null = null
   // Distinguishes "read the DNA and the user genuinely has none" (→ mocks are
@@ -171,15 +168,21 @@ export async function GET(req: Request) {
   // all" (→ fingerprint status unknown, so we must NOT risk serving mocks).
   let dnaReadFailed = false
 
-  // ── Read the fingerprint (its own try: a DB failure here is different from a
-  //    Redis failure below) ─────────────────────────────────────────────────
+  // ── Read the fingerprint and the removed list together (independent reads,
+  //    one round trip). The DNA read keeps its own try: a DB failure here is
+  //    different from a Redis failure below. ──────────────────────────────
+  const dnaRead = createServiceClient()
+    .from("users")
+    .select("dna")
+    .eq("id", user.id)
+    .single<{ dna: DNASchema | null }>()
+    .then((r) => ({ ok: true as const, ...r }), (err: unknown) => ({ ok: false as const, err }));
+  // Titles the user has "Removed" — filtered out of every page below.
+  const [removed, dnaResult] = await Promise.all([getRemovedKeys(user.id), dnaRead]);
+
   try {
-    const db = createServiceClient()
-    const { data, error } = await db
-      .from("users")
-      .select("dna")
-      .eq("id", user.id)
-      .single<{ dna: DNASchema | null }>()
+    if (!dnaResult.ok) throw dnaResult.err;
+    const { data, error } = dnaResult;
 
     if (error && error.code !== "PGRST116") {
       // PGRST116 = no row = determinate "not onboarded" (fine → mocks). Any

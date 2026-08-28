@@ -26,7 +26,16 @@ export function composeBatch(
   if (sorted.length <= size) return sorted
 
   const fresh = sorted.filter(s => !s.title.previously_served)
-  const seen  = sorted.filter(s =>  s.title.previously_served)
+  // Seen slice: least-served first, then by score — otherwise the ten
+  // highest-scoring served titles are the same ten at the top of every batch
+  // until they're rated (seen live 2026-08-28), which is the repetition this
+  // whole change exists to remove. The final sort below still orders the
+  // batch by match; this only decides WHICH seen titles get the slots.
+  const seen  = sorted
+    .filter(s => s.title.previously_served)
+    .sort((a, b) =>
+      (a.title.times_served ?? 1) - (b.title.times_served ?? 1) ||
+      b.composite_score - a.composite_score)
 
   const freshTarget = Math.round(size * freshShare)
   const seenTarget  = size - freshTarget
