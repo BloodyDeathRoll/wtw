@@ -13,7 +13,8 @@
  * LLM/embedding work belongs to session-end. When "Find more" / session-end
  * runs, updateSchemaFromSession bumps once, regenerates the embedding over
  * the accumulated strand changes, and its fold skips everything already
- * signaled here (dedup key: type:tmdb_id + source).
+ * signaled here (dedup key: type:tmdb_id, one signal per title across all
+ * sources — first wins).
  *
  * Concurrency: callers must serialize invocations per user (the rec UI queues
  * feedback clicks) — this is a read-modify-write on the DNA JSONB.

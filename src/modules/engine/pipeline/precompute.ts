@@ -81,6 +81,11 @@ async function loadDNA(userId: string): Promise<DNASchema | null> {
  */
 export async function precomputeNextBatch(userId: string): Promise<void> {
   const redis = getRedis()
+  // Only the holder releases the lock. An earlier version deleted it in
+  // `finally` unconditionally, so a click that found the lock taken released
+  // the RUNNING build's lock on its way out and the next click started a
+  // second pipeline for the same user (caught in review, 2026-08-28).
+  let acquired = false
   try {
     const lock = await redis.set(lockKey(userId), '1', { nx: true, ex: LOCK_TTL_SECONDS })
     if (lock === null) {
@@ -89,6 +94,7 @@ export async function precomputeNextBatch(userId: string): Promise<void> {
       await redis.set(dirtyKey(userId), '1', { ex: DIRTY_TTL_SECONDS })
       return
     }
+    acquired = true
 
     for (let run = 0; run < MAX_RUNS_PER_KICK; run++) {
       await redis.del(dirtyKey(userId))
@@ -105,7 +111,7 @@ export async function precomputeNextBatch(userId: string): Promise<void> {
   } catch (err) {
     console.warn('[precompute] failed (non-fatal):', err instanceof Error ? err.message : err)
   } finally {
-    await redis.del(lockKey(userId)).catch(() => {})
+    if (acquired) await redis.del(lockKey(userId)).catch(() => {})
   }
 }
 
@@ -120,7 +126,10 @@ export async function adoptPendingBatch(
   const redis = getRedis()
   let batch: PendingBatch | null = null
   try {
-    batch = await redis.get<PendingBatch>(pendingKey(userId))
+    // Atomic take: a separate get + del could delete a FRESH batch parked by
+    // a concurrent precompute between the two calls (review, 2026-08-28).
+    // A stale batch is discarded with it — it would never be adopted anyway.
+    batch = await redis.getdel<PendingBatch>(pendingKey(userId))
   } catch (err) {
     console.warn('[precompute] pending read failed (regenerating):', err instanceof Error ? err.message : err)
     return null
@@ -134,7 +143,6 @@ export async function adoptPendingBatch(
   const version = dna.metadata.taste_version
   const versioned = batch.results.map(r => ({ ...r, fingerprint_version: version }))
   await cacheRecommendations(userId, version, versioned)
-  await redis.del(pendingKey(userId)).catch(() => {})
   scheduleExplanationPatch(userId, version, versioned)
   console.log(`[precompute] adopted pending batch (${versioned.length}) as v${version}`)
   return versioned

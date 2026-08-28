@@ -47,6 +47,28 @@ const DIMENSIONS: (keyof StrandB)[] = [
   'humor_style', 'protagonist_type', 'ensemble_vs_solo',
 ]
 
+/**
+ * Allowed categorical values per dimension — mirrors the enrichment zod enums
+ * in src/modules/engine/enrichment/enrich-title-narrative.ts. A tag outside
+ * the list (hallucinated, or from a future enum change) is ignored rather than
+ * written verbatim into the fingerprint. Keep the two in step.
+ */
+const LEVELS = ['low', 'medium', 'medium_high', 'high']
+const ALLOWED: Partial<Record<keyof StrandB, readonly string[]>> = {
+  moral_ambiguity:      LEVELS,
+  narrative_complexity: LEVELS,
+  emotional_demand:     LEVELS,
+  humor_style:          ['none', 'slapstick', 'dry', 'dark', 'observational_character_driven', 'absurdist', 'satirical'],
+  protagonist_type:     ['flawed_self_aware', 'anti_hero', 'ensemble', 'everyman', 'idealist', 'reluctant_hero', 'villain_protagonist'],
+  ensemble_vs_solo:     ['strong_ensemble', 'slight_ensemble', 'neutral', 'slight_solo', 'strong_solo'],
+}
+
+function isAllowedValue(dim: keyof StrandB, value: unknown): boolean {
+  const list = ALLOWED[dim]
+  if (!list) return typeof value === 'number' && Number.isFinite(value) // originality_weight
+  return typeof value === 'string' && list.includes(value)
+}
+
 export function applyStrandBFromTitle(
   strand_b: StrandB,
   metadata: TitleNarrativeMetadata | null | undefined,
@@ -63,6 +85,7 @@ export function applyStrandBFromTitle(
     const tag = metadata[dim]
     const current: NarrativeDimension | undefined = strand_b[dim]
     if (!tag || !current || tag.value == null) continue
+    if (!isAllowedValue(dim, tag.value)) continue
     // Some enriched rows carry a non-numeric confidence (seen live: a word
     // where a number belongs) — one NaN here poisons the dimension for good.
     const titleConf = Number(tag.confidence)

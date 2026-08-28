@@ -63,6 +63,14 @@ describe('applyStrandBFromTitle', () => {
     expect(Number.isFinite(b.originality_weight.value as number)).toBe(true)
   })
 
+  it('ignores a value outside the enrichment enum instead of writing it verbatim', () => {
+    const b = blank()
+    const touched = applyStrandBFromTitle(b, { humor_style: tag('sardonic'), protagonist_type: tag('chosen_one') }, 'loved')
+    expect(touched).toBe(0)
+    expect(b.humor_style.value).toBe('none')
+    expect(b.protagonist_type.value).toBe('everyman')
+  })
+
   it('is a no-op without metadata', () => {
     const b = blank()
     expect(applyStrandBFromTitle(b, null, 'loved')).toBe(0)

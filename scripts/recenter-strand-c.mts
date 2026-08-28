@@ -23,7 +23,7 @@ const fmt = (o: Record<string, number>) =>
 
 async function main() {
   const db = createServiceClient()
-  const { data: users, error } = await db.from('users').select('id, dna')
+  const { data: users, error } = await db.from('users').select('id, dna, updated_at')
   if (error) throw new Error(error.message)
 
   let written = 0
@@ -45,10 +45,19 @@ async function main() {
 
     dna.metadata.taste_version += 1
     dna.metadata.last_updated = new Date().toISOString()
-    const { error: saveErr } = await db
+    // Compare-and-set on updated_at: the row was read up front, and a card
+    // rating or session-end landing since would be clobbered by this stale
+    // snapshot. A filter that matches 0 rows is a skip, not a write.
+    const { data: saved, error: saveErr } = await db
       .from('users')
       .update({ dna, updated_at: new Date().toISOString() })
       .eq('id', u.id)
+      .eq('updated_at', u.updated_at as string)
+      .select('id')
+    if (!saveErr && (saved?.length ?? 0) === 0) {
+      console.warn('  SKIPPED: row changed underneath (re-run for this user)')
+      continue
+    }
     if (saveErr) { console.error('  SAVE FAILED:', saveErr.message); continue }
     try { await getRedis().del(`dna:${u.id}`) } catch { /* non-fatal */ }
     written++

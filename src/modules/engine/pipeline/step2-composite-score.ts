@@ -46,7 +46,9 @@ export const WEIGHTS = {
 
 /** Map each score to its percentile rank within the pool (0 = lowest, 1 = highest). */
 export function toPercentiles(scores: Map<string, number>): Map<string, number> {
-  const entries = [...scores.entries()].sort((a, b) => a[1] - b[1])
+  // Ties broken by key so identical inputs always rank identically, whatever
+  // order the RPC returned them in.
+  const entries = [...scores.entries()].sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
   const n = entries.length
   const out = new Map<string, number>()
   if (n === 0) return out

@@ -52,8 +52,11 @@ export function applyStrandCUpdate(
  * 0.97–1.0 (measured 2026-08-28: dark .97, comedic .985, hopeful 1.0) and
  * the scorer saw a user who "loves everything". What the weights mean is
  * relative — which tones the user favours over the others — so after each
- * update the group is shifted so its mean is 0.5 again. Differences between
- * tags are preserved exactly; only the shared drift is removed.
+ * update the group is shifted back toward a mean of 0.5. Differences between
+ * tags are preserved; only the shared drift is removed. When the shift would
+ * push a tag outside [0, 1] it is clamped, so the mean lands NEAR 0.5 rather
+ * than on it ({1, 1, 0} → mean 0.56) — that residual is bounded and shrinks
+ * on the next update, which is all that's needed to stop re-saturation.
  * `scripts/recenter-strand-c.mts` applied this once to existing rows.
  */
 export function recenterWeights(weights: Record<string, number>): void {

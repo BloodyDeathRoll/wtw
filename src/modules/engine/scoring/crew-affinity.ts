@@ -1,10 +1,10 @@
 /**
  * Crew Affinity Scorer — Step 2, weight 0.35
  *
- * For each role on the title, looks up the crew member in the user's
- * strand_a and computes a weighted score. Unknown crew contribute a
- * neutral 0.0 to the raw sum, so a title with unfamiliar crew lands at
- * 0.5 (neutral) rather than 0.
+ * For each role on the title, looks up the crew members in the user's
+ * strand_a and takes the strongest known one; the role raws are combined by
+ * ROLE_WEIGHTS. Unknown crew are not evidence — a title with no familiar
+ * crew lands at 0.5 (neutral), and unknowns never dilute a known match.
  *
  * Lineage boost is computed separately (lineage-boost.ts) and added on
  * top of this score before entering the composite formula.

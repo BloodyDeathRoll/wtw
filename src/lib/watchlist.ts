@@ -133,10 +133,11 @@ export function removeFromWatchlist(id: string) {
   if (!gone) return
   writeList(list.filter((e) => e.rec.id !== id))
   // The fingerprint excludes saved titles from the feed, so an unsave has to
-  // reach it too — otherwise the title stays hidden forever. Only a save the
-  // server already knows about needs undoing; an unsynced one simply never
-  // gets reported.
-  if (gone.synced) writeRemovals([...new Set([...readRemovals(), id])])
+  // reach it too — otherwise the title stays hidden forever. Always queued,
+  // even for an entry that never synced: an EARLIER save of the same title
+  // may have, and the server-side unmark is a no-op when there's nothing to
+  // clear.
+  writeRemovals([...new Set([...readRemovals(), id])])
 }
 
 // ── Unsave sync ───────────────────────────────────────────────
