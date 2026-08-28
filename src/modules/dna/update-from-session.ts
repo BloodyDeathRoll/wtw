@@ -1,4 +1,5 @@
-import type { DNASchema, SessionSummary, RecommendationResult } from '@/types/dna'
+import type { DNASchema, DNASignal, SessionSummary, RecommendationResult } from '@/types/dna'
+import { titleKey } from '@/lib/title-key'
 import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { mergeStrandB, applySignalDimensionTags } from './lib/update-strand-b'
@@ -15,20 +16,21 @@ export async function updateSchemaFromSession(
 ): Promise<DNASchema> {
   const dna = await loadDNA(user_id)
 
-  // 1. Append new signals — deduplicate by tmdb_id + source
-  const existingKeys = new Set(dna.signals.map(s => `${s.tmdb_id}:${s.source}`))
-  const freshSignals = summary.new_signals.filter(
-    s => !existingKeys.has(`${s.tmdb_id}:${s.source}`),
-  )
+  // 1. Append new signals — deduplicate by type:tmdb_id + source
+  const sigKey = (s: { type: DNASignal['type']; tmdb_id: string; source: string }) =>
+    `${titleKey(s.type, s.tmdb_id)}:${s.source}`
+  const existingKeys = new Set(dna.signals.map(sigKey))
+  const freshSignals = summary.new_signals.filter(s => !existingKeys.has(sigKey(s)))
   dna.signals.push(...freshSignals)
 
   // 2. Batch-fetch title metadata for crew + visceral updates
   const tmdbIds = [...new Set(freshSignals.map(s => s.tmdb_id))]
   const titleMap = await fetchTitleCrew(tmdbIds)
 
-  // 3. Strand A + C: update from each new signal
+  // 3. Strand A + C: update from each new signal — by (tmdb_id, type), so a
+  //    same-id title of the other type never supplies the crew
   for (const signal of freshSignals) {
-    const title = titleMap.get(signal.tmdb_id)
+    const title = titleMap.get(titleKey(signal.type, signal.tmdb_id))
     if (!title) continue  // title not seeded yet — skip, will re-run after seed
 
     applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, signal.reaction)

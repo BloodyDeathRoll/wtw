@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { updateSchemaFromSurvey } from '@/modules/dna/update-from-survey'
+import { isMediaType, type MediaType } from '@/lib/title-key'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -27,12 +28,14 @@ export async function POST(req: NextRequest) {
   let tmdb_id: string
   let dimension_ratings: Record<string, string>
   let aspect_ratings: Record<string, 'good' | 'ok' | 'weak'>
+  let media_type: MediaType | null
 
   try {
     const body       = await req.json()
     tmdb_id          = body.tmdb_id
     dimension_ratings = body.dimension_ratings ?? {}
     aspect_ratings   = body.aspect_ratings    ?? {}
+    media_type       = isMediaType(body.media_type) ? body.media_type : null
 
     if (!tmdb_id || typeof tmdb_id !== 'string') {
       return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await updateSchemaFromSurvey(user.id, tmdb_id, dimension_ratings, aspect_ratings)
+    await updateSchemaFromSurvey(user.id, tmdb_id, dimension_ratings, aspect_ratings, media_type)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[survey] updateSchemaFromSurvey failed:', err)

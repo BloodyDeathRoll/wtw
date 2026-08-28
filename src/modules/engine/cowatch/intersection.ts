@@ -73,8 +73,10 @@ export async function generateCowatchRecommendations(
   ])
 
   // ── Build score maps ──────────────────────────────────────
-  const scoreMapA = new Map(candidatesA.map(s => [s.title.tmdb_id, s]))
-  const scoreMapB = new Map(candidatesB.map(s => [s.title.tmdb_id, s]))
+  // Composite key — a movie and a TV show can share a tmdb_id, and merging
+  // them here would average two unrelated titles into one result
+  const scoreMapA = new Map(candidatesA.map(s => [`${s.title.type}:${s.title.tmdb_id}`, s]))
+  const scoreMapB = new Map(candidatesB.map(s => [`${s.title.type}:${s.title.tmdb_id}`, s]))
 
   // ── Intersection: titles both users have scored ───────────
   const commonIds = [...scoreMapA.keys()].filter(id => scoreMapB.has(id))

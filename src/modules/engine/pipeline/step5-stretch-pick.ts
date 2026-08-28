@@ -84,10 +84,11 @@ export function injectStretchPick(
 
   // ── Find stretch pick candidate ───────────────────────────
   // Look in the full candidate pool (not in ranked — those are already good fits)
-  const rankedIds = new Set(ranked.map(t => t.title.tmdb_id))
+  // Composite key — a movie and a TV show can share a tmdb_id
+  const rankedIds = new Set(ranked.map(t => `${t.title.type}:${t.title.tmdb_id}`))
 
   const stretchCandidate = allCandidates.find(candidate => {
-    if (rankedIds.has(candidate.title.tmdb_id))       return false  // already in list
+    if (rankedIds.has(`${candidate.title.type}:${candidate.title.tmdb_id}`)) return false  // already in list
     if (candidate.composite_score >= MAX_COMPOSITE_SCORE) return false
     if (candidate.external_rating_score < MIN_EXTERNAL_RATING) return false
     const { mismatched } = hasDimensionMismatch(candidate, dna)

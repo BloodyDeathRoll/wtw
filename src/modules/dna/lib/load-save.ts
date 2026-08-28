@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { getRedis } from '@/lib/redis'
 import type { DNASchema } from '@/types/dna'
+import { titleKey, type MediaType } from '@/lib/title-key'
 import { createBlankDNA } from '../blank-dna'
 
 export type TitleCrewMember = { tmdb_person_id: string; name: string }
@@ -90,6 +91,13 @@ async function setCachedDNA(user_id: string, dna: DNASchema): Promise<void> {
   }
 }
 
+/**
+ * Catalog rows for a set of tmdb_ids, keyed by `titleKey(type, tmdb_id)`.
+ * A movie and a TV show can share an id, so BOTH rows come back and the caller
+ * picks by composite key — keying on the bare id let the TV row overwrite the
+ * movie row, which signaled ratings against the wrong title (see
+ * src/lib/title-key.ts). Use `pickTitle` when the type isn't known.
+ */
 export async function fetchTitleCrew(tmdb_ids: string[]): Promise<Map<string, TitleRow>> {
   if (tmdb_ids.length === 0) return new Map()
 
@@ -97,15 +105,30 @@ export async function fetchTitleCrew(tmdb_ids: string[]): Promise<Map<string, Ti
   const { data, error } = await db
     .from('titles')
     .select('tmdb_id, title, type, crew, pacing_tag, tone_tags, narrative_metadata')
-    .in('tmdb_id', tmdb_ids)
+    .in('tmdb_id', [...new Set(tmdb_ids)])
 
   if (error) throw new Error(`fetchTitleCrew: ${error.message}`)
 
   const map = new Map<string, TitleRow>()
   for (const row of data ?? []) {
-    map.set(row.tmdb_id, row as TitleRow)
+    map.set(titleKey(row.type as MediaType, row.tmdb_id), row as TitleRow)
   }
   return map
+}
+
+/**
+ * The row for (tmdb_id, type) from a fetchTitleCrew map. With no type (legacy
+ * history rows), returns the row only when exactly one catalog title has that
+ * id — a colliding id is ambiguous and must not be guessed.
+ */
+export function pickTitle(
+  map: Map<string, TitleRow>,
+  tmdb_id: string,
+  type: MediaType | null | undefined,
+): TitleRow | undefined {
+  if (type) return map.get(titleKey(type, tmdb_id))
+  const rows = [...map.values()].filter(t => t.tmdb_id === tmdb_id)
+  return rows.length === 1 ? rows[0] : undefined
 }
 
 // Increment taste_version and stamp last_updated — call before every saveDNA

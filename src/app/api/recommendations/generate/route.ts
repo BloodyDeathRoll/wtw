@@ -18,6 +18,7 @@ import {
   primaryWatchProvider,
   type WatchProviderMap,
 } from "@/lib/tmdb";
+import { titleKey, recordKey, matchesKeySet, isSavedMarker } from "@/lib/title-key";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 import type { Recommendation, MotifKind } from "@/types/recommendation";
 
@@ -226,7 +227,14 @@ export async function GET(req: Request) {
    * genuinely brings it back — unless it was also rated, which is its own,
    * stronger judgement.
    */
-  const judged = new Set((dna?.signals ?? []).map((s) => `${s.type}:${s.tmdb_id}`))
+  const judged = new Set((dna?.signals ?? []).map((s) => titleKey(s.type, s.tmdb_id)))
+  // Watchlisted titles are excluded too (decided 2026-08-28): a saved title
+  // resurfacing as a "new" recommendation reads as a repeat. The marker lives
+  // in recommendation_history (see watchlist-intent.ts); legacy markers with
+  // no type match on the bare id — see matchesKeySet.
+  for (const h of dna?.learning_loop.recommendation_history ?? []) {
+    if (isSavedMarker(h)) judged.add(recordKey(h))
+  }
 
   // Type-filter → drop removed + already-judged titles → paginate → adapt to the
   // UI shape. Used for both the warm cache and a freshly regenerated list so
@@ -240,10 +248,9 @@ export async function GET(req: Request) {
           : recs;
     // Drop removed + already-judged titles before paginating so pages stay
     // full-sized.
-    const filtered = typeFiltered.filter((r) => {
-      const key = `${r.type}:${r.tmdb_id}`;
-      return !removed.has(key) && !judged.has(key);
-    });
+    const filtered = typeFiltered.filter(
+      (r) => !removed.has(titleKey(r.type, r.tmdb_id)) && !matchesKeySet(judged, r.type, r.tmdb_id),
+    );
     const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;

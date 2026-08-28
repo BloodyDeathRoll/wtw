@@ -27,7 +27,7 @@ import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
-import { markSavedInHistory } from '@/modules/session/watchlist-intent'
+import { markSavedInHistory, unmarkSavedInHistory } from '@/modules/session/watchlist-intent'
 import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
   // so saving a card costs no round-trip of its own. Ids are "type:tmdb_id".
   const watchlistAdded: string[] = Array.isArray(body.watchlist_added)
     ? body.watchlist_added.filter((v: unknown): v is string => typeof v === 'string')
+    : []
+  // Unsaves since the last report. Saved titles are excluded from the feed, so
+  // clearing the marker is what lets an unsaved title be recommended again.
+  const watchlistRemoved: string[] = Array.isArray(body.watchlist_removed)
+    ? body.watchlist_removed.filter((v: unknown): v is string => typeof v === 'string')
     : []
   if (!conversationId) {
     return NextResponse.json({ error: 'conversation_id required' }, { status: 400 })
@@ -105,9 +110,10 @@ export async function POST(req: NextRequest) {
   // path stays fast — which is intended: a saved title keeps showing in the feed
   // with a "Remove from watchlist" CTA rather than disappearing from it.
   let watchlistRecorded = 0
-  if (watchlistAdded.length > 0) {
+  if (watchlistAdded.length > 0 || watchlistRemoved.length > 0) {
     const history = dna.learning_loop.recommendation_history
-    const updated = markSavedInHistory(history, watchlistAdded, {
+    let updated = unmarkSavedInHistory(history, watchlistRemoved)
+    updated = markSavedInHistory(updated, watchlistAdded, {
       session: dna.metadata.total_sessions,
       fingerprintVersion: dna.metadata.taste_version,
     })

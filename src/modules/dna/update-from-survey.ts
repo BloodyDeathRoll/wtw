@@ -1,4 +1,5 @@
 import type { StrandB } from '@/types/dna'
+import type { MediaType } from '@/lib/title-key'
 import { loadDNA, saveDNA, bumpVersion } from './lib/load-save'
 import { clamp } from './lib/reaction-score'
 
@@ -48,6 +49,9 @@ export async function updateSchemaFromSurvey(
   tmdb_id: string,
   dimension_ratings: Record<string, string>,
   aspect_ratings: Record<string, 'good' | 'ok' | 'weak'>,
+  // Movie and TV ids collide — the survey route passes media_type when the
+  // client sent it, so the flag lands on the right signal.
+  type?: MediaType | null,
 ): Promise<void> {
   const dna = await loadDNA(user_id)
   const strand_b = dna.strand_b_narrative_dimensions
@@ -81,7 +85,7 @@ export async function updateSchemaFromSurvey(
   }
 
   // 3. Clear 'reason_needed' flag and boost confidence on the matching signal
-  const signal = dna.signals.find(s => s.tmdb_id === tmdb_id)
+  const signal = dna.signals.find(s => s.tmdb_id === tmdb_id && (!type || s.type === type))
   if (signal) {
     signal.flag       = null
     signal.confidence = clamp(signal.confidence + 0.1, 0, 1)

@@ -3,6 +3,7 @@ import type {
   RecommendationRecord,
   RecommendationResult,
 } from '@/types/dna'
+import { matchesKeySet, recordKey } from '@/lib/title-key'
 
 /**
  * Does this session summary carry anything worth merging into the fingerprint?
@@ -34,12 +35,15 @@ export function hasMaterialChange(summary: SessionSummary): boolean {
 }
 
 /**
- * The set of tmdb_ids the user has rated (👍/👎), read from
+ * The set of titles the user has rated (👍/👎), read from
  * recommendation_history. These are the titles that must not survive in the
  * served rec cache after a "Find more".
+ *
+ * Keys are `type:tmdb_id` for rows that carry a type, the bare tmdb_id for
+ * legacy rows (see src/lib/title-key.ts) — test with `matchesKeySet`.
  */
 export function ratedTmdbIds(history: RecommendationRecord[]): Set<string> {
-  return new Set(history.filter((h) => h.rating != null).map((h) => h.tmdb_id))
+  return new Set(history.filter((h) => h.rating != null).map(recordKey))
 }
 
 /**
@@ -54,15 +58,14 @@ export function ratedTmdbIds(history: RecommendationRecord[]): Set<string> {
  *   - a cache still holding a rated title → false, so the route regenerates and
  *     candidate-gen drops that title from the next batch.
  *
- * Matches on tmdb_id alone (RecommendationRecord carries no `type`). The
- * direction is fail-safe: a cross-type id collision only forces an unnecessary
- * regen, never a missed one — unlike the candidate-gen exclusion (issue #30),
- * where the same collision can wrongly drop a valid title.
+ * Typed rows match exactly; legacy bare-id rows match on the id alone, which is
+ * the fail-safe direction — a cross-type collision only forces an unnecessary
+ * regen, never a missed one.
  */
 export function cacheServableUnchanged(
   ratedIds: Set<string>,
   cached: RecommendationResult[] | null | undefined,
 ): boolean {
   if (!cached || cached.length === 0) return false
-  return !cached.some((r) => ratedIds.has(r.tmdb_id))
+  return !cached.some((r) => matchesKeySet(ratedIds, r.type, r.tmdb_id))
 }

@@ -13,6 +13,8 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
 ## ⚠️ Open now
 
 - **`discover_pages`** — see §5; second-order now.
+- **Candidate pool is static (§7 cause 4)** — `get_candidate_titles` returns the top 200 by vote count; 17k+ titles are never considered. Next: 80% new titles (never served) / 20% previously-served-but-unrated, both by best match — needs a "served" record per user and a retrieval that isn't popularity-capped.
+- **"Find more" latency** — two serial Mistral `generateObject` calls (rerank with 50 rationales, then 20 explanations) dominate; est. 9–30s of the click. No timing instrumentation exists yet. Plan: ids-only rerank of 30, move rerank + explanations into `after()`, precompute the next batch per rating, trim the ~25 serial DB/Redis hops.
 - **Node 18 cannot run this repo's tooling** — `node` on PATH is v18.19.1; vitest 3 and `--env-file` both need ≥20. `.nvmrc` (24) and `engines: node >=20` added 2026-08-26; run `nvm use` in this directory. 95 tests pass under v24.
 
 *(The three §1 seam decisions were made 2026-08-26 — see §1. `seed_attempts` vs the OMDB ceiling is closed, measured over six nights — see §5.)*
@@ -108,6 +110,19 @@ Dream's overnight reviewer surfaced why nightly seeding was dying: 900/night bud
 - **Cost:** one extra TMDB call per row — `/watch/providers` has no `append_to_response` form, so it cannot ride the detail fetch the way `videos` does. 150/night, rate-spaced at 260ms.
 - ⚠️ **Attribution is mandatory.** TMDB sources this from JustWatch and requires it to be visible wherever the data is shown; the "via JustWatch" eyebrow is part of the pill in `RecommendationsView.tsx`, not a footnote. Do not remove it in a layout pass.
 - **Region is `US`, hardcoded in both places (decided 2026-08-26).** `WATCH_REGION` in `generate/route.ts` and `WATCH_REGIONS` in `grow-catalog.mts` are constants, not env vars — the review flagged that two independently-set values would silently blank the line if they drifted. Per-user regions later means putting the region in the rec cache key (recs are served from a shared cache).
+
+## 7. Judged titles kept coming back · audited + fixed 2026-08-28
+
+Reported: titles already loved/liked/disliked/removed/watchlisted kept reappearing as new recommendations after ~250 ratings. Audited live (5 users) and in code (3 review passes). Four causes, in order of impact:
+
+1. **Movie/TV id collision → wrong-title signal.** `recommendation_history` stored a bare `tmdb_id`; the rating→signal merge looked the title up by bare id, so when both a movie and a TV show had that id the TV row won. 4 of the reporter's rated movies were signaled as *Sex and the City / Night Court / Powerpuff Girls / Mad About You* and were re-served every session; the bare-id dedup then made the real rating unsignalable forever. **Fixed:** every path keys on `type:tmdb_id` (`src/lib/title-key.ts`; see `DNA-CONTRACT.md` "Title identity"). Data repaired with `npm run repair-title-keys` (5 signals across 2 users; strand A/C nudges from the wrong crew are not reversible).
+2. **"Removed" was never excluded at generation.** Step 1 excluded only `dna.signals`; the reporter's 26 removed titles re-entered the 200-pool every regen, took 26 of the 50 slots (and an LLM rerank + explanation each), then got dropped at read → 23 servable cards, the same 23 each time. **Fixed:** step 1 now also excludes `removed_titles` and watchlist markers.
+3. **Watchlisted titles stayed in the feed by design** (watchlist-plan decision 2). **Reversed** — excluded at generation, read, and client; unsaves sync back via `watchlist_removed` on `/api/session/end`.
+4. **The candidate pool is the top 200 by vote count**, unrated only — 17,272 of 17,700 titles are never considered, so batches are the same popular titles re-ordered. **Not fixed here** — see "Open now".
+
+Also fixed on the way: the Remove POST now rides the feedback queue (a quick Remove → Find more could regenerate first); the feedback route no longer rewrites the whole DNA row for regret/glad (lost-update window against a concurrent rating); step 5 / cowatch keyed by composite (a same-id movie+TV pair could merge or block each other). Tests: 109 pass (14 new in `tests/unit/title-key.test.ts`; two `watchlist-intent` tests that asserted the bare-id collapse were rewritten for the new spec).
+
+Found, not fixed (report only): chat-extracted signals duplicate per session (`movie:18 ×15` in one DNA — `analyze-session` re-extracts titles named in earlier turns; the session-merge dedup is `type:id:source` and `source` is `session_N`); `stretch_pick_history` is never written (`analyzeSession` always returns `recommendation_made: null`); the regret prompt and `leaveCards` still write the DNA blob outside the rating queue.
 
 ## Standing handoff notes
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
