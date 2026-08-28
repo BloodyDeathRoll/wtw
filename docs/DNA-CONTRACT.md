@@ -34,7 +34,7 @@ TMDB movie and TV ids are separate namespaces that collide (617 pairs in the cat
 
 - Helpers live in `src/lib/title-key.ts` (`titleKey`, `parseTitleKey`, `recordKey`, `recordMatches`, `matchesKeySet`, `isSavedMarker`). Use them; do not hand-roll keys.
 - `RecommendationRecord.recommended` carries the composite `"type:tmdb_id"`. `tmdb_id` stays bare. **No field was added** — `recommended` was always a copy of `tmdb_id`. Legacy rows (before 2026-08-28) have a bare `recommended`; readers treat them as *type unknown* and never guess (`pickTitle` resolves only when the id is unambiguous in the catalog).
-- `DNASignal` already carries `type`. Signal dedup is on `type:tmdb_id` (+ `source` in the session merge). `fetchTitleCrew` returns a map keyed by composite key with **both** rows of a colliding id.
+- `DNASignal` already carries `type`. **Signal dedup is one signal per `type:tmdb_id` across ALL sources, first wins** (changed 2026-08-28 — the old `+ source` key let chat re-extraction re-signal the same title every session). Card ratings also update strand B from the title's `narrative_metadata` (`update-strand-b-from-title.ts`). `fetchTitleCrew` returns a map keyed by composite key with **both** rows of a colliding id.
 - The feedback / survey routes require `media_type` from the client; the regret/stretch/survey hooks take it as a parameter.
 - `scripts/repair-title-keys.mts` is the one-off that migrated existing rows (run 2026-08-28 — 5 users, 5 wrong-type signals corrected, every legacy `recommended` rewritten).
 

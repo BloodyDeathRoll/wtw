@@ -5,6 +5,7 @@ import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { mergeStrandB, applySignalDimensionTags } from './lib/update-strand-b'
 import { applyStrandCUpdate } from './lib/update-strand-c'
+import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 import { rewriteChangedDimensionNotes } from './lib/rewrite-dimension-notes'
 import { regenerateEmbedding } from './lib/regenerate-embedding'
 import { recordStretchPick } from './lib/record-stretch-pick'
@@ -23,18 +24,29 @@ export async function updateSchemaFromSession(
 ): Promise<DNASchema> {
   const dna = preloaded ?? await loadDNA(user_id)
 
-  // 1. Append new signals — deduplicate by type:tmdb_id + source
-  const sigKey = (s: { type: DNASignal['type']; tmdb_id: string; source: string }) =>
-    `${titleKey(s.type, s.tmdb_id)}:${s.source}`
+  // 1. Append new signals — one signal per title, first wins, across ALL
+  //    sources. The key used to include `source`, and chat sources are
+  //    `session_N`: analyzeSession re-extracts titles the user mentioned in
+  //    earlier turns every session, so the same film landed 7-15 times (as
+  //    loved AND as disliked) and inflated strand A on every pass
+  //    (measured 2026-08-28). A title the user already has an opinion on is
+  //    not new evidence, whichever session mentions it again.
+  const sigKey = (s: { type: DNASignal['type']; tmdb_id: string }) => titleKey(s.type, s.tmdb_id)
   const existingKeys = new Set(dna.signals.map(sigKey))
-  const freshSignals = summary.new_signals.filter(s => !existingKeys.has(sigKey(s)))
+  const freshSignals: DNASignal[] = []
+  for (const s of summary.new_signals) {
+    const k = sigKey(s)
+    if (existingKeys.has(k)) continue
+    existingKeys.add(k)
+    freshSignals.push(s)
+  }
   dna.signals.push(...freshSignals)
 
-  // 2. Batch-fetch title metadata for crew + visceral updates
+  // 2. Batch-fetch title metadata for crew + visceral + narrative updates
   const tmdbIds = [...new Set(freshSignals.map(s => s.tmdb_id))]
   const titleMap = await fetchTitleCrew(tmdbIds)
 
-  // 3. Strand A + C: update from each new signal — by (tmdb_id, type), so a
+  // 3. Strand A + B + C: update from each new signal — by (tmdb_id, type), so a
   //    same-id title of the other type never supplies the crew
   for (const signal of freshSignals) {
     const title = titleMap.get(titleKey(signal.type, signal.tmdb_id))
@@ -42,6 +54,11 @@ export async function updateSchemaFromSession(
 
     applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, signal.reaction)
     applyStrandCUpdate(dna.strand_c_visceral_specs, title, signal.reaction)
+    applyStrandBFromTitle(
+      dna.strand_b_narrative_dimensions,
+      title.narrative_metadata as TitleNarrativeMetadata,
+      signal.reaction,
+    )
   }
 
   // 4. Strand B: merge session brain's explicit dimension updates (highest authority)

@@ -24,6 +24,7 @@ import { recordKey, recordType, titleKey } from '@/lib/title-key'
 import { loadDNA, saveDNA, fetchTitleCrew, pickTitle } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { applyStrandCUpdate } from './lib/update-strand-c'
+import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 
 export async function mergeFeedbackSignalsLight(user_id: string): Promise<number> {
   const dna: DNASchema = await loadDNA(user_id)
@@ -74,6 +75,11 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
     signaled.add(titleKey(signal.type, signal.tmdb_id))
     applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, signal.reaction)
     applyStrandCUpdate(dna.strand_c_visceral_specs, title, signal.reaction)
+    applyStrandBFromTitle(
+      dna.strand_b_narrative_dimensions,
+      title.narrative_metadata as TitleNarrativeMetadata,
+      signal.reaction,
+    )
     merged++
   }
 
