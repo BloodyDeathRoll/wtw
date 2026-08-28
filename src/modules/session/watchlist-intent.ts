@@ -1,5 +1,5 @@
 /**
- * markSavedInHistory
+ * markSavedInHistory / unmarkSavedInHistory
  *
  * Records "the user saved this to their watchlist" in the fingerprint. Saving is
  * an INTEREST signal — weaker than a rating, and not a watch. It is encoded in
@@ -11,26 +11,25 @@
  * moves `accepted` and `watched` together), so it is an unambiguous marker, and
  * it needs no change to the shared contract in src/types/dna.ts.
  *
- * Deliberately NOT written into dna.signals, for two independent reasons:
+ * Deliberately NOT written into dna.signals: mergeFeedbackSignalsLight and
+ * foldRatedHistoryIntoSummary dedup ratings against signals across ALL sources,
+ * so a watchlist signal landing first would silently swallow the user's later
+ * loved/liked/disliked for that title.
  *
- *   1. mergeFeedbackSignalsLight and foldRatedHistoryIntoSummary both dedup on
- *      bare tmdb_id ACROSS ALL SOURCES. A watchlist signal landing first would
- *      silently swallow the user's later loved/liked/disliked for that title.
- *   2. step1-candidate-gen builds watched_keys from dna.signals, so the title
- *      would vanish from every future batch — but a saved title is meant to stay
- *      in the feed showing "Remove from watchlist".
+ * The marker IS an exclusion: step1 candidate-gen and the GET route drop saved
+ * titles from the feed (decided 2026-08-28 — a saved title showing up again as
+ * a "new" recommendation reads as a repeat). Unsaving clears it via
+ * unmarkSavedInHistory so the title can come back.
  *
  * When the user later rates the title, the feedback route's `watched` branch
  * supersedes this marker on its own. No cleanup needed here.
+ *
+ * Keys: `recommended` carries the composite "type:tmdb_id" (src/lib/title-key.ts);
+ * `tmdb_id` stays bare. Mock ids (bare slugs) are stored as-is in both.
  */
 
 import type { RecommendationRecord } from '@/types/dna'
-
-/** Watchlist ids are "type:tmdb_id" (engine recs) or a bare slug (mocks). */
-function tmdbIdOf(id: string): string {
-  const cut = id.lastIndexOf(':')
-  return cut === -1 ? id : id.slice(cut + 1)
-}
+import { parseTitleKey, recordMatches, isSavedMarker } from '@/lib/title-key'
 
 export interface SavedMarkContext {
   /** dna.metadata.total_sessions — stamped on entries we have to create. */
@@ -59,12 +58,12 @@ export function markSavedInHistory(
   let changed = false
 
   for (const id of ids) {
-    const tmdb_id = tmdbIdOf(id)
+    const { type, tmdb_id } = parseTitleKey(id)
     if (!tmdb_id) continue
 
     // findLast: the newest entry for the title is the one that reflects its
     // current state, matching how the feedback route resolves history.
-    const at = next.findLastIndex((h) => h.tmdb_id === tmdb_id)
+    const at = next.findLastIndex((h) => recordMatches(h, tmdb_id, type))
 
     if (at >= 0) {
       const entry = next[at]
@@ -79,7 +78,7 @@ export function markSavedInHistory(
     changed = true
     next.push({
       session: ctx.session,
-      recommended: tmdb_id,
+      recommended: id,
       tmdb_id,
       accepted: true,
       watched: false,
@@ -91,3 +90,34 @@ export function markSavedInHistory(
   // Same reference when nothing moved, so the caller can skip the write.
   return changed ? next : history
 }
+
+/**
+ * The inverse: the user took a title off the watchlist. Clears the saved marker
+ * (accepted → false) on unrated, unwatched entries only — a rating or a watch
+ * is a stronger signal and stays. Same reference back when nothing changed.
+ */
+export function unmarkSavedInHistory(
+  history: RecommendationRecord[],
+  ids: string[],
+): RecommendationRecord[] {
+  if (ids.length === 0) return history
+
+  const next = [...history]
+  let changed = false
+
+  for (const id of ids) {
+    const { type, tmdb_id } = parseTitleKey(id)
+    if (!tmdb_id) continue
+    const at = next.findLastIndex((h) => recordMatches(h, tmdb_id, type))
+    if (at < 0) continue
+    const entry = next[at]
+    if (entry.watched || entry.rating != null || !entry.accepted) continue
+    next[at] = { ...entry, accepted: false }
+    changed = true
+  }
+
+  return changed ? next : history
+}
+
+// The marker predicate lives in the shared lib (the engine's step1 reads it too).
+export { isSavedMarker }

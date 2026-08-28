@@ -1,5 +1,6 @@
 import type { Reaction } from '@/types/dna'
-import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
+import type { MediaType } from '@/lib/title-key'
+import { loadDNA, saveDNA, fetchTitleCrew, pickTitle, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { clamp } from './lib/reaction-score'
 
@@ -7,6 +8,9 @@ export async function updateSchemaFromStretch(
   user_id: string,
   tmdb_id: string,
   reaction: Reaction,
+  // Movie and TV ids collide — pass the type when known (the feedback route
+  // has it); without it we only act when the id is unambiguous.
+  type?: MediaType | null,
 ): Promise<void> {
   const dna = await loadDNA(user_id)
 
@@ -28,7 +32,7 @@ export async function updateSchemaFromStretch(
 
   // 2. Apply crew affinity update (same weight as a normal watched signal)
   const titleMap = await fetchTitleCrew([tmdb_id])
-  const title = titleMap.get(tmdb_id)
+  const title = pickTitle(titleMap, tmdb_id, type)
   if (title) {
     applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, reaction)
   }

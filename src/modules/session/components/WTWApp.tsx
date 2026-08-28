@@ -16,7 +16,13 @@ import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
-import { getUnsyncedIds, markSynced, watchlistCount } from "@/lib/watchlist";
+import {
+  getUnsyncedIds,
+  getUnsyncedRemovals,
+  markRemovalsSynced,
+  markSynced,
+  watchlistCount,
+} from "@/lib/watchlist";
 import { getPendingRegretChecks, type RegretEntry } from "@/lib/regret-queue";
 import RegretPrompt from "@/app/components/RegretPrompt";
 import AppShell from "./AppShell";
@@ -907,6 +913,9 @@ export default function WTWApp({
     // Watchlist saves ride along on this request rather than posting their own —
     // saving a card is supposed to cost zero extra calls.
     const savedIds = getUnsyncedIds();
+    // Unsaves ride along too: saved titles are excluded from the feed, so the
+    // fingerprint has to hear about a removal for the title to come back.
+    const unsavedIds = getUnsyncedRemovals();
     try {
       const res = await fetchWithTimeout("/api/session/end", {
         method: "POST",
@@ -917,11 +926,15 @@ export default function WTWApp({
           // slow transcript re-analysis; per-click merges did the rest.
           skip_transcript: opts?.skipTranscript ?? false,
           watchlist_added: savedIds,
+          watchlist_removed: unsavedIds,
         }),
       });
       // Only clear the pending flags once the server confirms — a failed call
       // leaves them queued for the next session end.
-      if (res.ok) markSynced(savedIds);
+      if (res.ok) {
+        markSynced(savedIds);
+        markRemovalsSynced(unsavedIds);
+      }
       // fetch() resolves (doesn't throw) on 4xx/5xx — surface those so a failed
       // fingerprint/rec build is visible in logs rather than silently opening
       // the view to mocks. UX intent is still "never blocked", so we don't
@@ -973,7 +986,7 @@ export default function WTWApp({
   // Fire-and-forget: the route records the intent before its no-op fast path, so
   // this is a read + write and an early return, and the user isn't waiting on it.
   function leaveCards() {
-    if (getUnsyncedIds().length > 0) {
+    if (getUnsyncedIds().length > 0 || getUnsyncedRemovals().length > 0) {
       void endSessionAndGenerate({ skipTranscript: true });
     }
     setStage("onboard");

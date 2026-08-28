@@ -16,7 +16,7 @@ existing feedback path.
 | # | Decision |
 |---|---|
 | 1 | Voice mode keeps its "Recommendations Ready" pill (`VoiceMode.tsx:416`); only the home screen gets the two circular buttons. |
-| 2 | Watchlisted titles **stay** in the recommendations feed — the CTA just renders in its "Remove from watchlist" state. Filtering them out client-side would desync from the server-computed `has_more`/page size and yield short pages. |
+| 2 | **Reversed 2026-08-28.** Watchlisted titles are **excluded** from the recommendations feed: server-side at generation (step1 reads the saved marker in `recommendation_history`) and at read (GET `judged` set), and client-side in `loadMore` for saves not yet reported. A saved title resurfacing as a "new" pick read as a repeat. Unsaving is reported on `/api/session/end` as `watchlist_removed` (`getUnsyncedRemovals()`), which clears the marker so the title can come back. *(Was: stay in the feed with the CTA in its "Remove from watchlist" state.)* |
 | 3 | The watchlist ignores the Movies/Series toggle — it's a personal list; hiding half of it behind a global filter reads as data loss. |
 | 4 | The Recommendations circle keeps the existing `showRecommend` gate (mature greeting or ≥2 assistant turns). The Watchlist circle appears as soon as one title is saved. |
 | 5 | The "Why this pick?" payload is snapshotted into the watchlist entry at add time. |

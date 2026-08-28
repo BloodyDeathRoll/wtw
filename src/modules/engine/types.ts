@@ -45,6 +45,14 @@ export interface TitleRow {
   narrative_embedding: number[] | null  // 1024-dim Mistral vector
   enriched_at: string | null
   created_at: string
+  /**
+   * Set by step1, not a column: this user has been served the title before
+   * (served_titles, migration 0019) and never rated it. Drives the 80/20
+   * fresh/seen split in step3b-compose-batch.ts.
+   */
+  previously_served?: boolean
+  /** How many times this user has been served it (served_titles.times_served). */
+  times_served?: number
 }
 
 export interface CrewMemberRow {

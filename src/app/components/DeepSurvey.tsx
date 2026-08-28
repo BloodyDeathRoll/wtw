@@ -158,6 +158,9 @@ export default function DeepSurvey({ result, onClose }: DeepSurveyProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tmdb_id: result.tmdb_id,
+          // Movie and TV ids collide — without this the flag could land on
+          // the same-id title of the other type.
+          media_type: result.type,
           dimension_ratings: dimensionRatings,
           aspect_ratings: aspectRatings,
         }),

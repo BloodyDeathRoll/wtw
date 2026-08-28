@@ -3,7 +3,7 @@
 //        when the DB is not yet seeded or no recs have been generated.
 // POST — runs the full Assignment 2 engine pipeline and returns RecommendationResult[]
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -18,6 +18,7 @@ import {
   primaryWatchProvider,
   type WatchProviderMap,
 } from "@/lib/tmdb";
+import { titleKey, recordKey, matchesKeySet, isSavedMarker } from "@/lib/title-key";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 import type { Recommendation, MotifKind } from "@/types/recommendation";
 
@@ -149,6 +150,9 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  // servePage below is a hoisted function declaration, so it can't see this
+  // null check on `user`; hand it the id instead.
+  const userId = user.id;
 
   const url = new URL(req.url);
   const offsetParam = url.searchParams.get("offset");
@@ -157,9 +161,6 @@ export async function GET(req: Request) {
     : 0;
   const contentType = url.searchParams.get("type"); // "movies" | "series"
 
-  // Titles the user has "Removed" — filtered out of every page below.
-  const removed = await getRemovedKeys(user.id);
-
   let cachedRecs: RecommendationResult[] | null = null
   let dna: DNASchema | null = null
   // Distinguishes "read the DNA and the user genuinely has none" (→ mocks are
@@ -167,15 +168,21 @@ export async function GET(req: Request) {
   // all" (→ fingerprint status unknown, so we must NOT risk serving mocks).
   let dnaReadFailed = false
 
-  // ── Read the fingerprint (its own try: a DB failure here is different from a
-  //    Redis failure below) ─────────────────────────────────────────────────
+  // ── Read the fingerprint and the removed list together (independent reads,
+  //    one round trip). The DNA read keeps its own try: a DB failure here is
+  //    different from a Redis failure below. ──────────────────────────────
+  const dnaRead = createServiceClient()
+    .from("users")
+    .select("dna")
+    .eq("id", user.id)
+    .single<{ dna: DNASchema | null }>()
+    .then((r) => ({ ok: true as const, ...r }), (err: unknown) => ({ ok: false as const, err }));
+  // Titles the user has "Removed" — filtered out of every page below.
+  const [removed, dnaResult] = await Promise.all([getRemovedKeys(user.id), dnaRead]);
+
   try {
-    const db = createServiceClient()
-    const { data, error } = await db
-      .from("users")
-      .select("dna")
-      .eq("id", user.id)
-      .single<{ dna: DNASchema | null }>()
+    if (!dnaResult.ok) throw dnaResult.err;
+    const { data, error } = dnaResult;
 
     if (error && error.code !== "PGRST116") {
       // PGRST116 = no row = determinate "not onboarded" (fine → mocks). Any
@@ -226,7 +233,14 @@ export async function GET(req: Request) {
    * genuinely brings it back — unless it was also rated, which is its own,
    * stronger judgement.
    */
-  const judged = new Set((dna?.signals ?? []).map((s) => `${s.type}:${s.tmdb_id}`))
+  const judged = new Set((dna?.signals ?? []).map((s) => titleKey(s.type, s.tmdb_id)))
+  // Watchlisted titles are excluded too (decided 2026-08-28): a saved title
+  // resurfacing as a "new" recommendation reads as a repeat. The marker lives
+  // in recommendation_history (see watchlist-intent.ts); legacy markers with
+  // no type match on the bare id — see matchesKeySet.
+  for (const h of dna?.learning_loop.recommendation_history ?? []) {
+    if (isSavedMarker(h)) judged.add(recordKey(h))
+  }
 
   // Type-filter → drop removed + already-judged titles → paginate → adapt to the
   // UI shape. Used for both the warm cache and a freshly regenerated list so
@@ -240,14 +254,27 @@ export async function GET(req: Request) {
           : recs;
     // Drop removed + already-judged titles before paginating so pages stay
     // full-sized.
-    const filtered = typeFiltered.filter((r) => {
-      const key = `${r.type}:${r.tmdb_id}`;
-      return !removed.has(key) && !judged.has(key);
-    });
+    const filtered = typeFiltered.filter(
+      (r) => !removed.has(titleKey(r.type, r.tmdb_id)) && !matchesKeySet(judged, r.type, r.tmdb_id),
+    );
     const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;
     const uiRecs = await toUIRecommendations(items);
+    // Remember what this user was actually shown (served_titles, migration
+    // 0019): the next batch keeps these out of its "fresh" 80% and draws its
+    // "seen" 20% from them until they're rated. After the response — a
+    // bookkeeping write must never delay a page.
+    if (items.length > 0) {
+      const keys = items.map((r) => titleKey(r.type, r.tmdb_id));
+      after(async () => {
+        const { error } = await createServiceClient().rpc("record_served_titles", {
+          p_user_id: userId,
+          p_keys: keys,
+        });
+        if (error) console.warn("[recommendations/generate] record_served_titles failed (non-fatal):", error.message);
+      });
+    }
     return NextResponse.json({ recommendations: uiRecs, next_offset: nextOffset, has_more: hasMore, source });
   }
 

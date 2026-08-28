@@ -13,36 +13,45 @@
  * LLM/embedding work belongs to session-end. When "Find more" / session-end
  * runs, updateSchemaFromSession bumps once, regenerates the embedding over
  * the accumulated strand changes, and its fold skips everything already
- * signaled here (dedup key: tmdb_id + source).
+ * signaled here (dedup key: type:tmdb_id, one signal per title across all
+ * sources — first wins).
  *
  * Concurrency: callers must serialize invocations per user (the rec UI queues
  * feedback clicks) — this is a read-modify-write on the DNA JSONB.
  */
 
 import type { DNASchema, DNASignal } from '@/types/dna'
-import { loadDNA, saveDNA, fetchTitleCrew } from './lib/load-save'
+import { recordKey, recordType, titleKey } from '@/lib/title-key'
+import { loadDNA, saveDNA, fetchTitleCrew, pickTitle } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { applyStrandCUpdate } from './lib/update-strand-c'
+import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 
 export async function mergeFeedbackSignalsLight(user_id: string): Promise<number> {
   const dna: DNASchema = await loadDNA(user_id)
 
-  // Dedup on tmdb_id alone (NOT tmdb_id:source like the session merge):
-  // intentional — if a title is already signaled from any source (e.g. the
-  // user praised it in chat), a card rating must not double-count its crew
-  // and visceral weights with a second signal.
-  const signaled = new Set(dna.signals.map((s) => s.tmdb_id))
-  const pending = dna.learning_loop.recommendation_history.filter(
-    (h) => h.rating != null && !signaled.has(h.tmdb_id),
-  )
+  // Dedup on the composite title key across ALL sources (NOT key+source like
+  // the session merge): if a title is already signaled from any source (e.g.
+  // the user praised it in chat), a card rating must not double-count its
+  // crew and visceral weights with a second signal. Composite, not bare id —
+  // a bare-id set let a same-id TV signal swallow the movie's rating forever.
+  const signaled = new Set(dna.signals.map((s) => titleKey(s.type, s.tmdb_id)))
+  const pending = dna.learning_loop.recommendation_history.filter((h) => {
+    if (h.rating == null) return false
+    const type = recordType(h)
+    // Legacy row (no type): treat "any signal with this id" as signaled, since
+    // we can't tell which title it meant.
+    if (!type) return !dna.signals.some((s) => s.tmdb_id === h.tmdb_id)
+    return !signaled.has(recordKey(h))
+  })
   if (pending.length === 0) return 0
 
   const titleMap = await fetchTitleCrew(pending.map((h) => h.tmdb_id))
 
   let merged = 0
   for (const h of pending) {
-    const title = titleMap.get(h.tmdb_id)
-    if (!title) continue // not in catalog yet — session-end fold will retry
+    const title = pickTitle(titleMap, h.tmdb_id, recordType(h))
+    if (!title) continue // not in catalog (or ambiguous legacy id) — session-end fold will retry
 
     const signal: DNASignal = {
       title: title.title,
@@ -64,8 +73,14 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
     }
 
     dna.signals.push(signal)
+    signaled.add(titleKey(signal.type, signal.tmdb_id))
     applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, signal.reaction)
     applyStrandCUpdate(dna.strand_c_visceral_specs, title, signal.reaction)
+    applyStrandBFromTitle(
+      dna.strand_b_narrative_dimensions,
+      title.narrative_metadata as TitleNarrativeMetadata,
+      signal.reaction,
+    )
     merged++
   }
 

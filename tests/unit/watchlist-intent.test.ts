@@ -46,7 +46,9 @@ describe('markSavedInHistory', () => {
     expect(out).toHaveLength(1)
     expect(out[0]).toEqual({
       session: 4,
-      recommended: '1396',
+      // Composite key (src/lib/title-key.ts) — a bare id here is what let a
+      // movie's save/rating get resolved against the same-id TV show.
+      recommended: 'tv:1396',
       tmdb_id: '1396',
       accepted: true,
       watched: false,
@@ -105,13 +107,27 @@ describe('id handling', () => {
     expect(out[0].tmdb_id).toBe('the-holdovers')
   })
 
-  it('collapses colliding movie/TV ids onto one history entry', () => {
-    // History keys on tmdb_id alone (the DNA contract has no type there), so a
-    // movie and a TV title sharing an id share the entry. Documented, not a bug:
-    // the watchlist itself keeps them separate.
+  it('keeps colliding movie/TV ids as separate history entries', () => {
+    // Reversed 2026-08-28: history used to collapse a movie and a TV title
+    // sharing an id onto one entry, which is how a saved/rated movie ended up
+    // resolved against the same-id TV show. `recommended` now carries the type.
     const out = markSavedInHistory([], ['movie:1396', 'tv:1396'], CTX)
+    expect(out).toHaveLength(2)
+    expect(out.map((h) => h.recommended)).toEqual(['movie:1396', 'tv:1396'])
+    expect(out.every((h) => h.accepted)).toBe(true)
+  })
+
+  it('matches a legacy bare-id entry from either type (type unknown)', () => {
+    const out = markSavedInHistory([entry({ recommended: '1396' })], ['tv:1396'], CTX)
     expect(out).toHaveLength(1)
     expect(out[0].accepted).toBe(true)
+  })
+
+  it('does not match a typed entry of the other type', () => {
+    const out = markSavedInHistory([entry({ recommended: 'movie:1396' })], ['tv:1396'], CTX)
+    expect(out).toHaveLength(2)
+    expect(out[0].accepted).toBe(false)
+    expect(out[1].recommended).toBe('tv:1396')
   })
 
   it('is a no-op for an empty id list, returning the same array', () => {

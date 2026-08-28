@@ -117,6 +117,10 @@ export function addToWatchlist(rec: Recommendation, explain: ExplainData | null 
     ...list,
   ]
   writeList(next.slice(0, MAX_ENTRIES))
+  // Re-saved after an unsave: the pending removal is moot (the save will be
+  // re-reported), so drop it rather than leave it queued forever.
+  const removals = readRemovals()
+  if (removals.includes(rec.id)) writeRemovals(removals.filter((id) => id !== rec.id))
 }
 
 /**
@@ -125,8 +129,55 @@ export function addToWatchlist(rec: Recommendation, explain: ExplainData | null 
  */
 export function removeFromWatchlist(id: string) {
   const list = readList()
-  const next = list.filter((e) => e.rec.id !== id)
-  if (next.length !== list.length) writeList(next)
+  const gone = list.find((e) => e.rec.id === id)
+  if (!gone) return
+  writeList(list.filter((e) => e.rec.id !== id))
+  // The fingerprint excludes saved titles from the feed, so an unsave has to
+  // reach it too — otherwise the title stays hidden forever. Always queued,
+  // even for an entry that never synced: an EARLIER save of the same title
+  // may have, and the server-side unmark is a no-op when there's nothing to
+  // clear.
+  writeRemovals([...new Set([...readRemovals(), id])])
+}
+
+// ── Unsave sync ───────────────────────────────────────────────
+// Ids whose "removed from watchlist" hasn't reached the fingerprint yet. Kept
+// under its own key: the entry itself is gone from the list.
+const REMOVALS_KEY = "wtw_watchlist_removed"
+
+function readRemovals(): string[] {
+  if (typeof window === "undefined") return []
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(REMOVALS_KEY) ?? "[]")
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : []
+  } catch {
+    return []
+  }
+}
+
+function writeRemovals(ids: string[]) {
+  if (typeof window === "undefined") return
+  try {
+    if (ids.length === 0) window.localStorage.removeItem(REMOVALS_KEY)
+    else window.localStorage.setItem(REMOVALS_KEY, JSON.stringify(ids))
+  } catch {
+    // best-effort, same as writeList
+  }
+}
+
+/** Ids unsaved since the last successful session/end report. */
+export function getUnsyncedRemovals(): string[] {
+  // A title re-saved after being unsaved is on the list again; reporting the
+  // removal would clear a save that's about to be re-reported anyway, so skip it.
+  const saved = new Set(readList().map((e) => e.rec.id))
+  return readRemovals().filter((id) => !saved.has(id))
+}
+
+/** Mark unsaves as reported. Call only after a successful write. */
+export function markRemovalsSynced(ids: string[]) {
+  if (ids.length === 0) return
+  const done = new Set(ids)
+  writeRemovals(readRemovals().filter((id) => !done.has(id)))
 }
 
 /**

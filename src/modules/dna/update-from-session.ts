@@ -1,8 +1,11 @@
-import type { DNASchema, SessionSummary, RecommendationResult } from '@/types/dna'
+import { after } from 'next/server'
+import type { DNASchema, DNASignal, SessionSummary, RecommendationResult } from '@/types/dna'
+import { titleKey } from '@/lib/title-key'
 import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { mergeStrandB, applySignalDimensionTags } from './lib/update-strand-b'
 import { applyStrandCUpdate } from './lib/update-strand-c'
+import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 import { rewriteChangedDimensionNotes } from './lib/rewrite-dimension-notes'
 import { regenerateEmbedding } from './lib/regenerate-embedding'
 import { recordStretchPick } from './lib/record-stretch-pick'
@@ -12,27 +15,50 @@ export async function updateSchemaFromSession(
   user_id: string,
   summary: SessionSummary,
   recommendation?: RecommendationResult,
+  /**
+   * A DNA the caller just read/wrote (session/end holds one with the
+   * watchlist marks applied). Saves the cache-first re-read. The caller is
+   * responsible for it being the freshest copy.
+   */
+  preloaded?: DNASchema,
 ): Promise<DNASchema> {
-  const dna = await loadDNA(user_id)
+  const dna = preloaded ?? await loadDNA(user_id)
 
-  // 1. Append new signals — deduplicate by tmdb_id + source
-  const existingKeys = new Set(dna.signals.map(s => `${s.tmdb_id}:${s.source}`))
-  const freshSignals = summary.new_signals.filter(
-    s => !existingKeys.has(`${s.tmdb_id}:${s.source}`),
-  )
+  // 1. Append new signals — one signal per title, first wins, across ALL
+  //    sources. The key used to include `source`, and chat sources are
+  //    `session_N`: analyzeSession re-extracts titles the user mentioned in
+  //    earlier turns every session, so the same film landed 7-15 times (as
+  //    loved AND as disliked) and inflated strand A on every pass
+  //    (measured 2026-08-28). A title the user already has an opinion on is
+  //    not new evidence, whichever session mentions it again.
+  const sigKey = (s: { type: DNASignal['type']; tmdb_id: string }) => titleKey(s.type, s.tmdb_id)
+  const existingKeys = new Set(dna.signals.map(sigKey))
+  const freshSignals: DNASignal[] = []
+  for (const s of summary.new_signals) {
+    const k = sigKey(s)
+    if (existingKeys.has(k)) continue
+    existingKeys.add(k)
+    freshSignals.push(s)
+  }
   dna.signals.push(...freshSignals)
 
-  // 2. Batch-fetch title metadata for crew + visceral updates
+  // 2. Batch-fetch title metadata for crew + visceral + narrative updates
   const tmdbIds = [...new Set(freshSignals.map(s => s.tmdb_id))]
   const titleMap = await fetchTitleCrew(tmdbIds)
 
-  // 3. Strand A + C: update from each new signal
+  // 3. Strand A + B + C: update from each new signal — by (tmdb_id, type), so a
+  //    same-id title of the other type never supplies the crew
   for (const signal of freshSignals) {
-    const title = titleMap.get(signal.tmdb_id)
+    const title = titleMap.get(titleKey(signal.type, signal.tmdb_id))
     if (!title) continue  // title not seeded yet — skip, will re-run after seed
 
     applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, signal.reaction)
     applyStrandCUpdate(dna.strand_c_visceral_specs, title, signal.reaction)
+    applyStrandBFromTitle(
+      dna.strand_b_narrative_dimensions,
+      title.narrative_metadata as TitleNarrativeMetadata,
+      signal.reaction,
+    )
   }
 
   // 4. Strand B: merge session brain's explicit dimension updates (highest authority)
@@ -79,16 +105,25 @@ export async function updateSchemaFromSession(
   // 10. Regenerate Mistral embedding snapshot (fire-and-forget on error)
   //     The engine's Redis cache handles the embedding for scoring —
   //     this persists the historical snapshot in fingerprint_embeddings.
+  //     Skips the Mistral call when the strand text is unchanged (hash).
   await regenerateEmbedding(user_id, dna).catch(err =>
     console.warn('[update-from-session] embedding regen failed:', err)
   )
 
   await saveDNA(user_id, dna)
 
-  // 11. Store a versioned snapshot (keep-last-5, pruned in storeSnapshot)
-  await storeSnapshot(user_id, dna).catch(err =>
-    console.warn('[update-from-session] snapshot store failed:', err)
-  )
+  // 11. Store a versioned snapshot (keep-last-5, pruned in storeSnapshot).
+  //     Archival only — 2-3 DB round trips nobody is waiting on, so after the
+  //     response when there is one (guarded: `after` throws outside a request).
+  const snapshot = () =>
+    storeSnapshot(user_id, dna).catch(err =>
+      console.warn('[update-from-session] snapshot store failed:', err)
+    )
+  try {
+    after(snapshot)
+  } catch {
+    await snapshot()
+  }
 
   return dna
 }

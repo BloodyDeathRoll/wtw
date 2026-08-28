@@ -9,9 +9,12 @@
  * Body:
  * {
  *   tmdb_id:         string
+ *   media_type:      'movie' | 'tv'   // which title the id means — TMDB movie
+ *                                     // and TV ids collide (src/lib/title-key.ts)
  *   action:          'watched' | 'skipped' | 'regret' | 'glad_watched'
  *   is_stretch_pick: boolean         (default false)
  *   reaction?:       'loved' | 'liked' | 'disliked'  // when action = 'watched'
+ *   title?:          string
  * }
  *
  * What each action does:
@@ -20,11 +23,19 @@
  *   skipped       → marks recommendation as not accepted
  *   regret        → 48hr post-watch signal; calls Assignment 3 updateSchemaFromRegret
  *   glad_watched  → positive post-watch signal; calls Assignment 3 updateSchemaFromRegret
+ *
+ * History rows are written with `recommended = "type:tmdb_id"` so every later
+ * reader (light merge, session fold, candidate exclusion) resolves the right
+ * title. `media_type` is optional only for legacy callers (the ratings screen
+ * re-rating a pre-2026-08-28 row); without it the row is matched on the bare
+ * id and stored bare, exactly as before.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { precomputeNextBatch } from '@/modules/engine/pipeline/precompute'
 import { createServiceClient } from '@/lib/supabase/service'
+import { isMediaType, recordMatches, titleKey, type MediaType } from '@/lib/title-key'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
@@ -49,7 +60,7 @@ export async function POST(req: NextRequest) {
   let is_stretch_pick: boolean
   let reaction: Reaction | undefined
   let title: string | undefined
-  let media_type: string | undefined
+  let media_type: MediaType | null
 
   try {
     const body = await req.json()
@@ -58,7 +69,7 @@ export async function POST(req: NextRequest) {
     is_stretch_pick = body.is_stretch_pick ?? false
     reaction       = body.reaction
     title          = typeof body.title === 'string' ? body.title : undefined
-    media_type     = body.media_type === 'movie' || body.media_type === 'tv' ? body.media_type : undefined
+    media_type     = isMediaType(body.media_type) ? body.media_type : null
 
     if (!tmdb_id || typeof tmdb_id !== 'string') {
       return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
@@ -87,10 +98,17 @@ export async function POST(req: NextRequest) {
   }
 
   const dna = userData.dna
+  // The key this rating is filed under. Bare only for legacy callers.
+  const recKey = media_type ? titleKey(media_type, tmdb_id) : tmdb_id
 
   // ── Update recommendation_history in DNA ──────────────────
+  // Only write the row back when something in it actually changed: regret /
+  // glad_watched touch nothing here, and an unconditional write of the whole
+  // JSONB could clobber a concurrent card rating (this route isn't queued for
+  // the regret prompt).
+  let dnaChanged = false
   const history = dna.learning_loop.recommendation_history
-  const entryIndex = history.findLastIndex(h => h.tmdb_id === tmdb_id)
+  const entryIndex = history.findLastIndex(h => recordMatches(h, tmdb_id, media_type))
 
   if (entryIndex >= 0) {
     const entry = history[entryIndex]
@@ -98,14 +116,23 @@ export async function POST(req: NextRequest) {
     if (action === 'watched') {
       history[entryIndex] = {
         ...entry,
+        // Upgrade a legacy bare row to the composite key now that we know it
+        recommended: media_type ? recKey : entry.recommended,
         accepted: true,
         watched: true,
         rating: reaction ?? null,
       }
+      dnaChanged = true
     } else if (action === 'skipped') {
       // Keep the reaction — a "Don't like" is a negative fingerprint signal,
       // not just a decline. Dropping it here made dislikes vanish entirely.
-      history[entryIndex] = { ...entry, accepted: false, rating: reaction ?? entry.rating ?? null }
+      history[entryIndex] = {
+        ...entry,
+        recommended: media_type ? recKey : entry.recommended,
+        accepted: false,
+        rating: reaction ?? entry.rating ?? null,
+      }
+      dnaChanged = true
     }
     // 'regret' and 'glad_watched' update regret_signal, handled by Assignment 3 below
   } else if (action === 'watched' || action === 'skipped') {
@@ -114,13 +141,14 @@ export async function POST(req: NextRequest) {
     // session-end fold converts rated entries into DNA signals.
     history.push({
       session:             dna.metadata.total_sessions,
-      recommended:         tmdb_id,
+      recommended:         recKey,
       tmdb_id,
       accepted:            action === 'watched',
       watched:             action === 'watched',
       rating:              reaction ?? null,
       fingerprint_version: dna.metadata.taste_version,
     })
+    dnaChanged = true
   }
 
   // Also update stretch_pick_history if applicable
@@ -131,26 +159,29 @@ export async function POST(req: NextRequest) {
     if (stretchEntry) {
       stretchEntry.accepted  = action === 'watched'
       stretchEntry.reaction  = reaction ?? null
+      dnaChanged = true
     }
   }
 
   // ── Persist updated DNA ───────────────────────────────────
-  const { error: updateError } = await serviceClient
-    .from('users')
-    .update({ dna, updated_at: new Date().toISOString() })
-    .eq('id', user.id)
+  if (dnaChanged) {
+    const { error: updateError } = await serviceClient
+      .from('users')
+      .update({ dna, updated_at: new Date().toISOString() })
+      .eq('id', user.id)
 
-  if (updateError) {
-    console.error('[recommendations/feedback] DNA update failed:', updateError.message)
-    return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
+    if (updateError) {
+      console.error('[recommendations/feedback] DNA update failed:', updateError.message)
+      return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
+    }
+
+    // The write above bypassed saveDNA, so bust the 60s loadDNA cache BEFORE the
+    // hooks below — they all read via cache-first loadDNA. Without this, a
+    // rating within 60s of the on-load warm-up (which populates the cache) made
+    // the light merge read a stale snapshot: usually a silent no-op, worst case
+    // saving the stale object back over this request's own write.
+    await invalidateDNACache(user.id)
   }
-
-  // The write above bypassed saveDNA, so bust the 60s loadDNA cache BEFORE the
-  // hooks below — they all read via cache-first loadDNA. Without this, a
-  // rating within 60s of the on-load warm-up (which populates the cache) made
-  // the light merge read a stale snapshot: usually a silent no-op, worst case
-  // saving the stale object back over this request's own write.
-  await invalidateDNACache(user.id)
 
   // ── Incremental fingerprint update (cheap, no version bump) ─
   // Fold this rating into DNA signals + strand A/C NOW, so by the time the
@@ -162,6 +193,11 @@ export async function POST(req: NextRequest) {
     await mergeFeedbackSignalsLight(user.id).catch(err =>
       console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
     )
+    // The fingerprint inputs are final for this rating — build the next batch
+    // now, after the response, so "Find more" only has to adopt it
+    // (precompute.ts coalesces bursts; never throws).
+    const userId = user.id
+    after(() => precomputeNextBatch(userId))
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────
@@ -172,7 +208,7 @@ export async function POST(req: NextRequest) {
   if (reaction) {
     await serviceClient.from('recommendation_feedback').insert({
       user_id: user.id,
-      recommendation_id: media_type ? `${media_type}:${tmdb_id}` : tmdb_id,
+      recommendation_id: recKey,
       title: title ?? null,
       rating: reaction,
     }).then(({ error }) => {
@@ -183,13 +219,13 @@ export async function POST(req: NextRequest) {
   // ── DNA Writer hooks ──────────────────────────────────────
   if (action === 'regret' || action === 'glad_watched') {
     const regretSignal = action === 'regret' ? 'regret' : 'glad_watched'
-    await updateSchemaFromRegret(user.id, tmdb_id, regretSignal).catch(err =>
+    await updateSchemaFromRegret(user.id, tmdb_id, regretSignal, media_type).catch(err =>
       console.error('[feedback] updateSchemaFromRegret failed:', err)
     )
   }
 
   if (is_stretch_pick && action === 'watched' && reaction) {
-    await updateSchemaFromStretch(user.id, tmdb_id, reaction).catch(err =>
+    await updateSchemaFromStretch(user.id, tmdb_id, reaction, media_type).catch(err =>
       console.error('[feedback] updateSchemaFromStretch failed:', err)
     )
   }

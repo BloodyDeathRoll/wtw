@@ -21,41 +21,53 @@
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
+import { recordKey, recordType, titleKey, type MediaType } from '@/lib/title-key'
 import type { DNASchema, DNASignal, SessionSummary } from '@/types/dna'
 
 export async function foldRatedHistoryIntoSummary(
   dna: DNASchema,
   summary: SessionSummary,
 ): Promise<number> {
-  // Dedup on tmdb_id alone (intentional, matches mergeFeedbackSignalsLight):
-  // a title signaled from any source must not be double-counted by a rating.
-  const alreadySignaled = new Set(dna.signals.map((s) => s.tmdb_id))
-  for (const s of summary.new_signals) alreadySignaled.add(s.tmdb_id)
+  // Dedup on the composite title key across all sources (matches
+  // mergeFeedbackSignalsLight): a title signaled from any source must not be
+  // double-counted by a rating. Never the bare id — TMDB movie/TV ids collide.
+  const signaledKeys = new Set<string>()
+  const signaledBare = new Set<string>()
+  for (const s of [...dna.signals, ...summary.new_signals]) {
+    signaledKeys.add(titleKey(s.type, s.tmdb_id))
+    signaledBare.add(s.tmdb_id)
+  }
 
-  const pending = dna.learning_loop.recommendation_history.filter(
-    (h) => h.rating != null && !alreadySignaled.has(h.tmdb_id),
-  )
+  const pending = dna.learning_loop.recommendation_history.filter((h) => {
+    if (h.rating == null) return false
+    // Legacy row (no type): any same-id signal counts — can't tell which title.
+    if (!recordType(h)) return !signaledBare.has(h.tmdb_id)
+    return !signaledKeys.has(recordKey(h))
+  })
   if (pending.length === 0) return 0
 
-  // Resolve title + type from the catalog (history stores only tmdb_id).
+  // Resolve title from the catalog by (tmdb_id, type). Both rows of a colliding
+  // id come back; pick by the type the history row was written with.
   const db = createServiceClient()
   const { data: titleRows } = await db
     .from('titles')
     .select('tmdb_id, title, type')
-    .in('tmdb_id', pending.map((h) => h.tmdb_id))
-  const byId = new Map(
-    (titleRows ?? []).map((t) => [t.tmdb_id as string, t]),
-  )
+    .in('tmdb_id', [...new Set(pending.map((h) => h.tmdb_id))])
+  const rows = (titleRows ?? []) as { tmdb_id: string; title: string; type: MediaType }[]
+  const byKey = new Map(rows.map((t) => [titleKey(t.type, t.tmdb_id), t]))
 
   let folded = 0
   for (const h of pending) {
-    const t = byId.get(h.tmdb_id)
-    if (!t) continue // not in catalog — nothing to score against
+    const type = recordType(h)
+    const t = type
+      ? byKey.get(titleKey(type, h.tmdb_id))
+      : (() => { const same = rows.filter((r) => r.tmdb_id === h.tmdb_id); return same.length === 1 ? same[0] : undefined })()
+    if (!t) continue // not in catalog, or an ambiguous legacy id — nothing safe to score against
 
     const signal: DNASignal = {
-      title: t.title as string,
+      title: t.title,
       tmdb_id: h.tmdb_id,
-      type: t.type as 'movie' | 'tv',
+      type: t.type,
       reaction: h.rating!,
       quick_rating: null,
       regret_signal: null,
@@ -71,6 +83,8 @@ export async function foldRatedHistoryIntoSummary(
       watched_at: null,
     }
     summary.new_signals.push(signal)
+    signaledKeys.add(titleKey(t.type, h.tmdb_id))
+    signaledBare.add(h.tmdb_id)
     folded++
   }
   return folded

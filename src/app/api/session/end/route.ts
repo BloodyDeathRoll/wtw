@@ -19,15 +19,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { startTimer } from '@/lib/timing'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
+import { adoptPendingBatch } from '@/modules/engine/pipeline/precompute'
 import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
-import { markSavedInHistory } from '@/modules/session/watchlist-intent'
+import { markSavedInHistory, unmarkSavedInHistory } from '@/modules/session/watchlist-intent'
 import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
@@ -53,35 +55,47 @@ export async function POST(req: NextRequest) {
   const watchlistAdded: string[] = Array.isArray(body.watchlist_added)
     ? body.watchlist_added.filter((v: unknown): v is string => typeof v === 'string')
     : []
+  // Unsaves since the last report. Saved titles are excluded from the feed, so
+  // clearing the marker is what lets an unsaved title be recommended again.
+  const watchlistRemoved: string[] = Array.isArray(body.watchlist_removed)
+    ? body.watchlist_removed.filter((v: unknown): v is string => typeof v === 'string')
+    : []
   if (!conversationId) {
     return NextResponse.json({ error: 'conversation_id required' }, { status: 400 })
   }
 
   const db = createServiceClient()
 
+  const t = startTimer('session/end')
+
   // ── 1. Load conversation (ownership check) + transcript ──────
-  const { data: convo } = await db
-    .from('conversations')
-    .select('id, user_id')
-    .eq('id', conversationId)
-    .single<{ id: string; user_id: string }>()
+  // The three reads are independent — one round trip, not three. The
+  // transcript is skipped on "Find more" (it was fetched and never used).
+  const [{ data: convo }, { data: messages }, { data: userRow }] = await Promise.all([
+    db
+      .from('conversations')
+      .select('id, user_id')
+      .eq('id', conversationId)
+      .single<{ id: string; user_id: string }>(),
+    skipTranscript
+      ? Promise.resolve({ data: null })
+      : db
+          .from('messages')
+          .select('role, content')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true }),
+    // ── 2. Ensure a DNA fingerprint exists (idempotent bootstrap) ─
+    db
+      .from('users')
+      .select('dna')
+      .eq('id', user.id)
+      .single<{ dna: DNASchema | null }>(),
+  ])
 
   if (!convo || convo.user_id !== user.id) {
     return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
   }
-
-  const { data: messages } = await db
-    .from('messages')
-    .select('role, content')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
-
-  // ── 2. Ensure a DNA fingerprint exists (idempotent bootstrap) ─
-  const { data: userRow } = await db
-    .from('users')
-    .select('dna')
-    .eq('id', user.id)
-    .single<{ dna: DNASchema | null }>()
+  t.mark('reads')
 
   let dna = userRow?.dna ?? null
   if (!dna) {
@@ -105,9 +119,10 @@ export async function POST(req: NextRequest) {
   // path stays fast — which is intended: a saved title keeps showing in the feed
   // with a "Remove from watchlist" CTA rather than disappearing from it.
   let watchlistRecorded = 0
-  if (watchlistAdded.length > 0) {
+  if (watchlistAdded.length > 0 || watchlistRemoved.length > 0) {
     const history = dna.learning_loop.recommendation_history
-    const updated = markSavedInHistory(history, watchlistAdded, {
+    let updated = unmarkSavedInHistory(history, watchlistRemoved)
+    updated = markSavedInHistory(updated, watchlistAdded, {
       session: dna.metadata.total_sessions,
       fingerprintVersion: dna.metadata.taste_version,
     })
@@ -214,19 +229,29 @@ export async function POST(req: NextRequest) {
   // the freshest history/ratings, not a warm-up-era snapshot.
   await invalidateDNACache(user.id)
   let taste_version: number
+  let updated: DNASchema
   try {
-    const updated = await updateSchemaFromSession(user.id, summary)
+    // Hand over the DNA this route already holds (watchlist marks included)
+    // instead of a third users.dna read.
+    updated = await updateSchemaFromSession(user.id, summary, undefined, dna)
     taste_version = updated.metadata.taste_version
   } catch (err) {
     console.error('[session/end] DNA update failed:', err)
     return NextResponse.json({ error: 'Fingerprint update failed' }, { status: 500 })
   }
+  t.mark('fingerprint update')
 
   // ── 5. Generate + cache real recommendations ─────────────────
   let rec_count = 0
   try {
-    const recs = await generateRecommendations(user.id)
+    // A batch precomputed after the last rating (precompute.ts) is adopted as
+    // the cache for the new version when its inputs still match — the common
+    // case, and it turns this step into two Redis calls. Otherwise the
+    // version was just bumped and the cache read would be a guaranteed miss.
+    const adopted = await adoptPendingBatch(user.id, updated)
+    const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna: updated, skipCacheRead: true })
     rec_count = recs.length
+    t.done(adopted ? 'total (adopted precomputed batch)' : 'total (regenerated)')
   } catch (err) {
     // Fingerprint is saved; recs can be regenerated on next visit.
     console.error('[session/end] recommendation generation failed:', err)

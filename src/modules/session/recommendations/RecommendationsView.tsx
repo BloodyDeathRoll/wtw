@@ -162,10 +162,17 @@ export default function RecommendationsView({
         has_more: boolean;
       };
       // Dedup by id — in case the same page slips through twice we don't
-      // create duplicate React keys.
+      // create duplicate React keys. Also drop titles already on the watchlist:
+      // the server excludes them once the save has been reported (session/end),
+      // but a save made in this session hasn't reached it yet, and a saved
+      // title resurfacing as "new" reads as a repeat. Read storage directly —
+      // `saved` state would be a stale closure here.
+      const onWatchlist = new Set(getWatchlist().map((e) => e.rec.id));
       setRecs((prev) => {
         const seen = new Set(prev.map((r) => r.id));
-        const incoming = data.recommendations.filter((r) => !seen.has(r.id));
+        const incoming = data.recommendations.filter(
+          (r) => !seen.has(r.id) && !onWatchlist.has(r.id),
+        );
         return incoming.length ? [...prev, ...incoming] : prev;
       });
       offsetRef.current = data.next_offset;
@@ -355,20 +362,24 @@ export default function RecommendationsView({
       dropCard(rec);
     }
     const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
-    void fetch("/api/recommendations/removed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdb_id, media_type: rec.type, title: rec.title }),
-    })
-      .then(async (res) => {
+    // Queued with the ratings, not fire-and-forget: "Find more" awaits this
+    // chain before regenerating, so the removal is on the server before the
+    // new batch is built. Unqueued, a quick Remove → Find more could regenerate
+    // first and re-serve the title.
+    feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
+      try {
+        const res = await fetch("/api/recommendations/removed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id, media_type: rec.type, title: rec.title }),
+        });
         if (!res.ok) {
-          console.error(
-            `[recs] remove HTTP ${res.status}`,
-            await res.text().catch(() => ""),
-          );
+          console.error(`[recs] remove HTTP ${res.status}`, await res.text().catch(() => ""));
         }
-      })
-      .catch((e) => console.error("[recs] remove failed", e));
+      } catch (e) {
+        console.error("[recs] remove failed", e);
+      }
+    });
   }
 
   return (

@@ -19,7 +19,7 @@ import { generateObject } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
-import type { RecommendationResult } from '@/types/dna'
+import type { RecommendationResult, ReasonPayload } from '@/types/dna'
 import type { ScoredTitleWithPayload } from './step6-reason-payload'
 
 function mistral() {
@@ -38,7 +38,28 @@ const explanationSchema = z.object({
   ),
 })
 
-function payloadSummary(item: ScoredTitleWithPayload): string {
+/**
+ * The minimum the explanation prompt needs. Both a pipeline item
+ * (ScoredTitleWithPayload) and a cached RecommendationResult reduce to it, so
+ * explanations can be generated for a batch that was cached without them
+ * (precompute.ts).
+ */
+export interface ExplainItem {
+  tmdb_id: string
+  type: 'movie' | 'tv'
+  title: string
+  reason_payload: ReasonPayload
+}
+
+export function toExplainItem(i: ScoredTitleWithPayload): ExplainItem {
+  return { tmdb_id: i.title.tmdb_id, type: i.title.type, title: i.title.title, reason_payload: i.reason_payload }
+}
+
+export function resultToExplainItem(r: RecommendationResult): ExplainItem {
+  return { tmdb_id: r.tmdb_id, type: r.type, title: r.title, reason_payload: r.reason_payload }
+}
+
+function payloadSummary(item: ExplainItem): string {
   const p = item.reason_payload
   const parts: string[] = []
 
@@ -80,9 +101,42 @@ function payloadSummary(item: ScoredTitleWithPayload): string {
 const EXPLAIN_CHUNK_SIZE = 25
 
 /**
- * Adapt scored+payload items to RecommendationResult without any LLM call,
- * using groq_rationale as the explanation fallback. Used to serve titles
- * immediately while their real explanations are still generating.
+ * One-line "Why this?" built from the reason payload alone — no LLM. This is
+ * what a card shows until the background explanation lands (and permanently
+ * if it never does). Positive signal first, honest caveat second, so it
+ * satisfies the explainability rule (positive AND negative) on its own.
+ */
+export function templateExplanation(item: ScoredTitleWithPayload): string {
+  const p = item.reason_payload
+  const parts: string[] = []
+
+  const crew = [...p.crew_matches].sort((a, b) => b.affinity_score - a.affinity_score)[0]
+  if (crew) {
+    parts.push(`${crew.name} (${crew.role}) is one of your strongest matches.`)
+  } else if (p.lineage_connections[0]) {
+    const c = p.lineage_connections[0]
+    parts.push(`Connected to ${c.from} through ${c.to} (${c.relationship}).`)
+  } else if (p.dimension_matches[0]) {
+    const d = p.dimension_matches[0]
+    parts.push(`Its ${d.dimension.replace(/_/g, ' ')} (${d.title_value}) lines up with what you rate highly.`)
+  } else {
+    parts.push('Matched on narrative and tone fit with your fingerprint.')
+  }
+
+  if (p.is_stretch_pick && p.stretch_rationale) {
+    parts.push(p.stretch_rationale)
+  } else if (p.negative_signals[0]) {
+    parts.push(`One reservation: ${p.negative_signals[0].replace(/\.$/, '').replace(/^./, ch => ch.toLowerCase())}.`)
+  }
+
+  return parts.join(' ')
+}
+
+/**
+ * Adapt scored+payload items to RecommendationResult without any LLM call —
+ * explanations from the map when present (keyed `${type}:${tmdb_id}`), else
+ * the template. Used to serve titles immediately while their real
+ * explanations are still generating.
  */
 export function toResultsWithFallback(
   items: ScoredTitleWithPayload[],
@@ -95,7 +149,9 @@ export function toResultsWithFallback(
     type:               item.title.type,
     composite_score:    item.composite_score,
     reason_payload:     item.reason_payload,
-    explanation:        explanationMap.get(item.title.tmdb_id) ?? item.reason_payload.groq_rationale,
+    explanation:        explanationMap.get(`${item.title.type}:${item.title.tmdb_id}`)
+                          ?? explanationMap.get(item.title.tmdb_id)
+                          ?? templateExplanation(item),
     is_stretch_pick:    item.is_stretch_pick,
     generated_at:       now,
     fingerprint_version: 0,   // set by generate.ts from dna.metadata.taste_version
@@ -103,11 +159,13 @@ export function toResultsWithFallback(
 }
 
 async function explainChunk(
-  items: ScoredTitleWithPayload[]
+  items: ExplainItem[]
 ): Promise<Map<string, string>> {
+  // Bracketed id is the composite key — the model echoes it back, and a bare
+  // tmdb_id collides for a movie/TV pair sharing an id.
   const titlesList = items
     .map(item =>
-      `[${item.title.tmdb_id}] "${item.title.title}" (${item.title.type})\n` +
+      `[${item.type}:${item.tmdb_id}] "${item.title}" (${item.type})\n` +
       `  Signals: ${payloadSummary(item)}`
     )
     .join('\n\n')
@@ -133,18 +191,33 @@ Return explanations for all ${items.length} titles.`
       schema: explanationSchema,
       prompt,
     })
-    return new Map(object.explanations.map(e => [e.tmdb_id, e.explanation]))
+    // Normalise whatever the model echoed to the composite key. It often
+    // drops the "movie:" prefix (seen live 2026-08-28: 50/50 came back bare
+    // and the cache merge matched none of them). A bare id resolves through
+    // this chunk's items; if two items share it (movie/TV collision) it's
+    // ambiguous and dropped rather than guessed.
+    const bareToKey = new Map<string, string | null>()
+    for (const item of items) {
+      bareToKey.set(item.tmdb_id, bareToKey.has(item.tmdb_id) ? null : `${item.type}:${item.tmdb_id}`)
+    }
+    const out = new Map<string, string>()
+    for (const e of object.explanations) {
+      const echoed = e.tmdb_id.trim().replace(/^\[|\]$/g, '')
+      const key = /^(movie|tv):/.test(echoed) ? echoed : bareToKey.get(echoed) ?? null
+      if (key) out.set(key, e.explanation)
+    }
+    return out
   } catch (err) {
     console.warn('[explanation] LLM explanations failed — using payload fallbacks:', err instanceof Error ? err.message : err)
     return new Map()
   }
 }
 
-export async function generateExplanations(
-  items: ScoredTitleWithPayload[]
-): Promise<RecommendationResult[]> {
-  if (items.length === 0) return []
-
+/**
+ * LLM explanations for any list of ExplainItems → Map<`${type}:${tmdb_id}`, text>.
+ * Items the model skipped (or a failed chunk) are simply absent.
+ */
+export async function explainMany(items: ExplainItem[]): Promise<Map<string, string>> {
   // Sequential chunks, not parallel — the Mistral free tier rate-limits, and a
   // failed chunk degrades to fallbacks without affecting the others.
   const explanationMap = new Map<string, string>()
@@ -152,6 +225,12 @@ export async function generateExplanations(
     const chunkMap = await explainChunk(items.slice(i, i + EXPLAIN_CHUNK_SIZE))
     for (const [id, text] of chunkMap) explanationMap.set(id, text)
   }
+  return explanationMap
+}
 
-  return toResultsWithFallback(items, explanationMap)
+export async function generateExplanations(
+  items: ScoredTitleWithPayload[]
+): Promise<RecommendationResult[]> {
+  if (items.length === 0) return []
+  return toResultsWithFallback(items, await explainMany(items.map(toExplainItem)))
 }

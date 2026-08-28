@@ -83,7 +83,7 @@ export function strandBToEmbeddingText(strandB: StrandB, strandC: StrandC): stri
 // Embedding with Redis cache
 // ─────────────────────────────────────────────
 
-async function getUserEmbedding(
+export async function getUserEmbedding(
   userId: string,
   tasteVersion: number,
   strandB: StrandB,
@@ -163,8 +163,11 @@ async function readStoredEmbedding(
  * Batch narrative similarity for all candidate titles.
  * One Mistral embed call (cached) + one pgvector SQL query.
  *
- * @returns Map<tmdb_id, score>  score is 0.0 – 1.0
+ * @returns Map<`${type}:${tmdb_id}`, score>  score is 0.0 – 1.0
  *          Unenriched titles are absent; caller uses 0.5 as fallback.
+ *          Keyed on the composite (migration 0019 returns `type`): a movie and
+ *          a TV show sharing an id both match `candidate_ids`, and a bare-id
+ *          map kept one score for both.
  */
 export async function computeNarrativeMatchScores(
   strandB: StrandB,
@@ -188,8 +191,8 @@ export async function computeNarrativeMatchScores(
   }
 
   const scores = new Map<string, number>()
-  for (const row of (data ?? []) as { tmdb_id: string; score: number }[]) {
-    scores.set(row.tmdb_id, row.score)
+  for (const row of (data ?? []) as { tmdb_id: string; type: string; score: number }[]) {
+    scores.set(`${row.type}:${row.tmdb_id}`, row.score)
   }
   return scores
 }
