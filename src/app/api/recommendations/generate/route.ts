@@ -3,7 +3,7 @@
 //        when the DB is not yet seeded or no recs have been generated.
 // POST — runs the full Assignment 2 engine pipeline and returns RecommendationResult[]
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -150,6 +150,9 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  // servePage below is a hoisted function declaration, so it can't see this
+  // null check on `user`; hand it the id instead.
+  const userId = user.id;
 
   const url = new URL(req.url);
   const offsetParam = url.searchParams.get("offset");
@@ -255,6 +258,20 @@ export async function GET(req: Request) {
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;
     const uiRecs = await toUIRecommendations(items);
+    // Remember what this user was actually shown (served_titles, migration
+    // 0019): the next batch keeps these out of its "fresh" 80% and draws its
+    // "seen" 20% from them until they're rated. After the response — a
+    // bookkeeping write must never delay a page.
+    if (items.length > 0) {
+      const keys = items.map((r) => titleKey(r.type, r.tmdb_id));
+      after(async () => {
+        const { error } = await createServiceClient().rpc("record_served_titles", {
+          p_user_id: userId,
+          p_keys: keys,
+        });
+        if (error) console.warn("[recommendations/generate] record_served_titles failed (non-fatal):", error.message);
+      });
+    }
     return NextResponse.json({ recommendations: uiRecs, next_offset: nextOffset, has_more: hasMore, source });
   }
 

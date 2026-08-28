@@ -100,7 +100,9 @@ export async function llmRerank(
       const director = t.crew.directors[0]?.name ?? 'unknown director'
       const genres   = t.genres.map(g => g.name).join(', ')
       const tones    = t.tone_tags.join(', ') || 'unknown'
-      return `${i + 1}. [${t.tmdb_id}] "${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${director} — Genres: ${genres} — Tone: ${tones} — Score: ${s.composite_score.toFixed(3)}`
+      // The bracketed id is the composite key: the model echoes it back and a
+      // bare tmdb_id would collide for a movie/TV pair sharing an id.
+      return `${i + 1}. [${t.type}:${t.tmdb_id}] "${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${director} — Genres: ${genres} — Tone: ${tones} — Score: ${s.composite_score.toFixed(3)}`
     })
     .join('\n')
 
@@ -133,20 +135,24 @@ Be specific: reference the viewer's actual preferences, not generic praise for t
   }
 
   // Build a map from the ranked list (rationales truncated in code, not schema)
+  // Keyed on whatever the model echoed — the composite key we showed it, or a
+  // bare id if it trimmed the prefix; the lookup tries the composite first.
   const rankMap = new Map<string, { rank: number; rationale: string }>(
-    ranked.map((r, i) => [r.tmdb_id, { rank: i, rationale: r.rationale.slice(0, 250) }])
+    ranked.map((r, i) => [r.tmdb_id.trim(), { rank: i, rationale: r.rationale.slice(0, 250) }])
   )
+  const rankOf = (s: ScoredTitle) =>
+    rankMap.get(`${s.title.type}:${s.title.tmdb_id}`) ?? rankMap.get(s.title.tmdb_id)
 
   // Apply Groq's ordering, preserving original numeric order for unranked titles
   const reranked = [...top50].sort((a, b) => {
-    const ra = rankMap.get(a.title.tmdb_id)?.rank ?? 999
-    const rb = rankMap.get(b.title.tmdb_id)?.rank ?? 999
+    const ra = rankOf(a)?.rank ?? 999
+    const rb = rankOf(b)?.rank ?? 999
     return ra - rb
   })
 
   // Return all 50 with groq_rationale filled
   return reranked.map(item => ({
     ...item,
-    groq_rationale: rankMap.get(item.title.tmdb_id)?.rationale ?? '',
+    groq_rationale: rankOf(item)?.rationale ?? '',
   }))
 }

@@ -102,7 +102,7 @@ export async function scoreCandidates(
     const visceralResult = computeVisceralMatch(dna.strand_c_visceral_specs, title)
 
     const crew_affinity_score   = Math.min(1.0, crewResult.score + lineageResult.boost)
-    const narrative_match_score = narrativeScores.get(title.tmdb_id) ?? 0.5
+    const narrative_match_score = narrativeScores.get(`${title.type}:${title.tmdb_id}`) ?? 0.5
     const visceral_match_score  = visceralResult.score
     const external_rating_score = externalRatingScore(title)
     const recency_boost         = recencyScore(title.release_year)

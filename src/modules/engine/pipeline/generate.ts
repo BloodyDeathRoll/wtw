@@ -4,10 +4,12 @@
  * Threads all 8 steps together for a single user recommendation request.
  * Early-returns from Redis cache when the fingerprint hasn't changed.
  *
- * Step 1 → candidates (up to 200 enriched unwatched titles)
+ * Step 1 → candidates: fresh pool (never served: most-voted ∪ nearest to the
+ *          fingerprint) + seen pool (served before, never rated)
  * Step 2 → composite scores (crew 35%, narrative 30%, visceral 20%, external 10%, recency 5%)
  * Step 3 → soft modifiers applied, list re-sorted
- * Step 4 → top 50 LLM re-ranked by Groq (all 50 kept)
+ * Step 3b → batch of 50 composed: 80% fresh / 20% seen, by score
+ * Step 4 → the 50 LLM re-ranked (all 50 kept)
  * Step 5 → stretch pick injected at slot 20 (when eligible)
  * Step 6 → ReasonPayload assembled for each title
  * Step 7 → "Why this?" explanations: first 20 before returning, the other 30
@@ -21,6 +23,7 @@ import { getRedis } from '@/lib/redis'
 import { getCandidates }            from './step1-candidate-gen'
 import { scoreCandidates }          from './step2-composite-score'
 import { applySoftModifiers }       from './step3-soft-modifiers'
+import { composeBatch }             from './step3b-compose-batch'
 import { llmRerank }                from './step4-llm-rerank'
 import { injectStretchPick }        from './step5-stretch-pick'
 import { buildReasonPayloads }      from './step6-reason-payload'
@@ -89,8 +92,11 @@ export async function generateRecommendations(
   // ── Step 3: soft modifiers ────────────────────────────────
   const modified = applySoftModifiers(scored, dna, sessionContext)
 
-  // ── Step 4: LLM re-ranking (top 50 → top 20) ─────────────
-  const reranked = await llmRerank(modified, dna)
+  // ── Step 3b: 80% fresh / 20% previously-served, by score ─
+  const batch = composeBatch(modified)
+
+  // ── Step 4: LLM re-ranking of the batch ──────────────────
+  const reranked = await llmRerank(batch, dna)
 
   // ── Step 5: stretch pick injection ───────────────────────
   const withStretch = injectStretchPick(reranked, scored, dna)
