@@ -26,6 +26,8 @@ import type { RecommendationResult } from "@/types/dna";
 import styles from "./RecommendationsView.module.css";
 import { FingerprintLoader } from "../components/FingerprintLoader";
 import { WhyPanel } from "@/app/components/RecCard";
+import { ProviderIcon } from "@/app/components/ProviderIcon";
+import { canonicalProvider } from "@/lib/watch-providers";
 import {
   getCachedExplain,
   setCachedExplain,
@@ -82,6 +84,26 @@ const HEADER_TITLE: Record<Mode, string> = {
 /** rec.id is "type:tmdb_id" for engine recs, a bare slug for pre-session mocks. */
 function tmdbIdOf(id: string): string {
   return id.includes(":") ? id.split(":")[1] : id;
+}
+
+/**
+ * "Watch on …" — brand icon + name, under the year/runtime/rating meta on
+ * every card (compact, full, watchlist, and the Why detail). Streaming
+ * availability comes from TMDB, which sources it from JustWatch and requires
+ * visible attribution wherever it is shown — hence the eyebrow. Hidden
+ * entirely when `where` is null (never checked, or not streaming in this
+ * region), so no empty affordance. See migration 0017 and grow-catalog.mts §3c.
+ */
+function WherePill({ where, hero = false }: { where: string | null; hero?: boolean }) {
+  if (!where) return null;
+  const { key, label } = canonicalProvider(where);
+  return (
+    <div className={`${styles.wherePill} ${hero ? styles.wherePillHero : ""}`}>
+      <ProviderIcon providerKey={key} className={styles.whereIcon} />
+      <span>Watch on {label}</span>
+      <span className={styles.whereSource}>via JustWatch</span>
+    </div>
+  );
 }
 
 export default function RecommendationsView({
@@ -626,6 +648,7 @@ function CompactCard({
             <span className={styles.dot} />
             <span>★ {rec.rating.toFixed(1)}</span>
           </div>
+          <WherePill where={rec.where} />
         </div>
         <div className={styles.cardMatch}>
           <span className={styles.matchDot} />
@@ -1046,6 +1069,7 @@ function FullCard({
           <span className={styles.dot} />
           <span>★ {rec.rating.toFixed(1)}</span>
         </div>
+        <WherePill where={rec.where} hero />
         {/* "Why this pick?" pill under the title/meta block, watchlist CTA
             across from it. */}
         <div className={styles.ctaRow}>
@@ -1065,17 +1089,6 @@ function FullCard({
             variant="strong"
           />
         </div>
-        {/* Streaming availability comes from TMDB, which sources it from
-            JustWatch and requires visible attribution wherever it is shown —
-            hence the eyebrow. Hidden entirely when `where` is null (never
-            checked, or not streaming in this region), so no empty affordance.
-            See migration 0017 and grow-catalog.mts §3c. */}
-        {rec.where && (
-          <div className={styles.fullWhere}>
-            Watch on {rec.where}
-            <span className={styles.whereSource}>via JustWatch</span>
-          </div>
-        )}
         <div className={styles.fullReason}>
           <span className={styles.reasonEyebrow}>FINGERPRINT</span>
           <span>{rec.reason}</span>
@@ -1359,6 +1372,7 @@ function WhyDetailOverlay({
                 <span className={styles.dot} />
                 <span>★ {rec.rating.toFixed(1)}</span>
               </div>
+              <WherePill where={rec.where} hero />
               <div className={styles.heroFingerprint}>
                 <span className={styles.reasonEyebrow}>FINGERPRINT</span>
                 <span>{result.explanation}</span>

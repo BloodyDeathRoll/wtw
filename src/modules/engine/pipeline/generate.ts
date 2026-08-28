@@ -28,6 +28,7 @@ import { after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getRedis } from '@/lib/redis'
 import { startTimer } from '@/lib/timing'
+import { ensureWatchProviders }     from '../enrichment/ensure-watch-providers'
 import { getCandidates }            from './step1-candidate-gen'
 import { scoreCandidates }          from './step2-composite-score'
 import { applySoftModifiers }       from './step3-soft-modifiers'
@@ -133,6 +134,19 @@ export function scheduleExplanationPatch(
   }
 }
 
+/**
+ * Streaming availability for a whole batch (decided 2026-08-28: checked on
+ * demand per batch, not just by the nightly 150/night job). Best-effort —
+ * a failure only means some cards stay without a "Watch on …" line.
+ */
+async function checkBatchProviders(results: RecommendationResult[]): Promise<void> {
+  try {
+    await ensureWatchProviders(results.map(r => ({ tmdb_id: r.tmdb_id, type: r.type })))
+  } catch (err) {
+    console.warn('[generate] provider check failed (non-fatal):', err instanceof Error ? err.message : err)
+  }
+}
+
 // ─────────────────────────────────────────────
 // Main pipeline
 // ─────────────────────────────────────────────
@@ -204,7 +218,12 @@ export async function generateRecommendations(
 
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─
   // precompute.ts parks it under its key together with the inputs hash.
+  // Already in the background, so the provider check runs inline: by the
+  // time session/end adopts the batch every card that CAN say "Watch on …"
+  // does.
   if (opts.precompute) {
+    await checkBatchProviders(versioned)
+    t.mark('watch providers')
     t.done('total (pending)')
     return versioned
   }
@@ -223,6 +242,16 @@ export async function generateRecommendations(
 
     // ── Step 7 (background): LLM explanations, patched into the cache ──
     scheduleExplanationPatch(userId, version, versioned)
+
+    // ── Background: streaming availability for the whole batch ────────
+    // The GET route also checks the few unchecked titles on each page it
+    // serves, so the first page never waits on this.
+    const providers = () => checkBatchProviders(versioned)
+    try {
+      after(providers)
+    } catch {
+      void providers()
+    }
   }
 
   t.done()
