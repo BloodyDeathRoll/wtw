@@ -1,3 +1,4 @@
+import { pickWatchProvider } from './watch-providers'
 /**
  * WTW — TMDB API Client
  * Server-side only. Never import in client components.
@@ -232,14 +233,15 @@ export type WatchProviderMap = Record<string, string[]>
 
 /**
  * Pick the provider name the "Watch on …" line should show for a region.
- * First entry wins: getWatchProviders stores TMDB's display_priority order,
- * which is TMDB's own ranking of where a viewer is most likely to watch.
+ * Canonical brand, by our preference order — NOT TMDB's first entry: its
+ * display_priority put fuboTV / "Netflix Standard with Ads" first (measured
+ * 2026-08-28). See src/lib/watch-providers.ts.
  */
 export function primaryWatchProvider(
   providers: WatchProviderMap | null | undefined,
   region: string,
 ): string | null {
-  return providers?.[region]?.[0] ?? null
+  return pickWatchProvider(providers?.[region])?.label ?? null
 }
 
 export interface TMDBDiscoverItem {

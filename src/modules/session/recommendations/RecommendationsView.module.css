@@ -657,19 +657,35 @@
   line-height: 1.1;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
-.fullWhere {
-  display: flex;
-  align-items: baseline;
+/* "Watch on …" — brand icon + name, directly under the year/runtime/rating
+   meta on every card. Compact variant is text-sized and unboxed so it reads
+   as a fourth meta line; the hero variant (full card, Why detail) is the pill
+   that sits on a poster. */
+.wherePill {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  font-size: 13px;
+  margin-top: 6px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--wtw-fg);
-  padding: 6px 12px;
+  max-width: 100%;
+}
+.wherePillHero {
+  font-size: 13px;
+  padding: 6px 12px 6px 8px;
   background: rgba(var(--wtw-rgb), 0.18);
   border-radius: 999px;
   width: max-content;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  text-shadow: none;
+}
+.whereIcon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
 }
 /* JustWatch attribution — TMDB's terms require it to be visible alongside the
    availability data, so it is part of the pill, not a footnote that a layout
