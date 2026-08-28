@@ -1,6 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { canonicalProvider, pickWatchProvider } from '@/lib/watch-providers'
+import { BRANDS, canonicalProvider, pickWatchProvider } from '@/lib/watch-providers'
 import { primaryWatchProvider } from '@/lib/tmdb'
+import { PROVIDER_ICON_KEYS } from '@/app/components/ProviderIcon'
+
+// Two invariants the UI relies on implicitly (review of PR #50):
+//   - WherePill gets only the label (Recommendation.where) and re-derives the
+//     icon key by running it back through canonicalProvider, so every label
+//     must resolve to its own key;
+//   - every brand key must have an icon, or a brand silently renders generic.
+describe('BRANDS invariants', () => {
+  it('every label round-trips to its own key', () => {
+    for (const b of BRANDS) expect(canonicalProvider(b.label).key, b.label).toBe(b.key)
+  })
+
+  it('every brand key has an icon', () => {
+    for (const b of BRANDS) expect(PROVIDER_ICON_KEYS, b.key).toContain(b.key)
+    expect(PROVIDER_ICON_KEYS).toContain('other')
+  })
+
+  it('keys are unique', () => {
+    expect(new Set(BRANDS.map((b) => b.key)).size).toBe(BRANDS.length)
+  })
+})
 
 // TMDB lists every storefront variant and ranks live-TV bundles first; the
 // "Watch on …" line needs one brand a viewer actually recognises.

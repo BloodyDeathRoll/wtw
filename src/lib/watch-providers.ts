@@ -22,11 +22,16 @@ export interface WatchProvider {
 }
 
 /**
- * Canonical brands, in preference order. First match on a raw name wins, so
- * "Paramount+ Amazon Channel" → paramount, not prime. Patterns are tested
- * against the lower-cased raw name.
+ * Canonical brands. ⚠️ Order does TWO jobs at once:
+ *   1. match priority — the first pattern a raw name hits wins, which is how
+ *      "Paramount+ Amazon Channel" becomes paramount and not prime;
+ *   2. display preference — pickWatchProvider shows the highest entry a
+ *      title has, which is how Netflix beats fuboTV.
+ * Moving a row for one reason changes the other. Patterns are tested against
+ * the lower-cased raw name. Every `label` must also match its own pattern —
+ * the UI re-derives the icon key from the label (locked by a test).
  */
-const BRANDS: { key: string; label: string; match: RegExp }[] = [
+export const BRANDS: readonly { key: string; label: string; match: RegExp }[] = [
   { key: 'netflix',     label: 'Netflix',        match: /netflix/ },
   { key: 'disney',      label: 'Disney+',        match: /disney/ },
   { key: 'max',         label: 'HBO Max',        match: /hbo|\bmax\b/ },
