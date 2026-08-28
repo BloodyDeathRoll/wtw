@@ -17,13 +17,16 @@
  *
  * Score arithmetic:
  *   per-person raw  = entry.score × entry.confidence   → [-1.0, 1.0]
- *   per-role raw    = average of per-person raws (unknowns = 0.0)
+ *   per-role raw    = the strongest per-person raw (largest |raw|);
+ *                     unknown people don't count (was: average over the
+ *                     role incl. unknowns as 0 — changed 2026-08-28)
  *   weighted raw    = Σ (role_raw × role_weight)        → [-1.0, 1.0]
  *   final score     = (weighted_raw + 1) / 2            → [0.0, 1.0]
  */
 
 import type { StrandA, CrewAffinityEntry, ReasonPayload } from '@/types/dna'
 import type { TMDBCrewSnapshot } from '@/lib/tmdb'
+import { REACTION_SCORE } from '@/modules/dna/lib/reaction-score'
 
 export interface CrewAffinityResult {
   score: number                              // 0.0 – 1.0
@@ -36,6 +39,20 @@ const ROLE_WEIGHTS = {
   cinematographer: 0.15,
   actor:          0.15,
 } as const
+
+/**
+ * A strand_a entry's `score` is the running average reaction level
+ * (update-crew.ts): "always loved" converges on REACTION_SCORE.loved (+0.30),
+ * "always disliked" on REACTION_SCORE.disliked (−0.20). Used raw, the whole
+ * component lived in 0.45–0.58 (measured 2026-08-28: a 20-title actor
+ * affinity reached 0.2 after confidence) and 35% of the composite decided
+ * nothing. Map that natural range to [-1, 1] before applying confidence.
+ */
+function normalizeAffinity(entry: CrewAffinityEntry): number {
+  const ceiling = entry.score >= 0 ? REACTION_SCORE.loved : -REACTION_SCORE.disliked
+  const level = Math.max(-1, Math.min(1, entry.score / ceiling))
+  return level * entry.confidence
+}
 
 /**
  * Compute crew affinity score for a single title.
@@ -56,17 +73,21 @@ export function computeCrewAffinity(
     const persons = crewList.slice(0, limit)
     if (persons.length === 0) return 0
 
-    let sum = 0
+    // Strongest signal wins, not the average: averaging over the whole cast
+    // let one known director at 0.30 get diluted by five unknown writers to
+    // ~0.03, so every candidate scored 0.50 and this 35% component decided
+    // nothing (measured 2026-08-28: 424/424 candidates at exactly 0.50).
+    // Unknown people are simply not evidence — no boost, no penalty, no dilution.
+    let strongest = 0
     for (const person of persons) {
       const entry = affinityMap[person.tmdb_person_id]
       if (entry) {
-        const raw = entry.score * entry.confidence
-        sum += raw
+        const raw = normalizeAffinity(entry)
+        if (Math.abs(raw) > Math.abs(strongest)) strongest = raw
         crew_matches.push({ name: person.name, role, affinity_score: raw })
       }
-      // Unknown person: contributes 0.0 (neutral — no boost, no penalty)
     }
-    return sum / persons.length
+    return strongest
   }
 
   const dirRaw  = roleRaw(crew.directors,        strandA.directors,        'director')

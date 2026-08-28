@@ -35,6 +35,23 @@ const TONE_KEYS: Array<keyof StrandC['tone_weights']> = [
   'cynical', 'warm', 'dark', 'comedic', 'hopeful',
 ]
 
+/**
+ * How far above or below the user's OWN average a weight sits, mapped back to
+ * [0, 1] around 0.5. Weights are compared relatively, not absolutely: the
+ * update rule only ever adds on a "loved", so after a few hundred ratings
+ * every tone sat at 0.97–1.0 and every title scored a perfect 1.0 here
+ * (measured 2026-08-28). What carries taste is which tones sit ABOVE the
+ * others. GAIN stretches a typical ±0.3 spread over the full range.
+ */
+const RELATIVE_GAIN = 1.5
+
+export function relativeWeight(weight: number, all: Record<string, number>): number {
+  const values = Object.values(all)
+  if (values.length === 0) return 0.5
+  const mean = values.reduce((s, v) => s + v, 0) / values.length
+  return Math.max(0, Math.min(1, 0.5 + (weight - mean) * RELATIVE_GAIN))
+}
+
 export function computeVisceralMatch(
   strandC: StrandC,
   title: Pick<TitleRow, 'pacing_tag' | 'tone_tags'>
@@ -44,7 +61,8 @@ export function computeVisceralMatch(
   // ── Pacing ────────────────────────────────────────────────
   let pacingScore = 0.5  // neutral if tag is null (not yet enriched)
   if (title.pacing_tag) {
-    pacingScore = strandC.pacing_weights[title.pacing_tag] ?? 0.5
+    const w = strandC.pacing_weights[title.pacing_tag]
+    pacingScore = w == null ? 0.5 : relativeWeight(w, strandC.pacing_weights)
     dimension_matches.push({
       dimension: 'pacing',
       user_value: dominantPacing(strandC.pacing_weights),
@@ -60,7 +78,7 @@ export function computeVisceralMatch(
     // Only score tones that exist in strand_c
     if (TONE_KEYS.includes(tag as keyof StrandC['tone_weights'])) {
       const weight = strandC.tone_weights[tag as keyof StrandC['tone_weights']]
-      matchedTones.push({ tag, weight })
+      matchedTones.push({ tag, weight: relativeWeight(weight, strandC.tone_weights) })
     }
   }
 

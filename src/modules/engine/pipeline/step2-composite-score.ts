@@ -5,11 +5,11 @@
  * Returns candidates sorted by composite_score descending.
  *
  * composite_score =
- *   (crew_affinity_score   × 0.35) +   // strand_a + lineage boost
- *   (narrative_match_score × 0.30) +   // strand_b pgvector cosine sim
- *   (visceral_match_score  × 0.20) +   // strand_c pacing/tone
- *   (external_rating_score × 0.10) +   // TMDB + OMDB normalized
- *   (recency_boost         × 0.05)     // slight recency bump
+ *   (crew_affinity_score   × 0.35) +   // strand_a (strongest match per role) + lineage boost
+ *   (narrative_match_score × 0.30) +   // strand_b pgvector cosine sim, as a percentile of the pool
+ *   (visceral_match_score  × 0.20) +   // strand_c pacing/tone, relative to the user's own mean
+ *   (external_rating_score × 0.14) +   // TMDB + OMDB normalized
+ *   (recency_boost         × 0.01)     // tiebreaker only (see WEIGHTS)
  *
  * DB queries: 1 pgvector RPC + up to 2 lineage fetches (only when
  * strand_a has crew with lineage_boost set — rare for new users).
@@ -28,6 +28,32 @@ import type { DNASchema } from '@/types/dna'
 import type { TitleRow, ScoredTitle } from '../types'
 
 const CURRENT_YEAR = new Date().getFullYear()
+
+/**
+ * Composite weights. Recency was 0.05 — and with the three taste components
+ * flat (see the notes in crew-affinity.ts, visceral-match.ts and
+ * toPercentiles below) it was the only thing that varied, so every batch
+ * was "whatever came out in the last two years" (measured 2026-08-28). It's
+ * a tiebreaker now; the 0.04 went to external rating.
+ */
+export const WEIGHTS = {
+  crew:      0.35,
+  narrative: 0.30,
+  visceral:  0.20,
+  external:  0.14,
+  recency:   0.01,
+} as const
+
+/** Map each score to its percentile rank within the pool (0 = lowest, 1 = highest). */
+export function toPercentiles(scores: Map<string, number>): Map<string, number> {
+  const entries = [...scores.entries()].sort((a, b) => a[1] - b[1])
+  const n = entries.length
+  const out = new Map<string, number>()
+  if (n === 0) return out
+  if (n === 1) { out.set(entries[0][0], 0.5); return out }
+  entries.forEach(([key], i) => out.set(key, i / (n - 1)))
+  return out
+}
 
 function externalRatingScore(title: TitleRow): number {
   const tmdb = title.tmdb_rating != null ? (title.tmdb_rating / 10) * 0.6 : null
@@ -63,6 +89,13 @@ export async function scoreCandidates(
     dna.metadata.taste_version,
     candidateIds
   )
+
+  // Rank within the pool, not raw cosine. Mistral embeddings put every
+  // enriched title at 0.94–0.99 against the fingerprint (measured 2026-08-28:
+  // min 0.943, median 0.985, max 0.991), so the raw value moved the composite
+  // by ~0.01 and this 30% component decided nothing. The percentile keeps the
+  // ORDER the embedding gives us and spreads it over the full range.
+  const narrativePct = toPercentiles(narrativeScores)
 
   // ── Pre-fetch lineage caches (0–2 DB queries) ────────────
   // For most new users, eligibleIds is empty → zero DB calls.
@@ -102,17 +135,17 @@ export async function scoreCandidates(
     const visceralResult = computeVisceralMatch(dna.strand_c_visceral_specs, title)
 
     const crew_affinity_score   = Math.min(1.0, crewResult.score + lineageResult.boost)
-    const narrative_match_score = narrativeScores.get(`${title.type}:${title.tmdb_id}`) ?? 0.5
+    const narrative_match_score = narrativePct.get(`${title.type}:${title.tmdb_id}`) ?? 0.5
     const visceral_match_score  = visceralResult.score
     const external_rating_score = externalRatingScore(title)
     const recency_boost         = recencyScore(title.release_year)
 
     const composite_score =
-      crew_affinity_score   * 0.35 +
-      narrative_match_score * 0.30 +
-      visceral_match_score  * 0.20 +
-      external_rating_score * 0.10 +
-      recency_boost         * 0.05
+      crew_affinity_score   * WEIGHTS.crew +
+      narrative_match_score * WEIGHTS.narrative +
+      visceral_match_score  * WEIGHTS.visceral +
+      external_rating_score * WEIGHTS.external +
+      recency_boost         * WEIGHTS.recency
 
     return {
       title,
