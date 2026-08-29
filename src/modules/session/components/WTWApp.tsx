@@ -593,7 +593,20 @@ export default function WTWApp({
         await fetchWithTimeout("/api/dna/bootstrap", { method: "POST" });
       } catch {} // idempotent; a failure/timeout just means the old cold path
       try {
-        await fetchWithTimeout("/api/recommendations/generate", { method: "POST" });
+        await fetchWithTimeout("/api/recommendations/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Warm the list the user will actually open — batches are cached
+          // per content type, so warming 'all' warms a key nothing reads.
+          // Read storage directly: this effect runs on mount, before the
+          // effect that hydrates `contentType` from the same key.
+          body: JSON.stringify({
+            content_type:
+              window.localStorage.getItem("wtw:contentType") === "series"
+                ? "series"
+                : "movies",
+          }),
+        });
       } catch {}
       warmDoneRef.current = true;
     })();

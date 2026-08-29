@@ -385,17 +385,22 @@ export async function POST(req: NextRequest) {
   }
 
   let session_context: SessionContext | undefined;
+  // Which list to warm. Batches are cached per content type, so a warm-up
+  // without one would fill rec:{user}:{version}:all — a key nothing serving
+  // cards reads any more, leaving the first tap a cold miss regardless.
+  let warmType: ContentType = "all";
   try {
     const body = await req.json().catch(() => ({}));
     if (body.session_context) {
       session_context = body.session_context as SessionContext;
     }
+    if (isContentType(body.content_type)) warmType = body.content_type;
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
   try {
-    const results = await generateRecommendations(user.id, session_context);
+    const results = await generateRecommendations(user.id, session_context, { contentType: warmType });
     return NextResponse.json(results);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

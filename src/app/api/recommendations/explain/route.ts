@@ -59,7 +59,13 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Read from Redis cache ─────────────────────────────────
-  const cached = await getCachedRecommendations(user.id, tasteVersion)
+  // Batches are cached per content type (rec:{user}:{version}:{type}), so
+  // read the entry this card actually came from. Without a `type` the caller
+  // can't say which, and both are checked.
+  const cached = type
+    ? await getCachedRecommendations(user.id, tasteVersion, type === 'movie' ? 'movies' : 'series')
+    : (await getCachedRecommendations(user.id, tasteVersion, 'movies')) ??
+      (await getCachedRecommendations(user.id, tasteVersion, 'series'))
 
   if (!cached) {
     return NextResponse.json(
