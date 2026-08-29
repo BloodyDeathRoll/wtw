@@ -137,7 +137,7 @@ export function scheduleExplanationPatch(
 /**
  * Streaming availability for a whole batch (decided 2026-08-28: checked on
  * demand per batch, not just by the nightly 150/night job). Best-effort —
- * a failure only means some cards stay without a "Watch on …" line.
+ * a failure only means some cards stay without a streaming line.
  */
 async function checkBatchProviders(results: RecommendationResult[]): Promise<void> {
   try {
@@ -219,7 +219,7 @@ export async function generateRecommendations(
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─
   // precompute.ts parks it under its key together with the inputs hash.
   // Already in the background, so the provider check runs inline: by the
-  // time session/end adopts the batch every card that CAN say "Watch on …"
+  // time session/end adopts the batch every card that CAN name a service
   // does.
   if (opts.precompute) {
     await checkBatchProviders(versioned)

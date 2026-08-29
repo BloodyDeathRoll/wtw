@@ -3,7 +3,7 @@
  *
  * The nightly job (grow-catalog.mts §3c) checks 150 titles a night, so most
  * of a 17,700-title catalog has never been asked — and a card only shows
- * "Watch on …" when its row has been. Decided 2026-08-28: check providers for
+ * a service name when its row has been. Decided 2026-08-28: check providers for
  * every title the moment it's about to be served, so the line shows whenever
  * TMDB lists one. Rows already checked within RECHECK_DAYS are left alone.
  *

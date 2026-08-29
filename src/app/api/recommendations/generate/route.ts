@@ -34,7 +34,7 @@ const DEFAULT_PAGE_SIZE = 6;
 // scorers change. Clamped to 1 at use, so an over-0.8 score just shows 100%.
 const MATCH_DISPLAY_CEILING = 0.8;
 
-// Which region's streaming availability the "Watch on …" line reports.
+// Which region's streaming availability the card's service line reports.
 // Deliberately a constant, not an env var (decided 2026-08-26): the nightly
 // script stores exactly this region (WATCH_REGIONS in grow-catalog.mts), and
 // two independently-set env vars would silently blank the line if they ever
@@ -264,7 +264,7 @@ export async function GET(req: Request) {
     // Streaming availability for THIS page, before it renders: the batch-wide
     // check runs in the background after generation, so this is usually a
     // no-op — but a page served before it lands would otherwise show no
-    // "Watch on …" until a refetch. At most one TMDB call per card on the
+    // no service name until a refetch. At most one TMDB call per card on the
     // page (≤6, in parallel); a failure just leaves the line off.
     try {
       await ensureWatchProviders(

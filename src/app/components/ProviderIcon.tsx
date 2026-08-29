@@ -1,5 +1,5 @@
 /**
- * ProviderIcon — a small brand mark for the "Watch on …" pill.
+ * ProviderIcon — a small brand mark for the streaming-service pill.
  *
  * Keyed by the canonical provider key from src/lib/watch-providers.ts. These
  * are simple, hand-drawn brand-coloured monograms — NOT the trademarked

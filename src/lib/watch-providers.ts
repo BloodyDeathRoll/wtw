@@ -6,7 +6,7 @@
  * "HBO Max Amazon Channel", "Paramount Plus Premium", "Paramount+ Roku Premium
  * Channel", … — and ranks live-TV bundles (fuboTV, Philo, YouTube TV) first
  * for network shows. Measured 2026-08-28 on the 300 checked titles: fuboTV
- * was the #1 entry more often than Netflix. Showing "Watch on fuboTV" with a
+ * was the #1 entry more often than Netflix. Naming fuboTV on the card with a
  * Netflix subscription sitting second is wrong for almost everyone.
  *
  * So: every raw name maps to a canonical brand (`key` for the icon, `label`
