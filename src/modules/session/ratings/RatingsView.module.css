@@ -9,7 +9,10 @@
 /* ─── Sub-header (back / title) — mirrors RecommendationsView ─── */
 .header {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  /* Third column is auto so the headerRight slot can hold more than the
+     40px app-menu trigger later, same as RecommendationsView. NOT positioned
+     — the menu's drawer overlay must resolve to .shell (see WTWApp.module.css). */
+  grid-template-columns: 40px 1fr auto;
   align-items: center;
   padding: 10px 14px;
   flex-shrink: 0;

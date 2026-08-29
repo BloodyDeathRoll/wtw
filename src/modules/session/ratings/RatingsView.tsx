@@ -13,7 +13,7 @@
  * Data comes from GET /api/recommendations/ratings (their own rows, RLS-scoped).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Reaction } from "@/types/dna";
 import type {
   RatingsSummary,
@@ -78,7 +78,14 @@ const tabMeta = (t: Tab) => (t === "removed" ? REMOVED_META : REACTION_META[t]);
 
 const REACTION_ORDER: Reaction[] = ["loved", "liked", "disliked"];
 
-export default function RatingsView({ onBack }: { onBack: () => void }) {
+export default function RatingsView({
+  onBack,
+  headerRight,
+}: {
+  onBack: () => void;
+  /** App menu — same slot on every screen (2026-08-29). */
+  headerRight?: ReactNode;
+}) {
   const [data, setData] = useState<RatingsSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [tab, setTab] = useState<Tab>("loved");
@@ -210,7 +217,7 @@ export default function RatingsView({ onBack }: { onBack: () => void }) {
           {I.back}
         </button>
         <span className={styles.headerTitle}>Your ratings</span>
-        <span className={styles.headerBtn} aria-hidden />
+        {headerRight ?? <span className={styles.headerBtn} aria-hidden />}
       </div>
 
       {status === "ready" && data && (

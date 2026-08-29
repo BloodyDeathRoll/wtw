@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 import type {
   FeedbackRating,
@@ -68,6 +69,12 @@ interface Props {
   onFindMore?: () => Promise<void>;
   /** Watchlist mode only — action on the empty state that opens the rec feed. */
   onBrowse?: () => void;
+  /**
+   * Rendered at the far right of the header, after this view's own control.
+   * The app menu goes here so it sits in the same spot on every screen
+   * (decided 2026-08-29).
+   */
+  headerRight?: ReactNode;
 }
 
 type ViewMode = "compact" | "full";
@@ -114,6 +121,7 @@ export default function RecommendationsView({
   mode = "recommendations",
   onFindMore,
   onBrowse,
+  headerRight,
 }: Props) {
   const [view, setView] = useState<ViewMode>("compact");
   const [recs, setRecs] = useState<Recommendation[]>([]);
@@ -429,14 +437,17 @@ export default function RecommendationsView({
           </svg>
         </button>
         <span className={styles.headerTitle}>{HEADER_TITLE[mode]}</span>
-        <button
-          type="button"
-          className={styles.headerBtn}
-          onClick={() => setView((v) => (v === "compact" ? "full" : "compact"))}
-          aria-label={view === "compact" ? "switch to full view" : "switch to list view"}
-        >
-          {view === "compact" ? IconCardFull : IconListGrid}
-        </button>
+        <div className={styles.headerRight}>
+          <button
+            type="button"
+            className={styles.headerBtn}
+            onClick={() => setView((v) => (v === "compact" ? "full" : "compact"))}
+            aria-label={view === "compact" ? "switch to full view" : "switch to list view"}
+          >
+            {view === "compact" ? IconCardFull : IconListGrid}
+          </button>
+          {headerRight}
+        </div>
       </div>
 
       {view === "compact" ? (
