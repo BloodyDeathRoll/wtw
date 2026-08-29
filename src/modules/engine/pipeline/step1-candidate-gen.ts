@@ -24,16 +24,20 @@
  * an LLM rerank/explanation, which is how 26 removed titles once left a user
  * with the same 23 servable cards every regen.
  *
- * Exclusion rule types (dna.contextual_logic.exclusion_rules), post-filtered:
- *   'person'    → remove titles whose crew contains that person ID
- *   'genre'     → remove titles containing that genre name
- *   'keyword'   → remove titles whose tone_tags or genre names match
- *   'franchise' → same as keyword
+ * User rules (dna.contextual_logic.exclusion_rules) are applied in two
+ * places, both driven by src/lib/exclusion-rules.ts:
+ *   - in SQL, as genre / keyword / language array params on all three RPCs.
+ *     This has to happen before the LIMIT: post-filtering alone collapsed the
+ *     pool for a broad rule ("no anime" on an anime-heavy fingerprint took out
+ *     most of the 150 nearest-neighbour rows and left a handful of cards).
+ *   - in TypeScript afterwards, for person rules and for the conjunctions no
+ *     single column expresses (anime = Animation + Japanese).
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { titleKey, recordKey, toRpcKeys, isSavedMarker, type MediaType } from '@/lib/title-key'
 import { titleTypeFor, type ContentType } from '@/lib/content-type'
+import { isExcluded, sqlExclusionParams } from '@/lib/exclusion-rules'
 import type { DNASchema, SessionContext } from '@/types/dna'
 import type { TitleRow } from '../types'
 import { getUserEmbedding } from '../scoring/narrative-match'
@@ -103,15 +107,20 @@ export async function getCandidates(
     if (req.includes('short') || req.includes('quick')) maxRuntime = 100
   }
 
+  // ── User exclusion rules → SQL params ─────────────────────
+  const exclusionRules = dna.contextual_logic.exclusion_rules
+  const ruleParams = sqlExclusionParams(exclusionRules)
+
   // ── Fetch the pools ───────────────────────────────────────
   // FRESH excludes served titles too — those belong to SEEN.
   const freshExclude = [...excludeKeys, ...servedKeys]
 
   const byVotes = supabase.rpc('get_candidate_titles', {
     watched_keys: freshExclude,
-    excluded_ids: [],          // person/genre exclusions are done in TypeScript below
+    excluded_ids: [],          // bare-id exclusions are inert (see 0014)
     title_type:   titleType,
     max_runtime:  maxRuntime,
+    ...ruleParams,
   })
 
   // Taste-driven pool. The embedding comes from the same cache/row the scorer
@@ -131,6 +140,7 @@ export async function getCandidates(
         max_runtime:     maxRuntime,
         pool_limit:      FRESH_BY_NARRATIVE_LIMIT,
         min_votes:       FRESH_BY_NARRATIVE_MIN_VOTES,
+        ...ruleParams,
       }),
     )
     .catch(err => {
@@ -146,6 +156,7 @@ export async function getCandidates(
         title_type:   titleType,
         max_runtime:  maxRuntime,
         pool_limit:   SEEN_LIMIT,
+        ...ruleParams,
       })
 
   const [votesRes, narrativeRes, seenRes] = await Promise.all([byVotes, byNarrative, seen])
@@ -170,46 +181,14 @@ export async function getCandidates(
     })),
   ]
 
-  // ── Post-filter: exclusion rules ──────────────────────────
-  const exclusions = dna.contextual_logic.exclusion_rules
-  if (exclusions.length === 0) return candidates
+  // ── Post-filter: what SQL could not express ───────────────
+  // Person rules (crew is JSONB the RPCs don't unnest) and conjunctions.
+  // Cheap — by here the pool is a few hundred rows.
+  if (exclusionRules.length === 0) return candidates
 
-  const excludedPersonIds = new Set(
-    exclusions.filter(e => e.type === 'person').map(e => e.id)
-  )
-  const excludedGenreNames = new Set(
-    exclusions.filter(e => e.type === 'genre').map(e => e.name.toLowerCase())
-  )
-  const excludedKeywords = exclusions
-    .filter(e => e.type === 'keyword' || e.type === 'franchise')
-    .map(e => e.name.toLowerCase())
-
-  return candidates.filter(title => {
-    // Person exclusion: check all crew roles
-    if (excludedPersonIds.size > 0) {
-      const allCrew = [
-        ...title.crew.directors,
-        ...title.crew.writers,
-        ...title.crew.cinematographers,
-        ...title.crew.cast,
-      ]
-      if (allCrew.some(c => excludedPersonIds.has(c.tmdb_person_id))) return false
-    }
-
-    // Genre exclusion
-    if (excludedGenreNames.size > 0) {
-      if (title.genres.some(g => excludedGenreNames.has(g.name.toLowerCase()))) return false
-    }
-
-    // Keyword/franchise exclusion: check tone_tags and genre names
-    if (excludedKeywords.length > 0) {
-      const searchable = [
-        ...title.tone_tags,
-        ...title.genres.map(g => g.name.toLowerCase()),
-      ]
-      if (excludedKeywords.some(kw => searchable.some(s => s.includes(kw)))) return false
-    }
-
-    return true
-  })
+  const kept = candidates.filter(title => !isExcluded(title, exclusionRules))
+  if (kept.length < candidates.length) {
+    console.log(`[step1] ${candidates.length - kept.length} candidate(s) dropped by user rules`)
+  }
+  return kept
 }

@@ -13,6 +13,7 @@ import {
 import { generateRecommendations } from "@/modules/engine";
 import { ensureWatchProviders } from "@/modules/engine/enrichment/ensure-watch-providers";
 import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
+import { isExcluded, type MatchableTitle } from "@/lib/exclusion-rules";
 import {
   tmdbPosterUrl,
   youtubeTrailerUrl,
@@ -90,6 +91,35 @@ async function getRemovedKeys(userId: string): Promise<Set<string>> {
  * source to what the UI renders — id, year, meta, rating, match, reason,
  * poster_url (joined from `titles` on (tmdb_id, type)), motif/palette fallback.
  */
+/**
+ * Catalog fields for the user's exclusion rules, keyed `type:tmdb_id`.
+ *
+ * A rule written today cannot retroactively empty a batch generated
+ * yesterday: the cache is keyed by taste_version, and adding a rule bumps it,
+ * but a batch can still be in flight or the version bump can be skipped. This
+ * is the read-side guarantee — a title the user has forbidden never renders,
+ * whatever the cache holds. One query per page-serve, only when rules exist.
+ */
+async function fetchRuleFields(
+  recs: RecommendationResult[],
+): Promise<Map<string, MatchableTitle>> {
+  if (recs.length === 0) return new Map();
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("titles")
+    .select("tmdb_id, type, genres, keywords, original_language, tone_tags, crew")
+    .in("tmdb_id", recs.map((r) => r.tmdb_id));
+  if (error) {
+    // Fail open on the metadata read: dropping the whole page because Postgres
+    // blipped is worse than one page that slips a rule for one request.
+    console.warn("[recommendations/generate] rule-field read failed (non-fatal):", error.message);
+    return new Map();
+  }
+  return new Map(
+    (data ?? []).map((t) => [`${t.type}:${t.tmdb_id}`, t as MatchableTitle]),
+  );
+}
+
 async function toUIRecommendations(
   recs: RecommendationResult[],
 ): Promise<Recommendation[]> {
@@ -259,9 +289,23 @@ export async function GET(req: Request) {
     const typeFiltered = wanted ? recs.filter((r) => r.type === wanted) : recs;
     // Drop removed + already-judged titles before paginating so pages stay
     // full-sized.
-    const filtered = typeFiltered.filter(
+    let filtered = typeFiltered.filter(
       (r) => !removed.has(titleKey(r.type, r.tmdb_id)) && !matchesKeySet(judged, r.type, r.tmdb_id),
     );
+
+    // The user's standing rules, applied to whatever the cache handed us.
+    const rules = dna?.contextual_logic?.exclusion_rules ?? [];
+    if (rules.length > 0) {
+      const fields = await fetchRuleFields(filtered);
+      const before = filtered.length;
+      filtered = filtered.filter((r) => {
+        const t = fields.get(`${r.type}:${r.tmdb_id}`);
+        return !t || !isExcluded(t, rules);
+      });
+      if (filtered.length !== before) {
+        console.log(`[recommendations/generate] ${before - filtered.length} cached title(s) dropped by user rules`);
+      }
+    }
     const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
     const nextOffset = offset + items.length;
     const hasMore = nextOffset < filtered.length;

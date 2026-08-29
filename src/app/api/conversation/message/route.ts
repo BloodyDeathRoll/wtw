@@ -1,14 +1,21 @@
-// Conversation API — Task #8 MVP.
+// Conversation API.
 // Auth-gated (Supabase session required), streams Groq/Llama 3.3 70B via the
-// Vercel AI SDK. No DNA stitching or signal extraction yet — those land in
-// later tasks. Response shape matches `useChat`'s data-stream protocol so the
-// client wiring can drop in without server changes.
+// Vercel AI SDK. Response shape matches `useChat`'s data-stream protocol so
+// the client wiring can drop in without server changes.
+//
+// The model is briefed on the user's fingerprint (2026-08-29). Until then it
+// got a hardcoded prompt and the message history and nothing else — no rules,
+// no strands, no signals — which is why it would agree to "no anime" and then
+// have no way to honour it, and why every title it named inline was a guess.
+// Signal extraction still happens at session end, not here.
 
 import { groq } from "@ai-sdk/groq";
 import { MODELS } from "@/lib/ai-models";
 import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { loadDNA } from "@/modules/dna/lib/load-save";
+import { dnaPromptContext } from "@/modules/dna/lib/prompt-context";
 import {
   saveMessage,
   updateConversationState,
@@ -30,7 +37,13 @@ Style rules:
 If the user explicitly asks for a recommendation:
 - If you barely know them, say so honestly in one line and either offer a tentative pick with a hedge ("based on the little I have so far, you might try…") or ask one more taste-revealing question first.
 - If you have several signals, name one or two titles inline in prose with a one-line "why this".
-- The structured recommendation engine isn't wired yet; any title you name is a placeholder, not a final pick.`;
+- Anything you name in conversation is a conversational suggestion; the ranked batch comes from the recommendation engine.
+
+If the user gives you a standing instruction ("never show me anime", "less
+romance", "nothing with that actor"), acknowledge it in a few words and move
+on. It is recorded when the session ends and applied to every future batch —
+so do not promise to "keep it in mind", and never claim to have already
+changed anything.`;
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -98,9 +111,19 @@ export async function POST(req: Request) {
     }
   }
 
+  // The fingerprint briefing. Best-effort: a DNA read failure degrades the
+  // turn to the old context-free behaviour rather than failing the chat.
+  // loadDNA is cached (60s), so this is usually not a round trip.
+  let dnaContext = "";
+  try {
+    dnaContext = dnaPromptContext(await loadDNA(user.id));
+  } catch (e) {
+    console.error("[conversation] DNA context unavailable", e);
+  }
+
   const result = streamText({
     model: groq(MODELS.text),
-    system: SYSTEM_PROMPT,
+    system: SYSTEM_PROMPT + dnaContext,
     messages: convertToCoreMessages(messages),
     onFinish: async ({ text }) => {
       if (!text) return;

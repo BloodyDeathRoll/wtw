@@ -60,6 +60,8 @@ export async function fetchAndCacheTitle(
         poster_path: detail.poster_path,
         trailer_key: detail.trailer_key,
         crew: detail.crew,
+        original_language: detail.original_language,
+        keywords: detail.keywords,
         // narrative fields (pacing_tag, tone_tags, narrative_metadata,
         // narrative_embedding, enriched_at) are left null — filled by
         // enrichTitleWithNarrative()

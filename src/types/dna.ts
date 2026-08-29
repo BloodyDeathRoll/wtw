@@ -100,6 +100,15 @@ export interface ExclusionRule {
 export interface SoftPreference {
   signal: string
   weight_modifier: number   // 0.0 to 1.0
+  /**
+   * What `signal` names. Optional and additive: without it a person named
+   * softly ("less Adam Sandler") was stored as a bare string and matched
+   * against genres and keywords, where a person's name never appears — the
+   * same silent no-op that made hard person rules dead (2026-08-29).
+   */
+  target_type?: ExclusionType
+  /** Resolved TMDB person id when target_type is 'person'. */
+  person_id?: string
 }
 
 export interface TemporalModifier {
@@ -210,6 +219,31 @@ export interface SessionSummary {
   new_open_questions: string[]
   recommendation_made: string | null
   recommendation_accepted: boolean | null
+  /**
+   * Standing instructions the user gave in conversation ("never show me
+   * anime", "less romance"), extracted alongside the titles and merged into
+   * contextual_logic. Optional and additive: before this, the extractor only
+   * ever returned titles, so an instruction was acknowledged by the chat model
+   * and then dropped on the floor (2026-08-29).
+   */
+  directives?: SessionDirective[]
+}
+
+/**
+ * One extracted instruction, before it is turned into an ExclusionRule or a
+ * SoftPreference. `kind` is the strength the user expressed, not a guess:
+ * "never/don't ever" is exclusion, "less/prefer fewer" is soft_preference.
+ */
+export interface SessionDirective {
+  kind: 'exclusion' | 'soft_preference'
+  target_type: ExclusionType
+  name: string
+  raw: string
+  reason: string
+  /** For soft_preference only — 0.1 almost never … 0.9 slight reduction. */
+  weight_modifier?: number
+  /** Resolved TMDB person id for target_type 'person'; '' when unresolved. */
+  person_id?: string
 }
 
 /**

@@ -10,6 +10,7 @@ import { rewriteChangedDimensionNotes } from './lib/rewrite-dimension-notes'
 import { regenerateEmbedding } from './lib/regenerate-embedding'
 import { recordStretchPick } from './lib/record-stretch-pick'
 import { storeSnapshot } from './lib/snapshot'
+import { applyDirectives } from './lib/apply-directives'
 
 export async function updateSchemaFromSession(
   user_id: string,
@@ -78,6 +79,18 @@ export async function updateSchemaFromSession(
     if (!dna.learning_loop.open_questions.includes(q)) {
       dna.learning_loop.open_questions.push(q)
     }
+  }
+
+  // 6b. Contextual logic — standing instructions the user gave in chat.
+  //     Merged before the version bump below, so the rec cache (keyed by
+  //     taste_version) is busted by the same write that adds the rule and the
+  //     very next batch is generated under it.
+  const merged = applyDirectives(dna.contextual_logic, summary.directives)
+  if (merged.exclusions_added > 0 || merged.soft_preferences_added > 0) {
+    console.log(
+      `[update-from-session] +${merged.exclusions_added} exclusion(s), ` +
+      `+${merged.soft_preferences_added} soft preference(s)`,
+    )
   }
 
   // 7. Mark recommendation outcome if provided

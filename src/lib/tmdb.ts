@@ -111,6 +111,26 @@ function pickTrailerKey(videos: TMDBVideos | undefined): string | null {
   return rank(best) <= 3 ? best.key : null
 }
 
+/**
+ * TMDB keywords come back under `keywords` for movies and `results` for TV,
+ * both inside the `keywords` append. They are what makes a category rule like
+ * "no anime" matchable at all — anime is not a genre (migration 0021).
+ */
+interface TMDBKeywordsBlock {
+  keywords?: { id: number; name: string }[]  // movie
+  results?: { id: number; name: string }[]   // tv
+}
+
+function normaliseKeywords(block: TMDBKeywordsBlock | undefined): string[] {
+  const raw = block?.keywords ?? block?.results ?? []
+  const out = new Set<string>()
+  for (const k of raw) {
+    const name = k?.name?.trim().toLowerCase()
+    if (name) out.add(name)
+  }
+  return [...out]
+}
+
 // ─────────────────────────────────────────────
 // Normalised crew shape (matches titles.crew JSONB)
 // ─────────────────────────────────────────────
@@ -177,6 +197,8 @@ export interface TMDBMovieDetail {
   imdb_id: string | null    // for OMDB lookup
   poster_path: string | null // TMDB relative path, e.g. '/abc.jpg'
   trailer_key: string | null // YouTube key of the best trailer, or null
+  original_language: string | null // ISO 639-1, e.g. 'ja' — see migration 0021
+  keywords: string[]         // lowercased TMDB keywords, e.g. ['anime']
   crew: TMDBCrewSnapshot
 }
 
@@ -193,6 +215,8 @@ export interface TMDBTVDetail {
   imdb_id: string | null
   poster_path: string | null // TMDB relative path, e.g. '/abc.jpg'
   trailer_key: string | null // YouTube key of the best trailer, or null
+  original_language: string | null
+  keywords: string[]
   crew: TMDBCrewSnapshot
 }
 
@@ -279,7 +303,9 @@ export async function getMovie(tmdb_id: string): Promise<TMDBMovieDetail | null>
     credits: TMDBCredits
     external_ids: TMDBExternalIds
     videos: TMDBVideos
-  }>(`/movie/${tmdb_id}`, { append_to_response: 'credits,external_ids,videos' })
+    original_language: string | null
+    keywords: TMDBKeywordsBlock
+  }>(`/movie/${tmdb_id}`, { append_to_response: 'credits,external_ids,videos,keywords' })
 
   if (!raw) return null
 
@@ -296,6 +322,8 @@ export async function getMovie(tmdb_id: string): Promise<TMDBMovieDetail | null>
     imdb_id: raw.external_ids?.imdb_id ?? null,
     poster_path: raw.poster_path ?? null,
     trailer_key: pickTrailerKey(raw.videos),
+    original_language: raw.original_language ?? null,
+    keywords: normaliseKeywords(raw.keywords),
     crew: normaliseCredits(raw.credits),
   }
 }
@@ -318,7 +346,9 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     credits: TMDBCredits
     external_ids: TMDBExternalIds
     videos: TMDBVideos
-  }>(`/tv/${tmdb_id}`, { append_to_response: 'credits,external_ids,videos' })
+    original_language: string | null
+    keywords: TMDBKeywordsBlock
+  }>(`/tv/${tmdb_id}`, { append_to_response: 'credits,external_ids,videos,keywords' })
 
   if (!raw) return null
 
@@ -339,6 +369,8 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     imdb_id: raw.external_ids?.imdb_id ?? null,
     poster_path: raw.poster_path ?? null,
     trailer_key: pickTrailerKey(raw.videos),
+    original_language: raw.original_language ?? null,
+    keywords: normaliseKeywords(raw.keywords),
     crew: normaliseCredits(raw.credits, raw.created_by),
   }
 }
@@ -436,6 +468,36 @@ export async function searchTitle(
 
   if (!best) return null
   return { tmdb_id: best.tmdb_id, title: best.title, type: best.type }
+}
+
+/**
+ * Search TMDB for a person by name and resolve them to a tmdb_person_id.
+ *
+ * An exclusion rule like "never show me Adam Sandler films" is matched against
+ * crew tmdb_person_id, so a rule written without one can never fire. Rules
+ * used to be stored with `id: ''` — this is what fills it.
+ *
+ * Returns null when TMDB has no match; the caller keeps the rule anyway and
+ * falls back to name matching (src/lib/exclusion-rules.ts).
+ */
+export async function searchPerson(
+  name: string,
+): Promise<{ tmdb_person_id: string; name: string } | null> {
+  const query = name.trim()
+  if (!query) return null
+
+  const raw = await tmdbFetch<{
+    results: { id: number; name: string; popularity?: number }[]
+  }>('/search/person', { query, page: '1' })
+
+  const results = raw?.results ?? []
+  if (results.length === 0) return null
+
+  // Prefer an exact name match; TMDB's top popularity hit is otherwise right.
+  const lower = query.toLowerCase()
+  const exact = results.find(r => r.name?.toLowerCase() === lower)
+  const best = exact ?? results.reduce((a, b) => ((b.popularity ?? 0) > (a.popularity ?? 0) ? b : a))
+  return { tmdb_person_id: String(best.id), name: best.name }
 }
 
 /**

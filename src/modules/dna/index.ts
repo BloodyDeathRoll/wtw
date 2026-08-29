@@ -14,13 +14,14 @@
  * - Dimension notes rewriting (LLM)
  * - Versioned snapshots (keep-last-5, rollback)
  * - Profile UI: /profile/dna
- * - Free-text instruction parser (Groq → structured exclusion rules)
+ * - Standing instructions (exclusion rules + soft preferences), merged from
+ *   what the user says in session (lib/apply-directives.ts)
  *
  * API routes owned by this module:
  * - POST /api/dna/update-from-session
  * - POST /api/dna/bootstrap
- * - POST /api/dna/parse-instruction
  * - GET  /api/dna/summary
+ * - DELETE /api/dna/rules  (remove one standing rule — the Taste DNA page)
  *
  * Regret + stretch pick feedback are triggered from
  * POST /api/recommendations/feedback (Assignment 2's route), which calls

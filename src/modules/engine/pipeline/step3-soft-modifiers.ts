@@ -11,6 +11,7 @@
  * Re-sorts by composite_score after modification.
  */
 
+import { matchesSoftSignal } from '@/lib/exclusion-rules'
 import type { DNASchema, SessionContext } from '@/types/dna'
 import type { ScoredTitle } from '../types'
 
@@ -28,17 +29,14 @@ export function applySoftModifiers(
 
       // ── Soft preferences ────────────────────────────────
       for (const pref of soft_preferences) {
-        const signal = pref.signal.toLowerCase()
         const modifier = pref.weight_modifier
 
-        // Check if any genre or tone_tag on this title matches the preference signal
-        const titleTerms = [
-          ...item.title.genres.map(g => g.name.toLowerCase()),
-          ...item.title.tone_tags.map(t => t.toLowerCase()),
-        ]
-        const matches = titleTerms.some(term => term.includes(signal) || signal.includes(term))
-
-        if (matches) {
+        // Genre names and tone tags used to be the only things a signal could
+        // be compared against. matchesSoftSignal widens that to crew, TMDB
+        // keywords, original language and the category aliases
+        // (src/lib/exclusion-rules.ts), keeping the old substring test as a
+        // fallback.
+        if (matchesSoftSignal(item.title, pref.signal, pref)) {
           score *= modifier
           applied.push({ signal: pref.signal, modifier })
         }

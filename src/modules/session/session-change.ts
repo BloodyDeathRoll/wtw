@@ -23,6 +23,9 @@ import { matchesKeySet, recordKey } from '@/lib/title-key'
  * regeneration. `recommendation_made` is included defensively: analyzeSession
  * leaves it null today, but if it's ever populated, skipping the update here
  * would otherwise silently drop the acceptance/stretch-pick history it feeds.
+ * `directives` counts too: a session where the user only said "never show me
+ * anime" produces no signals, and fast-pathing it would keep serving the warm
+ * cache the rule was meant to replace.
  */
 export function hasMaterialChange(summary: SessionSummary): boolean {
   return (
@@ -30,7 +33,8 @@ export function hasMaterialChange(summary: SessionSummary): boolean {
     Object.keys(summary.dimension_updates).length > 0 ||
     summary.open_questions_resolved.length > 0 ||
     summary.new_open_questions.length > 0 ||
-    summary.recommendation_made != null
+    summary.recommendation_made != null ||
+    (summary.directives?.length ?? 0) > 0
   )
 }
 

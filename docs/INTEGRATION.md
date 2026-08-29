@@ -136,3 +136,38 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 ## Standing handoff notes
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
+
+### 2026-08-29 — User instructions are now enforced (`feat/user-exclusion-rules`)
+
+Reported: "no anime" said many times, acknowledged by the chat model every
+time, next batch ~80% anime. Three independent causes, all fixed:
+
+1. **Nothing wrote a rule.** `analyzeSession` extracted only titles, so a
+   categorical instruction had no field to land in.
+   `dna.contextual_logic.exclusion_rules` had exactly one writer —
+   `POST /api/dna/parse-instruction` — and nothing in the app called it (that
+   route is now deleted; it carried the same empty-person-id bug).
+   → `SessionSummary.directives` (new, optional) + `applyDirectives`.
+2. **Person rules were structurally dead.** They were stored with `id: ''`
+   and matched on `tmdb_person_id`. → `searchPerson()` resolves the id at
+   extraction time; `exclusion-rules.ts` falls back to name matching.
+3. **"anime" had nothing to match.** Not a TMDB genre, and `titles` had
+   neither `original_language` nor `keywords`. → migration 0021 + the
+   `backfill-language-keywords` script.
+
+Rules are enforced in SQL (three array params on the candidate RPCs, applied
+before the LIMIT so a broad rule can't collapse the pool), in TypeScript for
+person rules and conjunctions, and again at read time on the cached batch.
+Adding or removing a rule bumps `taste_version`, which busts the rec cache.
+
+The Taste DNA page's "Your Rules" section is now a client island with a
+Remove control per rule (`DELETE /api/dna/rules`), and renders even when
+empty so a user can see whether an instruction registered.
+
+The conversation route now briefs the model on the fingerprint
+(`dnaPromptContext`): the rules in full and stated as binding, top crew
+affinities, the highest-confidence narrative notes, the last 8 judged titles,
+and open questions. Before this it got a hardcoded prompt and the message
+history and nothing else, which is why it would agree to "no anime" without
+checking anything. Best-effort — a DNA read failure degrades the turn rather
+than failing the chat. Signal extraction still happens at session end.
