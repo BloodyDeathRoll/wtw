@@ -72,7 +72,12 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  /* The legend is nowrap, so on a narrow screen the pressure lands on the
+     title — measured: "Visceral Specs" broke to two lines at 360px. Let the
+     head wrap instead, so the legend drops to its own line and the title
+     stays intact. */
+  flex-wrap: wrap;
+  gap: 4px 12px;
   margin-bottom: 18px;
 }
 .sectionTitle {
