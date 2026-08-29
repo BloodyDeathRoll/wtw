@@ -42,9 +42,23 @@ function dimensionValue(value: unknown): string {
 
 // ── Sub-components (server) ───────────────────────────────────
 
-function Meter({ value, color = 'var(--wtw-green)' }: { value: number; color?: string }) {
+function Meter({
+  value,
+  color = 'var(--wtw-green)',
+  /**
+   * Draw a tick at the midpoint. Only for the visceral WEIGHTS, where 50 is
+   * neutral and the interesting thing is which side of it a value sits on —
+   * a confidence meter runs 0→100 with no neutral point, so a tick there
+   * would imply a meaning it doesn't have.
+   */
+  neutral = false,
+}: {
+  value: number
+  color?: string
+  neutral?: boolean
+}) {
   return (
-    <div className={styles.track}>
+    <div className={`${styles.track} ${neutral ? styles.trackNeutral : ''}`}>
       <div className={styles.fill} style={{ width: pct(value), background: color }} />
     </div>
   )
@@ -54,7 +68,7 @@ function SpecRow({ label, value, color }: { label: string; value: number; color:
   return (
     <div className={styles.specRow}>
       <span className={styles.specLabel}>{label.replace(/_/g, ' ')}</span>
-      <Meter value={value} color={color} />
+      <Meter value={value} color={color} neutral />
       <span className={styles.specValue}>{Math.round(value * 100)}</span>
     </div>
   )

@@ -139,16 +139,32 @@
   font-size: 15px;
   font-weight: 600;
   text-align: right;
-  color: var(--wtw-fg);
+  /* Pure white, matching .specValue — the page had two nearly-identical
+     whites for the same kind of number. */
+  color: #fff;
   font-variant-numeric: tabular-nums;
 }
 
 /* ─── Meters ─── */
 .track {
+  position: relative;
   height: 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.09);
   overflow: hidden;
+}
+/* Tick at the midpoint, for the weight meters only — it marks the neutral
+   point the section head names, so you can see which side of it a value
+   sits on. Above the fill, so it stays visible on a filled bar. */
+.trackNeutral::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.55);
 }
 .fill {
   height: 100%;
@@ -202,7 +218,7 @@
   text-align: right;
   font-size: 15px;
   font-weight: 600;
-  color: var(--wtw-fg);
+  color: #fff;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
