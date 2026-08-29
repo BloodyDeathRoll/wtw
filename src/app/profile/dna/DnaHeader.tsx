@@ -61,8 +61,10 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
         onWatchlist={go("watchlist")}
         onFastLearning={go("learning")}
         onRatings={go("ratings")}
-        // Already here — close the drawer by re-rendering the page.
-        onProfile={() => router.refresh()}
+        // Already on this page. AppMenu closes the drawer itself, so there is
+        // nothing to do — a router.refresh() here would refetch the whole
+        // server component for no change.
+        onProfile={() => {}}
         user={user}
         onSignOut={async () => {
           await createClient().auth.signOut();

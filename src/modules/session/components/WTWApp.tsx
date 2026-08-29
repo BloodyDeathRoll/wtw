@@ -392,7 +392,7 @@ function TypingDots() {
 // Input bar
 // ─────────────────────────────────────────────────────────────
 /** Stages a standalone route may link into with ?stage=… (see AppMenu). */
-const DEEP_LINK_STAGES: string[] = [
+const DEEP_LINK_STAGES: readonly Stage[] = [
   "recommendations",
   "watchlist",
   "learning",
