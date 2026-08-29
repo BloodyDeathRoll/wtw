@@ -66,13 +66,21 @@
   border-radius: 20px;
   padding: 22px 20px;
 }
+/* Title row: the section name, and across from it the unit its numbers are
+   in — named once here instead of repeated on every line. */
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
 .sectionTitle {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--wtw-fg-muted);
-  margin-bottom: 18px;
 }
 .note {
   font-size: 15px;
@@ -101,10 +109,12 @@
   text-transform: capitalize;
 }
 .groupLegend {
+  flex: 0 0 auto;
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--wtw-fg-dim);
+  white-space: nowrap;
 }
 .personRow {
   display: grid;
@@ -175,13 +185,19 @@
 .dimMeter {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* Fixed number column so every meter ends at the same x, like the
+     creative-affinities rows. */
+  grid-template-columns: 1fr 46px;
   align-items: center;
   gap: 12px;
 }
+/* Just the number, styled like the creative-affinities percentages — the
+   unit is named once in the section head. */
 .dimConf {
-  font-size: 13px;
-  color: var(--wtw-fg-dim);
+  text-align: right;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wtw-fg);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
