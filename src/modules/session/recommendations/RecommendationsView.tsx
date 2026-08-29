@@ -123,20 +123,21 @@ const CONTENT_TYPE_LABEL: Record<"movies" | "series", string> = {
 };
 
 /**
- * The header title doubles as the Movies/Series picker, same as the home
- * screen's (2026-08-29). Switching content type refetches: a batch is
- * GENERATED for one type, so the other list is a different batch entirely.
- * Not offered in watchlist mode — the watchlist deliberately ignores the
- * toggle (docs/watchlist-plan.md decision 3).
+ * The header title is the Movies/Series picker, same as the home screen's
+ * (2026-08-29). The trigger shows the CURRENT type rather than the screen
+ * name, so the list you are on is visible without opening the menu — the
+ * screen name would leave Movies and Series looking identical.
+ *
+ * Switching refetches: a batch is GENERATED for one type, so the other list
+ * is a different batch entirely. Not offered in watchlist mode — the
+ * watchlist deliberately ignores the toggle (docs/watchlist-plan.md #3).
  */
 function TypePicker({
   contentType,
   setContentType,
-  label,
 }: {
   contentType: "movies" | "series";
   setContentType: (c: "movies" | "series") => void;
-  label: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -158,8 +159,9 @@ function TypePicker({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label={`content type: ${CONTENT_TYPE_LABEL[contentType]}`}
       >
-        <span>{label}</span>
+        <span>{CONTENT_TYPE_LABEL[contentType]}</span>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="m6 9 6 6 6-6" />
         </svg>
@@ -513,11 +515,7 @@ export default function RecommendationsView({
           </svg>
         </button>
         {setContentType && mode !== "watchlist" ? (
-          <TypePicker
-            contentType={contentType}
-            setContentType={setContentType}
-            label={HEADER_TITLE[mode]}
-          />
+          <TypePicker contentType={contentType} setContentType={setContentType} />
         ) : (
           <span className={styles.headerTitle}>{HEADER_TITLE[mode]}</span>
         )}
