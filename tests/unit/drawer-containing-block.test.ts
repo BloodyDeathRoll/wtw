@@ -20,6 +20,10 @@ const CSS = {
   '.topbar': 'src/modules/session/components/WTWApp.module.css',
   '.header (recommendations)': 'src/modules/session/recommendations/RecommendationsView.module.css',
   '.header (ratings)': 'src/modules/session/ratings/RatingsView.module.css',
+  // /profile/dna is a standalone route with no .shell wrapper, so the overlay
+  // resolves all the way to the initial containing block. Every ancestor it
+  // passes has to stay unpositioned.
+  '.header (dna)': 'src/app/profile/dna/dna.module.css',
 } as const
 
 /** The body of the first `.<name> {…}` rule in `css`. */
@@ -39,6 +43,9 @@ describe('drawer overlay containing block', () => {
     ['.topbar', CSS['.topbar'], '.topbar'],
     ['.header (recommendations)', CSS['.header (recommendations)'], '.header'],
     ['.header (ratings)', CSS['.header (ratings)'], '.header'],
+    ['.header (dna)', CSS['.header (dna)'], '.header'],
+    ['.page (dna)', CSS['.header (dna)'], '.page'],
+    ['.container (dna)', CSS['.header (dna)'], '.container'],
   ])('%s stays unpositioned so the overlay resolves to .shell', (_label, file, selector) => {
     const body = ruleBody(readFileSync(join(process.cwd(), file), 'utf8'), selector)
     expect(body).not.toMatch(/position:\s*(relative|absolute|fixed|sticky)/)
