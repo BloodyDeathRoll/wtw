@@ -30,9 +30,6 @@
 .headerBtn:first-child {
   justify-self: start;
 }
-.headerBtn:last-child {
-  justify-self: end;
-}
 /* The view toggle sits to the LEFT of the app menu, which is anchored at the
    far right on every screen. */
 .headerRight {

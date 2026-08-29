@@ -103,8 +103,13 @@
 }
 
 /* ─── Top bar ─── */
+/* NOT positioned, deliberately. AppMenu renders its drawer overlay
+   (position: absolute; inset: 0) as a sibling of the hamburger, so whatever
+   ancestor is positioned becomes the overlay's box. That has to be .shell —
+   the full app — not this ~56px header row. Nothing here needs a containing
+   block: .brandMenu anchors to .brand, which is relative itself. Same reason
+   the per-view .header rules stay unpositioned. */
 .topbar {
-  position: relative;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -177,6 +182,7 @@
    behind it. The panel sits at the top, full-bleed, flat (no border, no
    rounding, no shadow). */
 .userMenuOverlay {
+  /* Sized by the nearest positioned ancestor — must be .shell (see .topbar). */
   position: absolute;
   inset: 0;
   z-index: 19;
