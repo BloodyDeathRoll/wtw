@@ -42,9 +42,23 @@ function dimensionValue(value: unknown): string {
 
 // ── Sub-components (server) ───────────────────────────────────
 
-function Meter({ value, color = 'var(--wtw-green)' }: { value: number; color?: string }) {
+function Meter({
+  value,
+  color = 'var(--wtw-green)',
+  /**
+   * Draw a tick at the midpoint. Only for the visceral WEIGHTS, where 50 is
+   * neutral and the interesting thing is which side of it a value sits on —
+   * a confidence meter runs 0→100 with no neutral point, so a tick there
+   * would imply a meaning it doesn't have.
+   */
+  neutral = false,
+}: {
+  value: number
+  color?: string
+  neutral?: boolean
+}) {
   return (
-    <div className={styles.track}>
+    <div className={`${styles.track} ${neutral ? styles.trackNeutral : ''}`}>
       <div className={styles.fill} style={{ width: pct(value), background: color }} />
     </div>
   )
@@ -54,16 +68,28 @@ function SpecRow({ label, value, color }: { label: string; value: number; color:
   return (
     <div className={styles.specRow}>
       <span className={styles.specLabel}>{label.replace(/_/g, ' ')}</span>
-      <Meter value={value} color={color} />
+      <Meter value={value} color={color} neutral />
       <span className={styles.specValue}>{Math.round(value * 100)}</span>
     </div>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  legend,
+  children,
+}: {
+  title: string
+  /** Names the unit of the numbers in this section, once, across from the title. */
+  legend?: string
+  children: React.ReactNode
+}) {
   return (
     <section className={styles.section}>
-      <h2 className={styles.sectionTitle}>{title}</h2>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>{title}</h2>
+        {legend && <span className={styles.groupLegend}>{legend}</span>}
+      </div>
       {children}
     </section>
   )
@@ -149,7 +175,7 @@ export default async function DNAProfilePage() {
         {/* Strand B — Narrative Dimensions.
             Each dimension is a block: quiet label, the reading as the
             headline, the plain-English note, then a confidence meter. */}
-        <Section title="Narrative Dimensions">
+        <Section title="Narrative Dimensions" legend="Confidence">
           {(Object.keys(sb) as (keyof typeof sb)[]).map(dim => {
             const d = sb[dim]
             const unsure = d.confidence < UNSURE_BELOW
@@ -162,7 +188,7 @@ export default async function DNAProfilePage() {
                 {!unsure && d.notes && <p className={styles.dimNote}>{d.notes}</p>}
                 <div className={styles.dimMeter}>
                   <Meter value={d.confidence} />
-                  <span className={styles.dimConf}>{pct(d.confidence)} confidence</span>
+                  <span className={styles.dimConf}>{pct(d.confidence)}</span>
                 </div>
               </div>
             )
@@ -170,7 +196,13 @@ export default async function DNAProfilePage() {
         </Section>
 
         {/* Strand C — Visceral Specs */}
-        <Section title="Visceral Specs">
+        {/* The numbers here are WEIGHTS, not confidence: 50 is neutral, above
+            is favoured, below is not. Pacing and tone are learned from
+            ratings and re-centred so each group averages 50
+            (update-strand-c.ts); craft aspects come from the deep survey and
+            sit at 50 until one is filled in. Unlabelled, they read as
+            confidence — the section next door — so the head names them. */}
+        <Section title="Visceral Specs" legend="Weight · 50 = neutral">
           <div className={styles.specGroup}>
             <p className={styles.subhead}>Pacing</p>
             {Object.entries(sc.pacing_weights).map(([k, v]) => (
