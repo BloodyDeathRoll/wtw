@@ -668,6 +668,8 @@ export default function WTWApp({
           // "Find more": chat didn't change while rating cards — skip the
           // slow transcript re-analysis; per-click merges did the rest.
           skip_transcript: opts?.skipTranscript ?? false,
+          // Which list to regenerate — batches are built per content type.
+          content_type: contentType,
           watchlist_added: savedIds,
           watchlist_removed: unsavedIds,
         }),
@@ -895,6 +897,7 @@ export default function WTWApp({
             onBack={leaveCards}
             contentType={contentType}
             mode="recommendations"
+            setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
             headerRight={appMenu}
           />
@@ -915,6 +918,7 @@ export default function WTWApp({
             onBack={() => setStage("onboard")}
             contentType={contentType}
             mode="learning"
+            setContentType={setContentType}
             headerRight={appMenu}
           />
         </div>

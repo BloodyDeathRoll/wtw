@@ -42,6 +42,7 @@ import {
   cacheRecommendations,
 } from './step8-cache'
 import type { DNASchema, SessionContext, RecommendationResult } from '@/types/dna'
+import type { ContentType } from '@/lib/content-type'
 
 export interface GenerateOptions {
   /**
@@ -61,6 +62,8 @@ export interface GenerateOptions {
    * wait until session/end adopts it.
    */
   precompute?: boolean
+  /** Movies/Series — built into the batch and the cache key, not filtered later. */
+  contentType?: ContentType
 }
 
 // ─────────────────────────────────────────────
@@ -94,6 +97,7 @@ export function scheduleExplanationPatch(
   userId: string,
   version: number,
   results: RecommendationResult[],
+  contentType: ContentType = 'all',
 ): void {
   if (results.length === 0) return
   const patch = async () => {
@@ -104,7 +108,7 @@ export function scheduleExplanationPatch(
       // patched there's nothing left to do at this version, and the TTL
       // clears it if the job dies midway (template text remains).
       const lock = await getRedis().set(
-        `rec_explain_lock:${userId}:${version}`,
+        `rec_explain_lock:${userId}:${version}:${contentType}`,
         '1',
         { nx: true, ex: 300 }
       )
@@ -112,13 +116,13 @@ export function scheduleExplanationPatch(
 
       const bt = startTimer('generate/explain')
       const byKey = await explainMany(results.map(resultToExplainItem))
-      const current = await getCachedRecommendations(userId, version)
+      const current = await getCachedRecommendations(userId, version, contentType)
       if (!current) return   // cache expired or superseded — nothing to patch
       const merged = current.map(r => {
         const explanation = byKey.get(`${r.type}:${r.tmdb_id}`)
         return explanation ? { ...r, explanation } : r
       })
-      await cacheRecommendations(userId, version, merged)
+      await cacheRecommendations(userId, version, merged, contentType)
       bt.done(`patched ${byKey.size}/${results.length} explanations`)
     } catch (err) {
       console.warn(
@@ -166,7 +170,7 @@ export async function generateRecommendations(
   // A Redis outage/auth failure must not kill generation (seen live: a
   // WRONGPASS on this read aborted the whole pipeline before the engine ran).
   if (!opts.skipCacheRead && !opts.precompute) {
-    const cached = await getCachedRecommendations(userId, dna.metadata.taste_version)
+    const cached = await getCachedRecommendations(userId, dna.metadata.taste_version, opts.contentType)
       .catch(err => {
         console.warn('[generate] cache read failed (non-fatal):', err instanceof Error ? err.message : err)
         return null
@@ -182,7 +186,7 @@ export async function generateRecommendations(
   t.mark('load + cache check')
 
   // ── Step 1: candidate generation ─────────────────────────
-  const candidates = await getCandidates(dna, sessionContext)
+  const candidates = await getCandidates(dna, sessionContext, opts.contentType)
   t.mark(`step1 candidates (${candidates.length})`)
   if (candidates.length === 0) return []
 
@@ -234,14 +238,14 @@ export async function generateRecommendations(
   if (!sessionContext?.session_override_active) {
     // Best-effort: a failed cache write degrades to "GET serves mocks until
     // the next successful run" — it must not throw away generated results.
-    await cacheRecommendations(userId, version, versioned)
+    await cacheRecommendations(userId, version, versioned, opts.contentType)
       .catch(err => {
         console.warn('[generate] cache write failed (non-fatal):', err instanceof Error ? err.message : err)
       })
     t.mark('cache write')
 
     // ── Step 7 (background): LLM explanations, patched into the cache ──
-    scheduleExplanationPatch(userId, version, versioned)
+    scheduleExplanationPatch(userId, version, versioned, opts.contentType)
 
     // ── Background: streaming availability for the whole batch ────────
     // The GET route also checks the few unchecked titles on each page it

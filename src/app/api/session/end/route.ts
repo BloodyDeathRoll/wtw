@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { startTimer } from '@/lib/timing'
+import { isContentType, type ContentType } from '@/lib/content-type'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
@@ -60,6 +61,10 @@ export async function POST(req: NextRequest) {
   const watchlistRemoved: string[] = Array.isArray(body.watchlist_removed)
     ? body.watchlist_removed.filter((v: unknown): v is string => typeof v === 'string')
     : []
+  // Which list the user is looking at. The batch is generated for it, so a
+  // "Find more" on Series returns series (2026-08-29).
+  const contentType: ContentType = isContentType(body.content_type) ? body.content_type : 'all'
+
   if (!conversationId) {
     return NextResponse.json({ error: 'conversation_id required' }, { status: 400 })
   }
@@ -199,7 +204,7 @@ export async function POST(req: NextRequest) {
     const ratedIds = ratedTmdbIds(dna.learning_loop.recommendation_history)
     let cacheWarmAndClean = false
     try {
-      const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+      const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version, contentType)
       cacheWarmAndClean = cacheServableUnchanged(ratedIds, cached)
     } catch (err) {
       // Cache read failed — fail safe: regenerate rather than risk serving a
@@ -248,8 +253,8 @@ export async function POST(req: NextRequest) {
     // the cache for the new version when its inputs still match — the common
     // case, and it turns this step into two Redis calls. Otherwise the
     // version was just bumped and the cache read would be a guaranteed miss.
-    const adopted = await adoptPendingBatch(user.id, updated)
-    const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna: updated, skipCacheRead: true })
+    const adopted = await adoptPendingBatch(user.id, updated, contentType)
+    const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna: updated, skipCacheRead: true, contentType })
     rec_count = recs.length
     t.done(adopted ? 'total (adopted precomputed batch)' : 'total (regenerated)')
   } catch (err) {
