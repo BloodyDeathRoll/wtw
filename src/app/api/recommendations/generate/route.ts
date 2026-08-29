@@ -264,7 +264,7 @@ export async function GET(req: Request) {
     // Streaming availability for THIS page, before it renders: the batch-wide
     // check runs in the background after generation, so this is usually a
     // no-op — but a page served before it lands would otherwise show no
-    // no service name until a refetch. At most one TMDB call per card on the
+    // service name until a refetch. At most one TMDB call per card on the
     // page (≤6, in parallel); a failure just leaves the line off.
     try {
       await ensureWatchProviders(
