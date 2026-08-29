@@ -163,6 +163,10 @@ The Taste DNA page's "Your Rules" section is now a client island with a
 Remove control per rule (`DELETE /api/dna/rules`), and renders even when
 empty so a user can see whether an instruction registered.
 
-**Open:** the conversation system prompt still doesn't know the user's rules,
-so the chat model can name an excluded title inline (the recommendation feed
-will not). Worth passing `contextual_logic` into the prompt.
+The conversation route now briefs the model on the fingerprint
+(`dnaPromptContext`): the rules in full and stated as binding, top crew
+affinities, the highest-confidence narrative notes, the last 8 judged titles,
+and open questions. Before this it got a hardcoded prompt and the message
+history and nothing else, which is why it would agree to "no anime" without
+checking anything. Best-effort — a DNA read failure degrades the turn rather
+than failing the chat. Signal extraction still happens at session end.
