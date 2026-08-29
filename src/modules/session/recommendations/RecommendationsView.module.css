@@ -687,15 +687,6 @@
   height: 16px;
   border-radius: 4px;
 }
-/* JustWatch attribution — TMDB's terms require it to be visible alongside the
-   availability data, so it is part of the pill, not a footnote that a layout
-   change could drop. */
-.whereSource {
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  opacity: 0.6;
-}
 .fullReason {
   display: flex;
   flex-direction: column;
