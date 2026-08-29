@@ -26,10 +26,11 @@ import { getRedis } from '@/lib/redis'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isSavedMarker, recordKey, titleKey } from '@/lib/title-key'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
+import type { ContentType } from '@/lib/content-type'
 import { generateRecommendations, scheduleExplanationPatch } from './generate'
 import { cacheRecommendations } from './step8-cache'
 
-const pendingKey = (userId: string) => `rec_pending:${userId}`
+const pendingKey = (userId: string, contentType: ContentType) => `rec_pending:${userId}:${contentType}`
 const lockKey    = (userId: string) => `rec_precompute_lock:${userId}`
 const dirtyKey   = (userId: string) => `rec_precompute_dirty:${userId}`
 
@@ -79,7 +80,11 @@ async function loadDNA(userId: string): Promise<DNASchema | null> {
  * Build and park the next batch for this user. Safe to call on every rating:
  * it coalesces concurrent calls and never throws.
  */
-export async function precomputeNextBatch(userId: string): Promise<void> {
+export async function precomputeNextBatch(
+  userId: string,
+  /** The list the user is on — a batch is built for one content type. */
+  contentType: ContentType = 'all',
+): Promise<void> {
   const redis = getRedis()
   // Only the holder releases the lock. An earlier version deleted it in
   // `finally` unconditionally, so a click that found the lock taken released
@@ -101,9 +106,9 @@ export async function precomputeNextBatch(userId: string): Promise<void> {
       const dna = await loadDNA(userId)
       if (!dna) return
       const hash = generationInputsHash(dna)
-      const results = await generateRecommendations(userId, undefined, { dna, precompute: true })
+      const results = await generateRecommendations(userId, undefined, { dna, precompute: true, contentType })
       const batch: PendingBatch = { hash, results }
-      await redis.set(pendingKey(userId), batch, { ex: PENDING_TTL_SECONDS })
+      await redis.set(pendingKey(userId, contentType), batch, { ex: PENDING_TTL_SECONDS })
 
       const dirty = await redis.get(dirtyKey(userId))
       if (!dirty) break
@@ -122,6 +127,7 @@ export async function precomputeNextBatch(userId: string): Promise<void> {
 export async function adoptPendingBatch(
   userId: string,
   dna: DNASchema,
+  contentType: ContentType = 'all',
 ): Promise<RecommendationResult[] | null> {
   const redis = getRedis()
   let batch: PendingBatch | null = null
@@ -129,7 +135,7 @@ export async function adoptPendingBatch(
     // Atomic take: a separate get + del could delete a FRESH batch parked by
     // a concurrent precompute between the two calls (review, 2026-08-28).
     // A stale batch is discarded with it — it would never be adopted anyway.
-    batch = await redis.getdel<PendingBatch>(pendingKey(userId))
+    batch = await redis.getdel<PendingBatch>(pendingKey(userId, contentType))
   } catch (err) {
     console.warn('[precompute] pending read failed (regenerating):', err instanceof Error ? err.message : err)
     return null
@@ -142,8 +148,8 @@ export async function adoptPendingBatch(
 
   const version = dna.metadata.taste_version
   const versioned = batch.results.map(r => ({ ...r, fingerprint_version: version }))
-  await cacheRecommendations(userId, version, versioned)
-  scheduleExplanationPatch(userId, version, versioned)
+  await cacheRecommendations(userId, version, versioned, contentType)
+  scheduleExplanationPatch(userId, version, versioned, contentType)
   console.log(`[precompute] adopted pending batch (${versioned.length}) as v${version}`)
   return versioned
 }

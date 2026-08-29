@@ -33,6 +33,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { titleKey, recordKey, toRpcKeys, isSavedMarker, type MediaType } from '@/lib/title-key'
+import { titleTypeFor, type ContentType } from '@/lib/content-type'
 import type { DNASchema, SessionContext } from '@/types/dna'
 import type { TitleRow } from '../types'
 import { getUserEmbedding } from '../scoring/narrative-match'
@@ -50,7 +51,15 @@ const SEEN_LIMIT               = 150
 
 export async function getCandidates(
   dna: DNASchema,
-  sessionContext?: SessionContext
+  sessionContext?: SessionContext,
+  /**
+   * The Movies/Series toggle. Explicit, and it wins over anything parsed out
+   * of the session request: the whole batch is built for this type, so a
+   * series batch is 50 series (2026-08-29 — it used to be built type-blind
+   * and filtered on the way out, leaving ~1 servable series per batch for a
+   * movie-dominant fingerprint).
+   */
+  contentType?: ContentType,
 ): Promise<TitleRow[]> {
   const supabase = createServiceClient()
   const userId = dna.metadata.user_id
@@ -82,13 +91,15 @@ export async function getCandidates(
   const servedKeys = [...timesServed.keys()]
 
   // ── Parse session-level hard filters ─────────────────────
-  let titleType: string | null = null
+  let titleType: string | null = titleTypeFor(contentType)
   let maxRuntime: number | null = null
 
   if (sessionContext?.immediate_request) {
     const req = sessionContext.immediate_request.toLowerCase()
-    if (req.includes('movie') && !req.includes('tv')) titleType = 'movie'
-    if (req.includes('tv') || req.includes('show') || req.includes('series')) titleType = 'tv'
+    if (!titleType) {
+      if (req.includes('movie') && !req.includes('tv')) titleType = 'movie'
+      if (req.includes('tv') || req.includes('show') || req.includes('series')) titleType = 'tv'
+    }
     if (req.includes('short') || req.includes('quick')) maxRuntime = 100
   }
 

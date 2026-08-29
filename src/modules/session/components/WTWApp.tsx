@@ -593,7 +593,20 @@ export default function WTWApp({
         await fetchWithTimeout("/api/dna/bootstrap", { method: "POST" });
       } catch {} // idempotent; a failure/timeout just means the old cold path
       try {
-        await fetchWithTimeout("/api/recommendations/generate", { method: "POST" });
+        await fetchWithTimeout("/api/recommendations/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Warm the list the user will actually open — batches are cached
+          // per content type, so warming 'all' warms a key nothing reads.
+          // Read storage directly: this effect runs on mount, before the
+          // effect that hydrates `contentType` from the same key.
+          body: JSON.stringify({
+            content_type:
+              window.localStorage.getItem("wtw:contentType") === "series"
+                ? "series"
+                : "movies",
+          }),
+        });
       } catch {}
       warmDoneRef.current = true;
     })();
@@ -668,6 +681,8 @@ export default function WTWApp({
           // "Find more": chat didn't change while rating cards — skip the
           // slow transcript re-analysis; per-click merges did the rest.
           skip_transcript: opts?.skipTranscript ?? false,
+          // Which list to regenerate — batches are built per content type.
+          content_type: contentType,
           watchlist_added: savedIds,
           watchlist_removed: unsavedIds,
         }),
@@ -895,6 +910,7 @@ export default function WTWApp({
             onBack={leaveCards}
             contentType={contentType}
             mode="recommendations"
+            setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
             headerRight={appMenu}
           />
@@ -915,6 +931,7 @@ export default function WTWApp({
             onBack={() => setStage("onboard")}
             contentType={contentType}
             mode="learning"
+            setContentType={setContentType}
             headerRight={appMenu}
           />
         </div>

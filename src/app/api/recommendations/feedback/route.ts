@@ -36,6 +36,7 @@ import { createClient } from '@/lib/supabase/server'
 import { precomputeNextBatch } from '@/modules/engine/pipeline/precompute'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isMediaType, recordMatches, titleKey, type MediaType } from '@/lib/title-key'
+import { isContentType, type ContentType } from '@/lib/content-type'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest) {
   let reaction: Reaction | undefined
   let title: string | undefined
   let media_type: MediaType | null
+  // Which list the rating came from, so the precomputed next batch matches it.
+  let contentType: ContentType
 
   try {
     const body = await req.json()
@@ -70,6 +73,7 @@ export async function POST(req: NextRequest) {
     reaction       = body.reaction
     title          = typeof body.title === 'string' ? body.title : undefined
     media_type     = isMediaType(body.media_type) ? body.media_type : null
+    contentType    = isContentType(body.content_type) ? body.content_type : 'all'
 
     if (!tmdb_id || typeof tmdb_id !== 'string') {
       return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
@@ -197,7 +201,7 @@ export async function POST(req: NextRequest) {
     // now, after the response, so "Find more" only has to adopt it
     // (precompute.ts coalesces bursts; never throws).
     const userId = user.id
-    after(() => precomputeNextBatch(userId))
+    after(() => precomputeNextBatch(userId, contentType))
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────

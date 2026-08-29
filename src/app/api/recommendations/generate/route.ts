@@ -20,6 +20,7 @@ import {
   type WatchProviderMap,
 } from "@/lib/tmdb";
 import { titleKey, recordKey, matchesKeySet, isSavedMarker } from "@/lib/title-key";
+import { isContentType, titleTypeFor, type ContentType } from "@/lib/content-type";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 import type { Recommendation, MotifKind } from "@/types/recommendation";
 
@@ -160,7 +161,12 @@ export async function GET(req: Request) {
   const offset = Number.isFinite(Number(offsetParam))
     ? Math.max(0, Number(offsetParam))
     : 0;
-  const contentType = url.searchParams.get("type"); // "movies" | "series"
+  // Movies/Series. A GENERATION input now (2026-08-29): the batch is built
+  // for this type and cached under it, so a series batch is 50 series. It
+  // used to be a read-time filter over a type-blind batch, which left ~1
+  // servable series per batch for a movie-dominant fingerprint.
+  const contentTypeParam = url.searchParams.get("type");
+  const contentType: ContentType = isContentType(contentTypeParam) ? contentTypeParam : "all";
 
   let cachedRecs: RecommendationResult[] | null = null
   let dna: DNASchema | null = null
@@ -207,7 +213,7 @@ export async function GET(req: Request) {
   //    to mocks) ───────────────────────────────────────────────────────────
   if (dna) {
     try {
-      cachedRecs = await getCachedRecommendations(user.id, dna.metadata.taste_version)
+      cachedRecs = await getCachedRecommendations(user.id, dna.metadata.taste_version, contentType)
     } catch (err) {
       console.error(
         "[recommendations/generate] cache read failed:",
@@ -247,12 +253,10 @@ export async function GET(req: Request) {
   // UI shape. Used for both the warm cache and a freshly regenerated list so
   // their handling can't drift apart.
   async function servePage(recs: RecommendationResult[], source: string) {
-    const typeFiltered =
-      contentType === "movies"
-        ? recs.filter((r) => r.type === "movie")
-        : contentType === "series"
-          ? recs.filter((r) => r.type === "tv")
-          : recs;
+    // The batch was generated for this content type, so this only guards a
+    // cache entry written before the split.
+    const wanted = titleTypeFor(contentType);
+    const typeFiltered = wanted ? recs.filter((r) => r.type === wanted) : recs;
     // Drop removed + already-judged titles before paginating so pages stay
     // full-sized.
     const filtered = typeFiltered.filter(
@@ -317,8 +321,8 @@ export async function GET(req: Request) {
 
   if (hasFingerprint) {
     try {
-      await generateRecommendations(user.id);
-      const fresh = await getCachedRecommendations(user.id, dna!.metadata.taste_version);
+      await generateRecommendations(user.id, undefined, { contentType });
+      const fresh = await getCachedRecommendations(user.id, dna!.metadata.taste_version, contentType);
       if (fresh && fresh.length > 0) {
         return servePage(fresh, "regenerated");
       }
@@ -346,12 +350,10 @@ export async function GET(req: Request) {
 
   // Genuinely no fingerprint yet (pre-first-session) — mocks are the intended
   // placeholder here, and ONLY here.
-  const mockTypeFiltered =
-    contentType === "movies"
-      ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "movie")
-      : contentType === "series"
-        ? MOCK_RECOMMENDATIONS.filter((r) => r.type === "tv")
-        : MOCK_RECOMMENDATIONS;
+  const mockWanted = titleTypeFor(contentType);
+  const mockTypeFiltered = mockWanted
+    ? MOCK_RECOMMENDATIONS.filter((r) => r.type === mockWanted)
+    : MOCK_RECOMMENDATIONS;
   // `removed` is keyed `${media_type}:${tmdb_id}`. Mock ids are bare slugs with
   // no `type:` prefix (unlike engine rec ids), and handleRemove persists them as
   // tmdb_id = the bare id, so reconstruct the same key here — using r.id
@@ -383,17 +385,22 @@ export async function POST(req: NextRequest) {
   }
 
   let session_context: SessionContext | undefined;
+  // Which list to warm. Batches are cached per content type, so a warm-up
+  // without one would fill rec:{user}:{version}:all — a key nothing serving
+  // cards reads any more, leaving the first tap a cold miss regardless.
+  let warmType: ContentType = "all";
   try {
     const body = await req.json().catch(() => ({}));
     if (body.session_context) {
       session_context = body.session_context as SessionContext;
     }
+    if (isContentType(body.content_type)) warmType = body.content_type;
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
   try {
-    const results = await generateRecommendations(user.id, session_context);
+    const results = await generateRecommendations(user.id, session_context, { contentType: warmType });
     return NextResponse.json(results);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

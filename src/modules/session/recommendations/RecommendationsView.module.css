@@ -9,7 +9,11 @@
 /* ─── Sub-header (back / title / view toggle) ─── */
 .header {
   display: grid;
-  grid-template-columns: 40px 1fr auto;
+  /* Symmetric outer tracks so the middle is TRULY centred, matching the home
+     screen's topbar. With `40px 1fr auto` the right group (toggle + menu,
+     78px) outweighed the 40px back button and pushed the title 19px left —
+     measured 2026-08-29, and it applied to the plain title too. */
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 10px 14px 10px;
   flex-shrink: 0;
@@ -41,7 +45,71 @@
 .headerBtn:hover {
   background: rgba(255, 255, 255, 0.05);
 }
+/* The header title doubles as the Movies/Series picker (2026-08-29), styled
+   to match the home screen's. NOT positioned on .header itself — the app
+   menu's drawer overlay must still resolve past it (see
+   tests/unit/drawer-containing-block.test.ts); the anchor is this wrapper,
+   which is a sibling of the overlay, not an ancestor. */
+.typePicker {
+  position: relative;
+  justify-self: center;
+  display: inline-flex;
+}
+.typePickerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--wtw-fg);
+  cursor: pointer;
+}
+.typePickerBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.typeMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  min-width: 140px;
+  padding: 6px;
+  background: rgba(14, 14, 16, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--wtw-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+.typeMenuItem {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 15px;
+  color: var(--wtw-fg-muted);
+  cursor: pointer;
+}
+.typeMenuItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--wtw-fg);
+}
+.typeMenuItemActive {
+  color: var(--wtw-fg);
+  background: rgba(var(--wtw-rgb), 0.14);
+}
+
 .headerTitle {
+  justify-self: center;
   text-align: center;
   font-size: 15px;
   font-weight: 600;
