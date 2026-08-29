@@ -160,14 +160,21 @@ const IconPause = (
 );
 
 
+
 // ─────────────────────────────────────────────────────────────
-// Top bar
+// AppMenu — the hamburger and its drawer.
+//
+// Lives on EVERY stage, always in the same spot (top-right), and only ever
+// swaps its glyph for an X while open (decided 2026-08-29). It used to be
+// part of TopBar, which renders only on the chat/onboard stage, so the menu
+// simply vanished on Recommendations / Watchlist / Ratings — those views get
+// it through their `headerRight` slot instead, to the RIGHT of whatever
+// control they already had there.
+//
+// Owns its own open/section state: two mounts never share it, and only one is
+// on screen at a time.
 // ─────────────────────────────────────────────────────────────
-function TopBar({
-  hasConversation,
-  hasMessages,
-  onBack,
-  onOpenChat,
+function AppMenu({
   onRecommend,
   onWatchlist,
   onFastLearning,
@@ -175,15 +182,9 @@ function TopBar({
   onProfile,
   user,
   onSignOut,
-  contentType,
-  setContentType,
   voice,
   setVoice,
 }: {
-  hasConversation: boolean;
-  hasMessages: boolean;
-  onBack: () => void;
-  onOpenChat: () => void;
   onRecommend: () => void;
   onWatchlist: () => void;
   onFastLearning: () => void;
@@ -191,18 +192,15 @@ function TopBar({
   onProfile: () => void;
   user: AppUser;
   onSignOut: () => void;
-  contentType: ContentType;
-  setContentType: (c: ContentType) => void;
   voice: Voice;
   setVoice: (v: Voice) => void;
 }) {
-  const [brandOpen, setBrandOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<"root" | "voice">("root");
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
-  const brandRef = useRef<HTMLDivElement>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
   // Static voice samples live in /public/voice-samples/{voice}.wav — see
   // scripts/generate-voice-samples.mjs. The browser caches them after
   // first load. No runtime API call (Gemini's free-tier TTS quota is too
@@ -250,15 +248,13 @@ function TopBar({
     }
   }, [menuOpen]);
 
+  // Close on an outside click. The hamburger and the panel are the only
+  // in-menu targets; everything else dismisses.
   useEffect(() => {
-    if (!brandOpen && !menuOpen) return;
+    if (!menuOpen) return;
     function onDocClick(e: MouseEvent) {
       const t = e.target as Node;
-      if (brandOpen && !brandRef.current?.contains(t)) {
-        setBrandOpen(false);
-      }
       if (
-        menuOpen &&
         !hamburgerRef.current?.contains(t) &&
         !panelRef.current?.contains(t)
       ) {
@@ -268,70 +264,13 @@ function TopBar({
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
-  }, [brandOpen, menuOpen]);
+  }, [menuOpen]);
 
   const initial =
     (user.name?.trim()[0] || user.email?.trim()[0] || "?").toUpperCase();
 
   return (
     <>
-    <div className={styles.topbar}>
-      <div className={styles.topbarSlot}>
-        {hasConversation ? (
-          <button
-            className={styles.iconbtn}
-            onClick={onBack}
-            aria-label="back"
-            type="button"
-          >
-            {I.back}
-          </button>
-        ) : hasMessages ? (
-          <button
-            className={styles.iconbtn}
-            onClick={onOpenChat}
-            aria-label="open chat"
-            type="button"
-          >
-            {I.message}
-          </button>
-        ) : null}
-      </div>
-
-      <div className={styles.brand} ref={brandRef}>
-        <button
-          className={styles.brandModel}
-          type="button"
-          onClick={() => setBrandOpen((v) => !v)}
-          aria-expanded={brandOpen}
-          aria-haspopup="menu"
-        >
-          <span>{CONTENT_TYPE_LABEL[contentType]}</span>
-          {I.chevDown}
-        </button>
-        {brandOpen && (
-          <div className={styles.brandMenu} role="menu">
-            {(Object.keys(CONTENT_TYPE_LABEL) as ContentType[]).map((c) => (
-              <button
-                key={c}
-                type="button"
-                role="menuitemradio"
-                aria-checked={contentType === c}
-                className={`${styles.brandMenuItem} ${
-                  contentType === c ? styles.brandMenuItemActive : ""
-                }`}
-                onClick={() => {
-                  setContentType(c);
-                  setBrandOpen(false);
-                }}
-              >
-                {CONTENT_TYPE_LABEL[c]}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       <div className={styles.userMenuWrap}>
         <button
           ref={hamburgerRef}
@@ -347,9 +286,6 @@ function TopBar({
           {menuOpen ? I.close : I.hamburger}
         </button>
       </div>
-
-    </div>
-
     {menuOpen && (
       <div className={styles.userMenuOverlay}>
         <div className={styles.userMenuPanel} ref={panelRef} role="menu">
@@ -516,6 +452,135 @@ function TopBar({
         </div>
       </div>
     )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Top bar
+// ─────────────────────────────────────────────────────────────
+function TopBar({
+  hasConversation,
+  hasMessages,
+  onBack,
+  onOpenChat,
+  onRecommend,
+  onWatchlist,
+  onFastLearning,
+  onRatings,
+  onProfile,
+  user,
+  onSignOut,
+  contentType,
+  setContentType,
+  voice,
+  setVoice,
+}: {
+  hasConversation: boolean;
+  hasMessages: boolean;
+  onBack: () => void;
+  onOpenChat: () => void;
+  onRecommend: () => void;
+  onWatchlist: () => void;
+  onFastLearning: () => void;
+  onRatings: () => void;
+  onProfile: () => void;
+  user: AppUser;
+  onSignOut: () => void;
+  contentType: ContentType;
+  setContentType: (c: ContentType) => void;
+  voice: Voice;
+  setVoice: (v: Voice) => void;
+}) {
+  const [brandOpen, setBrandOpen] = useState(false);
+  const brandRef = useRef<HTMLDivElement>(null);
+
+
+  // Close the content-type dropdown on an outside click. The hamburger drawer
+  // owns its own dismissal (see AppMenu).
+  useEffect(() => {
+    if (!brandOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (!brandRef.current?.contains(e.target as Node)) setBrandOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [brandOpen]);
+
+
+  return (
+    <>
+    <div className={styles.topbar}>
+      <div className={styles.topbarSlot}>
+        {hasConversation ? (
+          <button
+            className={styles.iconbtn}
+            onClick={onBack}
+            aria-label="back"
+            type="button"
+          >
+            {I.back}
+          </button>
+        ) : hasMessages ? (
+          <button
+            className={styles.iconbtn}
+            onClick={onOpenChat}
+            aria-label="open chat"
+            type="button"
+          >
+            {I.message}
+          </button>
+        ) : null}
+      </div>
+
+      <div className={styles.brand} ref={brandRef}>
+        <button
+          className={styles.brandModel}
+          type="button"
+          onClick={() => setBrandOpen((v) => !v)}
+          aria-expanded={brandOpen}
+          aria-haspopup="menu"
+        >
+          <span>{CONTENT_TYPE_LABEL[contentType]}</span>
+          {I.chevDown}
+        </button>
+        {brandOpen && (
+          <div className={styles.brandMenu} role="menu">
+            {(Object.keys(CONTENT_TYPE_LABEL) as ContentType[]).map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="menuitemradio"
+                aria-checked={contentType === c}
+                className={`${styles.brandMenuItem} ${
+                  contentType === c ? styles.brandMenuItemActive : ""
+                }`}
+                onClick={() => {
+                  setContentType(c);
+                  setBrandOpen(false);
+                }}
+              >
+                {CONTENT_TYPE_LABEL[c]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AppMenu
+        onRecommend={onRecommend}
+        onWatchlist={onWatchlist}
+        onFastLearning={onFastLearning}
+        onRatings={onRatings}
+        onProfile={onProfile}
+        user={user}
+        onSignOut={onSignOut}
+        voice={voice}
+        setVoice={setVoice}
+      />
+
+    </div>
+
     </>
   );
 }
@@ -1080,6 +1145,22 @@ export default function WTWApp({
     }
   }, [messages, status, stage]);
 
+  // The app menu, for the stages that render their own header (they place it
+  // at the far right of it — see AppMenu). TopBar builds its own.
+  const appMenu = (
+    <AppMenu
+      onRecommend={handleRecommend}
+      onWatchlist={handleWatchlist}
+      onFastLearning={handleFastLearning}
+      onRatings={handleRatings}
+      onProfile={() => router.push("/profile/dna")}
+      user={user}
+      onSignOut={signOut}
+      voice={voice}
+      setVoice={setVoice}
+    />
+  );
+
   return (
     <AppShell>
       {buildingRecs ? (
@@ -1137,6 +1218,7 @@ export default function WTWApp({
             contentType={contentType}
             mode="recommendations"
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
+            headerRight={appMenu}
           />
         </div>
       ) : stage === "watchlist" ? (
@@ -1146,6 +1228,7 @@ export default function WTWApp({
             contentType={contentType}
             mode="watchlist"
             onBrowse={handleRecommend}
+            headerRight={appMenu}
           />
         </div>
       ) : stage === "learning" ? (
@@ -1154,11 +1237,12 @@ export default function WTWApp({
             onBack={() => setStage("onboard")}
             contentType={contentType}
             mode="learning"
+            headerRight={appMenu}
           />
         </div>
       ) : stage === "ratings" ? (
         <div className={styles.shell}>
-          <RatingsView onBack={() => setStage("onboard")} />
+          <RatingsView onBack={() => setStage("onboard")} headerRight={appMenu} />
         </div>
       ) : (
         <div className={styles.shell}>

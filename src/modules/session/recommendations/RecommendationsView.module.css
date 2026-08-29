@@ -9,7 +9,7 @@
 /* ─── Sub-header (back / title / view toggle) ─── */
 .header {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 40px 1fr auto;
   align-items: center;
   padding: 10px 14px 10px;
   flex-shrink: 0;
@@ -31,6 +31,14 @@
   justify-self: start;
 }
 .headerBtn:last-child {
+  justify-self: end;
+}
+/* The view toggle sits to the LEFT of the app menu, which is anchored at the
+   far right on every screen. */
+.headerRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   justify-self: end;
 }
 .headerBtn:hover {
