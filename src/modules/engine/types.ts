@@ -41,6 +41,10 @@ export interface TitleRow {
   crew: TMDBCrewSnapshot
   pacing_tag: 'slow_burn' | 'moderate' | 'high_octane' | null
   tone_tags: string[]
+  /** TMDB original_language, ISO 639-1. Null until the 0021 backfill runs. */
+  original_language: string | null
+  /** Lowercased TMDB keywords — what makes "no anime" matchable (0021). */
+  keywords: string[]
   narrative_metadata: TitleNarrativeMetadata | null
   narrative_embedding: number[] | null  // 1024-dim Mistral vector
   enriched_at: string | null

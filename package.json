@@ -18,6 +18,7 @@
     "generate-voice-samples": "node --env-file=.env.local scripts/generate-voice-samples.mjs",
     "grow-catalog": "node --env-file=.env.local --import tsx scripts/grow-catalog.mts",
     "backfill-trailers": "node --env-file=.env.local --import tsx scripts/backfill-trailers.mts",
+    "backfill-language-keywords": "node --env-file=.env.local --import tsx scripts/backfill-language-keywords.mts",
     "repair-title-keys": "node --env-file=.env.local --import tsx scripts/repair-title-keys.mts",
     "generate-icons": "node scripts/generate-icons.mjs"
   },

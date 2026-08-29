@@ -21,9 +21,9 @@ import { generateObject } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { z } from 'zod'
 import { MODELS } from '@/lib/ai-models'
-import { searchTitle } from '@/lib/tmdb'
+import { searchTitle, searchPerson } from '@/lib/tmdb'
 import { fetchAndCacheTitle } from '@/modules/engine/enrichment/fetch-and-cache-title'
-import type { SessionSummary, DNASignal, StrandB } from '@/types/dna'
+import type { SessionSummary, SessionDirective, DNASignal, StrandB } from '@/types/dna'
 
 // The seven Strand B dimension keys — used to validate LLM output.
 const STRAND_B_KEYS: (keyof StrandB)[] = [
@@ -36,6 +36,9 @@ const STRAND_B_KEYS: (keyof StrandB)[] = [
   'ensemble_vs_solo',
 ]
 const STRAND_B_SET = new Set<string>(STRAND_B_KEYS)
+
+/** Used when the model classifies a hedge but gives no strength. */
+const DEFAULT_SOFT_WEIGHT = 0.5
 
 const extractionSchema = z.object({
   mentioned_titles: z.array(
@@ -52,6 +55,16 @@ const extractionSchema = z.object({
   ),
   new_open_questions: z.array(z.string()),
   resolved_open_questions: z.array(z.string()),
+  directives: z.array(
+    z.object({
+      kind: z.enum(['exclusion', 'soft_preference']),
+      target_type: z.enum(['person', 'genre', 'keyword', 'franchise']),
+      name: z.string().describe('The thing to exclude, as few words as possible'),
+      raw: z.string().describe("The user's own words"),
+      reason: z.string().describe('One short phrase: why'),
+      weight_modifier: z.number().min(0).max(1).nullable(),
+    }),
+  ),
 })
 
 const SYSTEM_PROMPT = `You extract structured taste signals from a conversation between a user and a film/TV recommendation assistant.
@@ -67,7 +80,31 @@ moral_ambiguity, narrative_complexity, emotional_demand, originality_weight, hum
 - new_open_questions: things about their taste still worth asking next session.
 - resolved_open_questions: questions this conversation answered (empty if none known).
 
-If the user named no concrete titles, return empty arrays.`
+SEPARATELY, extract standing instructions — rules the user wants applied to
+every future recommendation, not a reaction to one title. These go in
+"directives".
+
+- kind: "exclusion" when the user is absolute ("never", "don't ever", "no X",
+  "I hate X", "stop showing me X"). "soft_preference" when they are hedging
+  ("less X", "fewer X", "not really in the mood for X").
+- target_type: "person" for a named human (actor, director, writer);
+  "genre" for a real genre (horror, romance, documentary); "franchise" for a
+  named series or universe (Marvel, Star Wars, Fast & Furious); "keyword" for
+  anything else, including categories like anime, Bollywood, k-drama,
+  reality TV, found footage.
+- name: the bare thing, no verbs and no negation — "anime", not "no anime";
+  "Adam Sandler", not "Adam Sandler movies".
+- raw: quote the user's own words.
+- weight_modifier: for soft_preference only, 0.1 = almost never through
+  0.9 = slightly less. null for exclusions.
+- An instruction the user gave in an EARLIER turn still counts if they
+  repeated or reaffirmed it.
+- Do NOT invent a rule from a single disliked title. "I hated Barbie" is a
+  title reaction, not a rule. "I never want to see another Barbie-style film"
+  is a rule.
+
+If the user named no concrete titles and gave no instructions, return empty
+arrays.`
 
 export interface TranscriptMessage {
   role: string
@@ -144,6 +181,41 @@ export async function analyzeSession(
     })
   }
 
+  // ── 3. Resolve directives ─────────────────────────────────
+  // A person rule is matched against crew tmdb_person_id, so resolving the
+  // name here is what makes "never show me X's films" do anything at all —
+  // rules used to be stored with an empty id and silently matched nothing.
+  const directives: SessionDirective[] = []
+  for (const d of extracted.directives ?? []) {
+    const name = d.name?.trim()
+    if (!name) continue
+
+    let resolvedName = name
+    let id = ''
+    if (d.target_type === 'person') {
+      const person = await searchPerson(name).catch(() => null)
+      if (person) {
+        id = person.tmdb_person_id
+        resolvedName = person.name
+      }
+      // No match → keep the rule anyway; exclusion-rules.ts falls back to
+      // matching the crew member's name.
+    }
+
+    directives.push({
+      kind: d.kind,
+      target_type: d.target_type,
+      name: resolvedName,
+      raw: d.raw || name,
+      reason: d.reason || '',
+      weight_modifier:
+        d.kind === 'soft_preference'
+          ? (d.weight_modifier ?? DEFAULT_SOFT_WEIGHT)
+          : undefined,
+      person_id: id,
+    })
+  }
+
   return {
     session_number,
     new_signals: signals,
@@ -152,5 +224,6 @@ export async function analyzeSession(
     new_open_questions: extracted.new_open_questions,
     recommendation_made: null,
     recommendation_accepted: null,
+    directives,
   }
 }

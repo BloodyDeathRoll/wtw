@@ -290,6 +290,7 @@
   color: var(--wtw-fg);
 }
 .tag {
+  display: inline-block;
   font-size: 12px;
   padding: 3px 9px;
   border-radius: 999px;
@@ -310,4 +311,57 @@
   font-size: 13px;
   color: var(--wtw-fg-dim);
   padding: 8px 0 24px;
+}
+
+/* ─── Your Rules ─── */
+/* Rules are the one .ruleRow use, and here the row must not wrap: Remove
+   belongs on the row it removes. The text block below absorbs the pressure
+   instead and wraps internally. */
+.ruleRow {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+/* The rule name is the row's subject, so it takes the free space and pushes
+   the Remove control to the far edge — a rule and its undo, not a list of
+   equal-weight chips. */
+ /* Inline flow, not a nested flex row: as a flex row the type pill ended up
+   alone on its own line with the name below it. Flowing as text lets a long
+   name wrap mid-name and keeps the pill attached to its first word. */
+.ruleText {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.6;
+}
+.ruleText > * + * {
+  margin-left: 8px;
+}
+.ruleName {
+  overflow-wrap: anywhere;
+}
+.ruleRemove {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--wtw-border);
+  background: transparent;
+  color: var(--wtw-fg-muted);
+  font-size: 13px;
+  cursor: pointer;
+  /* 44px touch target without a 44px-tall pill: the padding box is ~28px, the
+     rest comes from the row's own 8px padding plus this. */
+  min-height: 32px;
+}
+.ruleRemove:hover:not(:disabled) {
+  color: #e05c5c;
+  border-color: rgba(224, 92, 92, 0.45);
+}
+.ruleRemove:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ruleError {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #e05c5c;
 }

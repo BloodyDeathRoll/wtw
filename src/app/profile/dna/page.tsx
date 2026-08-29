@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import type { DNASchema, StrandA } from '@/types/dna'
 import { DnaHeader } from './DnaHeader'
+import { RulesSection } from './RulesSection'
 import styles from './dna.module.css'
 
 export const metadata = { title: 'Your Taste DNA — WTW' }
@@ -223,34 +224,12 @@ export default async function DNAProfilePage() {
           </div>
         </Section>
 
-        {/* Contextual Logic */}
-        {(cl.exclusion_rules.length > 0 || cl.soft_preferences.length > 0) && (
-          <Section title="Your Rules">
-            {cl.exclusion_rules.length > 0 && (
-              <div className={styles.specGroup}>
-                <p className={styles.subhead}>Hard exclusions</p>
-                {cl.exclusion_rules.map((r, i) => (
-                  <div key={i} className={styles.ruleRow}>
-                    <span className={`${styles.tag} ${styles.tagDeny}`}>{r.type}</span>
-                    <span>{r.name}</span>
-                    {r.reason && <span className={styles.ruleReason}>— {r.reason}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-            {cl.soft_preferences.length > 0 && (
-              <div className={styles.specGroup}>
-                <p className={styles.subhead}>Soft preferences</p>
-                {cl.soft_preferences.map((p, i) => (
-                  <div key={i} className={styles.ruleRow}>
-                    <span>{p.signal}</span>
-                    <span className={styles.tag}>weight {Math.round(p.weight_modifier * 100)}%</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Section>
-        )}
+        {/* Contextual Logic — the user's own standing instructions, and the
+            only place to take one back (RulesSection is a client island). */}
+        <RulesSection
+          exclusions={cl.exclusion_rules}
+          softPreferences={cl.soft_preferences}
+        />
 
         {/* Learning Loop */}
         {ll.open_questions.length > 0 && (
