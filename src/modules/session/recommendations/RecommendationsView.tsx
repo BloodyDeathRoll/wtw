@@ -87,12 +87,15 @@ function tmdbIdOf(id: string): string {
 }
 
 /**
- * "Watch on …" — brand icon + name, under the year/runtime/rating meta on
- * every card (compact, full, watchlist, and the Why detail). Streaming
- * availability comes from TMDB, which sources it from JustWatch and requires
- * visible attribution wherever it is shown — hence the eyebrow. Hidden
+ * Streaming service — brand icon + name only, under the year/runtime/rating
+ * meta on every card (compact, full, watchlist, and the Why detail). Hidden
  * entirely when `where` is null (never checked, or not streaming in this
  * region), so no empty affordance. See migration 0017 and grow-catalog.mts §3c.
+ *
+ * ⚠️ The "via JustWatch" eyebrow was removed 2026-08-29 at the user's request.
+ * TMDB sources this data from JustWatch and its terms require the attribution
+ * to be visible wherever availability is shown — it needs to reappear
+ * somewhere (a footer or an about/legal line) before this ships publicly.
  */
 function WherePill({ where, hero = false }: { where: string | null; hero?: boolean }) {
   if (!where) return null;
@@ -100,8 +103,7 @@ function WherePill({ where, hero = false }: { where: string | null; hero?: boole
   return (
     <div className={`${styles.wherePill} ${hero ? styles.wherePillHero : ""}`}>
       <ProviderIcon providerKey={key} className={styles.whereIcon} />
-      <span>Watch on {label}</span>
-      <span className={styles.whereSource}>via JustWatch</span>
+      <span>{label}</span>
     </div>
   );
 }

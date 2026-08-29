@@ -232,7 +232,7 @@ export function youtubeTrailerUrl(
 export type WatchProviderMap = Record<string, string[]>
 
 /**
- * Pick the provider name the "Watch on …" line should show for a region.
+ * Pick the provider name the card's streaming line should show for a region.
  * Canonical brand, by our preference order — NOT TMDB's first entry: its
  * display_priority put fuboTV / "Netflix Standard with Ads" first (measured
  * 2026-08-28). See src/lib/watch-providers.ts.
@@ -511,8 +511,8 @@ export async function discoverVaried(
  *
  * TMDB returns every region it knows (~200) in one response; we keep only the
  * ones asked for, because the caller stores this per title across a
- * five-figure catalog. Rent/buy tiers are dropped on purpose — the UI says
- * "Watch on X", which has to mean "included with a subscription".
+ * five-figure catalog. Rent/buy tiers are dropped on purpose — the UI names a
+ * service on the card, which has to mean "included with a subscription".
  *
  * Returns `{}` when the title streams nowhere in `regions` (a real answer, and
  * the caller records it as checked), or null on a 404 — same contract as the
