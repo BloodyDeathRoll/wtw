@@ -32,10 +32,11 @@ export function applySoftModifiers(
         const modifier = pref.weight_modifier
 
         // Genre names and tone tags used to be the only things a signal could
-        // be compared against. matchesSoftSignal widens that to TMDB keywords,
-        // original language and the category aliases (src/lib/exclusion-rules.ts),
-        // keeping the old substring test as a fallback.
-        if (matchesSoftSignal(item.title, pref.signal)) {
+        // be compared against. matchesSoftSignal widens that to crew, TMDB
+        // keywords, original language and the category aliases
+        // (src/lib/exclusion-rules.ts), keeping the old substring test as a
+        // fallback.
+        if (matchesSoftSignal(item.title, pref.signal, pref)) {
           score *= modifier
           applied.push({ signal: pref.signal, modifier })
         }

@@ -2,7 +2,8 @@
  * Merge the standing instructions a session extracted into contextual_logic.
  *
  * Before this, dna.contextual_logic.exclusion_rules had exactly one writer —
- * POST /api/dna/parse-instruction — and nothing in the app ever called it. A
+ * POST /api/dna/parse-instruction — which nothing in the app ever called (it
+ * has since been deleted; it wrote person rules with an empty id too). A
  * user could say "no anime" in every turn of every session, be told "got it",
  * and never have a rule written (2026-08-29).
  *
@@ -73,9 +74,17 @@ export function applyDirectives(
     if (existing) {
       // Say it again and you mean it more — keep the stronger reduction.
       existing.weight_modifier = Math.min(existing.weight_modifier, weight)
+      // And keep anything the re-mention resolved that we didn't have.
+      if (!existing.target_type) existing.target_type = d.target_type
+      if (!existing.person_id && d.person_id) existing.person_id = d.person_id
       continue
     }
-    logic.soft_preferences.push({ signal: name, weight_modifier: weight })
+    logic.soft_preferences.push({
+      signal: name,
+      weight_modifier: weight,
+      target_type: d.target_type,
+      person_id: d.person_id ?? '',
+    })
     result.soft_preferences_added++
   }
 

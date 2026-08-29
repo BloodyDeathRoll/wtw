@@ -100,6 +100,15 @@ export interface ExclusionRule {
 export interface SoftPreference {
   signal: string
   weight_modifier: number   // 0.0 to 1.0
+  /**
+   * What `signal` names. Optional and additive: without it a person named
+   * softly ("less Adam Sandler") was stored as a bare string and matched
+   * against genres and keywords, where a person's name never appears — the
+   * same silent no-op that made hard person rules dead (2026-08-29).
+   */
+  target_type?: ExclusionType
+  /** Resolved TMDB person id when target_type is 'person'. */
+  person_id?: string
 }
 
 export interface TemporalModifier {

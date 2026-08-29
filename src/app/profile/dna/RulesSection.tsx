@@ -11,14 +11,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ruleKey } from "@/lib/exclusion-rules";
 import type { ExclusionRule, SoftPreference } from "@/types/dna";
 import styles from "./dna.module.css";
 
 type Kind = "exclusion" | "soft_preference";
-
-function ruleKeyOf(r: { type: string; name: string }) {
-  return `${r.type}:${r.name.trim().toLowerCase()}`;
-}
 
 export function RulesSection({
   exclusions,
@@ -60,7 +57,7 @@ export function RulesSection({
   }
 
   const visibleExclusions = exclusions.filter(
-    (r) => !gone.has(`exclusion|${ruleKeyOf(r)}`),
+    (r) => !gone.has(`exclusion|${ruleKey(r)}`),
   );
   const visiblePrefs = softPreferences.filter(
     (p) => !gone.has(`soft_preference|${p.signal.trim().toLowerCase()}`),
@@ -87,7 +84,7 @@ export function RulesSection({
         <div className={styles.specGroup}>
           <p className={styles.subhead}>Never show me</p>
           {visibleExclusions.map((r) => {
-            const key = ruleKeyOf(r);
+            const key = ruleKey(r);
             const id = `exclusion|${key}`;
             return (
               <div key={key} className={styles.ruleRow}>

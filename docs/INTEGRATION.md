@@ -145,7 +145,8 @@ time, next batch ~80% anime. Three independent causes, all fixed:
 1. **Nothing wrote a rule.** `analyzeSession` extracted only titles, so a
    categorical instruction had no field to land in.
    `dna.contextual_logic.exclusion_rules` had exactly one writer —
-   `POST /api/dna/parse-instruction` — and nothing in the app called it.
+   `POST /api/dna/parse-instruction` — and nothing in the app called it (that
+   route is now deleted; it carried the same empty-person-id bug).
    → `SessionSummary.directives` (new, optional) + `applyDirectives`.
 2. **Person rules were structurally dead.** They were stored with `id: ''`
    and matched on `tmdb_person_id`. → `searchPerson()` resolves the id at

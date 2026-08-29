@@ -145,6 +145,24 @@ describe('soft preferences', () => {
     expect(matchesSoftSignal(noir, 'noir')).toBe(true)
   })
 
+  it('honours a person named softly — "less Adam Sandler"', () => {
+    // Without target_type the name is compared against genres and keywords,
+    // where a person's name never appears, so the preference did nothing.
+    const sandler = title({
+      genres: [{ name: 'Comedy' }],
+      crew: { directors: [], writers: [], cinematographers: [], cast: [{ tmdb_person_id: '19292', name: 'Adam Sandler' }] },
+    })
+    expect(matchesSoftSignal(sandler, 'Adam Sandler')).toBe(false)
+    expect(matchesSoftSignal(sandler, 'Adam Sandler', { target_type: 'person', person_id: '19292' })).toBe(true)
+    // And by name, when TMDB person search missed.
+    expect(matchesSoftSignal(sandler, 'Adam Sandler', { target_type: 'person', person_id: '' })).toBe(true)
+    expect(matchesSoftSignal(TOY_STORY, 'Adam Sandler', { target_type: 'person', person_id: '19292' })).toBe(false)
+
+    expect(softPreferenceMultiplier(sandler, [
+      { signal: 'Adam Sandler', weight_modifier: 0.3, target_type: 'person', person_id: '19292' },
+    ])).toBe(0.3)
+  })
+
   it('compounds matching modifiers and leaves non-matches alone', () => {
     expect(softPreferenceMultiplier(NARUTO, [{ signal: 'anime', weight_modifier: 0.5 }])).toBe(0.5)
     expect(softPreferenceMultiplier(TOY_STORY, [{ signal: 'anime', weight_modifier: 0.5 }])).toBe(1)
@@ -196,6 +214,25 @@ describe('applyDirectives', () => {
 
     applyDirectives(l, [{ kind: 'soft_preference', target_type: 'genre', name: 'romance', raw: '', reason: '', weight_modifier: 0.8 }])
     expect(l.soft_preferences).toHaveLength(0)
+  })
+
+  it('keeps a person preference matchable', () => {
+    const l = logic()
+    applyDirectives(l, [{
+      kind: 'soft_preference', target_type: 'person', name: 'Adam Sandler',
+      raw: '', reason: '', weight_modifier: 0.3, person_id: '19292',
+    }])
+    expect(l.soft_preferences[0].target_type).toBe('person')
+    expect(l.soft_preferences[0].person_id).toBe('19292')
+  })
+
+  it('backfills a person id onto a preference restated later', () => {
+    const l = logic()
+    const base = { kind: 'soft_preference' as const, target_type: 'person' as const, name: 'Adam Sandler', raw: '', reason: '' }
+    applyDirectives(l, [{ ...base, weight_modifier: 0.5, person_id: '' }])
+    applyDirectives(l, [{ ...base, weight_modifier: 0.5, person_id: '19292' }])
+    expect(l.soft_preferences).toHaveLength(1)
+    expect(l.soft_preferences[0].person_id).toBe('19292')
   })
 
   it('keeps the stronger reduction when a preference is restated', () => {

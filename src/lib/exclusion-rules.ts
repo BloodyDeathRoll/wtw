@@ -212,10 +212,25 @@ export function isExcluded(title: MatchableTitle, rules: ExclusionRule[]): boole
  * This widens it the same way a keyword rule is widened (aliases, TMDB
  * keywords, language), and keeps the old substring test as a fallback so no
  * preference that used to match stops matching.
+ *
+ * `pref` carries what the signal names when the extractor knew. Without it a
+ * person is treated as a keyword and compared against genres and keywords,
+ * where a person's name never appears — so "less Adam Sandler" quietly did
+ * nothing, exactly like the hard person rules this file was written to fix.
  */
-export function matchesSoftSignal(title: MatchableTitle, signal: string): boolean {
+export function matchesSoftSignal(
+  title: MatchableTitle,
+  signal: string,
+  pref?: Pick<SoftPreference, 'target_type' | 'person_id'>,
+): boolean {
   const s = norm(signal)
   if (!s) return false
+
+  if (pref?.target_type === 'person') {
+    return matchesPerson(title, {
+      type: 'person', id: pref.person_id ?? '', name: signal, raw: signal, reason: '',
+    })
+  }
 
   const asRule: ExclusionRule = { type: 'keyword', id: '', name: signal, raw: signal, reason: '' }
   if (matchesRule(title, asRule)) return true
@@ -237,7 +252,7 @@ export function softPreferenceMultiplier(
   for (const p of prefs) {
     const weight = Number.isFinite(p.weight_modifier) ? p.weight_modifier : 1
     if (weight >= 1) continue
-    if (matchesSoftSignal(title, p.signal)) m *= Math.max(0, weight)
+    if (matchesSoftSignal(title, p.signal, p)) m *= Math.max(0, weight)
   }
   return m
 }
