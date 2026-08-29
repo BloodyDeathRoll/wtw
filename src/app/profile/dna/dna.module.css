@@ -1,0 +1,276 @@
+/* Taste DNA — rebuilt 2026-08-29. The page had shrunk into a spreadsheet:
+   11-12px type, 1.5px bars, rows 2px apart. Everything here is sized to be
+   read on a phone at arm's length. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--wtw-bg);
+  color: var(--wtw-fg);
+  padding-bottom: 40px;
+}
+.container {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ─── Header — back | title | menu, like every other screen ─── */
+/* NOT positioned: the app menu's drawer overlay must resolve to the page,
+   not this row (see tests/unit/drawer-containing-block.test.ts). */
+.header {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 14px 16px 18px;
+}
+.backBtn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--wtw-fg);
+  cursor: pointer;
+}
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.headerTitleBlock {
+  min-width: 0;
+}
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--wtw-fg-muted);
+}
+
+/* ─── Cards ─── */
+.section {
+  background: var(--wtw-bg-elev-1);
+  border: 1px solid var(--wtw-border);
+  border-radius: 20px;
+  padding: 22px 20px;
+}
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wtw-fg-muted);
+  margin-bottom: 18px;
+}
+.note {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--wtw-fg-muted);
+}
+
+/* ─── Creative affinities ─── */
+/* The raw ±score column is gone (2026-08-29): "+0.30" is an internal
+   reaction-average, not something to read. Confidence is the only number,
+   and its unit is named once in the group header instead of on every row. */
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 10px;
+}
+.group + .group {
+  margin-top: 24px;
+}
+.groupName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wtw-fg);
+  text-transform: capitalize;
+}
+.groupLegend {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wtw-fg-dim);
+}
+.personRow {
+  display: grid;
+  grid-template-columns: 1fr 96px 46px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+}
+.personName {
+  font-size: 16px;
+  color: var(--wtw-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.personPct {
+  font-size: 15px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--wtw-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Meters ─── */
+.track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* ─── Narrative dimensions — rebuilt ───
+   Was: a label, a pill, "N% conf.", a 1px bar and a grey caption, five
+   competing elements per row that read as noise. Now each dimension is its
+   own block: what it says about you in plain words as the headline, the
+   dimension name above it as a quiet label, and confidence as a short
+   labelled meter underneath. The value pill is gone — the sentence carries
+   it — except for numeric dimensions, which get a 0–100 readout. */
+.dim + .dim {
+  margin-top: 26px;
+}
+.dimLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--wtw-fg-dim);
+}
+.dimValue {
+  margin-top: 6px;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--wtw-fg);
+  text-transform: capitalize;
+}
+.dimNote {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--wtw-fg-muted);
+}
+.dimMeter {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+.dimConf {
+  font-size: 13px;
+  color: var(--wtw-fg-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Confidence this low means the dimension is a default, not a reading. */
+.dimUnknown {
+  color: var(--wtw-fg-dim);
+}
+
+/* ─── Visceral specs ─── */
+.subhead {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wtw-fg-dim);
+  margin-bottom: 12px;
+}
+.specGroup + .specGroup {
+  margin-top: 28px;
+}
+.specRow {
+  display: grid;
+  /* Label column fits the longest craft aspect ("Cinematography" ≈ 125px at
+     16px Inter) — at 116px it ran under the meter with no gap. */
+  grid-template-columns: 140px 1fr 40px;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+}
+.specLabel {
+  font-size: 16px;
+  color: var(--wtw-fg);
+  text-transform: capitalize;
+}
+.specValue {
+  font-size: 16px;
+  font-weight: 600;
+  text-align: right;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Open questions ─── */
+.questions {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.question {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #fff;
+}
+.questionMark {
+  color: var(--wtw-fg-dim);
+}
+
+/* ─── Rules / stretch picks ─── */
+.ruleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 16px;
+  color: var(--wtw-fg);
+}
+.tag {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--wtw-fg-muted);
+  text-transform: capitalize;
+}
+.tagDeny {
+  background: rgba(224, 92, 92, 0.14);
+  color: #e05c5c;
+}
+.ruleReason {
+  font-size: 14px;
+  color: var(--wtw-fg-dim);
+}
+.footer {
+  text-align: center;
+  font-size: 13px;
+  color: var(--wtw-fg-dim);
+  padding: 8px 0 24px;
+}

@@ -1,15 +1,15 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import type { DNASchema, StrandA } from '@/types/dna'
+import { DnaHeader } from './DnaHeader'
+import styles from './dna.module.css'
 
 export const metadata = { title: 'Your Taste DNA — WTW' }
 
 // ── Helpers ──────────────────────────────────────────────────
 
 function pct(n: number) { return `${Math.round(n * 100)}%` }
-function scorePct(n: number) { return `${Math.round(((n + 1) / 2) * 100)}%` }  // -1…1 → 0%…100%
 
 function topCrew(bucket: StrandA[keyof StrandA], limit = 5) {
   return Object.values(bucket)
@@ -27,59 +27,43 @@ const STRAND_B_LABELS: Record<string, string> = {
   ensemble_vs_solo:     'Ensemble vs Solo',
 }
 
+/**
+ * Below this, a dimension is still sitting on the blank-DNA default rather
+ * than anything the fingerprint has learned — say so instead of stating a
+ * preference the user never expressed.
+ */
+const UNSURE_BELOW = 0.1
+
+/** A numeric dimension (originality) as a 0–100 readout, not 0.5787002162. */
+function dimensionValue(value: unknown): string {
+  if (typeof value === 'number') return `${Math.round(value * 100)} / 100`
+  return String(value).replace(/_/g, ' ')
+}
+
 // ── Sub-components (server) ───────────────────────────────────
 
-function ScoreBar({ score, confidence }: { score: number; confidence: number }) {
-  const positive = score >= 0
-  const fillWidth = Math.abs(score) * 100
+function Meter({ value, color = 'var(--wtw-green)' }: { value: number; color?: string }) {
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="relative h-1.5 w-24 rounded-full bg-white/10 flex-shrink-0">
-        {positive ? (
-          <div
-            className="absolute left-1/2 top-0 h-full rounded-full"
-            style={{ width: `${fillWidth / 2}%`, background: 'var(--wtw-green)' }}
-          />
-        ) : (
-          <div
-            className="absolute right-1/2 top-0 h-full rounded-full"
-            style={{ width: `${fillWidth / 2}%`, background: '#e05c5c' }}
-          />
-        )}
-        <div className="absolute left-1/2 top-0 h-full w-px bg-white/20" />
-      </div>
-      <span className="text-xs" style={{ color: 'var(--wtw-fg-dim)' }}>
-        {Math.round(confidence * 100)}% conf.
-      </span>
+    <div className={styles.track}>
+      <div className={styles.fill} style={{ width: pct(value), background: color }} />
     </div>
   )
 }
 
-function HBar({ value, label, color = 'var(--wtw-green)' }: { value: number; label: string; color?: string }) {
+function SpecRow({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 text-xs flex-shrink-0 capitalize" style={{ color: 'var(--wtw-fg-muted)' }}>
-        {label.replace(/_/g, ' ')}
-      </span>
-      <div className="flex-1 h-1.5 rounded-full bg-white/10">
-        <div className="h-full rounded-full transition-all" style={{ width: pct(value), background: color }} />
-      </div>
-      <span className="w-8 text-right text-xs" style={{ color: 'var(--wtw-fg-dim)' }}>
-        {Math.round(value * 100)}
-      </span>
+    <div className={styles.specRow}>
+      <span className={styles.specLabel}>{label.replace(/_/g, ' ')}</span>
+      <Meter value={value} color={color} />
+      <span className={styles.specValue}>{Math.round(value * 100)}</span>
     </div>
   )
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section
-      className="rounded-2xl p-5 space-y-4"
-      style={{ background: 'var(--wtw-bg-elev-1)', border: '1px solid var(--wtw-border)' }}
-    >
-      <h2 className="text-sm font-semibold tracking-wide uppercase" style={{ color: 'var(--wtw-fg-muted)' }}>
-        {title}
-      </h2>
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
       {children}
     </section>
   )
@@ -97,8 +81,10 @@ export default async function DNAProfilePage() {
     dna = await loadDNA(user.id)
   } catch {
     return (
-      <main className="min-h-screen p-6 flex items-center justify-center" style={{ background: 'var(--wtw-bg)', color: 'var(--wtw-fg)' }}>
-        <p style={{ color: 'var(--wtw-fg-muted)' }}>Could not load your DNA profile.</p>
+      <main className={styles.page}>
+        <div className={styles.container}>
+          <p className={styles.note}>Could not load your DNA profile.</p>
+        </div>
       </main>
     )
   }
@@ -107,202 +93,173 @@ export default async function DNAProfilePage() {
           strand_c_visceral_specs: sc, contextual_logic: cl, signals, learning_loop: ll } = dna
 
   const hasData = signals.length >= 3
+  const appUser = {
+    id: user.id,
+    email: user.email ?? null,
+    name: (user.user_metadata?.full_name as string | undefined) ?? null,
+    avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+  }
+  const subtitle =
+    `${signals.length} signal${signals.length !== 1 ? 's' : ''} · ` +
+    `v${metadata.taste_version} · ${new Date(metadata.last_updated).toLocaleDateString()}`
 
   return (
-    <main
-      className="min-h-screen px-4 py-8 max-w-2xl mx-auto space-y-5"
-      style={{ background: 'var(--wtw-bg)', color: 'var(--wtw-fg)' }}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Taste DNA</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--wtw-fg-muted)' }}>
-            {signals.length} signal{signals.length !== 1 ? 's' : ''} · v{metadata.taste_version} ·{' '}
-            {new Date(metadata.last_updated).toLocaleDateString()}
-          </p>
-        </div>
-        <Link
-          href="/"
-          className="text-sm px-3 py-1.5 rounded-full"
-          style={{ background: 'var(--wtw-bg-elev-2)', color: 'var(--wtw-fg-muted)', border: '1px solid var(--wtw-border)' }}
-        >
-          ← Home
-        </Link>
-      </div>
+    <main className={styles.page}>
+      <DnaHeader user={appUser} subtitle={subtitle} />
 
-      {!hasData && (
-        <div
-          className="rounded-2xl p-5 text-sm"
-          style={{ background: 'var(--wtw-bg-elev-1)', border: '1px solid var(--wtw-border)', color: 'var(--wtw-fg-muted)' }}
-        >
-          Your fingerprint is just getting started. Rate a few more films and have a conversation to see your DNA take shape.
-        </div>
-      )}
+      <div className={styles.container}>
+        {!hasData && (
+          <section className={styles.section}>
+            <p className={styles.note}>
+              Your fingerprint is just getting started. Rate a few more films and have a
+              conversation to see your DNA take shape.
+            </p>
+          </section>
+        )}
 
-      {/* Strand A — Creative Affinities */}
-      <Section title="Creative Affinities">
-        {(['directors', 'writers', 'actors'] as const).map(bucket => {
-          const crew = topCrew(sa[bucket])
-          if (crew.length === 0) return null
-          return (
-            <div key={bucket}>
-              <p className="text-xs mb-2 font-medium capitalize" style={{ color: 'var(--wtw-fg-dim)' }}>
-                {bucket}
-              </p>
-              <div className="space-y-2">
+        {/* Strand A — Creative Affinities.
+            One number per person: how confident the fingerprint is. The raw
+            ±score it used to show is an internal reaction-average, and the
+            unit is named once per group instead of on every row. */}
+        <Section title="Creative Affinities">
+          {(['directors', 'writers', 'actors'] as const).map(bucket => {
+            const crew = topCrew(sa[bucket])
+            if (crew.length === 0) return null
+            return (
+              <div key={bucket} className={styles.group}>
+                <div className={styles.groupHead}>
+                  <span className={styles.groupName}>{bucket}</span>
+                  <span className={styles.groupLegend}>Confidence</span>
+                </div>
                 {crew.map(person => (
-                  <div key={person.name} className="flex items-center gap-3">
-                    <span className="flex-1 text-sm truncate" style={{ color: 'var(--wtw-fg)' }}>
-                      {person.name}
-                    </span>
-                    <ScoreBar score={person.score} confidence={person.confidence} />
-                    <span className="text-xs w-6 text-right" style={{ color: person.score >= 0 ? 'var(--wtw-green)' : '#e05c5c' }}>
-                      {person.score > 0 ? '+' : ''}{person.score.toFixed(2)}
-                    </span>
+                  <div key={person.name} className={styles.personRow}>
+                    <span className={styles.personName}>{person.name}</span>
+                    <Meter value={person.confidence} />
+                    <span className={styles.personPct}>{pct(person.confidence)}</span>
                   </div>
                 ))}
               </div>
-            </div>
-          )
-        })}
-        {Object.values(sa.directors).length === 0 && Object.values(sa.actors).length === 0 && (
-          <p className="text-sm" style={{ color: 'var(--wtw-fg-dim)' }}>No crew affinities yet.</p>
-        )}
-      </Section>
+            )
+          })}
+          {Object.values(sa.directors).length === 0 && Object.values(sa.actors).length === 0 && (
+            <p className={styles.note}>No crew affinities yet.</p>
+          )}
+        </Section>
 
-      {/* Strand B — Narrative Dimensions */}
-      <Section title="Narrative Dimensions">
-        <div className="space-y-3">
+        {/* Strand B — Narrative Dimensions.
+            Each dimension is a block: quiet label, the reading as the
+            headline, the plain-English note, then a confidence meter. */}
+        <Section title="Narrative Dimensions">
           {(Object.keys(sb) as (keyof typeof sb)[]).map(dim => {
             const d = sb[dim]
+            const unsure = d.confidence < UNSURE_BELOW
             return (
-              <div key={dim} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: 'var(--wtw-fg)' }}>
-                    {STRAND_B_LABELS[dim] ?? dim}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--wtw-bg-elev-3)', color: 'var(--wtw-fg-muted)' }}>
-                      {String(d.value).replace(/_/g, ' ')}
-                    </span>
-                    <span className="text-xs w-16 text-right" style={{ color: 'var(--wtw-fg-dim)' }}>
-                      {Math.round(d.confidence * 100)}% conf.
-                    </span>
-                  </div>
+              <div key={dim} className={styles.dim}>
+                <div className={styles.dimLabel}>{STRAND_B_LABELS[dim] ?? dim}</div>
+                <div className={`${styles.dimValue} ${unsure ? styles.dimUnknown : ''}`}>
+                  {unsure ? 'Not enough signal yet' : dimensionValue(d.value)}
                 </div>
-                <div className="h-1 rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: pct(d.confidence), background: `rgba(var(--wtw-rgb), ${0.3 + d.confidence * 0.7})` }}
-                  />
+                {!unsure && d.notes && <p className={styles.dimNote}>{d.notes}</p>}
+                <div className={styles.dimMeter}>
+                  <Meter value={d.confidence} />
+                  <span className={styles.dimConf}>{pct(d.confidence)} confidence</span>
                 </div>
-                {d.notes && (
-                  <p className="text-xs" style={{ color: 'var(--wtw-fg-dim)' }}>{d.notes}</p>
-                )}
               </div>
             )
           })}
-        </div>
-      </Section>
+        </Section>
 
-      {/* Strand C — Visceral Specs */}
-      <Section title="Visceral Specs">
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <p className="text-xs font-medium" style={{ color: 'var(--wtw-fg-dim)' }}>Pacing</p>
+        {/* Strand C — Visceral Specs */}
+        <Section title="Visceral Specs">
+          <div className={styles.specGroup}>
+            <p className={styles.subhead}>Pacing</p>
             {Object.entries(sc.pacing_weights).map(([k, v]) => (
-              <HBar key={k} label={k} value={v} />
+              <SpecRow key={k} label={k} value={v} color="var(--wtw-green)" />
             ))}
           </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium" style={{ color: 'var(--wtw-fg-dim)' }}>Tone</p>
+          <div className={styles.specGroup}>
+            <p className={styles.subhead}>Tone</p>
             {Object.entries(sc.tone_weights).map(([k, v]) => (
-              <HBar key={k} label={k} value={v} color="#7c6df2" />
+              <SpecRow key={k} label={k} value={v} color="#7c6df2" />
             ))}
           </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium" style={{ color: 'var(--wtw-fg-dim)' }}>Craft aspects (from deep surveys)</p>
+          <div className={styles.specGroup}>
+            <p className={styles.subhead}>Craft aspects (from deep surveys)</p>
             {Object.entries(sc.aspect_weights).map(([k, v]) => (
-              <HBar key={k} label={k} value={v} color="#4a9d7f" />
+              <SpecRow key={k} label={k} value={v} color="#4a9d7f" />
             ))}
           </div>
-        </div>
-      </Section>
+        </Section>
 
-      {/* Contextual Logic */}
-      {(cl.exclusion_rules.length > 0 || cl.soft_preferences.length > 0) && (
-        <Section title="Your Rules">
-          {cl.exclusion_rules.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium" style={{ color: 'var(--wtw-fg-dim)' }}>Hard exclusions</p>
-              {cl.exclusion_rules.map((r, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#e05c5c22', color: '#e05c5c' }}>
-                    {r.type}
-                  </span>
-                  <span className="text-sm" style={{ color: 'var(--wtw-fg)' }}>{r.name}</span>
-                  {r.reason && <span className="text-xs" style={{ color: 'var(--wtw-fg-dim)' }}>— {r.reason}</span>}
-                </div>
+        {/* Contextual Logic */}
+        {(cl.exclusion_rules.length > 0 || cl.soft_preferences.length > 0) && (
+          <Section title="Your Rules">
+            {cl.exclusion_rules.length > 0 && (
+              <div className={styles.specGroup}>
+                <p className={styles.subhead}>Hard exclusions</p>
+                {cl.exclusion_rules.map((r, i) => (
+                  <div key={i} className={styles.ruleRow}>
+                    <span className={`${styles.tag} ${styles.tagDeny}`}>{r.type}</span>
+                    <span>{r.name}</span>
+                    {r.reason && <span className={styles.ruleReason}>— {r.reason}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {cl.soft_preferences.length > 0 && (
+              <div className={styles.specGroup}>
+                <p className={styles.subhead}>Soft preferences</p>
+                {cl.soft_preferences.map((p, i) => (
+                  <div key={i} className={styles.ruleRow}>
+                    <span>{p.signal}</span>
+                    <span className={styles.tag}>weight {Math.round(p.weight_modifier * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* Learning Loop */}
+        {ll.open_questions.length > 0 && (
+          <Section title="Open Questions">
+            <div className={styles.questions}>
+              {ll.open_questions.map((q, i) => (
+                <p key={i} className={styles.question}>
+                  <span className={styles.questionMark}>?</span>
+                  <span>{q}</span>
+                </p>
               ))}
             </div>
-          )}
-          {cl.soft_preferences.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium" style={{ color: 'var(--wtw-fg-dim)' }}>Soft preferences</p>
-              {cl.soft_preferences.map((p, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-sm" style={{ color: 'var(--wtw-fg)' }}>{p.signal}</span>
-                  <span className="text-xs" style={{ color: 'var(--wtw-fg-dim)' }}>
-                    weight {Math.round(p.weight_modifier * 100)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
-      )}
+          </Section>
+        )}
 
-      {/* Learning Loop */}
-      {ll.open_questions.length > 0 && (
-        <Section title="Open Questions">
-          <ul className="space-y-1.5">
-            {ll.open_questions.map((q, i) => (
-              <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--wtw-fg-muted)' }}>
-                <span style={{ color: 'var(--wtw-fg-dim)' }}>?</span>
-                {q}
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-
-      {/* Stretch picks summary */}
-      {ll.stretch_pick_history.length > 0 && (
-        <Section title="Stretch Pick Results">
-          <div className="space-y-2">
+        {/* Stretch picks summary */}
+        {ll.stretch_pick_history.length > 0 && (
+          <Section title="Stretch Pick Results">
             {ll.stretch_pick_history.slice(-5).reverse().map((s, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className="text-sm" style={{ color: 'var(--wtw-fg)' }}>{s.title}</span>
+              <div key={i} className={styles.ruleRow}>
+                <span style={{ flex: 1 }}>{s.title}</span>
                 <span
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={{
-                    background: s.accepted ? 'var(--wtw-green-soft)' : 'rgba(255,255,255,0.06)',
-                    color: s.accepted ? 'var(--wtw-green)' : 'var(--wtw-fg-dim)',
-                  }}
+                  className={styles.tag}
+                  style={
+                    s.accepted
+                      ? { background: 'var(--wtw-green-soft)', color: 'var(--wtw-green)' }
+                      : undefined
+                  }
                 >
                   {s.reaction ?? (s.accepted ? 'watched' : 'skipped')}
                 </span>
               </div>
             ))}
-          </div>
-        </Section>
-      )}
+          </Section>
+        )}
 
-      {/* Footer */}
-      <p className="text-center text-xs pb-6" style={{ color: 'var(--wtw-fg-dim)' }}>
-        Schema v{metadata.schema_version} · {metadata.total_sessions} session{metadata.total_sessions !== 1 ? 's' : ''}
-      </p>
+        <p className={styles.footer}>
+          Schema v{metadata.schema_version} · {metadata.total_sessions} session
+          {metadata.total_sessions !== 1 ? 's' : ''}
+        </p>
+      </div>
     </main>
   )
 }
