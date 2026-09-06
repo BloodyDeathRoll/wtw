@@ -15,6 +15,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { enrichTitleWithNarrative } from './enrich-title-narrative'
 import { buildLineageGraph } from './build-lineage-graph'
+import { isMistralRateLimit, mistralCallCount } from '@/lib/mistral-batch'
 
 const TITLE_BATCH_SIZE = 1    // STRICTLY serial — one enrichment call at a time
 const TITLE_LIMIT = 15        // titles enriched per run
@@ -37,16 +38,44 @@ export interface EnrichmentReport {
   crew_processed: number
   crew_failed: number
   duration_ms: number
+  /** Mistral requests this run made (extraction + embedding + lineage). */
+  mistral_calls: number
+  /** Mistral answered 429. The run stopped at that point — see below. */
+  rate_limited: boolean
+  /** The caller's call budget ran out before the backlog did. */
+  budget_exhausted: boolean
 }
 
-export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
+export interface EnrichmentOptions {
+  /**
+   * Stop before the next item once this many Mistral calls have been made in
+   * this run. A title costs 2 (extraction + embedding), a crew row 1. The
+   * caller (grow-catalog) turns its nightly budget into this per-call cap.
+   */
+  maxMistralCalls?: number
+}
+
+// One 429 means the key is spent for now — every further call is a wasted
+// request against the same wall (2026-09-04: 15 of 15 attempts failed, two
+// nights running, three retries each). Stop the run on the first one.
+const TITLE_COST = 2
+const CREW_COST = 1
+
+export async function runNightlyEnrichment(
+  options: EnrichmentOptions = {},
+): Promise<EnrichmentReport> {
   const start = Date.now()
+  const callsAtStart = mistralCallCount()
+  const maxCalls = options.maxMistralCalls ?? Infinity
+  const callsLeft = () => maxCalls - (mistralCallCount() - callsAtStart)
   const supabase = createServiceClient()
 
   let titles_processed = 0
   let titles_failed = 0
   let crew_processed = 0
   let crew_failed = 0
+  let rate_limited = false
+  let budget_exhausted = false
 
   // ── Phase 1: Enrich pending titles ───────────────────────
   const { data: pendingTitles } = await supabase
@@ -59,6 +88,7 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
   const titleQueue = pendingTitles ?? []
 
   for (let i = 0; i < titleQueue.length; i += TITLE_BATCH_SIZE) {
+    if (callsLeft() < TITLE_COST) { budget_exhausted = true; break }
     const batch = titleQueue.slice(i, i + TITLE_BATCH_SIZE)
 
     await Promise.allSettled(
@@ -72,10 +102,16 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
           }
         } catch (err) {
           titles_failed++
-          console.error(`[enrich] Failed ${tmdb_id} (${title}):`, err)
+          if (isMistralRateLimit(err)) {
+            rate_limited = true
+            console.error(`[enrich] Mistral rate limit (429) on ${tmdb_id} (${title}) — stopping this run`)
+          } else {
+            console.error(`[enrich] Failed ${tmdb_id} (${title}):`, err)
+          }
         }
       })
     )
+    if (rate_limited) break
 
     // Delay between batches — skip delay after last batch
     if (i + TITLE_BATCH_SIZE < titleQueue.length) {
@@ -96,9 +132,11 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
     .order('created_at', { ascending: true })
     .limit(CREW_BATCH_SIZE)
 
-  const crewQueue = pendingCrew ?? []
+  // A rate-limited or over-budget run skips lineage too: same key, same wall.
+  const crewQueue = rate_limited || budget_exhausted ? [] : (pendingCrew ?? [])
 
   for (let i = 0; i < crewQueue.length; i += TITLE_BATCH_SIZE) {
+    if (callsLeft() < CREW_COST) { budget_exhausted = true; break }
     const batch = crewQueue.slice(i, i + TITLE_BATCH_SIZE)
 
     await Promise.allSettled(
@@ -111,10 +149,16 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
           // buildLineageGraph returns false if already enriched — not an error
         } catch (err) {
           crew_failed++
-          console.error(`[lineage] Failed ${tmdb_person_id} (${name}):`, err)
+          if (isMistralRateLimit(err)) {
+            rate_limited = true
+            console.error(`[lineage] Mistral rate limit (429) on ${tmdb_person_id} (${name}) — stopping this run`)
+          } else {
+            console.error(`[lineage] Failed ${tmdb_person_id} (${name}):`, err)
+          }
         }
       })
     )
+    if (rate_limited) break
 
     if (i + TITLE_BATCH_SIZE < crewQueue.length) {
       await new Promise(r => setTimeout(r, BATCH_DELAY_MS))
@@ -127,5 +171,8 @@ export async function runNightlyEnrichment(): Promise<EnrichmentReport> {
     crew_processed,
     crew_failed,
     duration_ms: Date.now() - start,
+    mistral_calls: mistralCallCount() - callsAtStart,
+    rate_limited,
+    budget_exhausted,
   }
 }

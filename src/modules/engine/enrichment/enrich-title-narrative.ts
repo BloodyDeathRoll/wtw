@@ -19,6 +19,7 @@ import { generateObject } from 'ai'
 import { embed } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
+import { batchMistralApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { TitleRow, NarrativeExtractionResult } from '../types'
@@ -27,10 +28,9 @@ import type { TitleRow, NarrativeExtractionResult } from '../types'
 // AI provider instances
 // ─────────────────────────────────────────────
 
+// Batch path: its own key, no retries, every call counted (src/lib/mistral-batch.ts).
 function mistral() {
-  const key = process.env.MISTRAL_API_KEY
-  if (!key) throw new Error('MISTRAL_API_KEY is not set')
-  return createMistral({ apiKey: key })
+  return createMistral({ apiKey: batchMistralApiKey() })
 }
 
 // ─────────────────────────────────────────────
@@ -176,10 +176,12 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
   // when the repair can't produce a valid object.
   let extracted: z.infer<typeof narrativeSchema>
   try {
+    recordMistralCall()
     const { object } = await generateObject({
       model: mistral()(MODELS.enrichment),
       schema: narrativeSchema,
       prompt,
+      maxRetries: BATCH_MAX_RETRIES,
     })
     extracted = object
   } catch (err) {
@@ -207,9 +209,11 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
   // ── 4. Generate embedding (Mistral) ──────────────────────
   const embeddingText = narrativeToEmbeddingText(extracted as NarrativeExtractionResult)
 
+  recordMistralCall()
   const { embedding } = await embed({
     model: mistral().textEmbeddingModel(MODELS.embedding),
     value: embeddingText,
+    maxRetries: BATCH_MAX_RETRIES,
   })
 
   // ── 5. Update titles row ──────────────────────────────────
