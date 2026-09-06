@@ -33,6 +33,13 @@ const key = (type: string, tmdb_id: string) => `${type}:${tmdb_id}`
 const SEED_COUNT       = intEnv('SEED_COUNT', 120)       // new titles to add per run
 const TARGET_CATALOG   = intEnv('TARGET_CATALOG', 15000) // stop growing at this size
 const ENRICH_MAX       = intEnv('ENRICH_MAX', 300)       // max titles to enrich per run
+const MISTRAL_CALL_BUDGET = intEnv('MISTRAL_CALL_BUDGET', 600) // max Mistral REQUESTS per run —
+                                                         // the unit Mistral meters. A title is 2
+                                                         // (extraction + embedding), a crew row 1.
+                                                         // The live app shares the workspace
+                                                         // (MISTRAL_BATCH_API_KEY splits it), and
+                                                         // on 2026-09-04 ~2,000 calls/night spent
+                                                         // it to a 0 req/min wall for days.
 const DISCOVER_CAP     = intEnv('DISCOVER_CAP', 40)      // max discover slices/attempts to scan
 const DISCOVER_PAGES   = Math.max(1, intEnv('DISCOVER_PAGES', 5)) // TMDB page depth per genre×decade
                                                          // slice. Sets the REACHABLE pool:
@@ -402,13 +409,32 @@ async function main() {
   // runNightlyEnrichment processes up to its own internal batch each call and
   // is idempotent (only touches enriched_at IS NULL); loop until the backlog is
   // empty, ENRICH_MAX is reached, or a run makes no progress (rate-limit wall).
+  // Two more exits, both loud in the summary: the FIRST Mistral 429 ends the
+  // phase (`mistral_rate_limited`, ok:false — no retries, no next batch), and
+  // so does the per-run call budget (`mistral_budget_exhausted`).
   let enriched = 0
   let enrichFailures = 0
   let stalls = 0
+  let mistralCalls = 0
+  let mistralRateLimited = false
+  let mistralBudgetExhausted = false
   while (enriched < ENRICH_MAX && stalls < 2) {
-    const report = await runNightlyEnrichment()
+    const callsLeft = MISTRAL_CALL_BUDGET - mistralCalls
+    if (callsLeft <= 0) { mistralBudgetExhausted = true; break }
+    const report = await runNightlyEnrichment({ maxMistralCalls: callsLeft })
     enriched += report.titles_processed
     enrichFailures += report.titles_failed
+    mistralCalls += report.mistral_calls
+    if (report.rate_limited) {
+      mistralRateLimited = true
+      console.error(`[grow] Mistral rate limited (429) after ${mistralCalls} call(s) — enrichment stopped, ${enriched} enriched`)
+      break
+    }
+    if (report.budget_exhausted) {
+      mistralBudgetExhausted = true
+      console.log(`[grow] Mistral call budget ${MISTRAL_CALL_BUDGET} reached — enrichment stopped, ${enriched} enriched`)
+      break
+    }
     if (report.titles_processed === 0) stalls++
     else stalls = 0
     if (report.titles_processed === 0 && report.crew_processed === 0) break
@@ -595,7 +621,9 @@ async function main() {
   // Supabase at any time. Adding a key means checking the window again —
   // reports/2026-08-15/wtw/tests/test_digest_window.py measures it.
   const summary = {
-    ok: true,
+    // A rate-limited night is a FAILED night: the key is spent for the live
+    // app too, and the digest must say so (two nights went unread otherwise).
+    ok: !mistralRateLimited,
     started_titles: startCount,
     seeded,
     // Spend + failure legibility. seed_attempts is the OMDB-costing number
@@ -628,6 +656,11 @@ async function main() {
     target: TARGET_CATALOG,
     enriched,
     enrich_failures: enrichFailures,
+    mistral_calls: mistralCalls,
+    // Present only on the nights they fire, so they cost nothing in the
+    // digest's 400-byte window otherwise and cannot be missed when they do.
+    ...(mistralRateLimited ? { mistral_rate_limited: true } : {}),
+    ...(mistralBudgetExhausted ? { mistral_budget_exhausted: MISTRAL_CALL_BUDGET } : {}),
     // Past here is beyond the 400-byte digest window on a stalling night, by
     // choice: all four are either constant, recomputable from Supabase, or
     // (the two backfills) have read 0/0 on every committed summary to date.

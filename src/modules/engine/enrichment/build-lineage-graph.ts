@@ -21,16 +21,16 @@
 import { generateObject } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
+import { batchMistralApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
 import { z } from 'zod'
 import { getPerson } from '@/lib/tmdb'
 import { createServiceClient } from '@/lib/supabase/service'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 
+// Batch path: its own key, no retries, every call counted (src/lib/mistral-batch.ts).
 function mistral() {
-  const key = process.env.MISTRAL_API_KEY
-  if (!key) throw new Error('MISTRAL_API_KEY is not set')
-  return createMistral({ apiKey: key })
+  return createMistral({ apiKey: batchMistralApiKey() })
 }
 
 // ─────────────────────────────────────────────
@@ -120,10 +120,12 @@ Only include connections where the influence is well-documented or widely recogn
 If you are uncertain about a connection, omit it rather than speculate.
 Focus on directors, writers, and cinematographers — not studios or movements.`
 
+  recordMistralCall()
   const { object: lineage } = await generateObject({
     model: mistral()(MODELS.enrichment),
     schema: lineageSchema,
     prompt,
+    maxRetries: BATCH_MAX_RETRIES,
   })
 
   // ── 4. Resolve names → TMDB person IDs ───────────────────

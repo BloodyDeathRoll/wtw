@@ -12,6 +12,22 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
 
 ## ⚠️ Open now
 
+- **Horror/anime bias + user rules not applied — analysed 2026-09-06; #1 fixed on `fix/enrichment-mistral-budget`, the rest open.** Findings (measured live): the Mistral workspace has answered 429 with a per-minute limit of 0 since 2026-09-04 (last successful enrichment 00:31 UTC that day; 0 of 900 enriched on 09-05 and 09-06 with 124 pending — the Dream summary carried `enrich_failing` both nights and nobody saw it). Every Mistral call in the app fails silently on that: session-end directive extraction (rule never written, chat still says "got it"), rerank (composite order), fingerprint embedding (popularity pool only). The "no horror" instructions of 09-04 17:31 UTC hit exactly that. The "no anime" instructions predate #58 (08-29) and were never re-extracted. Separately: the catalog is 20% horror (movies) / 19% anime (TV) because the grow sweep gives every genre an equal slice (top-150-by-votes is 5% / 9%), the narrative pool inherits it (25–44% horror movie pools, 19–36% anime TV pools, measured on three users incl. a warm/hopeful one); the fingerprint has no genre/format/language dimension so 27 disliked anime can't generalise; a blank fingerprint embeds as `Tone: dark, warm` (jsonb key order + stable sort on equal weights); the enrichment tags 58% of the catalog `dark`; card ratings deliberately don't bump `taste_version`, so the batch stays until session end.
+  Fixes and owners:
+  | # | Fix | Owner |
+  |---|---|---|
+  | 1 | ✅ `fix/enrichment-mistral-budget` (2026-09-06): batch path reads `MISTRAL_BATCH_API_KEY` (fallback `MISTRAL_API_KEY`), `maxRetries: 0`, every call counted (`src/lib/mistral-batch.ts`); `runNightlyEnrichment` stops on the first 429 and on a per-run call cap; `grow-catalog` takes `MISTRAL_CALL_BUDGET` (default 600), reports `mistral_calls` / `mistral_rate_limited` / `mistral_budget_exhausted` and sets `ok:false` on a rate-limited night. Dream: `enrich_max` 900 → 300, `mistral_call_budget: 600`, run.sh hoists both flags into the digest front block. **The key itself is still at 0 req/min — check the Mistral console Limits/Billing page; a new key in the same workspace will not help.** | A2 (+ Dream manifest) |
+  | 2 | Narrative pool: cap any genre's share of the 150 or blend cosine with vote count. | A2 |
+  | 3 | Flat tone weights → no tone line in the embedding text (`strandBToEmbeddingText`). | A2, A3 aware (`regenerate-embedding` shares the format) |
+  | 4 | Enrichment prompt: `dark` must mean dark; add `tense` to strand C or stop emitting it. | A2 (strand C key = shared) |
+  | 5 | Rerank prompt gets the disliked genres too. | A2 |
+  | 6 | Extraction failure must be loud: session/end reports it, the chat must not say "got it". | A1 |
+  | 7 | Extract "no X" rules in the chat turn (Groq text model or pattern), not only via Mistral at session end. | A1 |
+  | 8 | Conversation never rotates: `session_number` stuck at 1, all 105 messages since June re-sent every session end. | A1 |
+  | 9 | Card ratings should refresh the batch: bump `taste_version` every N ratings or invalidate the rec cache (agree cache cost with A2). | A3 with A2 |
+  | 10 | Genre / format / language weights in `dna.ts`; A3 writes from signals, A2 scores with them. Interim: A2 derives genre affinity from `dna.signals` at scoring time. | All three approve; A3 writes; A2 scores |
+  | 11 | Manual "add rule" on the Taste DNA page (`/api/dna/rules` has DELETE only). | Shared `src/app`, with A3 |
+  Order: 1 first (nothing works without Mistral), then 2, 3, 6, 7, then 10. Composite `WEIGHTS` are not the problem — narrative is a percentile within the pool, so a 40% horror pool yields a 40% horror batch whatever the weights.
 - **`discover_pages`** — see §5; second-order now.
 - **Scoring + fingerprint data — fixed 2026-08-28 (measured on the reporter, 250 ratings).** Three layers, all live:
   1. *Scorers were flat* (crew 0.50 for all 424 candidates, narrative cosine 0.94–0.99, visceral 1.0 → the 5% recency term decided the order → recent family/animation on top). Fixed: crew = strongest match per role, normalised so "always loved" = 1.0 (a strand_a `score` is the average reaction level, max +0.30); narrative = percentile within the pool; visceral = relative to the user's own mean and strand_c re-centred on 0.5 after every update (`scripts/recenter-strand-c.mts`, applied); recency 0.05 → 0.01, external 0.10 → 0.14.
