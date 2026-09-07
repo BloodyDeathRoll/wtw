@@ -24,8 +24,11 @@ export const MODELS = {
    *  ~1/6 on complex schemas (e.g. analyze-session) and these sites sit in the
    *  rec pipeline with no try/catch → one failure zeroes out generateRecommendations
    *  → GET keeps serving mocks. Mistral is reliable here. Kept separate from
-   *  `text` (which stays on fast Groq for streaming chat). */
-  structured: 'mistral-small-latest',
+   *  `text` (which stays on fast Groq for streaming chat). Was
+   *  `mistral-small-latest` until Mistral moved small/medium/magistral/devstral
+   *  off the free tier (measured 2026-09-07: 0 req/min, 429 on every call since
+   *  09-04). ministral-8b keeps 188 req/min free and passes json_schema output. */
+  structured: 'ministral-8b-latest',
 
   /** BULK structured enrichment (narrative extraction + lineage graphs) via
    *  generateObject. Same NON-reasoning requirement as `structured`, but kept a
@@ -33,8 +36,10 @@ export const MODELS = {
    *  (e.g. move to a paid fast model) independently of the live-path sites.
    *  Mistral free tier measured live at 50K TPM / 50 req-min, no daily wall (vs
    *  Groq 12K TPM + daily token budget, Gemini free ~20 req/DAY — both hit during
-   *  2026-07-09 seeding). Driven serially by the enrichment loop. */
-  enrichment: 'mistral-small-latest',
+   *  2026-07-09 seeding). Driven serially by the enrichment loop. Same
+   *  2026-09-07 free-tier move as `structured`: ministral-8b (188 req/min free)
+   *  replaces mistral-small (0). */
+  enrichment: 'ministral-8b-latest',
 
   /** Mistral — narrative + fingerprint embeddings (1024-dim, matches the
    *  vector(1024) columns in the Supabase migrations). */
