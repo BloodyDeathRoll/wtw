@@ -44,6 +44,12 @@ export interface EnrichmentReport {
   rate_limited: boolean
   /** The caller's call budget ran out before the backlog did. */
   budget_exhausted: boolean
+  /**
+   * The pending-crew select failed after its retries. Phase 1 (titles) had
+   * already run and its counts above are real; lineage was skipped this run.
+   * (A failed pending-titles select throws instead — nothing was spent.)
+   */
+  crew_queue_failed: boolean
 }
 
 export interface EnrichmentOptions {
@@ -61,6 +67,30 @@ export interface EnrichmentOptions {
 const TITLE_COST = 2
 const CREW_COST = 1
 
+// The pending-queue selects used to discard their `error`: a transient
+// Supabase failure (the `fetch failed` seen during seeding) came back as
+// data:null → an empty queue → the caller read "backlog empty" and exited
+// with budget and time unspent (2026-09-08: 73 of 300 enriched, no 429, no
+// failures). Retry a failed select, log each attempt, and throw if it never
+// succeeds — an empty queue must mean an empty backlog.
+const QUEUE_SELECT_ATTEMPTS = 3
+const QUEUE_SELECT_RETRY_MS = 2000
+
+async function selectQueue<T>(
+  label: string,
+  query: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  let lastMessage = ''
+  for (let attempt = 1; attempt <= QUEUE_SELECT_ATTEMPTS; attempt++) {
+    const { data, error } = await query()
+    if (!error) return data ?? []
+    lastMessage = error.message
+    console.error(`[enrich] ${label} queue select failed (attempt ${attempt}/${QUEUE_SELECT_ATTEMPTS}): ${lastMessage}`)
+    if (attempt < QUEUE_SELECT_ATTEMPTS) await new Promise(r => setTimeout(r, QUEUE_SELECT_RETRY_MS))
+  }
+  throw new Error(`[enrich] ${label} queue select failed ${QUEUE_SELECT_ATTEMPTS} times: ${lastMessage}`)
+}
+
 export async function runNightlyEnrichment(
   options: EnrichmentOptions = {},
 ): Promise<EnrichmentReport> {
@@ -76,16 +106,15 @@ export async function runNightlyEnrichment(
   let crew_failed = 0
   let rate_limited = false
   let budget_exhausted = false
+  let crew_queue_failed = false
 
   // ── Phase 1: Enrich pending titles ───────────────────────
-  const { data: pendingTitles } = await supabase
+  const titleQueue = await selectQueue('titles', () => supabase
     .from('titles')
     .select('tmdb_id, title, type')
     .is('enriched_at', null)
     .order('created_at', { ascending: true })
-    .limit(TITLE_LIMIT)
-
-  const titleQueue = pendingTitles ?? []
+    .limit(TITLE_LIMIT))
 
   for (let i = 0; i < titleQueue.length; i += TITLE_BATCH_SIZE) {
     if (callsLeft() < TITLE_COST) { budget_exhausted = true; break }
@@ -122,18 +151,26 @@ export async function runNightlyEnrichment(
   // ── Phase 2: Build lineage for pending crew members ──────
   // Each buildLineageGraph call costs 1 Mistral request. Cap at
   // CREW_BATCH_SIZE per run, same serial concurrency + delay as titles.
-  const { data: pendingCrew } = await supabase
-    .from('crew_members')
-    .select('tmdb_person_id, name, primary_role')
-    .is('enriched_at', null)
-    .in('primary_role', ['director', 'writer', 'cinematographer'])
-    // Only build lineage for the roles that matter for scoring.
-    // Actors are excluded — lineage boost only applies to crew.
-    .order('created_at', { ascending: true })
-    .limit(CREW_BATCH_SIZE)
-
   // A rate-limited or over-budget run skips lineage too: same key, same wall.
-  const crewQueue = rate_limited || budget_exhausted ? [] : (pendingCrew ?? [])
+  // A failed crew select does not throw: Phase 1 already spent real calls and
+  // wrote rows, and the caller needs those counts for its budget.
+  let crewQueue: { tmdb_person_id: string; name: string; primary_role: string }[] = []
+  if (!rate_limited && !budget_exhausted) {
+    try {
+      crewQueue = await selectQueue('crew', () => supabase
+        .from('crew_members')
+        .select('tmdb_person_id, name, primary_role')
+        .is('enriched_at', null)
+        .in('primary_role', ['director', 'writer', 'cinematographer'])
+        // Only build lineage for the roles that matter for scoring.
+        // Actors are excluded — lineage boost only applies to crew.
+        .order('created_at', { ascending: true })
+        .limit(CREW_BATCH_SIZE))
+    } catch (err) {
+      crew_queue_failed = true
+      console.error('[lineage] skipping lineage this run:', err instanceof Error ? err.message : err)
+    }
+  }
 
   for (let i = 0; i < crewQueue.length; i += TITLE_BATCH_SIZE) {
     if (callsLeft() < CREW_COST) { budget_exhausted = true; break }
@@ -174,5 +211,6 @@ export async function runNightlyEnrichment(
     mistral_calls: mistralCallCount() - callsAtStart,
     rate_limited,
     budget_exhausted,
+    crew_queue_failed,
   }
 }
