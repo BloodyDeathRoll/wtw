@@ -77,10 +77,19 @@ export async function POST(req: NextRequest) {
     duration_ms: 0,
   }
 
+  // runNightlyEnrichment throws when its pending-titles select keeps failing.
+  // Seeding already succeeded by then, so report the error alongside the seed
+  // counts instead of turning the whole request into a 500.
+  let enrich_error: string | undefined
   if (enrich) {
     console.log('[seed] Starting Phase 2: narrative enrichment (first 50 titles)...')
-    enrichReport = await runNightlyEnrichment()
-    console.log('[seed] Phase 2 done:', enrichReport)
+    try {
+      enrichReport = await runNightlyEnrichment()
+      console.log('[seed] Phase 2 done:', enrichReport)
+    } catch (err) {
+      enrich_error = err instanceof Error ? err.message : String(err)
+      console.error('[seed] Phase 2 failed:', enrich_error)
+    }
   }
 
   return NextResponse.json({
@@ -89,6 +98,7 @@ export async function POST(req: NextRequest) {
     titles_enriched: enrichReport.titles_processed,
     titles_failed:   enrichReport.titles_failed,
     crew_enriched:   enrichReport.crew_processed,
+    ...(enrich_error ? { enrich_error } : {}),
     duration_ms:     Date.now() - start,
   })
 }

@@ -139,4 +139,17 @@ describe('runNightlyEnrichment — pending-queue select failure', () => {
     expect(enrichTitle).not.toHaveBeenCalled()
     expect(buildLineage).not.toHaveBeenCalled()
   }, 15_000)
+
+  it('keeps the title counts when only the crew select keeps failing', async () => {
+    // Phase 1 spent real calls and wrote rows; the caller needs those numbers.
+    selectErrors.crew_members = ['TypeError: fetch failed', 'TypeError: fetch failed', 'TypeError: fetch failed']
+    enrichTitle.mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
+    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    const report = await run()
+    expect(enrichTitle).toHaveBeenCalledTimes(3)
+    expect(buildLineage).not.toHaveBeenCalled()
+    expect(report.titles_processed).toBe(3)
+    expect(report.mistral_calls).toBe(6)
+    expect(report.crew_queue_failed).toBe(true)
+  }, 15_000)
 })

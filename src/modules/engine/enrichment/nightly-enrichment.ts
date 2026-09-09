@@ -44,6 +44,12 @@ export interface EnrichmentReport {
   rate_limited: boolean
   /** The caller's call budget ran out before the backlog did. */
   budget_exhausted: boolean
+  /**
+   * The pending-crew select failed after its retries. Phase 1 (titles) had
+   * already run and its counts above are real; lineage was skipped this run.
+   * (A failed pending-titles select throws instead — nothing was spent.)
+   */
+  crew_queue_failed: boolean
 }
 
 export interface EnrichmentOptions {
@@ -100,6 +106,7 @@ export async function runNightlyEnrichment(
   let crew_failed = 0
   let rate_limited = false
   let budget_exhausted = false
+  let crew_queue_failed = false
 
   // ── Phase 1: Enrich pending titles ───────────────────────
   const titleQueue = await selectQueue('titles', () => supabase
@@ -145,15 +152,25 @@ export async function runNightlyEnrichment(
   // Each buildLineageGraph call costs 1 Mistral request. Cap at
   // CREW_BATCH_SIZE per run, same serial concurrency + delay as titles.
   // A rate-limited or over-budget run skips lineage too: same key, same wall.
-  const crewQueue = rate_limited || budget_exhausted ? [] : await selectQueue('crew', () => supabase
-    .from('crew_members')
-    .select('tmdb_person_id, name, primary_role')
-    .is('enriched_at', null)
-    .in('primary_role', ['director', 'writer', 'cinematographer'])
-    // Only build lineage for the roles that matter for scoring.
-    // Actors are excluded — lineage boost only applies to crew.
-    .order('created_at', { ascending: true })
-    .limit(CREW_BATCH_SIZE))
+  // A failed crew select does not throw: Phase 1 already spent real calls and
+  // wrote rows, and the caller needs those counts for its budget.
+  let crewQueue: { tmdb_person_id: string; name: string; primary_role: string }[] = []
+  if (!rate_limited && !budget_exhausted) {
+    try {
+      crewQueue = await selectQueue('crew', () => supabase
+        .from('crew_members')
+        .select('tmdb_person_id, name, primary_role')
+        .is('enriched_at', null)
+        .in('primary_role', ['director', 'writer', 'cinematographer'])
+        // Only build lineage for the roles that matter for scoring.
+        // Actors are excluded — lineage boost only applies to crew.
+        .order('created_at', { ascending: true })
+        .limit(CREW_BATCH_SIZE))
+    } catch (err) {
+      crew_queue_failed = true
+      console.error('[lineage] skipping lineage this run:', err instanceof Error ? err.message : err)
+    }
+  }
 
   for (let i = 0; i < crewQueue.length; i += TITLE_BATCH_SIZE) {
     if (callsLeft() < CREW_COST) { budget_exhausted = true; break }
@@ -194,5 +211,6 @@ export async function runNightlyEnrichment(
     mistral_calls: mistralCallCount() - callsAtStart,
     rate_limited,
     budget_exhausted,
+    crew_queue_failed,
   }
 }
