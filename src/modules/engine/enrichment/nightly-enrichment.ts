@@ -61,6 +61,30 @@ export interface EnrichmentOptions {
 const TITLE_COST = 2
 const CREW_COST = 1
 
+// The pending-queue selects used to discard their `error`: a transient
+// Supabase failure (the `fetch failed` seen during seeding) came back as
+// data:null → an empty queue → the caller read "backlog empty" and exited
+// with budget and time unspent (2026-09-08: 73 of 300 enriched, no 429, no
+// failures). Retry a failed select, log each attempt, and throw if it never
+// succeeds — an empty queue must mean an empty backlog.
+const QUEUE_SELECT_ATTEMPTS = 3
+const QUEUE_SELECT_RETRY_MS = 2000
+
+async function selectQueue<T>(
+  label: string,
+  query: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  let lastMessage = ''
+  for (let attempt = 1; attempt <= QUEUE_SELECT_ATTEMPTS; attempt++) {
+    const { data, error } = await query()
+    if (!error) return data ?? []
+    lastMessage = error.message
+    console.error(`[enrich] ${label} queue select failed (attempt ${attempt}/${QUEUE_SELECT_ATTEMPTS}): ${lastMessage}`)
+    if (attempt < QUEUE_SELECT_ATTEMPTS) await new Promise(r => setTimeout(r, QUEUE_SELECT_RETRY_MS))
+  }
+  throw new Error(`[enrich] ${label} queue select failed ${QUEUE_SELECT_ATTEMPTS} times: ${lastMessage}`)
+}
+
 export async function runNightlyEnrichment(
   options: EnrichmentOptions = {},
 ): Promise<EnrichmentReport> {
@@ -78,14 +102,12 @@ export async function runNightlyEnrichment(
   let budget_exhausted = false
 
   // ── Phase 1: Enrich pending titles ───────────────────────
-  const { data: pendingTitles } = await supabase
+  const titleQueue = await selectQueue('titles', () => supabase
     .from('titles')
     .select('tmdb_id, title, type')
     .is('enriched_at', null)
     .order('created_at', { ascending: true })
-    .limit(TITLE_LIMIT)
-
-  const titleQueue = pendingTitles ?? []
+    .limit(TITLE_LIMIT))
 
   for (let i = 0; i < titleQueue.length; i += TITLE_BATCH_SIZE) {
     if (callsLeft() < TITLE_COST) { budget_exhausted = true; break }
@@ -122,7 +144,8 @@ export async function runNightlyEnrichment(
   // ── Phase 2: Build lineage for pending crew members ──────
   // Each buildLineageGraph call costs 1 Mistral request. Cap at
   // CREW_BATCH_SIZE per run, same serial concurrency + delay as titles.
-  const { data: pendingCrew } = await supabase
+  // A rate-limited or over-budget run skips lineage too: same key, same wall.
+  const crewQueue = rate_limited || budget_exhausted ? [] : await selectQueue('crew', () => supabase
     .from('crew_members')
     .select('tmdb_person_id, name, primary_role')
     .is('enriched_at', null)
@@ -130,10 +153,7 @@ export async function runNightlyEnrichment(
     // Only build lineage for the roles that matter for scoring.
     // Actors are excluded — lineage boost only applies to crew.
     .order('created_at', { ascending: true })
-    .limit(CREW_BATCH_SIZE)
-
-  // A rate-limited or over-budget run skips lineage too: same key, same wall.
-  const crewQueue = rate_limited || budget_exhausted ? [] : (pendingCrew ?? [])
+    .limit(CREW_BATCH_SIZE))
 
   for (let i = 0; i < crewQueue.length; i += TITLE_BATCH_SIZE) {
     if (callsLeft() < CREW_COST) { budget_exhausted = true; break }

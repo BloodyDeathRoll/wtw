@@ -24,7 +24,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { discoverVaried, getMovie, getTV, getWatchProviders } from '@/lib/tmdb'
 import { fetchAndCacheTitle } from '@/modules/engine/enrichment/fetch-and-cache-title'
-import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
+import { runNightlyEnrichment, type EnrichmentReport } from '@/modules/engine/enrichment/nightly-enrichment'
 
 // (tmdb_id, type) is the real title key — TMDB movie/tv ids share a namespace.
 const key = (type: string, tmdb_id: string) => `${type}:${tmdb_id}`
@@ -411,9 +411,13 @@ async function main() {
   // empty, ENRICH_MAX is reached, or a run makes no progress (rate-limit wall).
   // Two more exits, both loud in the summary: the FIRST Mistral 429 ends the
   // phase (`mistral_rate_limited`, ok:false — no retries, no next batch), and
-  // so does the per-run call budget (`mistral_budget_exhausted`).
+  // so does the per-run call budget (`mistral_budget_exhausted`). A run whose
+  // pending-queue select fails (after its own retries) throws instead of
+  // reporting an empty backlog; that counts as a stall here, is retried once
+  // after a pause, and is surfaced as `enrich_queue_failures`.
   let enriched = 0
   let enrichFailures = 0
+  let enrichQueueFailures = 0
   let stalls = 0
   let mistralCalls = 0
   let mistralRateLimited = false
@@ -421,7 +425,16 @@ async function main() {
   while (enriched < ENRICH_MAX && stalls < 2) {
     const callsLeft = MISTRAL_CALL_BUDGET - mistralCalls
     if (callsLeft <= 0) { mistralBudgetExhausted = true; break }
-    const report = await runNightlyEnrichment({ maxMistralCalls: callsLeft })
+    let report: EnrichmentReport
+    try {
+      report = await runNightlyEnrichment({ maxMistralCalls: callsLeft })
+    } catch (e) {
+      enrichQueueFailures++
+      stalls++
+      console.error('[grow] enrichment run failed before processing (queue select):', e instanceof Error ? e.message : e)
+      await sleep(5000)
+      continue
+    }
     enriched += report.titles_processed
     enrichFailures += report.titles_failed
     mistralCalls += report.mistral_calls
@@ -661,6 +674,7 @@ async function main() {
     // digest's 400-byte window otherwise and cannot be missed when they do.
     ...(mistralRateLimited ? { mistral_rate_limited: true } : {}),
     ...(mistralBudgetExhausted ? { mistral_budget_exhausted: MISTRAL_CALL_BUDGET } : {}),
+    ...(enrichQueueFailures ? { enrich_queue_failures: enrichQueueFailures } : {}),
     // Past here is beyond the 400-byte digest window on a stalling night, by
     // choice: all four are either constant, recomputable from Supabase, or
     // (the two backfills) have read 0/0 on every committed summary to date.

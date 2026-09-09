@@ -17,13 +17,19 @@ vi.mock('@/modules/engine/enrichment/build-lineage-graph', () => ({
 
 // Minimal chainable Supabase stub: every method returns the builder, awaiting
 // it resolves to the rows for the table `from()` named.
+// `selectErrors[table]` is a queue of failures to hand back first: each
+// awaited select shifts one and resolves { data: null, error } until it runs
+// dry, then the rows come back as normal.
 const tables: Record<string, unknown[]> = { titles: [], crew_members: [] }
+const selectErrors: Record<string, string[]> = { titles: [], crew_members: [] }
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     from(table: string) {
       const builder: Record<string, unknown> = {
-        then(resolve: (v: { data: unknown[] }) => void) {
-          resolve({ data: tables[table] ?? [] })
+        then(resolve: (v: { data: unknown[] | null; error: { message: string } | null }) => void) {
+          const message = selectErrors[table]?.shift()
+          if (message) resolve({ data: null, error: { message } })
+          else resolve({ data: tables[table] ?? [], error: null })
         },
       }
       for (const m of ['select', 'is', 'in', 'order', 'limit']) builder[m] = () => builder
@@ -49,6 +55,8 @@ beforeEach(() => {
   buildLineage.mockReset()
   tables.titles = [title(1), title(2), title(3)]
   tables.crew_members = [crew(10), crew(11)]
+  selectErrors.titles = []
+  selectErrors.crew_members = []
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -108,4 +116,27 @@ describe('runNightlyEnrichment — call budget', () => {
     expect(report.budget_exhausted).toBe(true)
     expect(report.mistral_calls).toBe(0)
   })
+})
+
+describe('runNightlyEnrichment — pending-queue select failure', () => {
+  // The select used to discard its error: one transient Supabase failure read
+  // as an empty backlog and the caller stopped with budget unspent.
+  it('retries a transient select failure and then processes the queue', async () => {
+    selectErrors.titles = ['TypeError: fetch failed']
+    enrichTitle.mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
+    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    const report = await run()
+    expect(enrichTitle).toHaveBeenCalledTimes(3)
+    expect(buildLineage).toHaveBeenCalledTimes(2)
+    expect(report.titles_processed).toBe(3)
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('titles queue select failed (attempt 1/3)'))
+  }, 15_000)
+
+  it('throws instead of reporting an empty backlog when the select keeps failing', async () => {
+    selectErrors.titles = ['TypeError: fetch failed', 'TypeError: fetch failed', 'TypeError: fetch failed']
+    enrichTitle.mockImplementation(async () => { recordMistralCall(); return true })
+    await expect(run()).rejects.toThrow('titles queue select failed 3 times')
+    expect(enrichTitle).not.toHaveBeenCalled()
+    expect(buildLineage).not.toHaveBeenCalled()
+  }, 15_000)
 })
