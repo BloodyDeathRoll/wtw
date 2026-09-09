@@ -418,6 +418,7 @@ async function main() {
   let enriched = 0
   let enrichFailures = 0
   let enrichQueueFailures = 0
+  let crewQueueFailures = 0
   let stalls = 0
   let mistralCalls = 0
   let mistralRateLimited = false
@@ -438,6 +439,9 @@ async function main() {
     enriched += report.titles_processed
     enrichFailures += report.titles_failed
     mistralCalls += report.mistral_calls
+    // The crew select failed after its retries: titles went fine, lineage was
+    // skipped this run. Not a stall — but it must show in the summary.
+    if (report.crew_queue_failed) crewQueueFailures++
     if (report.rate_limited) {
       mistralRateLimited = true
       console.error(`[grow] Mistral rate limited (429) after ${mistralCalls} call(s) — enrichment stopped, ${enriched} enriched`)
@@ -675,6 +679,7 @@ async function main() {
     ...(mistralRateLimited ? { mistral_rate_limited: true } : {}),
     ...(mistralBudgetExhausted ? { mistral_budget_exhausted: MISTRAL_CALL_BUDGET } : {}),
     ...(enrichQueueFailures ? { enrich_queue_failures: enrichQueueFailures } : {}),
+    ...(crewQueueFailures ? { crew_queue_failures: crewQueueFailures } : {}),
     // Past here is beyond the 400-byte digest window on a stalling night, by
     // choice: all four are either constant, recomputable from Supabase, or
     // (the two backfills) have read 0/0 on every committed summary to date.
