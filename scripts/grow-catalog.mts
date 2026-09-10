@@ -409,9 +409,10 @@ async function main() {
   // runNightlyEnrichment processes up to its own internal batch each call and
   // is idempotent (only touches enriched_at IS NULL); loop until the backlog is
   // empty, ENRICH_MAX is reached, or a run makes no progress (rate-limit wall).
-  // Two more exits, both loud in the summary: the FIRST Mistral 429 ends the
-  // phase (`mistral_rate_limited`, ok:false — no retries, no next batch), and
-  // so does the per-run call budget (`mistral_budget_exhausted`). A run whose
+  // Two more exits, both loud in the summary: a PROVEN Mistral wall ends the
+  // phase (`mistral_rate_limited`, ok:false — three 429s in a row, each through
+  // a cooldown; a 429 the cooldown clears is absorbed and never reaches here),
+  // and so does the per-run call budget (`mistral_budget_exhausted`). A run whose
   // pending-queue select fails (after its own retries) throws instead of
   // reporting an empty backlog; that counts as a stall here, is retried once
   // after a pause, and is surfaced as `enrich_queue_failures`.

@@ -2,9 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { APICallError } from 'ai'
 import { recordMistralCall, resetMistralCallCount } from '@/lib/mistral-batch'
 
-// The nightly loop must stop on the FIRST Mistral 429 and honour a per-run
-// call budget. 2026-09-04: it ran 15 of 15 failing attempts per call, two
-// nights, into a key the live app also needed.
+// The nightly loop must survive a TRANSIENT Mistral 429 and still stop dead on
+// a spent key, and honour a per-run call budget throughout.
+// 2026-09-04: it ran 15 of 15 failing attempts per call, two nights, into a key
+// the live app also needed — so a run of 429s through a cooldown must stop it.
+// 2026-09-10: ONE 429 after 236 good calls ended the phase with 96 of 300
+// enriched and 1,417 pending — so a single 429 must NOT.
 
 const enrichTitle = vi.fn()
 const buildLineage = vi.fn()
@@ -38,12 +41,13 @@ vi.mock('@/lib/supabase/service', () => ({
   }),
 }))
 
-const rateLimit = () =>
+const rateLimit = (responseHeaders?: Record<string, string>) =>
   new APICallError({
     message: 'Rate limit exceeded',
     url: 'https://api.mistral.ai/v1/chat/completions',
     requestBodyValues: {},
     statusCode: 429,
+    responseHeaders,
   })
 
 const title = (id: number) => ({ tmdb_id: String(id), title: `T${id}`, type: 'movie' })
@@ -58,27 +62,80 @@ beforeEach(() => {
   selectErrors.titles = []
   selectErrors.crew_members = []
   vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
-async function run(options?: { maxMistralCalls?: number }) {
+async function run(options?: { maxMistralCalls?: number; rateLimitCooldownMs?: number }) {
   const { runNightlyEnrichment } = await import('@/modules/engine/enrichment/nightly-enrichment')
   return runNightlyEnrichment(options)
 }
 
 describe('runNightlyEnrichment — rate limit', () => {
-  it('stops after the first 429: no further titles, no lineage', async () => {
+  it('cools down and retries the SAME title after a transient 429', async () => {
+    let attempts = 0
+    enrichTitle.mockImplementation(async () => {
+      recordMistralCall()
+      attempts++
+      if (attempts === 1) throw rateLimit()
+      recordMistralCall()
+      return true
+    })
+    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    const report = await run({ rateLimitCooldownMs: 0 })
+    // 3 titles + one retry of the first. The retry is the same title, not the next.
+    expect(enrichTitle).toHaveBeenCalledTimes(4)
+    expect(enrichTitle).toHaveBeenNthCalledWith(1, '1', 'movie')
+    expect(enrichTitle).toHaveBeenNthCalledWith(2, '1', 'movie')
+    expect(buildLineage).toHaveBeenCalledTimes(2)
+    expect(report.rate_limited).toBe(false)
+    expect(report.titles_processed).toBe(3)
+    expect(report.titles_failed).toBe(0)
+    expect(report.mistral_calls).toBe(9) // 1 burnt + 2+2+2 titles + 2 lineage
+  }, 15_000)
+
+  it('stops after three consecutive 429s through a cooldown: no lineage', async () => {
     enrichTitle.mockImplementation(async () => {
       recordMistralCall()
       throw rateLimit()
     })
-    const report = await run()
-    expect(enrichTitle).toHaveBeenCalledTimes(1)
+    const report = await run({ rateLimitCooldownMs: 0 })
+    expect(enrichTitle).toHaveBeenCalledTimes(3)
     expect(buildLineage).not.toHaveBeenCalled()
     expect(report.rate_limited).toBe(true)
     expect(report.titles_failed).toBe(1)
     expect(report.titles_processed).toBe(0)
-    expect(report.mistral_calls).toBe(1)
+    expect(report.mistral_calls).toBe(3)
   })
+
+  it('a success resets the run, so scattered 429s never read as the wall', async () => {
+    let n = 0
+    enrichTitle.mockImplementation(async () => {
+      recordMistralCall()
+      n++
+      if (n % 2 === 1) throw rateLimit() // every title 429s once, then succeeds
+      recordMistralCall()
+      return true
+    })
+    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    const report = await run({ rateLimitCooldownMs: 0 })
+    expect(enrichTitle).toHaveBeenCalledTimes(6)
+    expect(report.rate_limited).toBe(false)
+    expect(report.titles_processed).toBe(3)
+  }, 15_000)
+
+  it("waits what the 429's retry-after asked for, not the default minute", async () => {
+    tables.titles = [title(1)]
+    tables.crew_members = []
+    enrichTitle
+      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit({ 'Retry-After': '1' }) })
+      .mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
+    const started = Date.now()
+    const report = await run() // no cooldown override: the default is 60s
+    expect(Date.now() - started).toBeGreaterThanOrEqual(900)
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('cooling down 1s'))
+    expect(report.rate_limited).toBe(false)
+    expect(report.titles_processed).toBe(1)
+  }, 15_000)
 
   it('keeps going on an ordinary failure', async () => {
     enrichTitle
@@ -107,6 +164,18 @@ describe('runNightlyEnrichment — call budget', () => {
     expect(report.rate_limited).toBe(false)
     expect(report.titles_processed).toBe(1)
     expect(report.mistral_calls).toBe(2)
+  })
+
+  it('a 429 retry that would exceed the budget stops instead of overspending', async () => {
+    enrichTitle.mockImplementation(async () => { recordMistralCall(); throw rateLimit() })
+    // A 429 on extraction spends 1 call (the embedding never fires). Budget 2:
+    // that leaves 1, under TITLE_COST — so the cooldown retry must not happen,
+    // and a run cut short by the budget must not read as the rate-limit wall.
+    const report = await run({ maxMistralCalls: 2, rateLimitCooldownMs: 0 })
+    expect(enrichTitle).toHaveBeenCalledTimes(1)
+    expect(report.budget_exhausted).toBe(true)
+    expect(report.rate_limited).toBe(false)
+    expect(report.mistral_calls).toBe(1)
   })
 
   it('a budget of zero makes no call at all', async () => {

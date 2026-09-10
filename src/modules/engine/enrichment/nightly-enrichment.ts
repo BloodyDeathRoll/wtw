@@ -6,7 +6,9 @@
  *
  * Runs strictly serially with a delay between calls to stay inside the
  * enrichment LLM's free-tier rate limits — see MODELS.enrichment in
- * src/lib/ai-models.ts for the current provider and its measured limits.
+ * src/lib/ai-models.ts for the current provider and its measured limits. A 429
+ * that slips through anyway is cooled down and retried, not fatal; see the
+ * RATE_LIMIT_* constants for how a transient limit is told from a spent key.
  *
  * Also runs buildLineageGraph for any crew members without lineage data,
  * capped at CREW_BATCH_SIZE per run to keep the job short.
@@ -15,7 +17,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { enrichTitleWithNarrative } from './enrich-title-narrative'
 import { buildLineageGraph } from './build-lineage-graph'
-import { isMistralRateLimit, mistralCallCount } from '@/lib/mistral-batch'
+import { isMistralRateLimit, mistralCallCount, mistralRetryAfterMs } from '@/lib/mistral-batch'
 
 const TITLE_BATCH_SIZE = 1    // STRICTLY serial — one enrichment call at a time
 const TITLE_LIMIT = 15        // titles enriched per run
@@ -40,7 +42,11 @@ export interface EnrichmentReport {
   duration_ms: number
   /** Mistral requests this run made (extraction + embedding + lineage). */
   mistral_calls: number
-  /** Mistral answered 429. The run stopped at that point — see below. */
+  /**
+   * Mistral answered 429 RATE_LIMIT_MAX_COOLDOWNS times in a row, each through
+   * a cooldown: the key is spent, and the run stopped at that point. A 429 the
+   * cooldown cleared leaves this false — the run recovered.
+   */
   rate_limited: boolean
   /** The caller's call budget ran out before the backlog did. */
   budget_exhausted: boolean
@@ -59,13 +65,32 @@ export interface EnrichmentOptions {
    * caller (grow-catalog) turns its nightly budget into this per-call cap.
    */
   maxMistralCalls?: number
+  /**
+   * Base wait after a 429 before the item is retried, overridden by the
+   * response's `retry-after` when it carries one. Exists so tests can drive
+   * the cooldown path without sleeping a real minute; production leaves it.
+   */
+  rateLimitCooldownMs?: number
 }
 
-// One 429 means the key is spent for now — every further call is a wasted
-// request against the same wall (2026-09-04: 15 of 15 attempts failed, two
-// nights running, three retries each). Stop the run on the first one.
+// A 429 is not, on its own, proof that the key is spent. Both shapes are real:
+//   2026-09-04 — the workspace sat at a per-minute limit of 0 and every one of
+//     15 attempts failed, two nights running. Retrying there is pure burn on a
+//     key the live app also needs.
+//   2026-09-10 — 236 calls landed, then ONE 429 ended the phase with 96 of 300
+//     enriched, 1,417 titles pending and ~2h of the 180m cap unspent.
+// What tells them apart is what happens AFTER a cooldown: a per-minute window
+// clears, a spent workspace does not. So cool down and retry the SAME item,
+// and call it a wall only after RATE_LIMIT_MAX_COOLDOWNS consecutive 429s with
+// no success in between. That is 3 wasted calls in the 09-04 shape (against 15
+// before) and a full night's backlog recovered in the 09-10 one.
 const TITLE_COST = 2
 const CREW_COST = 1
+const RATE_LIMIT_COOLDOWN_MS = 60_000       // one Mistral per-minute window
+const RATE_LIMIT_MAX_COOLDOWNS = 3          // consecutive 429s ⇒ the key is spent
+const RATE_LIMIT_MAX_COOLDOWN_MS = 300_000  // cap on a hostile `retry-after`
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 // The pending-queue selects used to discard their `error`: a transient
 // Supabase failure (the `fetch failed` seen during seeding) came back as
@@ -107,6 +132,56 @@ export async function runNightlyEnrichment(
   let rate_limited = false
   let budget_exhausted = false
   let crew_queue_failed = false
+  const cooldownBase = options.rateLimitCooldownMs ?? RATE_LIMIT_COOLDOWN_MS
+  let consecutiveRateLimits = 0
+
+  /**
+   * Run one item, absorbing a transient 429 by cooling down and retrying the
+   * SAME item. The budget is re-checked before every attempt — a retry is a
+   * real request and is metered like one.
+   *
+   *   'ok'     — the item ran: a success, a skip, or an ordinary failure
+   *   'wall'   — RATE_LIMIT_MAX_COOLDOWNS consecutive 429s; the key is spent
+   *   'budget' — no room left for another attempt
+   */
+  async function attempt(
+    label: string,
+    what: string,
+    cost: number,
+    run: () => Promise<void>,
+    onFailure: (err: unknown) => void,
+  ): Promise<'ok' | 'wall' | 'budget'> {
+    for (;;) {
+      if (callsLeft() < cost) return 'budget'
+      try {
+        await run()
+        consecutiveRateLimits = 0
+        return 'ok'
+      } catch (err) {
+        if (!isMistralRateLimit(err)) {
+          // An ordinary failure is not evidence about the rate limit either
+          // way: it neither proves the wall nor clears a run of 429s.
+          onFailure(err)
+          console.error(`[${label}] Failed ${what}:`, err)
+          return 'ok'
+        }
+        consecutiveRateLimits++
+        if (consecutiveRateLimits >= RATE_LIMIT_MAX_COOLDOWNS) {
+          onFailure(err)
+          console.error(
+            `[${label}] Mistral rate limit (429) on ${what} — ${consecutiveRateLimits} in a row through a cooldown, the key is spent; stopping this run`,
+          )
+          return 'wall'
+        }
+        const asked = mistralRetryAfterMs(err)
+        const wait = Math.min(asked ?? cooldownBase, RATE_LIMIT_MAX_COOLDOWN_MS)
+        console.warn(
+          `[${label}] Mistral rate limit (429) on ${what} — cooling down ${Math.round(wait / 1000)}s (${consecutiveRateLimits}/${RATE_LIMIT_MAX_COOLDOWNS}), then retrying`,
+        )
+        await sleep(wait)
+      }
+    }
+  }
 
   // ── Phase 1: Enrich pending titles ───────────────────────
   const titleQueue = await selectQueue('titles', () => supabase
@@ -122,29 +197,29 @@ export async function runNightlyEnrichment(
 
     await Promise.allSettled(
       batch.map(async ({ tmdb_id, title, type }) => {
-        try {
-          const ok = await enrichTitleWithNarrative(tmdb_id, type as 'movie' | 'tv')
-          if (ok) {
-            titles_processed++
-          } else {
-            console.warn(`[enrich] Skipped ${tmdb_id} (${title}) — not found in DB`)
-          }
-        } catch (err) {
-          titles_failed++
-          if (isMistralRateLimit(err)) {
-            rate_limited = true
-            console.error(`[enrich] Mistral rate limit (429) on ${tmdb_id} (${title}) — stopping this run`)
-          } else {
-            console.error(`[enrich] Failed ${tmdb_id} (${title}):`, err)
-          }
-        }
+        const outcome = await attempt(
+          'enrich',
+          `${tmdb_id} (${title})`,
+          TITLE_COST,
+          async () => {
+            const ok = await enrichTitleWithNarrative(tmdb_id, type as 'movie' | 'tv')
+            if (ok) {
+              titles_processed++
+            } else {
+              console.warn(`[enrich] Skipped ${tmdb_id} (${title}) — not found in DB`)
+            }
+          },
+          () => { titles_failed++ },
+        )
+        if (outcome === 'wall') rate_limited = true
+        if (outcome === 'budget') budget_exhausted = true
       })
     )
-    if (rate_limited) break
+    if (rate_limited || budget_exhausted) break
 
     // Delay between batches — skip delay after last batch
     if (i + TITLE_BATCH_SIZE < titleQueue.length) {
-      await new Promise(r => setTimeout(r, BATCH_DELAY_MS))
+      await sleep(BATCH_DELAY_MS)
     }
   }
 
@@ -178,27 +253,27 @@ export async function runNightlyEnrichment(
 
     await Promise.allSettled(
       batch.map(async ({ tmdb_person_id, name }) => {
-        try {
-          const ok = await buildLineageGraph(tmdb_person_id)
-          if (ok) {
-            crew_processed++
-          }
-          // buildLineageGraph returns false if already enriched — not an error
-        } catch (err) {
-          crew_failed++
-          if (isMistralRateLimit(err)) {
-            rate_limited = true
-            console.error(`[lineage] Mistral rate limit (429) on ${tmdb_person_id} (${name}) — stopping this run`)
-          } else {
-            console.error(`[lineage] Failed ${tmdb_person_id} (${name}):`, err)
-          }
-        }
+        const outcome = await attempt(
+          'lineage',
+          `${tmdb_person_id} (${name})`,
+          CREW_COST,
+          async () => {
+            const ok = await buildLineageGraph(tmdb_person_id)
+            if (ok) {
+              crew_processed++
+            }
+            // buildLineageGraph returns false if already enriched — not an error
+          },
+          () => { crew_failed++ },
+        )
+        if (outcome === 'wall') rate_limited = true
+        if (outcome === 'budget') budget_exhausted = true
       })
     )
-    if (rate_limited) break
+    if (rate_limited || budget_exhausted) break
 
     if (i + TITLE_BATCH_SIZE < crewQueue.length) {
-      await new Promise(r => setTimeout(r, BATCH_DELAY_MS))
+      await sleep(BATCH_DELAY_MS)
     }
   }
 
