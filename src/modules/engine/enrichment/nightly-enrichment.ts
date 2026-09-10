@@ -96,6 +96,17 @@ const RATE_LIMIT_COOLDOWN_MS = 60_000       // one Mistral per-minute window
 const RATE_LIMIT_MAX_COOLDOWNS = 3          // consecutive 429s ⇒ the key is spent
 const RATE_LIMIT_MAX_COOLDOWN_MS = 300_000  // cap on a hostile `retry-after`
 
+/**
+ * What a caller running under a serverless wall-clock kill should pass as
+ * `maxCooldownMs`. The default above is sized for grow-catalog's 180 minutes;
+ * a route gets 300s at most (often much less), and a cooldown that outlives the
+ * function is worse than no retry at all — it is killed MID-SLEEP and returns
+ * no report, where before it returned a clean `rate_limited` one. Only two
+ * cooldowns ever elapse (the third 429 returns the wall without sleeping), so
+ * this bounds the added wait at 30s.
+ */
+export const SERVERLESS_COOLDOWN_CAP_MS = 15_000
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 // The pending-queue selects used to discard their `error`: a transient

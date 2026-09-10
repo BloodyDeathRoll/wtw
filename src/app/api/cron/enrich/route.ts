@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
+import { runNightlyEnrichment, SERVERLESS_COOLDOWN_CAP_MS } from '@/modules/engine/enrichment/nightly-enrichment'
 
 // 300s is the platform max on the Hobby/personal plan this project runs on
 // (800 was rejected at deploy). The handler is idempotent (enriched_at is set
@@ -26,15 +26,11 @@ import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrich
 // runNightlyEnrichment and is tightened to fit 300s in a separate change.)
 export const maxDuration = 300
 
-// A 429 makes runNightlyEnrichment cool down and retry rather than end the run,
-// and its default ceiling on one cooldown is 5 minutes — sized for grow-catalog,
-// which has 180 of them. Under maxDuration that default would let a single
-// `retry-after` eat the whole budget and get the function killed MID-SLEEP,
-// which returns no report at all: strictly worse than the clean, reported stop
-// this route used to give. Cap a cooldown at 15s here. A full batch is ~90s of
-// work, so two of these still land well inside 300s, and the wall (three 429s)
-// is reached in 30s of waiting instead of up to 10 minutes.
-const COOLDOWN_CAP_MS = 15_000
+// A 429 makes runNightlyEnrichment cool down and retry rather than end the run.
+// Its default ceiling on one cooldown is 5 minutes — sized for grow-catalog's
+// 180 — so under maxDuration it must be capped, or the function is killed
+// MID-SLEEP and returns no report at all: strictly worse than the clean,
+// reported stop this route used to give. See SERVERLESS_COOLDOWN_CAP_MS.
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -45,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const report = await runNightlyEnrichment({ maxCooldownMs: COOLDOWN_CAP_MS })
+    const report = await runNightlyEnrichment({ maxCooldownMs: SERVERLESS_COOLDOWN_CAP_MS })
     return NextResponse.json({ ok: true, report })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
