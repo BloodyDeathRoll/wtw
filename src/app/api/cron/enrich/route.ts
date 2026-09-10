@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
+import { runNightlyEnrichment, SERVERLESS_COOLDOWN_CAP_MS } from '@/modules/engine/enrichment/nightly-enrichment'
 
 // 300s is the platform max on the Hobby/personal plan this project runs on
 // (800 was rejected at deploy). The handler is idempotent (enriched_at is set
@@ -26,6 +26,12 @@ import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrich
 // runNightlyEnrichment and is tightened to fit 300s in a separate change.)
 export const maxDuration = 300
 
+// A 429 makes runNightlyEnrichment cool down and retry rather than end the run.
+// Its default ceiling on one cooldown is 5 minutes — sized for grow-catalog's
+// 180 — so under maxDuration it must be capped, or the function is killed
+// MID-SLEEP and returns no report at all: strictly worse than the clean,
+// reported stop this route used to give. See SERVERLESS_COOLDOWN_CAP_MS.
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   const secret = process.env.CRON_SECRET
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const report = await runNightlyEnrichment()
+    const report = await runNightlyEnrichment({ maxCooldownMs: SERVERLESS_COOLDOWN_CAP_MS })
     return NextResponse.json({ ok: true, report })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

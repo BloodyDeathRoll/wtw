@@ -38,7 +38,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { discoverAndSeed } from '@/modules/engine/enrichment/fetch-and-cache-title'
-import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrichment'
+import { runNightlyEnrichment, SERVERLESS_COOLDOWN_CAP_MS } from '@/modules/engine/enrichment/nightly-enrichment'
 
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────
@@ -84,7 +84,10 @@ export async function POST(req: NextRequest) {
   if (enrich) {
     console.log('[seed] Starting Phase 2: narrative enrichment (first 50 titles)...')
     try {
-      enrichReport = await runNightlyEnrichment()
+      // Same wall as /api/cron/enrich, with less room: this route declares no
+      // maxDuration, so it runs on the platform default, and it has already
+      // spent time seeding from TMDB before it gets here.
+      enrichReport = await runNightlyEnrichment({ maxCooldownMs: SERVERLESS_COOLDOWN_CAP_MS })
       console.log('[seed] Phase 2 done:', enrichReport)
     } catch (err) {
       enrich_error = err instanceof Error ? err.message : String(err)
