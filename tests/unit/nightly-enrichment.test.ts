@@ -65,7 +65,7 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
-async function run(options?: { maxMistralCalls?: number; rateLimitCooldownMs?: number }) {
+async function run(options?: { maxMistralCalls?: number; rateLimitCooldownMs?: number; maxCooldownMs?: number }) {
   const { runNightlyEnrichment } = await import('@/modules/engine/enrichment/nightly-enrichment')
   return runNightlyEnrichment(options)
 }
@@ -150,6 +150,57 @@ describe('runNightlyEnrichment — rate limit', () => {
     expect(report.titles_processed).toBe(2)
     expect(report.mistral_calls).toBe(6)
   }, 15_000)
+})
+
+describe('runNightlyEnrichment — what the 429 streak counts', () => {
+  // The counter is 429s since the last SUCCESS. Two consequences are deliberate
+  // and were untested, so they are pinned here rather than left to the name.
+  it('an ordinary failure does not clear the streak', async () => {
+    enrichTitle
+      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit() })
+      .mockImplementationOnce(async () => { throw new Error('Failed to update narrative for 2') })
+      .mockImplementation(async () => { recordMistralCall(); throw rateLimit() })
+    const report = await run({ rateLimitCooldownMs: 0 })
+    // 429 (title 1) -> cooldown -> 429 (title 1 again) is 2; the ordinary
+    // failure on title 2 leaves it at 2; the next 429 is the third and the wall.
+    expect(report.rate_limited).toBe(true)
+    expect(report.titles_failed).toBe(2) // the ordinary one, and the wall
+    expect(buildLineage).not.toHaveBeenCalled()
+  })
+
+  it('the streak carries from the titles phase into the crew phase', async () => {
+    // Same key, same wall: a 429 in phase 1 is evidence about phase 2.
+    tables.titles = [title(1)]
+    enrichTitle
+      // 429 (streak 1) -> cooldown -> ordinary failure, which ends the item
+      // WITHOUT clearing the streak. Phase 1 leaves the crew phase at 1.
+      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit() })
+      .mockImplementationOnce(async () => { throw new Error('Failed to update narrative for 1') })
+    buildLineage.mockImplementation(async () => { recordMistralCall(); throw rateLimit() })
+    const report = await run({ rateLimitCooldownMs: 0 })
+    expect(report.titles_failed).toBe(1)
+    // Two more 429s reach the wall, not three: the streak came in at 1.
+    expect(buildLineage).toHaveBeenCalledTimes(2)
+    expect(report.rate_limited).toBe(true)
+  })
+})
+
+describe('runNightlyEnrichment — cooldown ceiling', () => {
+  it('maxCooldownMs caps what a retry-after can ask for', async () => {
+    // The cron route sets this because it runs under a 300s kill; without the
+    // cap a single retry-after would eat the whole budget mid-sleep.
+    tables.titles = [title(1)]
+    tables.crew_members = []
+    enrichTitle
+      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit({ 'retry-after': '600' }) })
+      .mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
+    const started = Date.now()
+    const report = await run({ maxCooldownMs: 50 })
+    expect(Date.now() - started).toBeLessThan(5_000) // not 600s
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('cooling down 0s'))
+    expect(report.titles_processed).toBe(1)
+    expect(report.rate_limited).toBe(false)
+  })
 })
 
 describe('runNightlyEnrichment — call budget', () => {

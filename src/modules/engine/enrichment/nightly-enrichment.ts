@@ -71,6 +71,12 @@ export interface EnrichmentOptions {
    * the cooldown path without sleeping a real minute; production leaves it.
    */
   rateLimitCooldownMs?: number
+  /**
+   * Ceiling on any single cooldown, including one a `retry-after` asked for.
+   * Callers that run under a wall-clock kill must set this: the default suits
+   * grow-catalog, which has 180 minutes, not a serverless route with 300s.
+   */
+  maxCooldownMs?: number
 }
 
 // A 429 is not, on its own, proof that the key is spent. Both shapes are real:
@@ -133,7 +139,12 @@ export async function runNightlyEnrichment(
   let budget_exhausted = false
   let crew_queue_failed = false
   const cooldownBase = options.rateLimitCooldownMs ?? RATE_LIMIT_COOLDOWN_MS
-  let consecutiveRateLimits = 0
+  const cooldownCap = options.maxCooldownMs ?? RATE_LIMIT_MAX_COOLDOWN_MS
+  // Named for what it counts: 429s since the last SUCCESS, not since the last
+  // call. An ordinary failure does not clear it and it carries from the titles
+  // phase into the crew phase — same key, same wall, so a 429 in one is
+  // evidence about the other. Both are deliberate; both are pinned by tests.
+  let rateLimitsSinceSuccess = 0
 
   /**
    * Run one item, absorbing a transient 429 by cooling down and retrying the
@@ -155,7 +166,7 @@ export async function runNightlyEnrichment(
       if (callsLeft() < cost) return 'budget'
       try {
         await run()
-        consecutiveRateLimits = 0
+        rateLimitsSinceSuccess = 0
         return 'ok'
       } catch (err) {
         if (!isMistralRateLimit(err)) {
@@ -165,18 +176,18 @@ export async function runNightlyEnrichment(
           console.error(`[${label}] Failed ${what}:`, err)
           return 'ok'
         }
-        consecutiveRateLimits++
-        if (consecutiveRateLimits >= RATE_LIMIT_MAX_COOLDOWNS) {
+        rateLimitsSinceSuccess++
+        if (rateLimitsSinceSuccess >= RATE_LIMIT_MAX_COOLDOWNS) {
           onFailure(err)
           console.error(
-            `[${label}] Mistral rate limit (429) on ${what} — ${consecutiveRateLimits} in a row through a cooldown, the key is spent; stopping this run`,
+            `[${label}] Mistral rate limit (429) on ${what} — ${rateLimitsSinceSuccess} in a row through a cooldown, the key is spent; stopping this run`,
           )
           return 'wall'
         }
         const asked = mistralRetryAfterMs(err)
-        const wait = Math.min(asked ?? cooldownBase, RATE_LIMIT_MAX_COOLDOWN_MS)
+        const wait = Math.min(asked ?? cooldownBase, cooldownCap)
         console.warn(
-          `[${label}] Mistral rate limit (429) on ${what} — cooling down ${Math.round(wait / 1000)}s (${consecutiveRateLimits}/${RATE_LIMIT_MAX_COOLDOWNS}), then retrying`,
+          `[${label}] Mistral rate limit (429) on ${what} — cooling down ${Math.round(wait / 1000)}s (${rateLimitsSinceSuccess}/${RATE_LIMIT_MAX_COOLDOWNS}), then retrying`,
         )
         await sleep(wait)
       }

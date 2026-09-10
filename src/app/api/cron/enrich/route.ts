@@ -26,6 +26,16 @@ import { runNightlyEnrichment } from '@/modules/engine/enrichment/nightly-enrich
 // runNightlyEnrichment and is tightened to fit 300s in a separate change.)
 export const maxDuration = 300
 
+// A 429 makes runNightlyEnrichment cool down and retry rather than end the run,
+// and its default ceiling on one cooldown is 5 minutes — sized for grow-catalog,
+// which has 180 of them. Under maxDuration that default would let a single
+// `retry-after` eat the whole budget and get the function killed MID-SLEEP,
+// which returns no report at all: strictly worse than the clean, reported stop
+// this route used to give. Cap a cooldown at 15s here. A full batch is ~90s of
+// work, so two of these still land well inside 300s, and the wall (three 429s)
+// is reached in 30s of waiting instead of up to 10 minutes.
+const COOLDOWN_CAP_MS = 15_000
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   const secret = process.env.CRON_SECRET
@@ -35,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const report = await runNightlyEnrichment()
+    const report = await runNightlyEnrichment({ maxCooldownMs: COOLDOWN_CAP_MS })
     return NextResponse.json({ ok: true, report })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -58,9 +58,14 @@ export function mistralRetryAfterMs(err: unknown): number | null {
     const key = Object.keys(headers).find(k => k.toLowerCase() === 'retry-after')
     const raw = key === undefined ? undefined : headers[key]
     if (raw === undefined) return null
-    const seconds = Number(raw.trim())
+    const value = raw.trim()
+    // `Number('')` is 0 and `Number.isFinite(0)` is true, so an empty-but-
+    // present header would read as "retry immediately" rather than "did not
+    // say" — and the caller would skip its own default wait.
+    if (value === '') return null
+    const seconds = Number(value)
     if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
-    const at = Date.parse(raw)
+    const at = Date.parse(value)
     return Number.isNaN(at) ? null : Math.max(0, at - Date.now())
   }
   if (RetryError.isInstance(err)) {
