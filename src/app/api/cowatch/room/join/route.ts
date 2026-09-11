@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { enforceRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -40,6 +41,16 @@ export async function POST(req: NextRequest) {
   if (!code || !/^\d{4}$/.test(code)) {
     return NextResponse.json({ error: 'A 4-digit code is required' }, { status: 400 })
   }
+
+  // 4 digits = 10,000 codes and an unclaimed room is joinable for 5 minutes;
+  // joining makes the caller a member, which is the authorisation to read the
+  // host's taste. A person reads a code out loud once; nobody needs more than
+  // a handful of tries. Per user AND per IP, so many accounts from one place
+  // are cut off too (audit 2026-09-11).
+  const limited = await enforceRateLimit(req, user.id, {
+    scope: 'cowatch-join', perUser: 10, perIp: 30, windowSec: 10 * 60,
+  })
+  if (limited) return limited
 
   const db = createServiceClient()
   const { data: room, error } = await db
