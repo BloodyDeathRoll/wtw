@@ -1,7 +1,7 @@
 /**
  * Fixed-window rate limiter on the existing Upstash Redis client.
  *
- * One INCR per request, EXPIRE set on the first hit of a window. Fails
+ * One INCR per request, then EXPIRE NX (sets the window's TTL once). Fails
  * CLOSED: if Redis cannot count, the caller gets a 503 rather than an
  * unlimited endpoint (RULES I8 — a fallback that answers is worse than an
  * error). Both refusals are logged so a sweep shows up in the function logs
@@ -32,7 +32,10 @@ export function clientIp(req: Request): string {
 async function hit(key: string, max: number, windowSec: number): Promise<boolean> {
   const redis = getRedis()
   const n = await redis.incr(key)
-  if (n === 1) await redis.expire(key, windowSec)
+  // NX on every hit, not just n === 1: if the first EXPIRE failed after the
+  // INCR landed, the key would otherwise never expire and lock the caller out
+  // for good. NX leaves an existing TTL alone, so the window doesn't slide.
+  await redis.expire(key, windowSec, 'NX')
   return n <= max
 }
 
