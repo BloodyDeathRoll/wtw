@@ -14,6 +14,7 @@ import { MODELS } from "@/lib/ai-models";
 import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { loadDNA } from "@/modules/dna/lib/load-save";
 import { dnaPromptContext } from "@/modules/dna/lib/prompt-context";
 import {
@@ -23,6 +24,14 @@ import {
 import type { ConversationStage } from "@/modules/session/types";
 
 export const runtime = "nodejs";
+
+// What one request may cost us (audit 2026-09-11, RULES A5/G10). The client
+// sends the whole history every turn, so bound it: a calibration chat is a few
+// dozen short turns, and a reply is "one or two short sentences".
+const MAX_MESSAGES = 60;
+const MAX_HISTORY_CHARS = 24_000;
+const MAX_REPLY_TOKENS = 300;
+const RATE_LIMIT = { scope: "conversation", perUser: 60, perIp: 120, windowSec: 10 * 60 };
 
 const SYSTEM_PROMPT = `You are WTW (What To Watch). Your job is to build a vivid, layered picture of the user's film and TV taste through light, casual conversation — not an interview.
 
@@ -53,6 +62,8 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const limited = await enforceRateLimit(req, user.id, RATE_LIMIT);
+  if (limited) return limited;
 
   const body = (await req.json().catch(() => null)) as
     | {
@@ -74,6 +85,19 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "conversation_id required" },
       { status: 400 },
+    );
+  }
+  const historyChars = messages.reduce((n, m) => {
+    const text =
+      typeof m.content === "string"
+        ? m.content
+        : m.parts?.map((p) => (p.type === "text" ? p.text : "")).join("") ?? "";
+    return n + text.length;
+  }, 0);
+  if (messages.length > MAX_MESSAGES || historyChars > MAX_HISTORY_CHARS) {
+    return NextResponse.json(
+      { error: "conversation history too large" },
+      { status: 413 },
     );
   }
 
@@ -125,6 +149,7 @@ export async function POST(req: Request) {
     model: groq(MODELS.text),
     system: SYSTEM_PROMPT + dnaContext,
     messages: convertToCoreMessages(messages),
+    maxTokens: MAX_REPLY_TOKENS,
     onFinish: async ({ text }) => {
       if (!text) return;
       try {
