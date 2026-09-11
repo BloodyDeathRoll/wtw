@@ -73,6 +73,11 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
 ## 3b. Security — ✅ fixed and migrated
 - [x] **Co-watch IDOR closed** (2026-07-30) — `POST /api/recommendations/cowatch` took `user_id_b` from the request body and the engine loaded that user's DNA with the service-role client, so any authed user could read anyone's taste by guessing a user id (`room_code` was only a Redis cache key). The partner is now derived from room membership: new `cowatch_rooms` table (migration `0015`), `POST/GET /api/cowatch/room` to open one, `POST /api/cowatch/room/join` to join, and the decision itself in `src/lib/cowatch-room.ts` (`resolvePartner`, 10 tests). No client-supplied user id remains. There is no co-watch UI yet, so nothing consumed the old contract.
   - Migration `0015` **run 2026-08-14** and verified against live Supabase (`cowatch_rooms` selectable; the primary key column is `code`, not `room_code`).
+- [x] **Security audit 2026-09-11 — all five findings merged** (swarm `audits/wtw/2026-09-11`):
+  - **#64** `next` 15.5.18 → 15.5.25 — two unauthenticated RCEs (GHSA-2xp9-vwfh-vxw4 via `/_next/image` + AVIF, GHSA-p293-qw3h-jr36 on Windows), fixed in 15.5.24.
+  - **#65** `src/lib/rate-limit.ts` — fixed window on Upstash (INCR + `EXPIRE NX` every hit), **fails closed: Redis down → 503**. Co-watch join 10/user + 30/IP per 10 min (4-digit codes were sweepable); chat 60/user per 10 min, history ≤ 60 msgs / 24,000 chars (413), `maxTokens: 300`; voice token 10/user per 10 min.
+  - **#66** every workflow `uses:` SHA-pinned; `deploy-production.yml` `permissions: {}`; `persist-credentials: false` on `ci.yml` only (claude-code-action needs the token). Site-wide nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`, `Permissions-Policy` (mic kept) — verified live on production.
+  - Open from the audit's proposals (not started): AI SDK 5 migration, `npm audit fix` + Dependabot cooldown, report-only CSP, `SECURITY.md` / auth-failure logs / `timingSafeEqual` on `CRON_SECRET`, `server-only` on secret-reading modules.
 
 ## 4. Non-blocking — independent, any time
 - [ ] Generate the 30 voice WAV samples (`npm run generate-voice-samples`) over several days (Gemini free-tier 10/day); drop the `disabled` attribute on the voice play buttons ([WTWApp.tsx:502](../src/modules/session/components/WTWApp.tsx#L502)) once present · A1
@@ -154,6 +159,22 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 ## Standing handoff notes
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
+
+### 2026-09-11 — Upstash token was dead; replaced
+
+After #65 merged, voice mode returned 503: the limiter logged
+`WRONGPASS invalid username-password pair` on every call. The token was dead
+everywhere — `.env.local` failed the same way — so this was not a Vercel
+mismatch. Replaced `UPSTASH_REDIS_REST_TOKEN` (the full token, not read-only:
+the limiter writes) in `.env.local` and Vercel Production, redeployed; voice
+works. Last known-good was the 2026-08-26 E2E run (§3); when it died is
+unknown. While dead, the DNA cache (`load-save.ts`) failed quietly — it
+catches Redis errors and logs a warning. The limiter is the first Redis caller that fails closed, so a dead
+token now shows up as 503s on chat, voice and co-watch join.
+
+**Watch the next `@claude` run.** #66 changed the two Claude workflows, and
+their checks on that PR ran `main`'s old copy — the new claude-code-action pin
+(`9c5ddab2`, v1.0.217) is only exercised from now on.
 
 ### 2026-08-29 — User instructions are now enforced (`feat/user-exclusion-rules`)
 
