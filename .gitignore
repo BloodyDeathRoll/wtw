@@ -45,8 +45,11 @@ coverage/
 # Vercel
 .vercel
 
-# Claude Code local session data
-.claude/
+# Claude Code local session data (settings.local.json, memory, transcripts) — but the
+# shared SessionStart hook + settings.json ARE committed so web sessions can install deps
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 .env*.local
 
 # Session Skill
