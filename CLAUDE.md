@@ -21,7 +21,7 @@ A1 = Session Brain · A2 = Recommendation Engine · A3 = DNA Schema Writer
 
 | Path | Owner | Rule |
 |---|---|---|
-| `src/types/dna.ts` | Everyone | ⚠️ SHARED CONTRACT — all three must approve any change |
+| `src/types/dna.ts` | Everyone | ⚠️ SHARED CONTRACT — tell all three before changing it; no human approvals needed |
 | `src/modules/session/` | A1 | Others do not modify |
 | `src/modules/engine/` | A2 | Others do not modify |
 | `src/modules/dna/` | A3 | Others do not modify |

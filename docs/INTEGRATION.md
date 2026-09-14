@@ -8,7 +8,7 @@ Shipped history is `docs/SHIPPED.md`; it is not a to-do list.
 
 All three modules are built and **merged into `main`**. There are no open PRs; the per-assignment `feature/*` branches are merged and deleted. The remaining work is **wiring the modules together**, which lives in shared files (`src/app/`, `src/lib/`, route handlers) — so use the short-lived-task-branch model in `GITGUIDE.md`, not long-lived personal branches.
 
-**How to use the checklist:** it's ordered by dependency — each block gates the ones under it. Every item names a **driver** (writes it); cross-module seams also name a **reviewer** (owns the other side and must approve the PR). A1 = Session Brain, A2 = Recommendation Engine, A3 = DNA Schema Writer. Check items off in the task PR that lands them.
+**How to use the checklist:** it's ordered by dependency — each block gates the ones under it. Every item names a **driver** (writes it); cross-module seams also name a **reviewer** (owns the other side and should read the PR; merging needs only the Claude review check, not their approval). A1 = Session Brain, A2 = Recommendation Engine, A3 = DNA Schema Writer. Check items off in the task PR that lands them.
 
 ## ⚠️ Open now
 
@@ -27,7 +27,7 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
   | 7 | Extract "no X" rules in the chat turn (Groq text model or pattern), not only via Mistral at session end. | A1 |
   | 8 | Conversation never rotates: `session_number` stuck at 1, all 105 messages since June re-sent every session end. | A1 |
   | 9 | Card ratings should refresh the batch: bump `taste_version` every N ratings or invalidate the rec cache (agree cache cost with A2). | A3 with A2 |
-  | 10 | Genre / format / language weights in `dna.ts`; A3 writes from signals, A2 scores with them. Interim: A2 derives genre affinity from `dna.signals` at scoring time. | All three approve; A3 writes; A2 scores |
+  | 10 | Genre / format / language weights in `dna.ts`; A3 writes from signals, A2 scores with them. Interim: A2 derives genre affinity from `dna.signals` at scoring time. | All three informed; A3 writes; A2 scores |
   | 11 | Manual "add rule" on the Taste DNA page (`/api/dna/rules` has DELETE only). | Shared `src/app`, with A3 |
   Order: 1 first (nothing works without Mistral), then 2, 3, 6, 7, then 10. Composite `WEIGHTS` are not the problem — narrative is a percentile within the pool, so a 40% horror pool yields a 40% horror batch whatever the weights.
 - **`discover_pages`** — see §5; second-order now.

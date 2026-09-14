@@ -59,14 +59,14 @@ That's the whole setup — you do **not** create a permanent personal branch any
 
 ## The mental model (read this once)
 
-- **`main` is the shared trunk.** It always builds and runs. Nobody commits to it directly — everything lands via a reviewed PR.
+- **`main` is the shared trunk.** It always builds and runs. Nobody commits to it directly — everything lands via a PR that the Claude review checked.
 - **One task = one short-lived branch = one small PR.** A branch is born off the latest `main`, does one thing, gets reviewed, merges, and is deleted. You'll often have two or three in a week.
 - **Branches are named by the work, not by the person.** `feat/wire-dna-on-session-end`, not `feature/eran`.
 - **Module ownership still holds.** Only the owner edits their `src/modules/` folder:
   - `src/modules/session/` → Assignment 1 - Shahar
   - `src/modules/engine/` → Assignment 2 - Alon
   - `src/modules/dna/` → Assignment 3 - Eran
-- **Shared areas need a heads-up.** `src/app/`, `src/lib/` — one person at a time; say so in the group chat before you start. `src/types/dna.ts` needs **all three** to approve any change.
+- **Shared areas need a heads-up.** `src/app/`, `src/lib/` — one person at a time; say so in the group chat before you start. `src/types/dna.ts` — tell all three before changing it.
 - **Foundation changes land on main first.** Anything everyone builds on — root config (`package.json`, `vitest.config.ts`, `tsconfig`, eslint), the test harness under `tests/`, shared mocks — is owned by one person, goes in as a small **priority PR**, and merges before the work that depends on it. Don't scaffold shared tooling inside a feature branch; three people doing that in parallel is a guaranteed conflict.
 
 ## Tests
@@ -141,9 +141,9 @@ git push origin feat/short-task-name
 Then on GitHub:
 1. Go to https://github.com/BloodyDeathRoll/wtw → **"Compare & pull request"**.
 2. Title = what the branch does. Description = what changed + how you tested it.
-3. Request review from **one** teammate (the owner of any shared file you touched).
-4. **If your PR touches `src/types/dna.ts`, request all three — no merge without all three approvals.**
-5. One approval → **Squash and merge** → **delete the branch** (GitHub offers a button; do it).
+3. Wait for the **Claude Code Review** check (`claude-review`) to finish on your final commit — it's a required status check, so GitHub blocks the merge until it passes. Pushing again re-runs it.
+4. Read the review, fix what's real, resolve the threads. No teammate approval is needed — any of the three of us can merge. If you touched `src/types/dna.ts`, say so in the group chat first.
+5. **Squash and merge** → **delete the branch** (GitHub offers a button; do it).
 
 ### 4. Update the integration checklist at a milestone
 
@@ -206,7 +206,7 @@ Never use `git reset --hard` on a branch that's been pushed. Message the group i
 | Start a task | `git checkout main` → `git pull` → `git checkout -b feat/name` |
 | Save progress | `git add -p` → `git commit -m "..."` → `git push` |
 | Pull in main mid-task | `git fetch origin` → `git merge origin/main` |
-| Finish a task | commit + push → open small PR → 1 approval → squash-merge → delete branch |
+| Finish a task | commit + push → open small PR → Claude review passes → squash-merge → delete branch |
 | After a merge, next task | `git checkout main` → `git pull` |
 | Delete a merged branch | `git branch -d feat/name` → `git fetch --prune origin` |
 | Throw away unsaved changes | `git checkout .` |
@@ -219,7 +219,7 @@ Never use `git reset --hard` on a branch that's been pushed. Message the group i
 1. **Never commit directly to `main`** — always a short-lived task branch + PR.
 2. **One task, one small branch, one PR** — don't let a branch live for days or grow past a few hundred lines.
 3. **Only edit your own `src/modules/` folder.** Touching `src/app/` or `src/lib/`? Call it in the group chat first (one person at a time).
-4. **Never modify `src/types/dna.ts` alone** — any change needs all three to review.
+4. **Never modify `src/types/dna.ts` silently** — tell all three before changing it.
 5. **Never commit `.env.local`** — it's gitignored and holds secret keys.
 6. **Delete branches after they merge** and keep `main` green (it must always build and run).
 
