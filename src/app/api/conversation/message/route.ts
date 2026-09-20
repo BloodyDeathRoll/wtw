@@ -14,7 +14,7 @@
 // and unusual phrasings are still extracted at session end.
 
 import { groq } from "@ai-sdk/groq";
-import { MODELS } from "@/lib/ai-models";
+import { MODELS, GROQ_TEXT_OPTIONS } from "@/lib/ai-models";
 import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -195,6 +195,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: groq(MODELS.text),
+    providerOptions: GROQ_TEXT_OPTIONS,
     system: SYSTEM_PROMPT + dnaContext + recordedContext(recorded),
     messages: convertToCoreMessages(messages),
     maxTokens: MAX_REPLY_TOKENS,

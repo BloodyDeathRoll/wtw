@@ -1,6 +1,6 @@
 import { generateText } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
-import { MODELS } from '@/lib/ai-models'
+import { MODELS, GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
 import type { DNASchema, DNASignal, StrandB } from '@/types/dna'
 
 // Only rewrite notes for a dimension when confidence changed by this much
@@ -66,6 +66,7 @@ ${dimensionDescriptions}`
 
   const { text } = await generateText({
     model: getGroq()(MODELS.text),
+    providerOptions: GROQ_TEXT_OPTIONS,
     system: systemPrompt,
     prompt: userPrompt,
     temperature: 0.3,
