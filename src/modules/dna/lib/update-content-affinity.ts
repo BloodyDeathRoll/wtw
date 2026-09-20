@@ -82,10 +82,17 @@ function bump(
   }
 }
 
+/**
+ * Below this many ratings an entry is noise — one disliked comedy is a bad
+ * night, not a taste. Lives here, with the shape it describes, so the writer
+ * and the engine's scorer cannot drift apart on what counts as evidence.
+ */
+export const MIN_CONTENT_SAMPLES = 3
+
 /** Entries with enough evidence to say something, strongest feeling first. */
 export function strongestContentAffinities(
   map: Record<string, ContentAffinityEntry> | undefined,
-  minSamples = 3,
+  minSamples = MIN_CONTENT_SAMPLES,
 ): [string, ContentAffinityEntry][] {
   return Object.entries(map ?? {})
     .filter(([, e]) => e.sample_size >= minSamples)

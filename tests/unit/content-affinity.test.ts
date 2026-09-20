@@ -5,6 +5,8 @@ import {
 } from '@/modules/dna/lib/update-content-affinity'
 import { computeContentAffinity } from '@/modules/engine/scoring/content-affinity'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
+import { templateExplanation } from '@/modules/engine/pipeline/step7-explanation'
+import type { ScoredTitleWithPayload } from '@/modules/engine/pipeline/step6-reason-payload'
 import type { StrandC, Reaction } from '@/types/dna'
 import type { TitleRow } from '@/modules/engine/types'
 
@@ -172,5 +174,49 @@ describe('content affinity — what the scorer does with it', () => {
 
     expect(r.dimension_matches).toEqual([])
     expect(r.avoided).toEqual({ dimension: 'genre', value: 'horror' })
+  })
+})
+
+describe('content affinity — the fallback explanation can see it', () => {
+  it('prefers a liked genre over the pacing match that is on every title', () => {
+    // computeVisceralMatch pushes a pacing match for nearly every enriched
+    // title, and it is pushed first — so reading dimension_matches[0] made
+    // this whole dimension invisible in the no-LLM explanation.
+    const item = {
+      reason_payload: {
+        crew_matches: [],
+        lineage_connections: [],
+        dimension_matches: [
+          { dimension: 'pacing', user_value: 'moderate', title_value: 'moderate' },
+          { dimension: 'genre', user_value: 'drama', title_value: 'drama' },
+        ],
+        soft_preferences_applied: [],
+        external_ratings: [],
+        is_stretch_pick: false,
+        stretch_rationale: null,
+        groq_rationale: '',
+        negative_signals: [],
+      },
+    } as unknown as ScoredTitleWithPayload
+
+    expect(templateExplanation(item)).toContain('Its genre (drama)')
+  })
+
+  it('still falls back to pacing when that is all there is', () => {
+    const item = {
+      reason_payload: {
+        crew_matches: [],
+        lineage_connections: [],
+        dimension_matches: [{ dimension: 'pacing', user_value: 'moderate', title_value: 'moderate' }],
+        soft_preferences_applied: [],
+        external_ratings: [],
+        is_stretch_pick: false,
+        stretch_rationale: null,
+        groq_rationale: '',
+        negative_signals: [],
+      },
+    } as unknown as ScoredTitleWithPayload
+
+    expect(templateExplanation(item)).toContain('Its pacing (moderate)')
   })
 })
