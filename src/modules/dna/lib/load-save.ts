@@ -115,19 +115,25 @@ export type DNAUpdateOutcome = 'saved' | 'unchanged' | 'missing' | 'conflict'
  * run more than once — on a conflict it is re-run against the newer row, never
  * re-saved against the old one.
  *
- * One attempt to retry, then `conflict`. Two conflicts in a row means the row
- * is genuinely hot, and every caller here has a backstop (the session-end fold,
- * the next rating's refresh) that is better than spinning on a JSONB column.
+ * `attempts` defaults to 2, which suits a caller with a backstop — the
+ * session-end fold picks up what the per-click merge missed. A caller whose
+ * write is the ONLY record of something must ask for more: losing it has no
+ * recovery path, and the contending writers here are rare enough (the batch
+ * refresh fires once every five ratings) that a few more tries settle it.
  */
 export async function withDNAUpdate(
   user_id: string,
   mutate: (dna: DNASchema) => boolean | Promise<boolean>,
+  attempts = 2,
 ): Promise<DNAUpdateOutcome> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const row = await loadDNAForUpdate(user_id)
     if (!row) return 'missing'
     if (!(await mutate(row.dna))) return 'unchanged'
     if (await saveDNAIfUnchanged(user_id, row.dna, row.updated_at)) return 'saved'
+    // Let the writer that beat us finish before re-reading, so a retry is not
+    // simply a second race against the same in-flight write.
+    if (attempt < attempts - 1) await new Promise(r => setTimeout(r, 25 * (attempt + 1)))
   }
   return 'conflict'
 }

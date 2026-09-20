@@ -47,6 +47,12 @@ import type { DNASchema, Reaction } from '@/types/dna'
 const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
 type FeedbackAction = typeof VALID_ACTIONS[number]
 
+/**
+ * How many times the history write may lose a compare-and-set before giving
+ * up. Higher than the default because nothing else records this rating.
+ */
+const HISTORY_WRITE_ATTEMPTS = 5
+
 interface FeedbackInput {
   tmdb_id: string
   media_type: MediaType | null
@@ -181,16 +187,24 @@ export async function POST(req: NextRequest) {
   // unconditionally restore the pre-refresh snapshot — reverting the version
   // bump and putting the feed back on a batch with nothing cached under it,
   // which is the exact failure the refresh exists to prevent.
-  const outcome = await withDNAUpdate(user.id, dna =>
-    applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick }),
+  //
+  // More attempts than the default, because this write has no backstop: the
+  // session-end fold recovers a rating from `recommendation_history`, so if
+  // THIS is what failed to land there is nothing left to recover from — and
+  // the client only logs a failed POST, having already shown the card as
+  // rated. Every other writer of this column can afford to give up.
+  const outcome = await withDNAUpdate(
+    user.id,
+    dna => applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick }),
+    HISTORY_WRITE_ATTEMPTS,
   )
   if (outcome === 'missing') {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
   }
   if (outcome === 'conflict') {
-    // The client keeps the rating queued and reports it again at session end,
-    // so a conflict is worth saying out loud rather than swallowing.
-    console.warn('[feedback] history write conflicted twice; deferring to session end')
+    // Nothing recorded this rating anywhere. Say so with a status the client
+    // can act on rather than pretending it landed.
+    console.error(`[feedback] history write lost ${HISTORY_WRITE_ATTEMPTS} races; rating not recorded`)
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 409 })
   }
 

@@ -183,6 +183,16 @@ describe('withDNAUpdate', () => {
     expect(dbState.reads).toBeLessThanOrEqual(2)
   })
 
+  it('gives a caller with no backstop the extra attempts it asks for', async () => {
+    // The route's history write is the only record of a rating — the
+    // session-end fold recovers from the history row this write creates, so
+    // if it never lands there is nothing to recover from.
+    let n = 0
+    dbState.onRead = () => { if (++n < 4) dbState.casValue = `t${n}` }
+
+    expect(await withDNAUpdate('u1', () => true, 5)).toBe('saved')
+  })
+
   it('says so when there is no fingerprint to update', async () => {
     dbState.missing = true
     expect(await withDNAUpdate('u1', () => true)).toBe('missing')
