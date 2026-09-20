@@ -14,12 +14,17 @@
  * response — without it `generateText`/`streamText` return an empty string.
  * Verified both 'hidden' and 'parsed' fix it; 'hidden' is right for user-facing
  * copy, where the trace is noise.
+ *
+ * Measured 2026-09-20: with `hidden`, the reasoning does NOT come out of the
+ * `maxTokens` budget — the same prompt reported 121 completion tokens and
+ * `finishReason: 'stop'` at both `maxTokens: 150` (the DNA summary route's
+ * cap) and 300. So a low cap does not reintroduce the empty-content failure.
  */
 export const GROQ_TEXT_OPTIONS = { groq: { reasoningFormat: 'hidden' } } as const
 
 export const MODELS = {
   /** Groq — free-form TEXT generation only: `generateText` / `streamText`
-   *  (chat, welcome greeting, DNA summary/notes/instruction-parse). Do NOT use
+   *  (chat, welcome greeting, DNA summary, dimension notes). Do NOT use
    *  this with `generateObject` (see `structured` below). Was
    *  `llama-3.3-70b-versatile` (Groq free-tier shutdown 2026-08-16).
    *
