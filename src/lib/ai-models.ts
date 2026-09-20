@@ -15,10 +15,16 @@
  * Verified both 'hidden' and 'parsed' fix it; 'hidden' is right for user-facing
  * copy, where the trace is noise.
  *
- * Measured 2026-09-20: with `hidden`, the reasoning does NOT come out of the
- * `maxTokens` budget — the same prompt reported 121 completion tokens and
- * `finishReason: 'stop'` at both `maxTokens: 150` (the DNA summary route's
- * cap) and 300. So a low cap does not reintroduce the empty-content failure.
+ * ⚠️ The reasoning IS billed against `maxTokens`, and an earlier note here
+ * claimed otherwise. That claim came from a one-line prompt (121 completion
+ * tokens, `finishReason: 'stop'` at a cap of 150) and did not survive a real
+ * one: with the chat's full system prompt and a 60-message history, a cap of
+ * 300 returned `finishReason: 'length'` with the reply cut off mid-sentence,
+ * and on a longer trace no reply at all. Budget for the trace as well as the
+ * answer at every call site, and measure on a REPRESENTATIVE prompt.
+ *
+ * `@ai-sdk/groq` forwards only `reasoningFormat`, not `reasoning_effort`, so
+ * the trace cannot be shortened from here — only paid for.
  */
 export const GROQ_TEXT_OPTIONS = { groq: { reasoningFormat: 'hidden' } } as const
 

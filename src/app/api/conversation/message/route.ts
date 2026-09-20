@@ -39,7 +39,21 @@ export const runtime = "nodejs";
 // note at the call site.
 const MAX_MESSAGES = 60;
 const MAX_HISTORY_CHARS = 24_000;
-const MAX_REPLY_TOKENS = 300;
+// Generous because MODELS.text is a REASONING model: the reasoning trace is
+// billed against this same completion budget, before a single token of the
+// reply is emitted. Measured 2026-09-20 against a real 60-message history and
+// the full system prompt — at 300 the call returned `finishReason: 'length'`
+// with the answer cut off mid-sentence, and on a longer trace nothing at all,
+// which is what surfaced in the app as an empty assistant bubble. The same
+// prompt finishes at 552 completion tokens, so 1200 leaves real headroom
+// for a longer trace rather than sitting just above the observed figure.
+//
+// This is NOT a longer reply: the prompt still asks for one or two short
+// sentences, and the reply itself is a fraction of this. It is headroom for
+// the part of the budget the user never sees. @ai-sdk/groq forwards only
+// `reasoningFormat`, not `reasoning_effort`, so the trace cannot be shortened
+// from here — only paid for.
+const MAX_REPLY_TOKENS = 1200;
 const RATE_LIMIT = { scope: "conversation", perUser: 60, perIp: 120, windowSec: 10 * 60 };
 
 const SYSTEM_PROMPT = `You are WTW (What To Watch). Your job is to build a vivid, layered picture of the user's film and TV taste through light, casual conversation — not an interview.

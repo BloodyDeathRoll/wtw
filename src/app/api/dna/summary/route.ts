@@ -87,7 +87,10 @@ Write a 2-3 sentence plain-English taste summary for this user.`
         system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.4,
-        maxTokens: 150,
+        // Budgets the reasoning trace as well as the answer: MODELS.text is a
+        // reasoning model and the trace is billed here first. At 150 the
+        // summary risked coming back empty or cut off (see ai-models.ts).
+        maxTokens: 1000,
       })
       summary = text.trim()
     }
