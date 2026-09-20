@@ -41,11 +41,14 @@ import { isExcluded, sqlExclusionParams } from '@/lib/exclusion-rules'
 import type { DNASchema, SessionContext } from '@/types/dna'
 import type { TitleRow } from '../types'
 import { getUserEmbedding } from '../scoring/narrative-match'
+import { capGenreShare, NARRATIVE_OVERFETCH } from './genre-cap'
 
 // Pool sizes. FRESH is two RPCs that overlap heavily for a popular-taste user,
 // so the union lands between 150 and 300; SEEN is capped by vote count and is
 // only there to supply the 20% slice (10 of 50), so 150 is generous.
 const FRESH_BY_VOTES_LIMIT     = 150
+// The narrative RPC is asked for NARRATIVE_OVERFETCH× this and cut back here,
+// so the genre cap has something to swap in (genre-cap.ts).
 const FRESH_BY_NARRATIVE_LIMIT = 150
 // Cosine on these embeddings clusters tightly (a 15-vote title scored 0.95
 // next to Shawshank at 0.96, measured 2026-08-28) — floor the taste pool so it
@@ -138,7 +141,7 @@ export async function getCandidates(
         exclude_keys:    freshExclude,
         title_type:      titleType,
         max_runtime:     maxRuntime,
-        pool_limit:      FRESH_BY_NARRATIVE_LIMIT,
+        pool_limit:      FRESH_BY_NARRATIVE_LIMIT * NARRATIVE_OVERFETCH,
         min_votes:       FRESH_BY_NARRATIVE_MIN_VOTES,
         ...ruleParams,
       }),
@@ -169,7 +172,14 @@ export async function getCandidates(
   for (const t of (votesRes.data ?? []).slice(0, FRESH_BY_VOTES_LIMIT) as TitleRow[]) {
     fresh.set(titleKey(t.type, t.tmdb_id), t)
   }
-  for (const t of (narrativeRes.data ?? []) as TitleRow[]) {
+  // The narrative pool is over-fetched and cut back to FRESH_BY_NARRATIVE_LIMIT
+  // with a per-genre ceiling, so the nearest-neighbour ordering can't hand the
+  // scorer a pool that is 40% one genre (genre-cap.ts).
+  const narrativePool = capGenreShare(
+    (narrativeRes.data ?? []) as TitleRow[],
+    FRESH_BY_NARRATIVE_LIMIT,
+  )
+  for (const t of narrativePool) {
     fresh.set(titleKey(t.type, t.tmdb_id), t)
   }
   const candidates: TitleRow[] = [

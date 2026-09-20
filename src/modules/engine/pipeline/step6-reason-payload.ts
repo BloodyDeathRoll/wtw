@@ -39,6 +39,18 @@ function buildNegativeSignals(item: ScoredTitle): string[] {
     }
   }
 
+  // The fingerprint's own answer to "why might they not want this" — the genre
+  // (or language, or format) they have rated down repeatedly. Ahead of the
+  // ratings caveat because it is about them, not about the title.
+  if (item.content_avoided) {
+    const { dimension, value } = item.content_avoided
+    negatives.push(
+      dimension === 'format'
+        ? `You rate ${value === 'tv' ? 'series' : 'films'} lower than the other.`
+        : `You have rated ${value} down before.`,
+    )
+  }
+
   if (item.external_rating_score < 0.55) {
     negatives.push('Lower critical/audience ratings than your usual picks.')
   }

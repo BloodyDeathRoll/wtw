@@ -5,6 +5,7 @@ import { loadDNA, saveDNA, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { mergeStrandB, applySignalDimensionTags } from './lib/update-strand-b'
 import { applyStrandCUpdate } from './lib/update-strand-c'
+import { applyContentAffinityUpdate } from './lib/update-content-affinity'
 import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 import { rewriteChangedDimensionNotes } from './lib/rewrite-dimension-notes'
 import { regenerateEmbedding } from './lib/regenerate-embedding'
@@ -55,6 +56,7 @@ export async function updateSchemaFromSession(
 
     applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, signal.reaction)
     applyStrandCUpdate(dna.strand_c_visceral_specs, title, signal.reaction)
+    applyContentAffinityUpdate(dna.strand_c_visceral_specs, title, signal.reaction)
     applyStrandBFromTitle(
       dna.strand_b_narrative_dimensions,
       title.narrative_metadata as TitleNarrativeMetadata,

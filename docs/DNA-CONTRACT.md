@@ -21,12 +21,23 @@ Changing `dna.ts` requires all three assignment owners to approve.
   metadata:               // user_id, schema_version, taste_version, last_updated, total_sessions
   strand_a_creative_affinity:   // directors, writers, cinematographers, actors (score + confidence)
   strand_b_narrative_dimensions: // moral_ambiguity, narrative_complexity, emotional_demand, etc.
-  strand_c_visceral_specs:       // pacing_weights, tone_weights, aspect_weights
+  strand_c_visceral_specs:       // pacing_weights, tone_weights, aspect_weights,
+                                 // genre_affinity, language_affinity, format_affinity
   contextual_logic:              // exclusion_rules, soft_preferences, temporal_modifiers
   signals:                       // everything watched + reactions (the raw history)
   learning_loop:                 // open_questions, stretch_pick_history, recommendation_history
 }
 ```
+
+## Content affinity — weights vs. affinity entries (added 2026-09-20)
+
+`strand_c` gained three maps: `genre_affinity` (lowercased TMDB genre name), `language_affinity` (ISO 639-1) and `format_affinity` (`movie` | `tv`). Each value is a `ContentAffinityEntry` — `score`, `confidence`, `sample_size` — the same running reaction average `strand_a` keeps per person.
+
+- **They are NOT weights, and must not be recentred.** `pacing_weights` and `tone_weights` are a closed set where only the relative order means anything, so `recenterWeights` pulls the group back to a mean of 0.5 after every update. Genres are a sparse open set: recentring a user who has only rated horror would put their one genre straight back to neutral, which is the exact failure this dimension was added to fix ("27 disliked anime generalised to nothing").
+- **Sparse on purpose.** A key exists only once the user has reacted to something carrying it. Absent means *no evidence*, which is not the same as neutral — readers must not fill in 0.5.
+- **Optional on the type.** Every fingerprint written before 2026-09-20 has none. `applyContentAffinityUpdate` creates the map on first use; readers treat missing or empty as no evidence. `scripts/backfill-content-affinity.mts` replays existing signals to fill them (idempotent — it resets only these three maps).
+- **Writer:** A3, `src/modules/dna/lib/update-content-affinity.ts`, called from every place that folds a rating (`update-from-session`, `merge-feedback-signal`). **Reader:** A2, `src/modules/engine/scoring/content-affinity.ts`, weight 0.15 in the composite.
+- It is a **nudge, not a filter**. "No horror" is an `exclusion_rule` and cuts absolutely; this catches the taste the user never put into words. An avoided genre is reported through `negative_signals`, never through `dimension_matches` — everything downstream reads a dimension match as a reason to recommend.
 
 ## Title identity — `type:tmdb_id`, never a bare id (decided 2026-08-28)
 

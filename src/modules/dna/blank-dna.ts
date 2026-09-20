@@ -53,6 +53,11 @@ export function createBlankDNA(user_id: string): DNASchema {
         tone:           0.5,
         rewatchability: 0.5,
       },
+      // Sparse by design — a key appears the first time the user reacts to
+      // something carrying it (update-content-affinity.ts).
+      genre_affinity:    {},
+      language_affinity: {},
+      format_affinity:   {},
     },
     contextual_logic: {
       exclusion_rules:    [],

@@ -40,18 +40,56 @@ function mistral() {
 const narrativeLevel = z.enum(['low', 'medium', 'medium_high', 'high'])
 const confidence = z.number().min(0).max(1)
 
-// Product tone vocabulary. Referenced by the schema, the prompt, AND the
-// validation-repair step — keep the three in sync by editing only this list.
-const TONE_VALUES = ['cynical', 'warm', 'dark', 'comedic', 'hopeful', 'tense',
-                     'melancholic', 'whimsical', 'gritty', 'romantic', 'satirical',
-                     'surreal', 'nostalgic'] as const
+/**
+ * Product tone vocabulary. Referenced by the schema, the validation-repair
+ * step, and TONE_DEFINITIONS below — adding a tone here without giving it a
+ * definition there leaves the prompt describing a vocabulary it does not have.
+ *
+ * These are exactly the five keys in `StrandC.tone_weights`, and that is the
+ * point (2026-09-20). It used to carry eight more — tense, melancholic,
+ * whimsical, gritty, romantic, satirical, surreal, nostalgic — which the
+ * visceral scorer silently ignores, because a tone outside strand_c has
+ * nothing to match against. A title tagged only `tense, gritty` therefore
+ * scored a flat neutral on tone for every user in the system. The alternative
+ * was adding those keys to `tone_weights`, but that is a required field on a
+ * shared contract: every fingerprint on file would be missing them, and the
+ * update and scoring arithmetic both index the map directly, so an absent key
+ * is NaN in a composite score rather than a missing opinion.
+ *
+ * Narrowing the list also narrows the embedding text on the title side to the
+ * same five words the user side uses, which is what makes the cosine
+ * comparable in the first place.
+ */
+const TONE_VALUES = ['cynical', 'warm', 'dark', 'comedic', 'hopeful'] as const
+
+/**
+ * What each tone means, in the prompt's words. `dark` was on 58% of the
+ * catalog (measured 2026-09-06) because the model reached for it whenever a
+ * work was merely serious or tense — and since it is a scored key, that noise
+ * went straight into everyone's fingerprint. A tone that describes most of the
+ * catalog cannot discriminate between any two titles in it.
+ */
+const TONE_DEFINITIONS = [
+  'dark — the outlook is bleak. Bad things happen and are not redeemed. A thriller that is merely tense, a drama that is merely serious, or a story with one violent scene is NOT dark.',
+  'cynical — it distrusts people, institutions and motives. Sincerity is punished or mocked.',
+  'warm — it likes its characters and wants them to be well, even when it hurts them.',
+  'comedic — it is trying to be funny. Not "has jokes in it" — humour is a primary mode.',
+  'hopeful — it believes things can get better, and earns that belief rather than asserting it.',
+].join('\n- ')
 
 const narrativeSchema = z.object({
   pacing_tag: z.enum(['slow_burn', 'moderate', 'high_octane'])
     .describe('Overall narrative pacing of the title'),
 
+  // At most 2, and an empty list is allowed. With five tones, "up to 4" tags
+  // most of the catalog with most of the vocabulary, and the visceral score
+  // averages the matches — so a title carrying four tones regresses to the
+  // user's own mean and discriminates nothing. Zero is a legitimate answer
+  // ("no strong tonal lean"), and a better one than a tone picked to satisfy
+  // a minimum: the repair step below can otherwise empty the list and fail
+  // the title forever.
   tone_tags: z.array(z.enum(TONE_VALUES))
-    .min(1).max(4).describe('Primary tonal qualities (1–4 that apply most strongly)'),
+    .max(2).describe('The 1–2 tones that apply most strongly, or none if no tone dominates'),
 
   narrative_metadata: z.object({
     moral_ambiguity: z.object({
@@ -111,7 +149,9 @@ export function narrativeToEmbeddingText(meta: NarrativeExtractionResult): strin
 
   return [
     `Pacing: ${pacing}.`,
-    `Tone: ${tones}.`,
+    // No tone line rather than an empty one: "Tone: ." is a string the user
+    // side would happily find similar to any other title with no tone.
+    ...(tones ? [`Tone: ${tones}.`] : []),
     `Moral ambiguity: ${str(nm.moral_ambiguity.value)}.`,
     `Narrative complexity: ${str(nm.narrative_complexity.value)}.`,
     `Emotional demand: ${str(nm.emotional_demand.value)}.`,
@@ -166,7 +206,12 @@ Synopsis: ${title.synopsis || 'No synopsis available'}
 
 Extract the narrative dimensions based on what you know about this title and the synopsis provided.
 Use your knowledge of the actual film/show — the synopsis alone may be incomplete.
-tone_tags must be chosen ONLY from this exact list (pick the closest matches, never invent new values): ${TONE_VALUES.join(', ')}.
+
+tone_tags must be chosen ONLY from this exact list, never invent new values:
+- ${TONE_DEFINITIONS}
+
+Pick the ONE or TWO tones that apply most strongly, or none at all if no tone dominates. Do not pick a tone because the genre implies it — a horror film is not automatically dark, and a romance is not automatically warm. Judge the work, not its shelf.
+
 Be precise: confidence values should reflect genuine certainty (0.5 = uncertain, 0.9 = very certain).`
 
   // ── 3. LLM extraction (Mistral) ──────────────────────────
@@ -195,10 +240,13 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
     }
     const candidate = raw as { tone_tags?: unknown }
     if (Array.isArray(candidate.tone_tags)) {
-      candidate.tone_tags = candidate.tone_tags.filter(
-        (t: unknown): t is (typeof TONE_VALUES)[number] =>
-          (TONE_VALUES as readonly string[]).includes(t as string),
-      )
+      // Drop anything outside the vocabulary, then keep the first two. The
+      // model's first choices are its strongest ones, and over-tagging is the
+      // other half of why `dark` ended up on 58% of the catalog.
+      candidate.tone_tags = candidate.tone_tags
+        .filter((t: unknown): t is (typeof TONE_VALUES)[number] =>
+          (TONE_VALUES as readonly string[]).includes(t as string))
+        .slice(0, 2)
     }
     const repaired = narrativeSchema.safeParse(candidate)
     if (!repaired.success) throw err

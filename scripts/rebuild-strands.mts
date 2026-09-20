@@ -38,6 +38,7 @@ import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { fetchTitleCrew } from '@/modules/dna/lib/load-save'
 import { applyCrewAffinityUpdate } from '@/modules/dna/lib/update-crew'
 import { applyStrandCUpdate } from '@/modules/dna/lib/update-strand-c'
+import { applyContentAffinityUpdate } from '@/modules/dna/lib/update-content-affinity'
 import { applyStrandBFromTitle, type TitleNarrativeMetadata } from '@/modules/dna/lib/update-strand-b-from-title'
 import type { DNASchema, DNASignal } from '@/types/dna'
 
@@ -99,6 +100,7 @@ async function main() {
       if (!title) { noTitle++; continue }
       applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, s.reaction)
       applyStrandCUpdate(dna.strand_c_visceral_specs, title, s.reaction)
+      applyContentAffinityUpdate(dna.strand_c_visceral_specs, title, s.reaction)
       applyStrandBFromTitle(dna.strand_b_narrative_dimensions, title.narrative_metadata as TitleNarrativeMetadata, s.reaction)
       replayed++
     }

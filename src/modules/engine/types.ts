@@ -76,6 +76,16 @@ export interface CrewMemberRow {
 // Pipeline-internal types
 // ─────────────────────────────────────────────
 
+/**
+ * Something about a title its own fingerprint says the user steers away from —
+ * a genre, a language, a format (scoring/content-affinity.ts). Kept apart from
+ * `dimension_matches`, which every renderer treats as a reason TO watch.
+ */
+export interface AvoidedAttribute {
+  dimension: string
+  value: string
+}
+
 /** A candidate title moving through the pipeline — accumulates data at each step. */
 export interface ScoredTitle {
   title: TitleRow
@@ -84,6 +94,9 @@ export interface ScoredTitle {
   crew_affinity_score:    number    // 0.0 – 1.0 (includes lineage boost)
   narrative_match_score:  number    // 0.0 – 1.0
   visceral_match_score:   number    // 0.0 – 1.0
+  content_affinity_score: number    // 0.0 – 1.0 (genre / language / format)
+  /** Strongest thing about the title the user avoids — step6 turns it into a caveat. */
+  content_avoided:        AvoidedAttribute | null
   external_rating_score:  number    // 0.0 – 1.0
   recency_boost:          number    // 0.0 – 1.0 (multiplied by 0.05 in composite)
   composite_score:        number    // weighted sum, 0.0 – 1.0
