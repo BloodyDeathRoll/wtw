@@ -45,7 +45,8 @@ const MAX_HISTORY_CHARS = 24_000;
 // the full system prompt — at 300 the call returned `finishReason: 'length'`
 // with the answer cut off mid-sentence, and on a longer trace nothing at all,
 // which is what surfaced in the app as an empty assistant bubble. The same
-// prompt finished cleanly at ~1050 completion tokens.
+// prompt finishes at 552 completion tokens, so 1200 leaves real headroom
+// for a longer trace rather than sitting just above the observed figure.
 //
 // This is NOT a longer reply: the prompt still asks for one or two short
 // sentences, and the reply itself is a fraction of this. It is headroom for
