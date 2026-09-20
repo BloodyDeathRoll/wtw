@@ -40,76 +40,38 @@ import { isContentType, type ContentType } from '@/lib/content-type'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
-import { invalidateDNACache } from '@/modules/dna/lib/load-save'
+import { countRatingTowardRefresh, refreshLiveBatch } from '@/modules/dna/refresh-batch'
+import { withDNAUpdate } from '@/modules/dna/lib/load-save'
 import type { DNASchema, Reaction } from '@/types/dna'
 
 const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
 type FeedbackAction = typeof VALID_ACTIONS[number]
 
-export async function POST(req: NextRequest) {
-  // ── Auth ──────────────────────────────────────────────────
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+/**
+ * How many times the history write may lose a compare-and-set before giving
+ * up. Higher than the default because nothing else records this rating.
+ */
+const HISTORY_WRITE_ATTEMPTS = 5
 
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+interface FeedbackInput {
+  tmdb_id: string
+  media_type: MediaType | null
+  recKey: string
+  action: FeedbackAction
+  reaction: Reaction | undefined
+  is_stretch_pick: boolean
+}
 
-  // ── Parse + validate body ─────────────────────────────────
-  let tmdb_id: string
-  let action: FeedbackAction
-  let is_stretch_pick: boolean
-  let reaction: Reaction | undefined
-  let title: string | undefined
-  let media_type: MediaType | null
-  // Which list the rating came from, so the precomputed next batch matches it.
-  let contentType: ContentType
-
-  try {
-    const body = await req.json()
-    tmdb_id        = body.tmdb_id
-    action         = body.action
-    is_stretch_pick = body.is_stretch_pick ?? false
-    reaction       = body.reaction
-    title          = typeof body.title === 'string' ? body.title : undefined
-    media_type     = isMediaType(body.media_type) ? body.media_type : null
-    contentType    = isContentType(body.content_type) ? body.content_type : 'all'
-
-    if (!tmdb_id || typeof tmdb_id !== 'string') {
-      return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
-    }
-    if (!VALID_ACTIONS.includes(action)) {
-      return NextResponse.json(
-        { error: `action must be one of: ${VALID_ACTIONS.join(', ')}` },
-        { status: 400 }
-      )
-    }
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  const serviceClient = createServiceClient()
-
-  // ── Load current DNA ──────────────────────────────────────
-  const { data: userData, error: loadError } = await serviceClient
-    .from('users')
-    .select('dna')
-    .eq('id', user.id)
-    .single<{ dna: DNASchema | null }>()
-
-  if (loadError || !userData?.dna) {
-    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
-  }
-
-  const dna = userData.dna
-  // The key this rating is filed under. Bare only for legacy callers.
-  const recKey = media_type ? titleKey(media_type, tmdb_id) : tmdb_id
-
-  // ── Update recommendation_history in DNA ──────────────────
-  // Only write the row back when something in it actually changed: regret /
-  // glad_watched touch nothing here, and an unconditional write of the whole
-  // JSONB could clobber a concurrent card rating (this route isn't queued for
-  // the regret prompt).
+/**
+ * Record this feedback in the DNA's history. Returns whether anything changed
+ * — regret / glad_watched touch nothing here, and writing the whole JSONB back
+ * unchanged would clobber a concurrent write for no reason.
+ *
+ * Pure mutation of the object it is given, so the caller can redo it against a
+ * fresh read when its compare-and-set misses.
+ */
+function applyFeedbackToDNA(dna: DNASchema, input: FeedbackInput): boolean {
+  const { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick } = input
   let dnaChanged = false
   const history = dna.learning_loop.recommendation_history
   const entryIndex = history.findLastIndex(h => recordMatches(h, tmdb_id, media_type))
@@ -167,24 +129,83 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Persist updated DNA ───────────────────────────────────
-  if (dnaChanged) {
-    const { error: updateError } = await serviceClient
-      .from('users')
-      .update({ dna, updated_at: new Date().toISOString() })
-      .eq('id', user.id)
+  return dnaChanged
+}
 
-    if (updateError) {
-      console.error('[recommendations/feedback] DNA update failed:', updateError.message)
-      return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
+export async function POST(req: NextRequest) {
+  // ── Auth ──────────────────────────────────────────────────
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── Parse + validate body ─────────────────────────────────
+  let tmdb_id: string
+  let action: FeedbackAction
+  let is_stretch_pick: boolean
+  let reaction: Reaction | undefined
+  let title: string | undefined
+  let media_type: MediaType | null
+  // Which list the rating came from, so the precomputed next batch matches it.
+  let contentType: ContentType
+
+  try {
+    const body = await req.json()
+    tmdb_id        = body.tmdb_id
+    action         = body.action
+    is_stretch_pick = body.is_stretch_pick ?? false
+    reaction       = body.reaction
+    title          = typeof body.title === 'string' ? body.title : undefined
+    media_type     = isMediaType(body.media_type) ? body.media_type : null
+    contentType    = isContentType(body.content_type) ? body.content_type : 'all'
+
+    if (!tmdb_id || typeof tmdb_id !== 'string') {
+      return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
     }
+    if (!VALID_ACTIONS.includes(action)) {
+      return NextResponse.json(
+        { error: `action must be one of: ${VALID_ACTIONS.join(', ')}` },
+        { status: 400 }
+      )
+    }
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
 
-    // The write above bypassed saveDNA, so bust the 60s loadDNA cache BEFORE the
-    // hooks below — they all read via cache-first loadDNA. Without this, a
-    // rating within 60s of the on-load warm-up (which populates the cache) made
-    // the light merge read a stale snapshot: usually a silent no-op, worst case
-    // saving the stale object back over this request's own write.
-    await invalidateDNACache(user.id)
+  const serviceClient = createServiceClient()
+
+  // The key this rating is filed under. Bare only for legacy callers.
+  const recKey = media_type ? titleKey(media_type, tmdb_id) : tmdb_id
+
+  // ── Update recommendation_history in DNA ──────────────────
+  // Read-modify-write under a compare-and-set, retried once against a fresh
+  // read (2026-09-20). `users.dna` is one JSONB column and this is no longer
+  // the only writer in flight: refreshLiveBatch writes it from `after()`,
+  // seconds after its own request returned. A blind write here would
+  // unconditionally restore the pre-refresh snapshot — reverting the version
+  // bump and putting the feed back on a batch with nothing cached under it,
+  // which is the exact failure the refresh exists to prevent.
+  //
+  // More attempts than the default, because this write has no backstop: the
+  // session-end fold recovers a rating from `recommendation_history`, so if
+  // THIS is what failed to land there is nothing left to recover from — and
+  // the client only logs a failed POST, having already shown the card as
+  // rated. Every other writer of this column can afford to give up.
+  const outcome = await withDNAUpdate(
+    user.id,
+    dna => applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick }),
+    HISTORY_WRITE_ATTEMPTS,
+  )
+  if (outcome === 'missing') {
+    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+  }
+  if (outcome === 'conflict') {
+    // Nothing recorded this rating anywhere. Say so with a status the client
+    // can act on rather than pretending it landed.
+    console.error(`[feedback] history write lost ${HISTORY_WRITE_ATTEMPTS} races; rating not recorded`)
+    return NextResponse.json({ error: 'Failed to save feedback' }, { status: 409 })
   }
 
   // ── Incremental fingerprint update (cheap, no version bump) ─
@@ -200,8 +221,18 @@ export async function POST(req: NextRequest) {
     // The fingerprint inputs are final for this rating — build the next batch
     // now, after the response, so "Find more" only has to adopt it
     // (precompute.ts coalesces bursts; never throws).
+    //
+    // Every Nth rating that parked batch is also promoted to the LIVE cache
+    // under a bumped version, so a run of dislikes reaches the feed in the
+    // same sitting instead of waiting for "Find more" (refresh-batch.ts). It
+    // has to run after the precompute, not beside it: the batch it promotes is
+    // the one that precompute just built from this rating.
     const userId = user.id
-    after(() => precomputeNextBatch(userId, contentType))
+    const dueForRefresh = await countRatingTowardRefresh(userId)
+    after(async () => {
+      await precomputeNextBatch(userId, contentType)
+      if (dueForRefresh) await refreshLiveBatch(userId, contentType)
+    })
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────

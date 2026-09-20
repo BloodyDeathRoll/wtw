@@ -24,6 +24,14 @@ export function createFakeRedis(initial: Record<string, unknown> = {}) {
       for (const k of keys) if (store.delete(k)) n++
       return n
     }),
+    incr: vi.fn(async (key: string) => {
+      const n = Number(store.get(key) ?? 0) + 1
+      store.set(key, n)
+      return n
+    }),
+    // TTLs are not simulated — nothing the app does depends on a key expiring
+    // mid-test, and a fake clock would be more machinery than signal.
+    expire: vi.fn(async (_key: string, _seconds: number) => 1),
     // Convenience for assertions
     _size: () => store.size,
   }

@@ -16,20 +16,45 @@
  * signaled here (dedup key: type:tmdb_id, one signal per title across all
  * sources — first wins).
  *
- * Concurrency: callers must serialize invocations per user (the rec UI queues
- * feedback clicks) — this is a read-modify-write on the DNA JSONB.
+ * Concurrency: a read-modify-write on the DNA JSONB, saved with a
+ * compare-and-set and retried once on a miss (2026-09-20). The rec UI queues
+ * feedback clicks, which used to be enough — until the batch refresh started
+ * writing the same column from `after()`, concurrently with the next click. A
+ * blind save from here would silently revert its version bump.
  */
 
 import type { DNASchema, DNASignal } from '@/types/dna'
 import { recordKey, recordType, titleKey } from '@/lib/title-key'
-import { loadDNA, saveDNA, fetchTitleCrew, pickTitle } from './lib/load-save'
+import { withDNAUpdate, fetchTitleCrew, pickTitle } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { applyStrandCUpdate } from './lib/update-strand-c'
 import { applyContentAffinityUpdate } from './lib/update-content-affinity'
 import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 
 export async function mergeFeedbackSignalsLight(user_id: string): Promise<number> {
-  const dna: DNASchema = await loadDNA(user_id)
+  // Reset on every attempt: a compare-and-set miss means the merge is redone
+  // against fresh state, and the count has to describe the attempt that
+  // actually saved.
+  let merged = 0
+
+  const outcome = await withDNAUpdate(user_id, async dna => {
+    merged = await mergeInto(dna)
+    return merged > 0
+  })
+  if (outcome === 'conflict') {
+    console.warn('[feedback-merge] conflicted twice; session-end fold will catch it')
+    return 0
+  }
+  return outcome === 'saved' ? merged : 0
+}
+
+/**
+ * Fold every rated-but-unsignaled history entry into the fingerprint.
+ * Re-runnable, so `withDNAUpdate` can replay it against a newer row when its
+ * compare-and-set misses — a replay re-reads the catalog, which is the price
+ * of never saving a snapshot that went stale.
+ */
+async function mergeInto(dna: DNASchema): Promise<number> {
 
   // Dedup on the composite title key across ALL sources (NOT key+source like
   // the session merge): if a title is already signaled from any source (e.g.
@@ -86,6 +111,5 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
     merged++
   }
 
-  if (merged > 0) await saveDNA(user_id, dna)
   return merged
 }

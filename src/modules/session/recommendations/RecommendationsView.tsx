@@ -446,9 +446,25 @@ export default function RecommendationsView({
         });
         if (!res.ok) {
           console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+          // The card was flipped optimistically before this ran, so a failure
+          // leaves the user believing a rating landed that did not. Nothing
+          // else records it — session end folds from the history row this
+          // very request failed to write — so put the card back and say so.
+          setFeedbackGiven((prev) => {
+            const next = { ...prev };
+            delete next[rec.id];
+            return next;
+          });
+          setError("That rating didn't save — try again.");
         }
       } catch (e) {
         console.error("[recs] feedback failed", e);
+        setFeedbackGiven((prev) => {
+          const next = { ...prev };
+          delete next[rec.id];
+          return next;
+        });
+        setError("That rating didn't save — try again.");
       }
     });
     // In full view, advance to next after feedback. Not in watchlist mode: the
