@@ -688,8 +688,10 @@ export default function WTWApp({
   }
 
   function handleSubmit(text: string) {
-    // First-ever submit on this conversation: persist favorites + flip stage.
-    // Subsequent submits just stream — server already knows the conversation.
+    // Only the OLD onboard flow persists favorites: there the first thing a
+    // user typed was a list of films. New accounts come through the intro
+    // instead, where the first reply is "yes" to "Shall we begin?" — not a
+    // taste signal, so it is deliberately not written to conversations.favorites.
     const isFirstOnboard = stage === "onboard" && messages.length === 0;
     const nextStage: Stage = "conversation";
 
