@@ -57,6 +57,54 @@ export async function saveDNA(user_id: string, dna: DNASchema): Promise<void> {
 }
 
 /**
+ * Read `users.dna` together with the row version a conditional save needs.
+ * Goes straight to Postgres, deliberately: a read-modify-write that intends to
+ * compare-and-set must not start from a cached snapshot.
+ */
+export async function loadDNAForUpdate(
+  user_id: string,
+): Promise<{ dna: DNASchema; updated_at: string } | null> {
+  const { data, error } = await createServiceClient()
+    .from('users')
+    .select('dna, updated_at')
+    .eq('id', user_id)
+    .single<{ dna: DNASchema | null; updated_at: string }>()
+
+  if (error || !data?.dna) return null
+  return { dna: data.dna, updated_at: data.updated_at }
+}
+
+/**
+ * Save only if nobody else has written the row since `seenUpdatedAt`.
+ * Returns false when the row moved — the caller must re-read and redo its
+ * work, never retry with the snapshot it already has.
+ *
+ * Why this exists (2026-09-20): `users.dna` is one JSONB column with several
+ * writers, and a blind `update()` of the whole object silently reverts
+ * whatever landed between the reader's read and its write. That is fine while
+ * every writer runs inside a request the UI serialises — and stopped being
+ * fine when the batch refresh started writing from `after()`, concurrently
+ * with the next click.
+ */
+export async function saveDNAIfUnchanged(
+  user_id: string,
+  dna: DNASchema,
+  seenUpdatedAt: string,
+): Promise<boolean> {
+  const { data, error } = await createServiceClient()
+    .from('users')
+    .update({ dna, updated_at: new Date().toISOString() })
+    .eq('id', user_id)
+    .eq('updated_at', seenUpdatedAt)
+    .select('id')
+
+  if (error) throw new Error(`saveDNAIfUnchanged: ${error.message}`)
+  const saved = (data?.length ?? 0) > 0
+  if (saved) await invalidateDNACache(user_id)
+  return saved
+}
+
+/**
  * Invalidates the Redis cache for a user's DNA.
  * Called automatically by saveDNA — exported in case a caller writes
  * `users.dna` directly (e.g. rollback) and needs to bust the cache itself.

@@ -128,13 +128,27 @@ describe('refreshLiveBatch', () => {
 
     expect(await refreshLiveBatch('u1', 'all')).toBeNull()
     expect(dbState.updates).toHaveLength(0)
+    // And the embedding row must not be advanced to a version the DNA never
+    // reached: narrative-match matches it by exact taste_version, so a row
+    // claiming an unsaved version can later score against the wrong taste.
+    expect(regenerateEmbedding).not.toHaveBeenCalled()
   })
 
-  it('moves the stored embedding onto the new version', async () => {
+  it('moves the stored embedding onto the new version, but only after the save', () => {
     // Otherwise the next generation re-embeds from scratch — the one real
     // cost this path exists to avoid.
-    await refreshLiveBatch('u1', 'all')
-    expect(regenerateEmbedding).toHaveBeenCalledOnce()
+    const order: string[] = []
+    regenerateEmbedding.mockImplementation(async () => { order.push('embed') })
+    const save = dbState.updates
+    Object.defineProperty(save, 'push', {
+      value: (...args: unknown[]) => { order.push('save'); return Array.prototype.push.apply(save, args) },
+      configurable: true,
+    })
+
+    return refreshLiveBatch('u1', 'all').then(() => {
+      expect(regenerateEmbedding).toHaveBeenCalledOnce()
+      expect(order).toEqual(['save', 'embed'])
+    })
   })
 
   it('still refreshes when the embedding update fails', async () => {

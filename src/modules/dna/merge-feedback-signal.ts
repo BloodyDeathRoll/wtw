@@ -16,19 +16,38 @@
  * signaled here (dedup key: type:tmdb_id, one signal per title across all
  * sources — first wins).
  *
- * Concurrency: callers must serialize invocations per user (the rec UI queues
- * feedback clicks) — this is a read-modify-write on the DNA JSONB.
+ * Concurrency: a read-modify-write on the DNA JSONB, saved with a
+ * compare-and-set and retried once on a miss (2026-09-20). The rec UI queues
+ * feedback clicks, which used to be enough — until the batch refresh started
+ * writing the same column from `after()`, concurrently with the next click. A
+ * blind save from here would silently revert its version bump.
  */
 
 import type { DNASchema, DNASignal } from '@/types/dna'
 import { recordKey, recordType, titleKey } from '@/lib/title-key'
-import { loadDNA, saveDNA, fetchTitleCrew, pickTitle } from './lib/load-save'
+import { loadDNAForUpdate, saveDNAIfUnchanged, fetchTitleCrew, pickTitle } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { applyStrandCUpdate } from './lib/update-strand-c'
 import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 
 export async function mergeFeedbackSignalsLight(user_id: string): Promise<number> {
-  const dna: DNASchema = await loadDNA(user_id)
+  // Two attempts. A compare-and-set miss means someone else wrote the row, so
+  // the snapshot this ran on is stale and the whole merge has to be redone
+  // against fresh state — never re-saved as-is.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const merged = await mergeOnce(user_id)
+    if (merged !== null) return merged
+    console.warn('[feedback-merge] row changed underneath, retrying')
+  }
+  console.warn('[feedback-merge] gave up after a second conflict; session-end fold will catch it')
+  return 0
+}
+
+/** One read-modify-write. Returns null when the compare-and-set missed. */
+async function mergeOnce(user_id: string): Promise<number | null> {
+  const row = await loadDNAForUpdate(user_id)
+  if (!row) return 0
+  const dna: DNASchema = row.dna
 
   // Dedup on the composite title key across ALL sources (NOT key+source like
   // the session merge): if a title is already signaled from any source (e.g.
@@ -84,6 +103,6 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
     merged++
   }
 
-  if (merged > 0) await saveDNA(user_id, dna)
-  return merged
+  if (merged === 0) return 0
+  return (await saveDNAIfUnchanged(user_id, dna, row.updated_at)) ? merged : null
 }

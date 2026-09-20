@@ -28,12 +28,10 @@
  */
 
 import { getRedis } from '@/lib/redis'
-import { createServiceClient } from '@/lib/supabase/service'
 import { adoptPendingBatch } from '@/modules/engine/pipeline/precompute'
-import { invalidateDNACache, bumpVersion } from './lib/load-save'
+import { loadDNAForUpdate, saveDNAIfUnchanged, bumpVersion } from './lib/load-save'
 import { regenerateEmbedding } from './lib/regenerate-embedding'
 import type { ContentType } from '@/lib/content-type'
-import type { DNASchema } from '@/types/dna'
 
 /**
  * How many ratings between refreshes. Small enough that a run of dislikes
@@ -79,47 +77,30 @@ export async function refreshLiveBatch(
   userId: string,
   contentType: ContentType = 'all',
 ): Promise<number | null> {
-  const db = createServiceClient()
-
   // Read updated_at alongside the DNA so the write below can be conditional.
   // This runs after the response, concurrently with whatever the user clicks
   // next — and a card rating is itself a read-modify-write of the same column
-  // (merge-feedback-signal.ts). Without the compare-and-set, a refresh that
-  // started before that click and finished after it would put the rating back.
-  const { data: row, error } = await db
-    .from('users')
-    .select('dna, updated_at')
-    .eq('id', userId)
-    .single<{ dna: DNASchema | null; updated_at: string }>()
-
-  if (error || !row?.dna) return null
+  // (merge-feedback-signal.ts, which compare-and-sets for the same reason).
+  const row = await loadDNAForUpdate(userId)
+  if (!row) return null
   const dna = row.dna
   bumpVersion(dna)
 
+  // `generationInputsHash` covers signals, strands and rules — not metadata —
+  // so bumping the version in memory first does not invalidate the parked
+  // batch's hash. The adopt below still has to match on everything that
+  // actually feeds a generation.
   const adopted = await adoptPendingBatch(userId, dna, contentType)
   if (!adopted) return null // nothing to promote — leave the fingerprint alone
 
-  // Move the stored embedding onto the new version. Skips Mistral entirely
-  // when the strand text is byte-identical (text_hash, migration 0020), which
-  // it usually is — a handful of ratings rarely moves the dominant pacing or
-  // the top two tones. Without this the next generation re-embeds from
-  // scratch, which is the one real cost this whole path was avoiding.
-  await regenerateEmbedding(userId, dna).catch(err =>
-    console.warn('[refresh-batch] embedding regen failed (non-fatal):', err instanceof Error ? err.message : err),
-  )
-
-  const { data: saved, error: saveError } = await db
-    .from('users')
-    .update({ dna, updated_at: new Date().toISOString() })
-    .eq('id', userId)
-    .eq('updated_at', row.updated_at)
-    .select('id')
-
-  if (saveError) {
-    console.warn('[refresh-batch] save failed (non-fatal):', saveError.message)
+  let saved: boolean
+  try {
+    saved = await saveDNAIfUnchanged(userId, dna, row.updated_at)
+  } catch (err) {
+    console.warn('[refresh-batch] save failed (non-fatal):', err instanceof Error ? err.message : err)
     return null
   }
-  if ((saved?.length ?? 0) === 0) {
+  if (!saved) {
     // A rating landed while we were building. Its own precompute will park a
     // newer batch and the next refresh picks it up; the cache we just wrote
     // under the unsaved version is orphaned and expires on its own.
@@ -127,7 +108,19 @@ export async function refreshLiveBatch(
     return null
   }
 
-  await invalidateDNACache(userId)
+  // Only now, once the version is actually on disk. `fingerprint_embeddings`
+  // is matched by exact taste_version (narrative-match.ts) precisely so a
+  // stale vector can never score against the wrong taste — advancing that row
+  // to a version the DNA never reached would reintroduce exactly that.
+  //
+  // Skips Mistral when the strand text is byte-identical (text_hash, migration
+  // 0020), which it usually is: a handful of ratings rarely moves the dominant
+  // pacing or the top two tones. Without it the next generation re-embeds from
+  // scratch, which is the one real cost this whole path exists to avoid.
+  await regenerateEmbedding(userId, dna).catch(err =>
+    console.warn('[refresh-batch] embedding regen failed (non-fatal):', err instanceof Error ? err.message : err),
+  )
+
   console.log(`[refresh-batch] live batch refreshed as v${dna.metadata.taste_version}`)
   return dna.metadata.taste_version
 }
