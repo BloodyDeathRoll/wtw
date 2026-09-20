@@ -11,7 +11,7 @@
  * the weights say.
  *
  * The cap is on the POOL, not the batch. A capped genre still supplies
- * ~37 of 150 candidates competing for 50 slots, so a user who genuinely loves
+ * ~38 of 150 candidates competing for 50 slots, so a user who genuinely loves
  * horror still gets horror — the scorer just has something else to choose
  * from. The line is drawn at the catalog's own share: the pool may be as
  * skewed as the catalog, never more.
@@ -80,8 +80,9 @@ export function capGenreShare<T extends MatchableTitle>(
   for (let ceiling = allowance; kept.length < limit && pending.length > 0; ceiling += allowance) {
     const deferred: T[] = []
     for (const row of pending) {
+      if (kept.length >= limit) break
       const buckets = bucketsOf.get(row)!
-      if (kept.length >= limit || buckets.some(b => (counts.get(b) ?? 0) >= ceiling)) {
+      if (buckets.some(b => (counts.get(b) ?? 0) >= ceiling)) {
         deferred.push(row)
         continue
       }
