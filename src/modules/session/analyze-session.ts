@@ -15,6 +15,9 @@
  * Titles that TMDB can't resolve are dropped — a signal needs a tmdb_id to
  * be scoreable. A transcript with no concrete titles yields zero signals
  * (still a valid summary; the version bump reflects the session happened).
+ *
+ * An extraction failure THROWS. "No signals" and "the extractor is down" are
+ * not the same session and must not produce the same summary.
  */
 
 import { generateObject } from 'ai'
@@ -133,21 +136,20 @@ export async function analyzeSession(
   if (!transcript) return emptySummary
 
   // ── 1. LLM extraction ─────────────────────────────────────
-  let extracted: z.infer<typeof extractionSchema>
-  try {
-    const mistral = createMistral({ apiKey: process.env.MISTRAL_API_KEY })
-    const { object } = await generateObject({
-      model: mistral(MODELS.structured),
-      schema: extractionSchema,
-      system: SYSTEM_PROMPT,
-      prompt: transcript,
-      temperature: 0.2,
-    })
-    extracted = object
-  } catch (err) {
-    console.error('[analyze-session] extraction failed:', err)
-    return emptySummary // session still valid, just no signals this round
-  }
+  // A failure THROWS. It used to be swallowed into an empty summary, which is
+  // indistinguishable from "the user said nothing" — so when Mistral answered
+  // 429 for two days straight (2026-09-04 onward) every rule and every signal
+  // was silently dropped and the session still reported success. The caller
+  // decides what to do with the rest of the session; it must not be told the
+  // transcript was empty.
+  const mistral = createMistral({ apiKey: process.env.MISTRAL_API_KEY })
+  const { object: extracted } = await generateObject({
+    model: mistral(MODELS.structured),
+    schema: extractionSchema,
+    system: SYSTEM_PROMPT,
+    prompt: transcript,
+    temperature: 0.2,
+  })
 
   // ── 2. Resolve each title → tmdb_id, cache it, build a signal ─
   const source = `session_${session_number}` as const

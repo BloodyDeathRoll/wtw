@@ -107,6 +107,22 @@ export function classifyRuleTarget(name: string): ExclusionType {
 }
 
 /**
+ * Is this one of the category words above, AND does it widen into something
+ * the catalog can actually be filtered on?
+ *
+ * The second half matters: `subtitles` is in the table with every target list
+ * empty, precisely because "no subtitles" is not an exclusion we can honour.
+ * A caller that treats bare membership as "recognised" would write that as a
+ * rule, bump the version for it, and tell the user it is now applied — while
+ * `matchesRule` can never match it. That is the same inert-rule-reported-as-
+ * working failure the rest of this file exists to prevent.
+ */
+export function isKnownCategory(name: string): boolean {
+  const t = ALIASES[norm(name)]
+  return !!t && (t.genres.length > 0 || t.keywords.length > 0 || t.languages.length > 0 || t.conjunctions.length > 0)
+}
+
+/**
  * Language names people actually say, mapped to what TMDB stores. Only used
  * when a rule reads as a language/nationality rule ("no French films"), never
  * inferred from a bare genre word.

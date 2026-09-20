@@ -41,34 +41,55 @@ function mistral() {
 // ─────────────────────────────────────────────
 
 /**
+ * The `limit` highest-weighted keys, but only where the weights actually say
+ * so. Keys tied at the cut are dropped as a group rather than split, and a
+ * group that is entirely tied returns nothing.
+ *
+ * Why (2026-09-06): a blank fingerprint has all five tone weights equal, and
+ * "top 2 by weight" over a stable sort returned whichever two jsonb happened
+ * to serialise first — every new user embedded as `Tone: dark, warm` and was
+ * pulled toward the catalog's large dark slice before they had rated anything.
+ * Ties carry no signal, so they must not produce one.
+ */
+function topWeights(weights: Record<string, number>, limit: number): string[] {
+  const EPSILON = 1e-6
+  const ranked = Object.entries(weights)
+    .filter(([, w]) => Number.isFinite(w) && w > 0)
+    .sort(([, a], [, b]) => b - a)
+
+  const picked: string[] = []
+  for (let i = 0; i < ranked.length; ) {
+    let j = i
+    while (j < ranked.length && Math.abs(ranked[j][1] - ranked[i][1]) < EPSILON) j++
+    // A tied group is all-or-nothing: taking part of it would be picking by
+    // key order again.
+    if (picked.length + (j - i) > limit) break
+    for (let k = i; k < j; k++) picked.push(ranked[k][0])
+    i = j
+  }
+  return picked
+}
+
+/**
  * Converts a user's strand_b + strand_c into the same text format used
  * when embedding title narrative_metadata. Keeping these identical is what
  * makes cosine similarity meaningful.
  *
- * For pacing: use the highest-weight pacing dimension.
- * For tone: use the top-2 tone dimensions by weight.
+ * Pacing uses the dominant weight, tone the top 2 — and each line is omitted
+ * entirely when the weights are tied, because an absent line is a neutral
+ * fingerprint and an invented one is a wrong fingerprint.
  */
 export function strandBToEmbeddingText(strandB: StrandB, strandC: StrandC): string {
-  // Pacing: pick the dominant weight
-  const pacing = Object.entries(strandC.pacing_weights)
-    .sort(([, a], [, b]) => b - a)[0]?.[0]
-    ?.replace('_', ' ') ?? 'moderate'
-
-  // Tone: top-2 by weight
-  const tones = Object.entries(strandC.tone_weights)
-    .filter(([, w]) => w > 0)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 2)
-    .map(([t]) => t)
-    .join(', ') || 'neutral'
+  const pacing = topWeights(strandC.pacing_weights, 1)[0]?.replace(/_/g, ' ')
+  const tones = topWeights(strandC.tone_weights, 2).join(', ')
 
   const str = (v: string | number) => String(v).replace(/_/g, ' ')
   const num = (v: string | number) => Number(v).toFixed(2)
   const b = strandB
 
   return [
-    `Pacing: ${pacing}.`,
-    `Tone: ${tones}.`,
+    ...(pacing ? [`Pacing: ${pacing}.`] : []),
+    ...(tones ? [`Tone: ${tones}.`] : []),
     `Moral ambiguity: ${str(b.moral_ambiguity.value)}.`,
     `Narrative complexity: ${str(b.narrative_complexity.value)}.`,
     `Emotional demand: ${str(b.emotional_demand.value)}.`,
