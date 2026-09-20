@@ -177,7 +177,7 @@ export default function IntroVoice({
         type="button"
         className={styles.backBtn}
         onClick={onSkip}
-        aria-label="back"
+        aria-label="skip intro"
       >
         {IconBack}
       </button>

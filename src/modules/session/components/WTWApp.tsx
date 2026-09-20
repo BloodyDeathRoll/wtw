@@ -626,10 +626,6 @@ export default function WTWApp({
     setRegretChecks(getPendingRegretChecks());
   }, []);
 
-  // First-time users hear the intro as well as read it. Autoplay is blocked
-  // without a gesture on mobile, so when the synthesizer stays silent we arm a
-  // one-shot listener and speak on the user's first touch instead of losing it.
-
 
   // Warm-up on load: bootstrap the DNA row (idempotent), then pre-generate
   // recommendations in the background. POST /generate returns the cached set
