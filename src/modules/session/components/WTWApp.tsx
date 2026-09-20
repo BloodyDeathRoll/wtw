@@ -699,6 +699,12 @@ export default function WTWApp({
       // interrupt the user; we just log.
       if (!res.ok) {
         console.error(`[session/end] HTTP ${res.status}`, await res.text().catch(() => ""));
+      } else {
+        // A 200 can still carry a failure: the fingerprint was updated but the
+        // transcript was never read (extraction down). Logging it here is the
+        // difference between noticing in an hour and noticing in two days.
+        const body = await res.json().catch(() => null);
+        if (body?.warning) console.error("[session/end]", body.warning);
       }
     } catch (e) {
       console.error("[session/end] failed", e);
