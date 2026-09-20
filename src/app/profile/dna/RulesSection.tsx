@@ -56,12 +56,19 @@ export function RulesSection({
         body: JSON.stringify({ kind: draftKind, name }),
       });
       if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as { added?: boolean };
+      const data = (await res.json()) as { added?: boolean; updated?: boolean };
       setDraft("");
-      // Say which of the two happened. "Already on your list" is the answer to
-      // a user who typed it again because they could not tell whether the
+      // Say which of the three happened. "Already on your list" is the answer
+      // to a user who typed it again because they could not tell whether the
       // first one took — telling them "added" a second time answers nothing.
-      setAdded(data.added ? `Added — ${name}` : `Already on your list — ${name}`);
+      // And a rule that already existed but got stronger is neither.
+      setAdded(
+        data.added
+          ? `Added — ${name}`
+          : data.updated
+            ? `Strengthened — ${name}`
+            : `Already on your list — ${name}`,
+      );
       // Not optimistic, unlike removal: the server decides the rule's type and
       // whether it merged into an existing one, so render what it actually
       // stored rather than a guess that might differ.

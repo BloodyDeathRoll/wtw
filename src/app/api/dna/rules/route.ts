@@ -28,7 +28,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { loadDNA, saveDNA, bumpVersion } from '@/modules/dna/lib/load-save'
-import { applyDirectives } from '@/modules/dna/lib/apply-directives'
+import { applyDirectives, directivesChanged } from '@/modules/dna/lib/apply-directives'
 import { ruleKey, classifyRuleTarget } from '@/lib/exclusion-rules'
 import type { SessionDirective } from '@/types/dna'
 
@@ -81,20 +81,27 @@ export async function POST(req: NextRequest) {
     person_id: '',
   }
   const merged = applyDirectives(dna.contextual_logic, [directive])
-  const added = merged.exclusions_added > 0 || merged.soft_preferences_added > 0
 
-  // Already on file — the end state the user wanted is the state we're in, and
-  // a version bump for a no-op would throw away a warm batch for nothing.
-  if (!added) {
+  // `updated` counts, not just the added counts: typing "romance" under
+  // "Less of" when a weaker preference already exists tightens it in place,
+  // and saving only on an add discarded exactly the change the user asked for
+  // while the page told them it was already on their list.
+  if (!directivesChanged(merged)) {
+    // Genuinely already on file — the end state they wanted is the state we're
+    // in, and a version bump for a no-op throws away a warm batch for nothing.
     return NextResponse.json({ ok: true, added: false, taste_version: dna.metadata.taste_version })
   }
 
   bumpVersion(dna)
   await saveDNA(user.id, dna)
 
+  // `added` is what the page says to the user, so it has to mean "new", not
+  // "changed" — a strengthened preference is reported as an update instead.
+  const added = merged.exclusions_added > 0 || merged.soft_preferences_added > 0
   return NextResponse.json({
     ok: true,
-    added: true,
+    added,
+    updated: !added,
     rule: { kind, type: directive.target_type, name },
     taste_version: dna.metadata.taste_version,
   })

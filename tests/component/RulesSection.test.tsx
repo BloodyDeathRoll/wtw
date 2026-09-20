@@ -92,10 +92,21 @@ describe('<RulesSection /> — adding a rule by hand', () => {
     }))
   })
 
+  it('says a preference got stronger rather than calling it a duplicate', async () => {
+    // Typing "romance" under "Less of" when a weaker one exists tightens it.
+    // Saying "already on your list" there hides a change the user just made.
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true, added: false, updated: true }), { status: 200 })))
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    await addRule('romance', 'soft_preference')
+
+    await waitFor(() => expect(screen.getByText(/strengthened — romance/i)).toBeInTheDocument())
+  })
+
   it('says a rule was already there rather than claiming it added it again', async () => {
     // The user typing it twice is the user unsure whether the first one took.
     vi.stubGlobal('fetch', vi.fn(async () =>
-      new Response(JSON.stringify({ ok: true, added: false }), { status: 200 })))
+      new Response(JSON.stringify({ ok: true, added: false, updated: false }), { status: 200 })))
     render(<RulesSection exclusions={[]} softPreferences={[]} />)
     await addRule('anime')
 
