@@ -33,7 +33,9 @@ export const runtime = "nodejs";
 
 // What one request may cost us (audit 2026-09-11, RULES A5/G10). The client
 // sends the whole history every turn, so bound it: a calibration chat is a few
-// dozen short turns, and a reply is "one or two short sentences".
+// dozen short turns, and a reply is "one or two short sentences". The bound is
+// enforced by TRIMMING (boundedHistory), not by refusing the request — see the
+// note at the call site.
 const MAX_MESSAGES = 60;
 const MAX_HISTORY_CHARS = 24_000;
 const MAX_REPLY_TOKENS = 300;
@@ -61,6 +63,22 @@ applied unless a RECORDED line below names it — if there is no such line, you
 do not know whether it was captured, and saying "got it, no more anime" when
 nothing was written is how a user ended up asking for the same thing across
 five sessions. Never promise to "keep it in mind" either.`;
+
+/** The tail of the history that fits both bounds, oldest-first for the model. */
+function boundedHistory(messages: UIMessage[]): UIMessage[] {
+  const kept: UIMessage[] = [];
+  let chars = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const len = messageText(messages[i]).length;
+    if (kept.length >= MAX_MESSAGES) break;
+    // Always keep the latest turn, however long — dropping it would send the
+    // model a conversation that doesn't include what the user just said.
+    if (kept.length > 0 && chars + len > MAX_HISTORY_CHARS) break;
+    kept.push(messages[i]);
+    chars += len;
+  }
+  return kept.reverse();
+}
 
 function messageText(m: UIMessage): string {
   if (typeof m.content === "string") return m.content;
@@ -142,12 +160,17 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const historyChars = messages.reduce((n, m) => n + messageText(m).length, 0);
-  if (messages.length > MAX_MESSAGES || historyChars > MAX_HISTORY_CHARS) {
-    return NextResponse.json(
-      { error: "conversation history too large" },
-      { status: 413 },
-    );
+  // TRIM the history rather than refusing it (2026-09-20). This used to 413,
+  // which bounded our cost by locking the user out of their own conversation:
+  // an account with 107 messages — ordinary, since conversations never rotated
+  // until migration 0022 — got "Couldn't reach the model" on every turn, with
+  // nothing to do about it. The cost guard is satisfied by sending less, not
+  // by answering nothing. The most recent turns are the ones that matter for
+  // the next question, and the whole transcript is re-read at session end
+  // anyway (analyze-session.ts, which bounds itself the same way).
+  const history = boundedHistory(messages);
+  if (history.length < messages.length) {
+    console.log(`[conversation] history trimmed: ${messages.length} → ${history.length} messages`);
   }
 
   // Persist the user's latest message (the last item — useChat always
@@ -197,7 +220,7 @@ export async function POST(req: Request) {
     model: groq(MODELS.text),
     providerOptions: GROQ_TEXT_OPTIONS,
     system: SYSTEM_PROMPT + dnaContext + recordedContext(recorded),
-    messages: convertToCoreMessages(messages),
+    messages: convertToCoreMessages(history),
     maxTokens: MAX_REPLY_TOKENS,
     onFinish: async ({ text }) => {
       if (!text) return;
