@@ -1,24 +1,104 @@
 /**
- * DELETE /api/dna/rules
+ * POST / DELETE /api/dna/rules
  *
- * Removes one standing rule from the user's contextual_logic — the Taste DNA
- * page's "remove" control. Rules are written from conversation
- * (analyze-session → apply-directives), so a misheard instruction has to be
- * undoable somewhere; this is that somewhere.
+ * The standing rules in the user's contextual_logic, and the Taste DNA page's
+ * two controls over them.
  *
- * Body: { kind: 'exclusion' | 'soft_preference', key: string }
+ * DELETE removes one. Rules are written from conversation (analyze-session →
+ * apply-directives), so a misheard instruction has to be undoable somewhere;
+ * this is that somewhere.
+ *
+ * POST adds one by hand (2026-09-20). Until now the only writer was the
+ * conversation, and when that path failed — which it did for every user while
+ * Mistral answered 429 — there was no way to state a rule at all. A user who
+ * has said "no horror" three times and can see it is not on the page needs
+ * something to click, not a fourth attempt at saying it.
+ *
+ * Body (DELETE): { kind: 'exclusion' | 'soft_preference', key: string }
  *   key is `type:name` for an exclusion (src/lib/exclusion-rules.ts ruleKey),
  *   the lowercased signal for a soft preference.
+ * Body (POST):   { kind: 'exclusion' | 'soft_preference', name: string }
  *
- * Bumps taste_version: the rec cache is keyed by it, so dropping a rule has to
- * bust the batch that was generated under it — otherwise the titles the rule
- * was hiding stay hidden until something else happens to bump the version.
+ * Both bump taste_version: the rec cache is keyed by it, so a rule change has
+ * to bust the batch that was generated without it — otherwise the rule does
+ * nothing visible until something else happens to bump the version.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { enforceRateLimit } from '@/lib/rate-limit'
 import { loadDNA, saveDNA, bumpVersion } from '@/modules/dna/lib/load-save'
-import { ruleKey } from '@/lib/exclusion-rules'
+import { applyDirectives } from '@/modules/dna/lib/apply-directives'
+import { ruleKey, classifyRuleTarget } from '@/lib/exclusion-rules'
+import type { SessionDirective } from '@/types/dna'
+
+/** Long enough for a real rule, short enough that it isn't a paragraph. */
+const MAX_RULE_NAME = 60
+
+/** Strength of a hedge the user added by hand — same default the extractor uses. */
+const MANUAL_SOFT_WEIGHT = 0.5
+
+/** Each add bumps taste_version, which busts the rec cache. Bound the churn. */
+const RATE_LIMIT = { scope: 'dna-rules', perUser: 30, perIp: 60, windowSec: 10 * 60 }
+
+export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const limited = await enforceRateLimit(req, user.id, RATE_LIMIT)
+  if (limited) return limited
+
+  let kind: string
+  let name: string
+  try {
+    const body = await req.json()
+    kind = body?.kind
+    name = typeof body?.name === 'string' ? body.name.trim().replace(/\s+/g, ' ') : ''
+    if (!name || (kind !== 'exclusion' && kind !== 'soft_preference')) {
+      return NextResponse.json({ error: 'kind and name are required' }, { status: 400 })
+    }
+    if (name.length > MAX_RULE_NAME) {
+      return NextResponse.json({ error: 'That rule is too long' }, { status: 400 })
+    }
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  const dna = await loadDNA(user.id)
+
+  // Through the same merge the conversation uses, so a typed rule and a spoken
+  // one dedup against each other, and typing a hard rule over a soft one
+  // escalates exactly as saying it would.
+  const directive: SessionDirective = {
+    kind,
+    target_type: classifyRuleTarget(name),
+    name,
+    raw: name,
+    reason: 'added by hand',
+    weight_modifier: kind === 'soft_preference' ? MANUAL_SOFT_WEIGHT : undefined,
+    person_id: '',
+  }
+  const merged = applyDirectives(dna.contextual_logic, [directive])
+  const added = merged.exclusions_added > 0 || merged.soft_preferences_added > 0
+
+  // Already on file — the end state the user wanted is the state we're in, and
+  // a version bump for a no-op would throw away a warm batch for nothing.
+  if (!added) {
+    return NextResponse.json({ ok: true, added: false, taste_version: dna.metadata.taste_version })
+  }
+
+  bumpVersion(dna)
+  await saveDNA(user.id, dna)
+
+  return NextResponse.json({
+    ok: true,
+    added: true,
+    rule: { kind, type: directive.target_type, name },
+    taste_version: dna.metadata.taste_version,
+  })
+}
 
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient()

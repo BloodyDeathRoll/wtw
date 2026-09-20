@@ -7,6 +7,7 @@ import {
   matchesSoftSignal,
   softPreferenceMultiplier,
   ruleKey,
+  classifyRuleTarget,
   type MatchableTitle,
 } from '@/lib/exclusion-rules'
 import { applyDirectives } from '@/modules/dna/lib/apply-directives'
@@ -263,5 +264,27 @@ describe('ruleKey', () => {
   it('is type + name, case- and space-insensitive', () => {
     expect(ruleKey({ type: 'person', name: '  Mark Ruffalo ' })).toBe('person:mark ruffalo')
     expect(ruleKey({ type: 'keyword', name: 'Anime' })).toBe(ruleKey({ type: 'keyword', name: 'anime' }))
+  })
+})
+
+// 2026-09-20: a rule the user TYPED on the Taste DNA page, where nothing said
+// what kind of thing it is.
+describe('classifyRuleTarget', () => {
+  it.each(['horror', 'Documentary', ' science fiction '])('calls %j a genre', name => {
+    expect(classifyRuleTarget(name)).toBe('genre')
+  })
+
+  it.each(['anime', 'reality tv', 'Marvel', 'found footage'])('calls %j a keyword', name => {
+    expect(classifyRuleTarget(name)).toBe('keyword')
+  })
+
+  it('never guesses a person — an unresolved person rule matches nothing', () => {
+    expect(classifyRuleTarget('Adam Sandler')).toBe('keyword')
+  })
+
+  it('leaves a keyword rule able to match a genre anyway', () => {
+    // The distinction is for display: ruleTargets widens a keyword to both.
+    const t = ruleTargets({ type: 'keyword', name: 'horror' })
+    expect(t.genres).toContain('horror')
   })
 })

@@ -365,3 +365,63 @@
   font-size: 14px;
   color: #e05c5c;
 }
+
+/* ─── Add a rule ─── */
+.addRule {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--wtw-border);
+}
+/* Wraps to two lines on a narrow phone: the input takes the whole second row
+   rather than being squeezed to a few characters beside the two controls. */
+.addRuleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.addRuleKind,
+.addRuleInput,
+.addRuleSubmit {
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--wtw-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--wtw-fg);
+  font-size: 15px;
+  font-family: inherit;
+}
+.addRuleInput {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.addRuleInput::placeholder {
+  color: var(--wtw-fg-dim);
+}
+.addRuleKind:focus-visible,
+.addRuleInput:focus-visible,
+.addRuleSubmit:focus-visible {
+  outline: 2px solid var(--wtw-fg-muted);
+  outline-offset: 2px;
+}
+.addRuleSubmit {
+  flex: 0 0 auto;
+  cursor: pointer;
+  color: var(--wtw-fg-muted);
+}
+.addRuleSubmit:hover:not(:disabled) {
+  color: var(--wtw-fg);
+  border-color: var(--wtw-fg-muted);
+}
+.addRuleSubmit:disabled,
+.addRuleKind:disabled,
+.addRuleInput:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ruleAdded {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--wtw-fg-muted);
+}
