@@ -57,13 +57,22 @@ export function applyDirectives(
         // silently attach itself to a keyword rule of the same name.
         (d.target_type !== 'person'
           ? logic.exclusion_rules.find(r => ruleKey(r) === ruleKey({ type: 'person', name }))
-          : undefined)
+          // The mirror case: the name was typed first (stored as a keyword,
+          // matching nothing on a person) and a session has now resolved it
+          // to a real person. Upgrade that rule in place rather than leaving
+          // the inert one beside a correct one — a person directive carries
+          // the id, so it can only improve what is already there.
+          : logic.exclusion_rules.find(r => ruleKey(r) === ruleKey({ type: 'keyword', name })))
       if (existing) {
-        // Re-stating a rule can only improve it: keep a person id we now have.
-        if (!existing.id && d.person_id) {
-          existing.id = d.person_id
-          result.updated++
+        // Re-stating a rule can only improve it: keep a person id we now have,
+        // and promote a keyword rule to the person it turned out to name.
+        let changed = false
+        if (!existing.id && d.person_id) { existing.id = d.person_id; changed = true }
+        if (d.target_type === 'person' && existing.type !== 'person') {
+          existing.type = 'person'
+          changed = true
         }
+        if (changed) result.updated++
         continue
       }
 

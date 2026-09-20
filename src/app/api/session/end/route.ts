@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { endConversation } from '@/lib/conversations'
 import { startTimer } from '@/lib/timing'
 import { isContentType, type ContentType } from '@/lib/content-type'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
@@ -286,6 +287,25 @@ export async function POST(req: NextRequest) {
       ...extractionReport(extractionFailed),
       warning: 'Fingerprint updated but recommendation generation failed',
     })
+  }
+
+  // ── 6. Rotate the conversation ───────────────────────────
+  // A real session just ended: its transcript is merged into the fingerprint,
+  // so the next visit starts a fresh conversation. NOT on a "Find more"
+  // (skip_transcript) — that is the same sitting continuing, and rotating
+  // there would split one conversation into a dozen.
+  //
+  // Without this nothing ever closed a conversation, so every user had exactly
+  // one for life: session_number stuck at 1, and this route re-read and
+  // re-analysed the whole history — 105 messages on one live account — through
+  // the extraction LLM on every call.
+  //
+  // Best-effort: a failure leaves the user in the conversation they are in,
+  // which is the old behaviour rather than a broken one.
+  if (!skipTranscript && !extractionFailed) {
+    await endConversation(db, conversationId, sessionNumber).catch(err =>
+      console.warn('[session/end] conversation rotation failed (non-fatal):', err instanceof Error ? err.message : err),
+    )
   }
 
   return NextResponse.json({

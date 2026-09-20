@@ -113,6 +113,10 @@ export async function DELETE(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  // Same bound as POST: a removal bumps taste_version and busts the rec cache
+  // exactly as an add does, so it needs the same ceiling on churn.
+  const limited = await enforceRateLimit(req, user.id, RATE_LIMIT)
+  if (limited) return limited
 
   let kind: string
   let key: string

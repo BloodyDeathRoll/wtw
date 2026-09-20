@@ -102,8 +102,34 @@ const TMDB_GENRES = new Set([
  * looking like it works — the exact silent failure this file exists to end.
  */
 export function classifyRuleTarget(name: string): ExclusionType {
+  return TMDB_GENRES.has(canonicalGenre(norm(name))) ? 'genre' : 'keyword'
+}
+
+/**
+ * What people type, mapped to the genre TMDB files it under. Without this a
+ * hand-typed `sci-fi` became a keyword rule matching the literal string
+ * "sci-fi", which the catalog stores nowhere — an inert rule presented as a
+ * working one, the failure this file exists to prevent.
+ */
+const GENRE_SPELLINGS: Record<string, string> = {
+  'sci-fi': 'science fiction', scifi: 'science fiction', 'sci fi': 'science fiction',
+  'science-fiction': 'science fiction',
+  'rom-com': 'romance', romcom: 'romance', 'rom com': 'romance', romantic: 'romance',
+  musical: 'music', musicals: 'music', animated: 'animation', docs: 'documentary',
+  doco: 'documentary', 'true crime': 'crime',
+}
+
+/** The TMDB genre a typed name means, or the name unchanged. */
+export function canonicalGenre(name: string): string {
   const n = norm(name)
-  return TMDB_GENRES.has(n) ? 'genre' : 'keyword'
+  if (TMDB_GENRES.has(n)) return n
+  if (GENRE_SPELLINGS[n]) return GENRE_SPELLINGS[n]
+  // Plurals: westerns → western, comedies → comedy, romances → romance.
+  for (const form of [n.replace(/ies$/, 'y'), n.replace(/es$/, ''), n.replace(/s$/, '')]) {
+    if (TMDB_GENRES.has(form)) return form
+    if (GENRE_SPELLINGS[form]) return GENRE_SPELLINGS[form]
+  }
+  return n
 }
 
 /**
@@ -155,9 +181,18 @@ export function ruleTargets(rule: { type: string; name: string }): RuleTargets {
   if (lang) return { genres: [], keywords: [], languages: [lang], conjunctions: [] }
 
   // Everything else matches by the literal word, as a genre name and as a
-  // keyword. One of the two hits; a name that is neither simply matches
-  // nothing, which is the honest outcome for an unrecognisable rule.
-  return { genres: [bare || name], keywords: [bare || name], languages: [], conjunctions: [] }
+  // keyword — plus the TMDB genre that word means, if it means one, so
+  // "sci-fi" reaches Science Fiction instead of matching nothing. A name that
+  // is none of these simply matches nothing, which is the honest outcome for
+  // an unrecognisable rule.
+  const word = bare || name
+  const genre = canonicalGenre(word)
+  return {
+    genres: genre === word ? [word] : [word, genre],
+    keywords: [word],
+    languages: [],
+    conjunctions: [],
+  }
 }
 
 /** Union of every rule's OR-able targets — the three SQL array params. */
