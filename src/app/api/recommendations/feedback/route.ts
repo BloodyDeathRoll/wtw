@@ -40,6 +40,7 @@ import { isContentType, type ContentType } from '@/lib/content-type'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
+import { countRatingTowardRefresh, refreshLiveBatch } from '@/modules/dna/refresh-batch'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import type { DNASchema, Reaction } from '@/types/dna'
 
@@ -200,8 +201,18 @@ export async function POST(req: NextRequest) {
     // The fingerprint inputs are final for this rating — build the next batch
     // now, after the response, so "Find more" only has to adopt it
     // (precompute.ts coalesces bursts; never throws).
+    //
+    // Every Nth rating that parked batch is also promoted to the LIVE cache
+    // under a bumped version, so a run of dislikes reaches the feed in the
+    // same sitting instead of waiting for "Find more" (refresh-batch.ts). It
+    // has to run after the precompute, not beside it: the batch it promotes is
+    // the one that precompute just built from this rating.
     const userId = user.id
-    after(() => precomputeNextBatch(userId, contentType))
+    const dueForRefresh = await countRatingTowardRefresh(userId)
+    after(async () => {
+      await precomputeNextBatch(userId, contentType)
+      if (dueForRefresh) await refreshLiveBatch(userId, contentType)
+    })
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────
