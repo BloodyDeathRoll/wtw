@@ -46,7 +46,18 @@ export function applyDirectives(
 
     if (d.kind === 'exclusion') {
       const key = ruleKey({ type: d.target_type, name })
-      const existing = logic.exclusion_rules.find(r => ruleKey(r) === key)
+      const existing =
+        logic.exclusion_rules.find(r => ruleKey(r) === key) ??
+        // A name typed on the Taste DNA page is never classified as a person,
+        // so a rule already stored as one is invisible to a type+name lookup —
+        // and the soft preference that carried the identity was consumed by
+        // the first escalation. Without this the second "Never show me Adam
+        // Sandler" pushes a duplicate, inert keyword rule beside the working
+        // one. One direction only: a genuine person directive must never
+        // silently attach itself to a keyword rule of the same name.
+        (d.target_type !== 'person'
+          ? logic.exclusion_rules.find(r => ruleKey(r) === ruleKey({ type: 'person', name }))
+          : undefined)
       if (existing) {
         // Re-stating a rule can only improve it: keep a person id we now have.
         if (!existing.id && d.person_id) {
