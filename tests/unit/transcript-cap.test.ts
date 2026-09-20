@@ -31,9 +31,23 @@ describe('transcript cap', () => {
   })
 
   it('also caps on total size, not just count', () => {
-    // 10 messages of 5k chars each is well under 60 but far over the budget.
-    const kept = boundedTranscript(many(10, 5000))
-    expect(kept.length).toBeLessThan(10)
+    // 10 messages of 5k chars each is well under 60 but far over the 24k
+    // budget — exactly 4 fit.
+    expect(boundedTranscript(many(10, 5000))).toHaveLength(4)
+  })
+
+  it('never lets one oversized message empty the transcript', () => {
+    // A pasted wall of text longer than the whole budget. Returning nothing
+    // here would read downstream as "the user said nothing" — the same
+    // failure-looks-like-silence ambiguity row 6 removed for the 429 case.
+    const kept = boundedTranscript([msg(0, 'user', 50_000)])
+    expect(kept).toHaveLength(1)
+  })
+
+  it('keeps that oversized turn and nothing older', () => {
+    const kept = boundedTranscript([...many(5), msg(99, 'user', 50_000)])
+    expect(kept).toHaveLength(1)
+    expect(kept[0].content.trim()).toBe(msg(99, 'user', 50_000).content.trim())
   })
 
   it('drops empty and non-chat entries', () => {

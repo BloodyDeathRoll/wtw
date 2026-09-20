@@ -142,7 +142,12 @@ export function boundedTranscript(messages: TranscriptMessage[]): TranscriptMess
   let chars = 0
   for (let i = usable.length - 1; i >= 0; i--) {
     const len = usable[i].content.trim().length
-    if (kept.length >= MAX_TRANSCRIPT_MESSAGES || chars + len > MAX_TRANSCRIPT_CHARS) break
+    if (kept.length >= MAX_TRANSCRIPT_MESSAGES) break
+    // Always keep the most recent turn, however long it is. Checking size
+    // first would let one pasted wall of text empty the whole transcript, and
+    // an empty transcript reads as "the user said nothing" — the same
+    // failure-looks-like-silence ambiguity row 6 just removed for the 429 case.
+    if (kept.length > 0 && chars + len > MAX_TRANSCRIPT_CHARS) break
     kept.push(usable[i])
     chars += len
   }
@@ -164,8 +169,13 @@ export async function analyzeSession(
   }
 
   const usable = boundedTranscript(messages)
-  if (usable.length < messages.length) {
-    console.log(`[analyze-session] transcript capped: ${messages.length} → ${usable.length} messages`)
+  // Count only what the cap dropped, not what role/empty filtering did, so the
+  // line means what it says.
+  const chatTurns = messages.filter(
+    m => (m.role === 'user' || m.role === 'assistant') && m.content.trim(),
+  ).length
+  if (usable.length < chatTurns) {
+    console.log(`[analyze-session] transcript capped: ${chatTurns} → ${usable.length} messages`)
   }
   const transcript = usable
     .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content.trim()}`)
