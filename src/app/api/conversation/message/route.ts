@@ -35,7 +35,7 @@ export const runtime = "nodejs";
 // What one request may cost us (audit 2026-09-11, RULES A5/G10). The client
 // sends the whole history every turn, so bound it: a calibration chat is a few
 // dozen short turns, and a reply is "one or two short sentences". The bound is
-// enforced by TRIMMING (boundedHistory), not by refusing the request — see the
+// enforced by TRIMMING (boundedTail), not by refusing the request — see the
 // note at the call site.
 const MAX_MESSAGES = 60;
 const MAX_HISTORY_CHARS = 24_000;
