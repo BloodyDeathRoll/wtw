@@ -26,6 +26,7 @@
 
 import type { StrandC, ContentAffinityEntry, ReasonPayload } from '@/types/dna'
 import { REACTION_SCORE } from '@/modules/dna/lib/reaction-score'
+import { MIN_CONTENT_SAMPLES } from '@/modules/dna/lib/update-content-affinity'
 import type { TitleRow, AvoidedAttribute } from '../types'
 
 export interface ContentAffinityResult {
@@ -41,18 +42,14 @@ export interface ContentAffinityResult {
   avoided: AvoidedAttribute | null
 }
 
+/** The dimension names this scorer emits, for readers that treat them apart. */
+export const CONTENT_DIMENSIONS: ReadonlySet<string> = new Set(['genre', 'language', 'format'])
+
 const ASPECT_WEIGHTS = {
   genre:    0.60,
   language: 0.25,
   format:   0.15,
 } as const
-
-/**
- * Below this many ratings an entry is noise — one disliked comedy is a bad
- * night, not a taste. Confidence already scales the signal; this stops a
- * single sighting from moving anything at all.
- */
-const MIN_SAMPLES = 3
 
 /**
  * An entry's `score` is a running average reaction level, so it naturally
@@ -83,7 +80,7 @@ function strongest(
   let best: { raw: number; key: string } | null = null
   for (const key of keys) {
     const entry = map?.[key]
-    if (!entry || entry.sample_size < MIN_SAMPLES) continue
+    if (!entry || entry.sample_size < MIN_CONTENT_SAMPLES) continue
     const raw = normalise(entry)
     if (!best || Math.abs(raw) > Math.abs(best.raw)) best = { raw, key }
   }
