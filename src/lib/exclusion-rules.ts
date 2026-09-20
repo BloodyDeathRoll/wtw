@@ -83,6 +83,11 @@ const ALIASES: Record<string, RuleTargets> = {
   subtitles: { genres: [], keywords: [], languages: [], conjunctions: [] }, // "no subtitles" is not an exclusion we can honour
 }
 
+/** The category words above, for callers that need to recognise one by name. */
+export function isKnownCategory(name: string): boolean {
+  return Object.hasOwn(ALIASES, norm(name))
+}
+
 /**
  * Language names people actually say, mapped to what TMDB stores. Only used
  * when a rule reads as a language/nationality rule ("no French films"), never

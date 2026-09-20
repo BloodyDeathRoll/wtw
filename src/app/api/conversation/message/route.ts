@@ -7,7 +7,11 @@
 // got a hardcoded prompt and the message history and nothing else — no rules,
 // no strands, no signals — which is why it would agree to "no anime" and then
 // have no way to honour it, and why every title it named inline was a guess.
-// Signal extraction still happens at session end, not here.
+//
+// Standing instructions stated plainly ("no horror") are now written in the
+// turn itself by pattern (2026-09-20), so the rule exists before the reply is
+// generated and the reply can only claim what is on disk. Title signals, people
+// and unusual phrasings are still extracted at session end.
 
 import { groq } from "@ai-sdk/groq";
 import { MODELS } from "@/lib/ai-models";
@@ -15,8 +19,10 @@ import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
-import { loadDNA } from "@/modules/dna/lib/load-save";
+import { loadDNA, saveDNA, bumpVersion } from "@/modules/dna/lib/load-save";
 import { dnaPromptContext } from "@/modules/dna/lib/prompt-context";
+import { applyDirectives } from "@/modules/dna/lib/apply-directives";
+import { extractDirectivesFromText } from "@/modules/session/directive-patterns";
 import {
   saveMessage,
   updateConversationState,
@@ -49,10 +55,55 @@ If the user explicitly asks for a recommendation:
 - Anything you name in conversation is a conversational suggestion; the ranked batch comes from the recommendation engine.
 
 If the user gives you a standing instruction ("never show me anime", "less
-romance", "nothing with that actor"), acknowledge it in a few words and move
-on. It is recorded when the session ends and applied to every future batch —
-so do not promise to "keep it in mind", and never claim to have already
-changed anything.`;
+romance", "nothing with that actor"), acknowledge in a few words that you heard
+it and move on. Never say an instruction has been saved, recorded, stored or
+applied unless a RECORDED line below names it — if there is no such line, you
+do not know whether it was captured, and saying "got it, no more anime" when
+nothing was written is how a user ended up asking for the same thing across
+five sessions. Never promise to "keep it in mind" either.`;
+
+function messageText(m: UIMessage): string {
+  if (typeof m.content === "string") return m.content;
+  return m.parts?.map((p) => (p.type === "text" ? p.text : "")).join("") ?? "";
+}
+
+/**
+ * Write the standing instructions this turn stated plainly, and return the
+ * names actually written. Bumps taste_version because the rec cache is keyed
+ * by it — a new rule has to bust the batch it was not applied to.
+ *
+ * Best-effort: a write failure returns nothing, which is exactly right. The
+ * assistant is only ever told about rules that are on disk, so a failure here
+ * can make it under-claim, never over-claim.
+ */
+async function recordDirectives(userId: string, text: string): Promise<string[]> {
+  const directives = extractDirectivesFromText(text);
+  if (directives.length === 0) return [];
+
+  try {
+    const dna = await loadDNA(userId);
+    const merged = applyDirectives(dna.contextual_logic, directives);
+    if (merged.exclusions_added === 0 && merged.soft_preferences_added === 0) {
+      // Already known — still true, so the assistant may say so.
+      return directives.map((d) => d.name);
+    }
+    bumpVersion(dna);
+    await saveDNA(userId, dna);
+    console.log(
+      `[conversation] recorded ${merged.exclusions_added} rule(s) and ` +
+        `${merged.soft_preferences_added} preference(s) from this turn`,
+    );
+    return directives.map((d) => d.name);
+  } catch (e) {
+    console.error("[conversation] directive write failed", e);
+    return [];
+  }
+}
+
+function recordedContext(names: string[]): string {
+  if (names.length === 0) return "";
+  return `\n\nRECORDED: this turn's instruction about ${names.join(", ")} is now stored and applies to every future batch. You may confirm that, briefly.`;
+}
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -87,13 +138,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const historyChars = messages.reduce((n, m) => {
-    const text =
-      typeof m.content === "string"
-        ? m.content
-        : m.parts?.map((p) => (p.type === "text" ? p.text : "")).join("") ?? "";
-    return n + text.length;
-  }, 0);
+  const historyChars = messages.reduce((n, m) => n + messageText(m).length, 0);
   if (messages.length > MAX_MESSAGES || historyChars > MAX_HISTORY_CHARS) {
     return NextResponse.json(
       { error: "conversation history too large" },
@@ -106,19 +151,12 @@ export async function POST(req: Request) {
   // to this user; if it doesn't, the insert silently no-ops and we
   // continue anyway (the model still gets the context from `messages`).
   const last = messages[messages.length - 1];
-  if (last.role === "user") {
-    const content =
-      typeof last.content === "string"
-        ? last.content
-        : last.parts
-            ?.map((p) => (p.type === "text" ? p.text : ""))
-            .join("") ?? "";
-    if (content) {
-      try {
-        await saveMessage(supabase, conversationId, "user", content);
-      } catch (e) {
-        console.error("[conversation] failed to save user message", e);
-      }
+  const userTurn = last.role === "user" ? messageText(last) : "";
+  if (userTurn) {
+    try {
+      await saveMessage(supabase, conversationId, "user", userTurn);
+    } catch (e) {
+      console.error("[conversation] failed to save user message", e);
     }
   }
 
@@ -135,6 +173,12 @@ export async function POST(req: Request) {
     }
   }
 
+  // Standing instructions stated plainly in this turn are written NOW, before
+  // the assistant answers — pattern-matched, so there is no model call that can
+  // 429 and leave the rule unwritten while the chat says "got it". Anything the
+  // patterns don't recognise is still the session-end extractor's job.
+  const recorded = await recordDirectives(user.id, userTurn);
+
   // The fingerprint briefing. Best-effort: a DNA read failure degrades the
   // turn to the old context-free behaviour rather than failing the chat.
   // loadDNA is cached (60s), so this is usually not a round trip.
@@ -147,7 +191,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: groq(MODELS.text),
-    system: SYSTEM_PROMPT + dnaContext,
+    system: SYSTEM_PROMPT + dnaContext + recordedContext(recorded),
     messages: convertToCoreMessages(messages),
     maxTokens: MAX_REPLY_TOKENS,
     onFinish: async ({ text }) => {
