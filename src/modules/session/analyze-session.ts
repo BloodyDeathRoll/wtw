@@ -114,6 +114,46 @@ export interface TranscriptMessage {
   content: string
 }
 
+/**
+ * How much of a transcript the extractor reads, most recent first.
+ *
+ * Why (2026-09-20): conversations never rotated, so accounts built up 56-107
+ * messages and every session end pushed all of them through the extraction
+ * model — slow enough to blow past the client's 45s timeout on the largest.
+ * Rotation (migration 0022) stops the backlog growing, but the FIRST session
+ * end after it still has to read whatever is already there, and nothing here
+ * bounded it. The chat route has capped its own history at 60 messages /
+ * 24k chars since the 2026-09-11 audit; this is the same bound on the other
+ * side of the session.
+ *
+ * Taking the most RECENT turns is the right end to keep: older ones were
+ * extracted at the end of an earlier session, and a title the user already has
+ * an opinion on is deduped on merge anyway (update-from-session.ts).
+ */
+const MAX_TRANSCRIPT_MESSAGES = 60
+const MAX_TRANSCRIPT_CHARS = 24_000
+
+/** The tail of a transcript that fits both bounds, oldest-first for the model. */
+export function boundedTranscript(messages: TranscriptMessage[]): TranscriptMessage[] {
+  const usable = messages.filter(
+    m => (m.role === 'user' || m.role === 'assistant') && m.content.trim(),
+  )
+  const kept: TranscriptMessage[] = []
+  let chars = 0
+  for (let i = usable.length - 1; i >= 0; i--) {
+    const len = usable[i].content.trim().length
+    if (kept.length >= MAX_TRANSCRIPT_MESSAGES) break
+    // Always keep the most recent turn, however long it is. Checking size
+    // first would let one pasted wall of text empty the whole transcript, and
+    // an empty transcript reads as "the user said nothing" — the same
+    // failure-looks-like-silence ambiguity row 6 just removed for the 429 case.
+    if (kept.length > 0 && chars + len > MAX_TRANSCRIPT_CHARS) break
+    kept.push(usable[i])
+    chars += len
+  }
+  return kept.reverse()
+}
+
 export async function analyzeSession(
   messages: TranscriptMessage[],
   session_number: number,
@@ -128,8 +168,16 @@ export async function analyzeSession(
     recommendation_accepted: null,
   }
 
-  const transcript = messages
-    .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content.trim())
+  const usable = boundedTranscript(messages)
+  // Count only what the cap dropped, not what role/empty filtering did, so the
+  // line means what it says.
+  const chatTurns = messages.filter(
+    m => (m.role === 'user' || m.role === 'assistant') && m.content.trim(),
+  ).length
+  if (usable.length < chatTurns) {
+    console.log(`[analyze-session] transcript capped: ${chatTurns} → ${usable.length} messages`)
+  }
+  const transcript = usable
     .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content.trim()}`)
     .join('\n')
 
