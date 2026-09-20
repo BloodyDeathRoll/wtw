@@ -19,6 +19,9 @@ export type TitleRow = {
   pacing_tag:         string | null
   tone_tags:          string[]
   narrative_metadata: Record<string, unknown>
+  /** Strand C content affinity (update-content-affinity.ts). */
+  genres:             { id?: number; name: string }[] | null
+  original_language:  string | null
 }
 
 // Redis TTL for cached DNA reads — short enough that a write followed
@@ -104,7 +107,7 @@ export async function fetchTitleCrew(tmdb_ids: string[]): Promise<Map<string, Ti
   const db = createServiceClient()
   const { data, error } = await db
     .from('titles')
-    .select('tmdb_id, title, type, crew, pacing_tag, tone_tags, narrative_metadata')
+    .select('tmdb_id, title, type, crew, pacing_tag, tone_tags, narrative_metadata, genres, original_language')
     .in('tmdb_id', [...new Set(tmdb_ids)])
 
   if (error) throw new Error(`fetchTitleCrew: ${error.message}`)

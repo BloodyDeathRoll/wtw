@@ -19,6 +19,7 @@ import { generateObject } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
+import { CONTENT_DIMENSIONS } from '../scoring/content-affinity'
 import type { RecommendationResult, ReasonPayload } from '@/types/dna'
 import type { ScoredTitleWithPayload } from './step6-reason-payload'
 
@@ -59,7 +60,7 @@ export function resultToExplainItem(r: RecommendationResult): ExplainItem {
   return { tmdb_id: r.tmdb_id, type: r.type, title: r.title, reason_payload: r.reason_payload }
 }
 
-function payloadSummary(item: ExplainItem): string {
+export function payloadSummary(item: ExplainItem): string {
   const p = item.reason_payload
   const parts: string[] = []
 
@@ -78,7 +79,13 @@ function payloadSummary(item: ExplainItem): string {
   }
 
   if (p.dimension_matches.length > 0) {
-    const match = p.dimension_matches[0]
+    // Same preference as templateExplanation, and for a stronger reason: this
+    // is what the LLM is told about the title. Pacing is on nearly every
+    // enriched title and is pushed first, so reading [0] meant a genre the
+    // user actively rates highly never reached the prompt — leaving the
+    // explanation unable to name the one signal that put the card there, in
+    // exactly the genre-only, no-crew-match case this dimension was added for.
+    const match = p.dimension_matches.find(m => CONTENT_DIMENSIONS.has(m.dimension)) ?? p.dimension_matches[0]
     parts.push(`Narrative match: ${match.dimension} — user prefers ${match.user_value}, title is ${match.title_value}`)
   }
 
@@ -116,8 +123,11 @@ export function templateExplanation(item: ScoredTitleWithPayload): string {
   } else if (p.lineage_connections[0]) {
     const c = p.lineage_connections[0]
     parts.push(`Connected to ${c.from} through ${c.to} (${c.relationship}).`)
-  } else if (p.dimension_matches[0]) {
-    const d = p.dimension_matches[0]
+  } else if (p.dimension_matches.length > 0) {
+    // A genre the user actually rates highly beats "pacing: moderate", and
+    // pacing is pushed first for nearly every enriched title — so reading
+    // dimension_matches[0] made the content dimension invisible here.
+    const d = p.dimension_matches.find(m => CONTENT_DIMENSIONS.has(m.dimension)) ?? p.dimension_matches[0]
     parts.push(`Its ${d.dimension.replace(/_/g, ' ')} (${d.title_value}) lines up with what you rate highly.`)
   } else {
     parts.push('Matched on narrative and tone fit with your fingerprint.')

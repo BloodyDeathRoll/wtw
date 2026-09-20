@@ -54,6 +54,25 @@ export interface StrandB {
 // STRAND C — Visceral Specs
 // ─────────────────────────────────────────────
 
+/**
+ * How the user has reacted to a KIND of content — a genre, an original
+ * language, movie vs series. Same arithmetic as CrewAffinityEntry: `score` is
+ * the running average reaction level, so "always loved" converges on +0.30 and
+ * "always disliked" on −0.20 (see lib/reaction-score.ts).
+ *
+ * Why an affinity entry and not a 0–1 weight like pacing/tone (2026-09-06):
+ * those are recentred on 0.5 after every update, which is right for a closed
+ * set where only the RELATIVE order carries meaning. Genres are a sparse,
+ * open set — a user who has only ever rated horror would have their one
+ * genre recentred straight back to neutral, and "27 disliked anime" would
+ * once again generalise to nothing.
+ */
+export interface ContentAffinityEntry {
+  score: number         // -1.0 to 1.0 — average reaction level
+  confidence: number    // 0.0 to 1.0
+  sample_size: number
+}
+
 export interface StrandC {
   pacing_weights: {
     slow_burn: number
@@ -81,6 +100,17 @@ export interface StrandC {
     tone: number
     rewatchability: number
   }
+  /**
+   * Content-shape affinity, added 2026-09-20. Sparse: a key exists only once
+   * the user has reacted to something carrying it, so "no evidence" stays
+   * distinguishable from "neutral". Optional because every fingerprint written
+   * before that date has none — readers treat an absent or empty map as no
+   * evidence, and `scripts/backfill-content-affinity.mts` fills them in from
+   * existing signals.
+   */
+  genre_affinity?:    Record<string, ContentAffinityEntry>  // lowercased TMDB genre name
+  language_affinity?: Record<string, ContentAffinityEntry>  // ISO 639-1
+  format_affinity?:   Record<string, ContentAffinityEntry>  // 'movie' | 'tv'
 }
 
 // ─────────────────────────────────────────────
