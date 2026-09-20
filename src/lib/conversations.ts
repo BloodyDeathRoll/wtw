@@ -24,8 +24,14 @@ interface MessageRow {
 }
 
 /**
- * Returns the user's most recent conversation, or creates a fresh one
- * (session_number 1) if none exists. Messages come back ordered chronologically.
+ * Returns the user's OPEN conversation, or starts a fresh one if none is open.
+ * Messages come back ordered chronologically.
+ *
+ * "Open" means `ended_at is null` (migration 0022). Without that filter this
+ * returned the most recent conversation unconditionally and nothing ever
+ * closed one, so a user had a single conversation forever: `session_number`
+ * never left 1, and `/api/session/end` re-analysed the entire history — 105
+ * messages on one live account — through the extraction LLM every time.
  */
 export async function getOrCreateActiveConversation(
   supabase: SupabaseClient,
@@ -35,6 +41,7 @@ export async function getOrCreateActiveConversation(
     .from("conversations")
     .select("id, session_number, stage, favorites")
     .eq("user_id", userId)
+    .is("ended_at", null)
     .order("last_active_at", { ascending: false })
     .limit(1)
     .maybeSingle<ConversationRow>();
@@ -61,9 +68,19 @@ async function createConversation(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<ConversationRow> {
+  // Continue the user's numbering rather than restarting at 1 — the column
+  // defaults to 1, which was invisible while nobody ever created a second one.
+  const { data: last } = await supabase
+    .from("conversations")
+    .select("session_number")
+    .eq("user_id", userId)
+    .order("session_number", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ session_number: number }>();
+
   const { data, error } = await supabase
     .from("conversations")
-    .insert({ user_id: userId })
+    .insert({ user_id: userId, session_number: (last?.session_number ?? 0) + 1 })
     .select("id, session_number, stage, favorites")
     .single<ConversationRow>();
 
@@ -100,4 +117,30 @@ export async function updateConversationState(
     .update({ ...patch, last_active_at: new Date().toISOString() })
     .eq("id", conversationId);
   if (error) throw new Error(`failed to update conversation: ${error.message}`);
+}
+
+/**
+ * Close a conversation so the next visit starts a fresh one. Called by
+ * /api/session/end once a real transcript has been merged into the
+ * fingerprint — NOT on a "Find more", which is the same sitting continuing.
+ *
+ * Best-effort: failing to rotate leaves the user in the conversation they are
+ * already in, which is the old behaviour, not a broken one.
+ */
+export async function endConversation(
+  supabase: SupabaseClient,
+  conversationId: string,
+): Promise<void> {
+  // `session_number` is deliberately NOT written here. It is a per-conversation
+  // ordinal, set once at creation from the previous conversation's. The DNA's
+  // `total_sessions` is a different counter — it advances on every merge,
+  // including a "Find more" that falls through to one — so stamping it here
+  // would seed the next conversation off an inflated value and let the two
+  // drift apart permanently, with nothing to reconcile them.
+  const { error } = await supabase
+    .from("conversations")
+    .update({ ended_at: new Date().toISOString() })
+    .eq("id", conversationId)
+    .is("ended_at", null);
+  if (error) throw new Error(`failed to end conversation: ${error.message}`);
 }

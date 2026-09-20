@@ -23,7 +23,6 @@ import {
   cacheCowatchResults,
 } from '../pipeline/step8-cache'
 import type { DNASchema, CowatchResult } from '@/types/dna'
-import type { ScoredTitle } from '../types'
 
 function mistral() {
   const key = process.env.MISTRAL_API_KEY

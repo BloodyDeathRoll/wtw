@@ -365,6 +365,29 @@ describe('applyDirectives — escalation keeps a person matchable', () => {
     expect(l.exclusion_rules).toHaveLength(1)
   })
 
+  it('promotes a typed keyword rule when a session resolves it to a person', () => {
+    // The mirror of the case above: typed first (keyword, matches no crew),
+    // then a session resolves the name via TMDB. Leaving both would put an
+    // inert rule beside a working one.
+    const l: ContextualLogic = { exclusion_rules: [], soft_preferences: [], temporal_modifiers: [] }
+    applyDirectives(l, [{
+      kind: 'exclusion', target_type: 'keyword', name: 'Adam Sandler',
+      raw: '', reason: '', person_id: '',
+    }])
+    const r = applyDirectives(l, [{
+      kind: 'exclusion', target_type: 'person', name: 'Adam Sandler',
+      raw: '', reason: '', person_id: '19292',
+    }])
+
+    expect(l.exclusion_rules).toHaveLength(1)
+    expect(l.exclusion_rules[0]).toMatchObject({ type: 'person', id: '19292' })
+    expect(r.exclusions_added).toBe(0)
+    expect(directivesChanged(r)).toBe(true)
+
+    const title = { genres: [{ name: 'Comedy' }], crew: { cast: [{ tmdb_person_id: '19292', name: 'Adam Sandler' }] } }
+    expect(isExcluded(title, l.exclusion_rules)).toBe(true)
+  })
+
   it('leaves an ordinary escalation as the type it was given', () => {
     const l: ContextualLogic = { exclusion_rules: [], soft_preferences: [], temporal_modifiers: [] }
     applyDirectives(l, [{ kind: 'soft_preference', target_type: 'genre', name: 'romance', raw: '', reason: '', weight_modifier: 0.5, person_id: '' }])
@@ -385,6 +408,24 @@ describe('classifyRuleTarget', () => {
 
   it.each(['anime', 'reality tv', 'Marvel', 'found footage'])('calls %j a keyword', name => {
     expect(classifyRuleTarget(name)).toBe('keyword')
+  })
+
+  it.each([
+    ['sci-fi', 'science fiction'],
+    ['scifi', 'science fiction'],
+    ['rom-com', 'romance'],
+    ['westerns', 'western'],
+    ['comedies', 'comedy'],
+    ['musicals', 'music'],
+  ])('reads %j as the genre %j rather than an inert keyword', (typed, genre) => {
+    expect(classifyRuleTarget(typed)).toBe('genre')
+    // And the rule it produces actually reaches that genre in the catalog.
+    expect(ruleTargets({ type: 'genre', name: typed }).genres).toContain(genre)
+  })
+
+  it('still matches a typed abbreviation against a real title', () => {
+    const rule = { type: 'genre' as const, id: '', name: 'sci-fi', raw: '', reason: '' }
+    expect(matchesRule({ genres: [{ name: 'Science Fiction' }] }, rule)).toBe(true)
   })
 
   it('never guesses a person — an unresolved person rule matches nothing', () => {
