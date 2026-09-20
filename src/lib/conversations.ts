@@ -130,11 +130,16 @@ export async function updateConversationState(
 export async function endConversation(
   supabase: SupabaseClient,
   conversationId: string,
-  sessionNumber: number,
 ): Promise<void> {
+  // `session_number` is deliberately NOT written here. It is a per-conversation
+  // ordinal, set once at creation from the previous conversation's. The DNA's
+  // `total_sessions` is a different counter — it advances on every merge,
+  // including a "Find more" that falls through to one — so stamping it here
+  // would seed the next conversation off an inflated value and let the two
+  // drift apart permanently, with nothing to reconcile them.
   const { error } = await supabase
     .from("conversations")
-    .update({ ended_at: new Date().toISOString(), session_number: sessionNumber })
+    .update({ ended_at: new Date().toISOString() })
     .eq("id", conversationId)
     .is("ended_at", null);
   if (error) throw new Error(`failed to end conversation: ${error.message}`);

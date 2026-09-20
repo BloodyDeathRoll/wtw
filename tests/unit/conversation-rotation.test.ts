@@ -103,18 +103,21 @@ describe('conversation rotation', () => {
     expect(db.calls.some(c => c.op === 'insert')).toBe(false)
   })
 
-  it('closes a conversation and stamps the session it became', async () => {
+  it('closes a conversation without touching its number', async () => {
+    // session_number is a per-conversation ordinal. The DNA's total_sessions
+    // is a different counter that advances on merges this never sees, so
+    // writing it here would seed the next conversation off an inflated value.
     const db = fakeSupabase([open(1)])
-    await endConversation(db, 'c1', 7)
+    await endConversation(db, 'c1')
 
     expect(db.rows[0].ended_at).toBeTruthy()
-    expect(db.rows[0].session_number).toBe(7)
+    expect(db.rows[0].session_number).toBe(1)
   })
 
-  it('will not reopen or renumber an already-closed conversation', async () => {
+  it('will not reopen an already-closed conversation', async () => {
     const db = fakeSupabase([closed(3)])
     const before = db.rows[0].ended_at
-    await endConversation(db, 'c3', 9)
+    await endConversation(db, 'c3')
 
     expect(db.rows[0].ended_at).toBe(before)
     expect(db.rows[0].session_number).toBe(3)

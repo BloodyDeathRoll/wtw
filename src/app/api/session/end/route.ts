@@ -303,7 +303,7 @@ export async function POST(req: NextRequest) {
   // Best-effort: a failure leaves the user in the conversation they are in,
   // which is the old behaviour rather than a broken one.
   if (!skipTranscript && !extractionFailed) {
-    await endConversation(db, conversationId, sessionNumber).catch(err =>
+    await endConversation(db, conversationId).catch(err =>
       console.warn('[session/end] conversation rotation failed (non-fatal):', err instanceof Error ? err.message : err),
     )
   }
