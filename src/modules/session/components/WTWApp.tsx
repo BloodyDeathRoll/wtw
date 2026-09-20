@@ -626,7 +626,6 @@ export default function WTWApp({
     setRegretChecks(getPendingRegretChecks());
   }, []);
 
-
   // Warm-up on load: bootstrap the DNA row (idempotent), then pre-generate
   // recommendations in the background. POST /generate returns the cached set
   // when it's still fresh (cheap no-op) and otherwise runs the pipeline and
