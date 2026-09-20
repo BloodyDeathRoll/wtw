@@ -83,9 +83,20 @@ const ALIASES: Record<string, RuleTargets> = {
   subtitles: { genres: [], keywords: [], languages: [], conjunctions: [] }, // "no subtitles" is not an exclusion we can honour
 }
 
-/** The category words above, for callers that need to recognise one by name. */
+/**
+ * Is this one of the category words above, AND does it widen into something
+ * the catalog can actually be filtered on?
+ *
+ * The second half matters: `subtitles` is in the table with every target list
+ * empty, precisely because "no subtitles" is not an exclusion we can honour.
+ * A caller that treats bare membership as "recognised" would write that as a
+ * rule, bump the version for it, and tell the user it is now applied — while
+ * `matchesRule` can never match it. That is the same inert-rule-reported-as-
+ * working failure the rest of this file exists to prevent.
+ */
 export function isKnownCategory(name: string): boolean {
-  return Object.hasOwn(ALIASES, norm(name))
+  const t = ALIASES[norm(name)]
+  return !!t && (t.genres.length > 0 || t.keywords.length > 0 || t.languages.length > 0 || t.conjunctions.length > 0)
 }
 
 /**

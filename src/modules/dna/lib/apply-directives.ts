@@ -20,13 +20,24 @@ import type { ContextualLogic, SessionDirective } from '@/types/dna'
 export interface DirectiveMergeResult {
   exclusions_added: number
   soft_preferences_added: number
+  /**
+   * An existing rule or preference was changed in place — a hedge tightened, a
+   * person id filled in. Separate from the "added" counts because a caller
+   * deciding whether to persist has to know about both, and a caller deciding
+   * what to TELL the user wants to know it was not new.
+   *
+   * Added 2026-09-20: callers used to save only when an added count moved, so
+   * saying "less romance" over an existing weaker preference computed the
+   * tighter weight and then dropped it on the floor.
+   */
+  updated: number
 }
 
 export function applyDirectives(
   logic: ContextualLogic,
   directives: SessionDirective[] | undefined,
 ): DirectiveMergeResult {
-  const result: DirectiveMergeResult = { exclusions_added: 0, soft_preferences_added: 0 }
+  const result: DirectiveMergeResult = { exclusions_added: 0, soft_preferences_added: 0, updated: 0 }
   if (!directives?.length) return result
 
   for (const d of directives) {
@@ -38,26 +49,39 @@ export function applyDirectives(
       const existing = logic.exclusion_rules.find(r => ruleKey(r) === key)
       if (existing) {
         // Re-stating a rule can only improve it: keep a person id we now have.
-        if (!existing.id && d.person_id) existing.id = d.person_id
+        if (!existing.id && d.person_id) {
+          existing.id = d.person_id
+          result.updated++
+        }
         continue
       }
+
+      // Escalation: a hard rule supersedes a softer one about the same thing.
+      // Find it FIRST, because a soft preference about a person carries the
+      // identity that makes a rule about that person work at all — and the
+      // caller may not have it. A rule typed on the Taste DNA page is never
+      // classified as a person (a name guessed from free text is unmatchable),
+      // so escalating "Adam Sandler" over a person preference used to delete
+      // the one entry that matched him and leave an inert keyword rule
+      // standing in its place, reported to the user as applied.
+      const softIndex = logic.soft_preferences.findIndex(
+        p => p.signal.trim().toLowerCase() === name.toLowerCase(),
+      )
+      const superseded = softIndex >= 0 ? logic.soft_preferences[softIndex] : null
+      if (superseded) {
+        logic.soft_preferences.splice(softIndex, 1)
+        console.log(`[directives] "${name}" escalated from soft preference to exclusion`)
+      }
+
+      const inheritPerson = superseded?.target_type === 'person'
       logic.exclusion_rules.push({
-        type: d.target_type,
-        id: d.person_id ?? '',
+        type: inheritPerson ? 'person' : d.target_type,
+        id: d.person_id || (inheritPerson ? superseded.person_id ?? '' : ''),
         name,
         raw: d.raw || name,
         reason: d.reason || '',
       })
       result.exclusions_added++
-
-      // Escalation: a hard rule supersedes a softer one about the same thing.
-      const before = logic.soft_preferences.length
-      logic.soft_preferences = logic.soft_preferences.filter(
-        p => p.signal.trim().toLowerCase() !== name.toLowerCase(),
-      )
-      if (logic.soft_preferences.length !== before) {
-        console.log(`[directives] "${name}" escalated from soft preference to exclusion`)
-      }
       continue
     }
 
@@ -72,11 +96,16 @@ export function applyDirectives(
       p => p.signal.trim().toLowerCase() === name.toLowerCase(),
     )
     if (existing) {
+      let changed = false
       // Say it again and you mean it more — keep the stronger reduction.
-      existing.weight_modifier = Math.min(existing.weight_modifier, weight)
+      if (weight < existing.weight_modifier) {
+        existing.weight_modifier = weight
+        changed = true
+      }
       // And keep anything the re-mention resolved that we didn't have.
-      if (!existing.target_type) existing.target_type = d.target_type
-      if (!existing.person_id && d.person_id) existing.person_id = d.person_id
+      if (!existing.target_type) { existing.target_type = d.target_type; changed = true }
+      if (!existing.person_id && d.person_id) { existing.person_id = d.person_id; changed = true }
+      if (changed) result.updated++
       continue
     }
     logic.soft_preferences.push({
@@ -89,4 +118,9 @@ export function applyDirectives(
   }
 
   return result
+}
+
+/** Did the merge change anything that has to be persisted? */
+export function directivesChanged(r: DirectiveMergeResult): boolean {
+  return r.exclusions_added > 0 || r.soft_preferences_added > 0 || r.updated > 0
 }

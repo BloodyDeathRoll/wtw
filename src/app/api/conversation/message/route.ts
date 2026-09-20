@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { loadDNA, saveDNA, bumpVersion } from "@/modules/dna/lib/load-save";
 import { dnaPromptContext } from "@/modules/dna/lib/prompt-context";
-import { applyDirectives } from "@/modules/dna/lib/apply-directives";
+import { applyDirectives, directivesChanged } from "@/modules/dna/lib/apply-directives";
 import { extractDirectivesFromText } from "@/modules/session/directive-patterns";
 import {
   saveMessage,
@@ -83,15 +83,19 @@ async function recordDirectives(userId: string, text: string): Promise<string[]>
   try {
     const dna = await loadDNA(userId);
     const merged = applyDirectives(dna.contextual_logic, directives);
-    if (merged.exclusions_added === 0 && merged.soft_preferences_added === 0) {
-      // Already known — still true, so the assistant may say so.
+    // `updated` counts too: saying "less romance" over an existing weaker
+    // preference tightens it in place without adding anything, and saving only
+    // on an added count discarded exactly the change the user just asked for.
+    if (!directivesChanged(merged)) {
+      // Already known, unchanged — still true, so the assistant may say so.
       return directives.map((d) => d.name);
     }
     bumpVersion(dna);
     await saveDNA(userId, dna);
     console.log(
-      `[conversation] recorded ${merged.exclusions_added} rule(s) and ` +
-        `${merged.soft_preferences_added} preference(s) from this turn`,
+      `[conversation] recorded ${merged.exclusions_added} rule(s), ` +
+        `${merged.soft_preferences_added} preference(s) and ` +
+        `${merged.updated} update(s) from this turn`,
     );
     return directives.map((d) => d.name);
   } catch (e) {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { extractDirectivesFromText, canonicalTarget } from '@/modules/session/directive-patterns'
+import { isKnownCategory, matchesRule } from '@/lib/exclusion-rules'
 
 // 2026-09-06: standing instructions were only extracted by Mistral at session
 // end, so while Mistral answered 429 the rule was never written and the chat
@@ -141,5 +142,29 @@ describe('canonicalTarget', () => {
 
   it('refuses something the catalog cannot be filtered on', () => {
     expect(canonicalTarget('boring stuff')).toBeNull()
+  })
+})
+
+describe('a recognised category must be one the catalog can filter on', () => {
+  it('refuses "subtitles" — it is in the alias table with nothing to match', () => {
+    // ALIASES.subtitles exists only so ruleTargets has a defined empty answer.
+    // Accepting it would write a rule, bump the version, and tell the user it
+    // applies, while matchesRule can never match it.
+    expect(isKnownCategory('subtitles')).toBe(false)
+    expect(extractDirectivesFromText('no subtitles')).toEqual([])
+    expect(canonicalTarget('subtitles')).toBeNull()
+  })
+
+  it('still accepts the categories that do widen into something', () => {
+    for (const name of ['anime', 'k-drama', 'bollywood', 'cartoons']) {
+      expect(isKnownCategory(name)).toBe(true)
+    }
+  })
+
+  it('every category it accepts can actually match a title', () => {
+    // The guarantee behind the accept-list: no rule it writes is inert.
+    const rule = { type: 'keyword' as const, id: '', raw: '', reason: '' }
+    const anime = { genres: [{ name: 'Animation' }], keywords: ['anime'], original_language: 'ja' }
+    expect(matchesRule(anime, { ...rule, name: 'anime' })).toBe(true)
   })
 })
