@@ -41,8 +41,9 @@ const narrativeLevel = z.enum(['low', 'medium', 'medium_high', 'high'])
 const confidence = z.number().min(0).max(1)
 
 /**
- * Product tone vocabulary. Referenced by the schema, the prompt, AND the
- * validation-repair step — keep the three in sync by editing only this list.
+ * Product tone vocabulary. Referenced by the schema, the validation-repair
+ * step, and TONE_DEFINITIONS below — adding a tone here without giving it a
+ * definition there leaves the prompt describing a vocabulary it does not have.
  *
  * These are exactly the five keys in `StrandC.tone_weights`, and that is the
  * point (2026-09-20). It used to carry eight more — tense, melancholic,

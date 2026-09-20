@@ -66,6 +66,25 @@ describe('rerank prompt — what the viewer avoids', () => {
     expect(s).toContain('ja (27 rated down)')
   })
 
+  it('ranks the best-evidenced dislikes first, across both buckets', () => {
+    // Two bugs live here. Concatenating two per-bucket-sorted lists and
+    // slicing the front dropped every language once five genres were
+    // disliked. And ranking by score alone cannot break the tie: every
+    // always-disliked entry converges on the same -0.20 whether it was rated
+    // 3 times or 40, so confidence is what separates them.
+    const d = dnaWith(x => {
+      for (const g of ['Horror', 'Western', 'Musical', 'Documentary', 'Reality', 'Soap']) {
+        rate(x, 3, 'disliked', [g], 'en')
+      }
+      rate(x, 30, 'disliked', ['Drama'], 'ja') // far better evidenced
+    })
+    const s = avoidSummary(d)
+
+    expect(s).toContain('ja (30 rated down)')
+    // The thinly-evidenced genres lose their places to the well-evidenced ones.
+    expect(s).not.toContain('soap')
+  })
+
   it('does not report a genre the user likes', () => {
     const d = dnaWith(x => rate(x, 20, 'loved', ['Drama']))
     expect(avoidSummary(d)).toBe('')

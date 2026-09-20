@@ -104,11 +104,21 @@ export function avoidSummary(dna: DNASchema): string {
   if (less.length > 0) parts.push(`Wants less of: ${less.join(', ')}.`)
 
   const c = dna.strand_c_visceral_specs
+  // Merge, THEN rank, then slice. `strongestContentAffinities` orders within
+  // its own bucket, so concatenating two sorted lists and slicing the front
+  // dropped every language once five genres were disliked, however much
+  // stronger the language signal was.
+  //
+  // Ranked by score × confidence, like topCrew above, and NOT by score alone:
+  // score is a running average reaction level, so everything the user has
+  // always disliked converges on the same −0.20 whether it was rated 4 times
+  // or 40. Confidence is what carries "how sure are we".
   const ratedDown = [
     ...strongestContentAffinities(c.genre_affinity),
     ...strongestContentAffinities(c.language_affinity),
   ]
     .filter(([, e]) => e.score < 0)
+    .sort((a, b) => a[1].score * a[1].confidence - b[1].score * b[1].confidence)
     .slice(0, 5)
     .map(([key, e]) => `${key} (${e.sample_size} rated down)`)
   if (ratedDown.length > 0) parts.push(`Has repeatedly rated down: ${ratedDown.join(', ')}.`)
