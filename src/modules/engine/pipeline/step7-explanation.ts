@@ -60,7 +60,7 @@ export function resultToExplainItem(r: RecommendationResult): ExplainItem {
   return { tmdb_id: r.tmdb_id, type: r.type, title: r.title, reason_payload: r.reason_payload }
 }
 
-function payloadSummary(item: ExplainItem): string {
+export function payloadSummary(item: ExplainItem): string {
   const p = item.reason_payload
   const parts: string[] = []
 
@@ -79,7 +79,13 @@ function payloadSummary(item: ExplainItem): string {
   }
 
   if (p.dimension_matches.length > 0) {
-    const match = p.dimension_matches[0]
+    // Same preference as templateExplanation, and for a stronger reason: this
+    // is what the LLM is told about the title. Pacing is on nearly every
+    // enriched title and is pushed first, so reading [0] meant a genre the
+    // user actively rates highly never reached the prompt — leaving the
+    // explanation unable to name the one signal that put the card there, in
+    // exactly the genre-only, no-crew-match case this dimension was added for.
+    const match = p.dimension_matches.find(m => CONTENT_DIMENSIONS.has(m.dimension)) ?? p.dimension_matches[0]
     parts.push(`Narrative match: ${match.dimension} — user prefers ${match.user_value}, title is ${match.title_value}`)
   }
 
