@@ -5,11 +5,12 @@
  * Returns candidates sorted by composite_score descending.
  *
  * composite_score =
- *   (crew_affinity_score   × 0.35) +   // strand_a (strongest match per role) + lineage boost
- *   (narrative_match_score × 0.30) +   // strand_b pgvector cosine sim, as a percentile of the pool
- *   (visceral_match_score  × 0.20) +   // strand_c pacing/tone, relative to the user's own mean
- *   (external_rating_score × 0.14) +   // TMDB + OMDB normalized
- *   (recency_boost         × 0.01)     // tiebreaker only (see WEIGHTS)
+ *   (crew_affinity_score    × 0.32) +   // strand_a (strongest match per role) + lineage boost
+ *   (narrative_match_score  × 0.25) +   // strand_b pgvector cosine sim, as a percentile of the pool
+ *   (visceral_match_score   × 0.15) +   // strand_c pacing/tone, relative to the user's own mean
+ *   (content_affinity_score × 0.15) +   // strand_c genre / language / format reaction averages
+ *   (external_rating_score  × 0.12) +   // TMDB + OMDB normalized
+ *   (recency_boost          × 0.01)     // tiebreaker only (see WEIGHTS)
  *
  * DB queries: 1 pgvector RPC + up to 2 lineage fetches (only when
  * strand_a has crew with lineage_boost set — rare for new users).
@@ -18,6 +19,7 @@
 import { computeCrewAffinity } from '../scoring/crew-affinity'
 import { computeNarrativeMatchScores } from '../scoring/narrative-match'
 import { computeVisceralMatch } from '../scoring/visceral-match'
+import { computeContentAffinity } from '../scoring/content-affinity'
 import {
   getBoostEligibleIds,
   fetchLineageCache,
@@ -35,12 +37,21 @@ const CURRENT_YEAR = new Date().getFullYear()
  * toPercentiles below) it was the only thing that varied, so every batch
  * was "whatever came out in the last two years" (measured 2026-08-28). It's
  * a tiebreaker now; the 0.04 went to external rating.
+ *
+ * `content` was added 2026-09-20 at 0.15, roughly half of crew: it answers a
+ * coarser question than "who made it" but one users state far more often, and
+ * it was the only place a repeated dislike of a whole genre could land. Its
+ * share came from narrative (0.30 → 0.25) and visceral (0.20 → 0.15), the two
+ * components measured weakest — narrative is a percentile inside a pool the
+ * same fingerprint chose, and visceral is relative to the user's own mean —
+ * plus 0.02 from external rating, which is not taste at all.
  */
 export const WEIGHTS = {
-  crew:      0.35,
-  narrative: 0.30,
-  visceral:  0.20,
-  external:  0.14,
+  crew:      0.32,
+  narrative: 0.25,
+  visceral:  0.15,
+  content:   0.15,
+  external:  0.12,
   recency:   0.01,
 } as const
 
@@ -135,31 +146,36 @@ export async function scoreCandidates(
     const crewResult     = computeCrewAffinity(title.crew, dna.strand_a_creative_affinity)
     const lineageResult  = computeBoostFromCaches(title.crew, dna.strand_a_creative_affinity, d1Cache, d2Cache)
     const visceralResult = computeVisceralMatch(dna.strand_c_visceral_specs, title)
+    const contentResult  = computeContentAffinity(dna.strand_c_visceral_specs, title)
 
-    const crew_affinity_score   = Math.min(1.0, crewResult.score + lineageResult.boost)
-    const narrative_match_score = narrativePct.get(`${title.type}:${title.tmdb_id}`) ?? 0.5
-    const visceral_match_score  = visceralResult.score
-    const external_rating_score = externalRatingScore(title)
-    const recency_boost         = recencyScore(title.release_year)
+    const crew_affinity_score    = Math.min(1.0, crewResult.score + lineageResult.boost)
+    const narrative_match_score  = narrativePct.get(`${title.type}:${title.tmdb_id}`) ?? 0.5
+    const visceral_match_score   = visceralResult.score
+    const content_affinity_score = contentResult.score
+    const external_rating_score  = externalRatingScore(title)
+    const recency_boost          = recencyScore(title.release_year)
 
     const composite_score =
-      crew_affinity_score   * WEIGHTS.crew +
-      narrative_match_score * WEIGHTS.narrative +
-      visceral_match_score  * WEIGHTS.visceral +
-      external_rating_score * WEIGHTS.external +
-      recency_boost         * WEIGHTS.recency
+      crew_affinity_score    * WEIGHTS.crew +
+      narrative_match_score  * WEIGHTS.narrative +
+      visceral_match_score   * WEIGHTS.visceral +
+      content_affinity_score * WEIGHTS.content +
+      external_rating_score  * WEIGHTS.external +
+      recency_boost          * WEIGHTS.recency
 
     return {
       title,
       crew_affinity_score,
       narrative_match_score,
       visceral_match_score,
+      content_affinity_score,
+      content_avoided:      contentResult.avoided,
       external_rating_score,
       recency_boost,
       composite_score,
       crew_matches:         crewResult.crew_matches,
       lineage_connections:  lineageResult.lineage_connections,
-      dimension_matches:    visceralResult.dimension_matches,
+      dimension_matches:    [...visceralResult.dimension_matches, ...contentResult.dimension_matches],
       soft_preferences_applied: [],  // filled in Step 3
       groq_rationale:    '',          // filled in Step 4
       is_stretch_pick:   false,       // filled in Step 5
