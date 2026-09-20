@@ -151,17 +151,33 @@ export async function POST(req: NextRequest) {
   // ── 3. Transcript → SessionSummary (real signals) ────────────
   // Skipped on "Find more" (no new chat since the last run — the extraction
   // LLM call is the slowest part and its output would dedup to nothing).
-  const summary: SessionSummary = skipTranscript
-    ? {
-        session_number: sessionNumber,
-        new_signals: [],
-        dimension_updates: {},
-        open_questions_resolved: [],
-        new_open_questions: [],
-        recommendation_made: null,
-        recommendation_accepted: null,
-      }
-    : await analyzeSession(messages ?? [], sessionNumber)
+  //
+  // An extraction failure is REPORTED, not swallowed (2026-09-06): while
+  // Mistral answered 429 the analyzer returned an empty summary, the merge
+  // reported ok, and every rule and signal in the transcript was lost with
+  // nothing anywhere to say so. The session still proceeds — card ratings and
+  // the version bump are independent of it — but the response carries the
+  // failure so the client logs it and the user's next batch is not quietly
+  // built from a transcript nobody read.
+  const emptySummary: SessionSummary = {
+    session_number: sessionNumber,
+    new_signals: [],
+    dimension_updates: {},
+    open_questions_resolved: [],
+    new_open_questions: [],
+    recommendation_made: null,
+    recommendation_accepted: null,
+  }
+  let extractionFailed = false
+  let summary: SessionSummary = emptySummary
+  if (!skipTranscript) {
+    try {
+      summary = await analyzeSession(messages ?? [], sessionNumber)
+    } catch (err) {
+      console.error('[session/end] transcript extraction failed:', err)
+      extractionFailed = true
+    }
+  }
 
   // ── 3b. Fold 👍/👎 card ratings into signals ──────────────────
   // Likes/dislikes land in recommendation_history at click time; converting
@@ -221,6 +237,7 @@ export async function POST(req: NextRequest) {
         rec_count: 0,
         unchanged: true,
         watchlist_recorded: watchlistRecorded,
+        ...extractionReport(extractionFailed),
       })
     }
     // else: cache is stale (holds a rated title) or cold — fall through to
@@ -266,6 +283,7 @@ export async function POST(req: NextRequest) {
       signal_count: summary.new_signals.length,
       rec_count: 0,
       watchlist_recorded: watchlistRecorded,
+      ...extractionReport(extractionFailed),
       warning: 'Fingerprint updated but recommendation generation failed',
     })
   }
@@ -276,5 +294,21 @@ export async function POST(req: NextRequest) {
     signal_count: summary.new_signals.length,
     rec_count,
     watchlist_recorded: watchlistRecorded,
+    ...extractionReport(extractionFailed),
   })
+}
+
+/**
+ * What the client is told when the transcript could not be read. `warning` is
+ * what WTWApp logs; `extraction_failed` is the machine-readable half, so a
+ * future UI can say "I didn't catch that — say it again" rather than leaving
+ * the user to discover it over the next five sessions.
+ */
+function extractionReport(failed: boolean) {
+  return failed
+    ? {
+        extraction_failed: true,
+        warning: 'Transcript extraction failed — no titles or rules were taken from this conversation',
+      }
+    : {}
 }
