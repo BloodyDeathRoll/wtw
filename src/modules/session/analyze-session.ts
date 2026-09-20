@@ -24,6 +24,7 @@ import { generateObject } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { z } from 'zod'
 import { MODELS } from '@/lib/ai-models'
+import { boundedTail } from '@/lib/bounded-tail'
 import { searchTitle, searchPerson } from '@/lib/tmdb'
 import { fetchAndCacheTitle } from '@/modules/engine/enrichment/fetch-and-cache-title'
 import type { SessionSummary, SessionDirective, DNASignal, StrandB } from '@/types/dna'
@@ -138,20 +139,12 @@ export function boundedTranscript(messages: TranscriptMessage[]): TranscriptMess
   const usable = messages.filter(
     m => (m.role === 'user' || m.role === 'assistant') && m.content.trim(),
   )
-  const kept: TranscriptMessage[] = []
-  let chars = 0
-  for (let i = usable.length - 1; i >= 0; i--) {
-    const len = usable[i].content.trim().length
-    if (kept.length >= MAX_TRANSCRIPT_MESSAGES) break
-    // Always keep the most recent turn, however long it is. Checking size
-    // first would let one pasted wall of text empty the whole transcript, and
-    // an empty transcript reads as "the user said nothing" — the same
-    // failure-looks-like-silence ambiguity row 6 just removed for the 429 case.
-    if (kept.length > 0 && chars + len > MAX_TRANSCRIPT_CHARS) break
-    kept.push(usable[i])
-    chars += len
-  }
-  return kept.reverse()
+  return boundedTail(
+    usable,
+    m => m.content.trim(),
+    MAX_TRANSCRIPT_MESSAGES,
+    MAX_TRANSCRIPT_CHARS,
+  )
 }
 
 export async function analyzeSession(
