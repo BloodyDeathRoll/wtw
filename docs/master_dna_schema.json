@@ -117,6 +117,23 @@
       "story": "float 0.0 to 1.0",
       "tone": "float 0.0 to 1.0",
       "rewatchability": "float 0.0 to 1.0"
+    },
+
+    "genre_affinity": {
+      "_comment": "Added 2026-09-20. Sparse map: lowercased TMDB genre name → running reaction average, so a repeated dislike generalises to titles the user has never seen. A key exists only once the user has reacted to something carrying it — absent means no evidence, not neutral. OPTIONAL: fingerprints written before that date have none, and readers must treat a missing map as no evidence.",
+      "<genre name>": {
+        "score": "float -1.0 to 1.0 — average reaction level (loved +0.30, disliked -0.20)",
+        "confidence": "float 0.0 to 1.0",
+        "sample_size": "integer"
+      }
+    },
+    "language_affinity": {
+      "_comment": "Same shape, keyed by ISO 639-1 original language.",
+      "<iso 639-1>": { "score": "float", "confidence": "float", "sample_size": "integer" }
+    },
+    "format_affinity": {
+      "_comment": "Same shape, keyed 'movie' | 'tv'.",
+      "<movie|tv>": { "score": "float", "confidence": "float", "sample_size": "integer" }
     }
   },
 

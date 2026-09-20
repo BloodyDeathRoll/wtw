@@ -11,12 +11,18 @@
  * on the type (ReasonPayload contract) and is always ''.
  *
  * Returns all 50 in the model's order; composite order on any failure.
+ *
+ * The prompt carries what the viewer AVOIDS as well as what they like
+ * (2026-09-20). It used to be an entirely positive profile, so a reranker with
+ * no idea the user had said "no anime" five times could promote an anime to
+ * the top of the batch on tonal resonance alone.
  */
 
 import { generateObject } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
+import { strongestContentAffinities } from '@/modules/dna/lib/update-content-affinity'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
 
@@ -67,6 +73,59 @@ function profileSummary(dna: DNASchema): string {
   ].filter(Boolean).join(' ')
 }
 
+/**
+ * What the viewer does NOT want — and the reason this function exists
+ * (2026-09-06): the profile above is entirely positive, so the reranker was
+ * free to promote an anime for someone who had said "no anime" in five
+ * separate sessions. The SQL pass already removes anything a hard rule
+ * excludes, but two things survive it and still need saying:
+ *
+ *   - a soft preference, which is a reduction and not a cut;
+ *   - a genre the user has quietly rated down without ever naming it
+ *     (strand_c genre/language affinity).
+ *
+ * Hard exclusions are listed anyway. They cost one line, and a candidate list
+ * that contradicts a stated rule means the rule failed to widen into anything
+ * the catalog could be filtered on — in which case the reranker is the last
+ * thing standing between the user and the batch they asked not to get.
+ */
+export function avoidSummary(dna: DNASchema): string {
+  const logic = dna.contextual_logic
+  const parts: string[] = []
+
+  const never = logic.exclusion_rules.map(r => r.name).filter(Boolean)
+  if (never.length > 0) parts.push(`NEVER wants: ${never.join(', ')}.`)
+
+  const less = logic.soft_preferences
+    .filter(p => p.weight_modifier < 1)
+    .sort((a, b) => a.weight_modifier - b.weight_modifier)
+    .map(p => p.signal)
+    .filter(Boolean)
+  if (less.length > 0) parts.push(`Wants less of: ${less.join(', ')}.`)
+
+  const c = dna.strand_c_visceral_specs
+  // Merge, THEN rank, then slice. `strongestContentAffinities` orders within
+  // its own bucket, so concatenating two sorted lists and slicing the front
+  // dropped every language once five genres were disliked, however much
+  // stronger the language signal was.
+  //
+  // Ranked by score × confidence, like topCrew above, and NOT by score alone:
+  // score is a running average reaction level, so everything the user has
+  // always disliked converges on the same −0.20 whether it was rated 4 times
+  // or 40. Confidence is what carries "how sure are we".
+  const ratedDown = [
+    ...strongestContentAffinities(c.genre_affinity),
+    ...strongestContentAffinities(c.language_affinity),
+  ]
+    .filter(([, e]) => e.score < 0)
+    .sort((a, b) => a[1].score * a[1].confidence - b[1].score * b[1].confidence)
+    .slice(0, 5)
+    .map(([key, e]) => `${key} (${e.sample_size} rated down)`)
+  if (ratedDown.length > 0) parts.push(`Has repeatedly rated down: ${ratedDown.join(', ')}.`)
+
+  return parts.join(' ')
+}
+
 // ─────────────────────────────────────────────
 // Re-ranking schema
 // ─────────────────────────────────────────────
@@ -104,11 +163,13 @@ export async function llmRerank(
     })
     .join('\n')
 
+  const avoids = avoidSummary(dna)
+
   const prompt = `You are a film expert re-ranking recommendations for a specific viewer.
 
 VIEWER PROFILE:
 ${profileSummary(dna)}
-
+${avoids ? `\nWHAT THIS VIEWER AVOIDS:\n${avoids}\nAnything on that list belongs at the BOTTOM of your order, however good it is in the abstract. A title they told you they do not want is a bad recommendation for them.\n` : ''}
 CANDIDATES (currently ranked by numeric score):
 ${candidateList}
 

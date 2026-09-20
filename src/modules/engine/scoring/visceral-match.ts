@@ -15,8 +15,11 @@
  *   For each of the title's tone_tags that appears in tone_weights,
  *   take the user's weight. Average those that match.
  *   No matching tones → 0.5 (neutral).
- *   tone_tags outside strand_c keys (e.g. 'melancholic') are ignored —
- *   no signal, no penalty.
+ *   tone_tags outside strand_c keys are ignored — no signal, no penalty.
+ *   Enrichment emits only these five as of 2026-09-20, but rows enriched
+ *   before that still carry 'tense' / 'gritty' / 'melancholic' and friends,
+ *   which is exactly why they scored a flat neutral and why the vocabulary
+ *   was narrowed to what strand_c can actually hold.
  *
  * Also returns the soft_preferences_applied list for reason_payload,
  * so the caller doesn't have to redo the work.
