@@ -19,6 +19,7 @@ import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { boundedTail } from "@/lib/bounded-tail";
 import { loadDNA, saveDNA, bumpVersion } from "@/modules/dna/lib/load-save";
 import { dnaPromptContext } from "@/modules/dna/lib/prompt-context";
 import { applyDirectives, directivesChanged } from "@/modules/dna/lib/apply-directives";
@@ -63,22 +64,6 @@ applied unless a RECORDED line below names it — if there is no such line, you
 do not know whether it was captured, and saying "got it, no more anime" when
 nothing was written is how a user ended up asking for the same thing across
 five sessions. Never promise to "keep it in mind" either.`;
-
-/** The tail of the history that fits both bounds, oldest-first for the model. */
-function boundedHistory(messages: UIMessage[]): UIMessage[] {
-  const kept: UIMessage[] = [];
-  let chars = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const len = messageText(messages[i]).length;
-    if (kept.length >= MAX_MESSAGES) break;
-    // Always keep the latest turn, however long — dropping it would send the
-    // model a conversation that doesn't include what the user just said.
-    if (kept.length > 0 && chars + len > MAX_HISTORY_CHARS) break;
-    kept.push(messages[i]);
-    chars += len;
-  }
-  return kept.reverse();
-}
 
 function messageText(m: UIMessage): string {
   if (typeof m.content === "string") return m.content;
@@ -168,7 +153,7 @@ export async function POST(req: Request) {
   // by answering nothing. The most recent turns are the ones that matter for
   // the next question, and the whole transcript is re-read at session end
   // anyway (analyze-session.ts, which bounds itself the same way).
-  const history = boundedHistory(messages);
+  const history = boundedTail(messages, messageText, MAX_MESSAGES, MAX_HISTORY_CHARS);
   if (history.length < messages.length) {
     console.log(`[conversation] history trimmed: ${messages.length} → ${history.length} messages`);
   }
