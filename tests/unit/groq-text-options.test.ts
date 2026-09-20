@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
 
 // 2026-09-20: MODELS.text is a reasoning model and returns an EMPTY content
@@ -32,13 +33,23 @@ describe('every MODELS.text call site passes GROQ_TEXT_OPTIONS', () => {
     expect(['hidden', 'parsed']).toContain(GROQ_TEXT_OPTIONS.groq.reasoningFormat)
   })
 
-  it('names every file that uses MODELS.text, so a new one cannot slip in', () => {
-    const used = [
-      'src/app/api/conversation/message/route.ts',
-      'src/lib/welcome.ts',
-      'src/app/api/dna/summary/route.ts',
-      'src/modules/dna/lib/rewrite-dimension-notes.ts',
-    ].filter(f => readFileSync(f, 'utf8').includes('MODELS.text'))
-    expect(used.sort()).toEqual([...CALL_SITES].sort())
+  it('catches a NEW call site added anywhere in src/', () => {
+    // Scans the tree rather than re-checking the list above — otherwise this
+    // only re-states CALL_SITES and cannot see a fifth site appear.
+    const found: string[] = []
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, e.name)
+        if (e.isDirectory()) walk(path)
+        else if (/\.tsx?$/.test(e.name) && readFileSync(path, 'utf8').includes('MODELS.text')) {
+          found.push(path)
+        }
+      }
+    }
+    walk('src')
+
+    // ai-models.ts declares it; everything else must be a known call site.
+    const callers = found.filter(f => !f.endsWith('ai-models.ts'))
+    expect(callers.sort()).toEqual([...CALL_SITES].sort())
   })
 })
