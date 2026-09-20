@@ -804,6 +804,9 @@
   font-size: 14.5px;
   line-height: 1.55;
   color: var(--wtw-fg);
+  /* Assistant copy is authored with deliberate line breaks (the first-run
+     intro); `pre-line` honours them while still wrapping long lines. */
+  white-space: pre-line;
 }
 .aiOutro {
   color: var(--wtw-fg-muted);
@@ -1217,4 +1220,13 @@
   position: absolute;
   inset: 0;
   opacity: 0.18;
+}
+
+/* Right-hand topbar cluster: share, then the hamburger. Replaces the bare
+   AppMenu that used to occupy this grid cell on its own. */
+.topbarRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: end;
 }

@@ -1462,7 +1462,7 @@ function WhyDetailOverlay({
                 onClick={onClose}
                 aria-label="back"
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m15 18-6-6 6-6" />
                 </svg>
               </button>
@@ -1618,13 +1618,13 @@ function Motif({ kind, fg }: { kind: MotifKind; fg: string }) {
 // ─────────────────────────────────────────────────────────────
 
 const IconCardFull = (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <rect x="5" y="4" width="14" height="16" rx="2" />
   </svg>
 );
 
 const IconListGrid = (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="5" width="6" height="6" rx="1" />
     <rect x="3" y="13" width="6" height="6" rx="1" />
     <path d="M13 6h8M13 12h8M13 18h8" />

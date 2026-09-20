@@ -458,14 +458,14 @@ export default function VoiceMode({
 }
 
 const IconMic = (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <rect x="9" y="3" width="6" height="12" rx="3" />
     <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
   </svg>
 );
 
 const IconMicOff = (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 3l18 18" />
     <path d="M9 9v2a3 3 0 0 0 5.12 2.12" />
     <path d="M15 9.34V6a3 3 0 0 0-5.94-.6" />
@@ -475,13 +475,13 @@ const IconMicOff = (
 );
 
 const IconX = (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 6l12 12M18 6L6 18" />
   </svg>
 );
 
 const IconBack = (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <path d="m15 18-6-6 6-6" />
   </svg>
 );

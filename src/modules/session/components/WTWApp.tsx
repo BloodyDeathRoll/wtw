@@ -29,6 +29,7 @@ import AppShell from "./AppShell";
 import RecommendationsView from "../recommendations/RecommendationsView";
 import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
+import IntroVoice from "../voice/IntroVoice";
 import { FingerprintLoader } from "./FingerprintLoader";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
@@ -37,6 +38,13 @@ import styles from "./WTWApp.module.css";
 // How many completed AI replies before "See Recommendations" appears.
 // Modality-agnostic — every assistant message counts (voice OR text).
 const RECOMMEND_AFTER_TURNS = 2;
+
+// Brand-new users skip the onboard shell and land on the intro surface with
+// this already on screen, spoken by IntroVoice. Kept in sync by hand with the
+// recording in public/intro.mp3 — if you edit the words here, re-record it.
+const INTRO_MESSAGE = `Hey there, welcome to What To Watch!
+Let's chat a little. The more I know you, the better the recommendations get. Once you get recommendations, you can rate them and improve my algorithm even more!
+Shall we begin?`;
 
 type ContentType = "movies" | "series";
 const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
@@ -71,12 +79,12 @@ const I = {
     </svg>
   ),
   back: (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="m15 18-6-6 6-6" />
     </svg>
   ),
   hamburger: (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 6h16M4 12h16M4 18h16" />
     </svg>
   ),
@@ -86,14 +94,24 @@ const I = {
     </svg>
   ),
   message: (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="14" rx="2" />
       <path d="M7 18v3l4-3" />
     </svg>
   ),
   close: (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  ),
+  // Android's share mark (three nodes, two arms) rather than the iOS
+  // box-and-arrow — this ships as a PWA and Android is the target surface.
+  share: (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4" />
     </svg>
   ),
   // Home-screen circles. Sparkle = the fingerprint's picks; bookmark matches the
@@ -227,22 +245,51 @@ function TopBar({
         )}
       </div>
 
-      <AppMenu
-        onRecommend={onRecommend}
-        onWatchlist={onWatchlist}
-        onFastLearning={onFastLearning}
-        onRatings={onRatings}
-        onProfile={onProfile}
-        user={user}
-        onSignOut={onSignOut}
-        voice={voice}
-        setVoice={setVoice}
-      />
-
+      <div className={styles.topbarRight}>
+        <button
+          className={styles.iconbtn}
+          onClick={shareApp}
+          aria-label="share WTW"
+          type="button"
+        >
+          {I.share}
+        </button>
+        <AppMenu
+          onRecommend={onRecommend}
+          onWatchlist={onWatchlist}
+          onFastLearning={onFastLearning}
+          onRatings={onRatings}
+          onProfile={onProfile}
+          user={user}
+          onSignOut={onSignOut}
+          voice={voice}
+          setVoice={setVoice}
+        />
+      </div>
     </div>
 
     </>
   );
+}
+
+/** Hands the app's URL to the OS share sheet, falling back to the clipboard
+ *  on desktop browsers that don't implement Web Share. */
+async function shareApp() {
+  const url = window.location.origin;
+  const data = {
+    title: "WTW — What To Watch",
+    text: "Find something worth watching.",
+    url,
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(data);
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+  } catch {
+    // Cancelled from the sheet, or clipboard denied — nothing to recover.
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -400,6 +447,7 @@ const DEEP_LINK_STAGES: readonly Stage[] = [
 ];
 
 type Stage =
+  | "intro"
   | "onboard"
   | "welcome"
   | "conversation"
@@ -481,7 +529,7 @@ function InputBar({
       <div className={styles.inputbar}>
         <input
           className={styles.inputfield}
-          placeholder="Type here"
+          placeholder="Speak or type"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -519,7 +567,10 @@ export default function WTWApp({
   // message icon in the top-left when there's history) and the Onboard
   // component shows the AI's last question as its prompt so the user
   // sees continuity.
-  const [stage, setStage] = useState<Stage>("onboard");
+  // A brand-new user (nothing said yet, no mature greeting to show) starts
+  // inside the chat with the intro already on screen — no onboard shell.
+  const isNewUser = conversation.messages.length === 0 && !welcome.greeting;
+  const [stage, setStage] = useState<Stage>(isNewUser ? "intro" : "onboard");
   // A standalone route (e.g. /profile/dna) links back into a stage with
   // ?stage=… — the menu there can't call these handlers directly. Read it
   // once on mount and strip it so a refresh doesn't re-enter the stage.
@@ -637,8 +688,10 @@ export default function WTWApp({
   }
 
   function handleSubmit(text: string) {
-    // First-ever submit on this conversation: persist favorites + flip stage.
-    // Subsequent submits just stream — server already knows the conversation.
+    // Only the OLD onboard flow persists favorites: there the first thing a
+    // user typed was a list of films. New accounts come through the intro
+    // instead, where the first reply is "yes" to "Shall we begin?" — not a
+    // taste signal, so it is deliberately not written to conversations.favorites.
     const isFirstOnboard = stage === "onboard" && messages.length === 0;
     const nextStage: Stage = "conversation";
 
@@ -885,6 +938,22 @@ export default function WTWApp({
             <FingerprintLoader size={48} />
           </div>
         </div>
+      ) : stage === "intro" ? (
+        <IntroVoice
+          text={INTRO_MESSAGE}
+          // Answering out loud continues in voice: the live session opens and
+          // the conversation carries on where the recording left off.
+          onSpeak={() => {
+            setStage("conversation");
+            setVoicePrimer(null);
+            setVoiceOpen(true);
+          }}
+          // Anything else means they'd rather type, so put them in the chat
+          // with the keyboard ready.
+          onSkip={() => setStage("conversation")}
+          // Typing is itself the answer — send it and stay in text from here.
+          onType={(text) => handleSubmit(text)}
+        />
       ) : voiceOpen ? (
         <VoiceMode
           onExit={() => {
