@@ -8,12 +8,27 @@
 // Provider clients are still constructed per-module (createGroq /
 // createMistral / Gemini); only the *model identifier* is centralized.
 
+/**
+ * Required on every `MODELS.text` call. `reasoningFormat: 'hidden'` keeps the
+ * model's reasoning out of `content` instead of letting it consume the whole
+ * response — without it `generateText`/`streamText` return an empty string.
+ * Verified both 'hidden' and 'parsed' fix it; 'hidden' is right for user-facing
+ * copy, where the trace is noise.
+ */
+export const GROQ_TEXT_OPTIONS = { groq: { reasoningFormat: 'hidden' } } as const
+
 export const MODELS = {
   /** Groq — free-form TEXT generation only: `generateText` / `streamText`
-   *  (chat, welcome greeting, DNA summary/notes/instruction-parse). A reasoning
-   *  model is FINE here — the answer is the streamed/returned text. Do NOT use
+   *  (chat, welcome greeting, DNA summary/notes/instruction-parse). Do NOT use
    *  this with `generateObject` (see `structured` below). Was
-   *  `llama-3.3-70b-versatile` (Groq free-tier shutdown 2026-08-16). */
+   *  `llama-3.3-70b-versatile` (Groq free-tier shutdown 2026-08-16).
+   *
+   *  ⚠️ It is a REASONING model, and every call site must pass
+   *  `GROQ_TEXT_OPTIONS`. Without them it spends its budget on the reasoning
+   *  trace and returns an EMPTY `content` — measured live 2026-09-20, which is
+   *  what surfaced in the app as "Couldn't reach the model." This file used to
+   *  claim a reasoning model was fine for text because "the answer is the
+   *  returned text"; it is not, unless the reasoning is separated out. */
   text: 'openai/gpt-oss-120b',
 
   /** STRUCTURED output via `generateObject` on the low-volume, latency-sensitive

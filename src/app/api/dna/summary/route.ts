@@ -21,7 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateText } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
-import { MODELS } from '@/lib/ai-models'
+import { MODELS, GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
 import { createClient } from '@/lib/supabase/server'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import { getRedis } from '@/lib/redis'
@@ -83,6 +83,7 @@ Write a 2-3 sentence plain-English taste summary for this user.`
     } else {
       const { text } = await generateText({
         model: getGroq()(MODELS.text),
+        providerOptions: GROQ_TEXT_OPTIONS,
         system: systemPrompt,
         prompt: userPrompt,
         temperature: 0.4,
