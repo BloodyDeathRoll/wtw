@@ -18,7 +18,7 @@
  * single field is enough, a conjunction checked in TypeScript.
  */
 
-import type { ExclusionRule, SoftPreference } from '@/types/dna'
+import type { ExclusionRule, ExclusionType, SoftPreference } from '@/types/dna'
 
 // ─────────────────────────────────────────────
 // The shape any matchable thing reduces to
@@ -81,6 +81,29 @@ const ALIASES: Record<string, RuleTargets> = {
   cartoons: { genres: ['animation'], keywords: [], languages: [], conjunctions: [] },
   cartoon:  { genres: ['animation'], keywords: [], languages: [], conjunctions: [] },
   subtitles: { genres: [], keywords: [], languages: [], conjunctions: [] }, // "no subtitles" is not an exclusion we can honour
+}
+
+/** TMDB genre names, movie and TV, lowercased. */
+const TMDB_GENRES = new Set([
+  'action', 'adventure', 'animation', 'comedy', 'crime', 'documentary', 'drama',
+  'family', 'fantasy', 'history', 'horror', 'music', 'mystery', 'romance',
+  'science fiction', 'thriller', 'war', 'western', 'kids', 'news', 'reality',
+  'soap', 'talk',
+])
+
+/**
+ * What kind of thing a rule name is, for a rule the user typed rather than
+ * said. Only the two answers that can be told apart without guessing: a real
+ * TMDB genre, or a keyword — which `ruleTargets` widens to match genre names
+ * AND keywords AND the category aliases above, so it is never inert.
+ *
+ * `person` is deliberately never inferred. A name needs a TMDB lookup to be
+ * matchable, and a wrong guess produces a rule that matches nothing while
+ * looking like it works — the exact silent failure this file exists to end.
+ */
+export function classifyRuleTarget(name: string): ExclusionType {
+  const n = norm(name)
+  return TMDB_GENRES.has(n) ? 'genre' : 'keyword'
 }
 
 /**

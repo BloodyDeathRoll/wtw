@@ -56,3 +56,89 @@ describe('<RulesSection />', () => {
     expect(screen.getByText('70% less')).toBeInTheDocument()
   })
 })
+
+// 2026-09-20: the conversation was the only writer of standing rules, so when
+// extraction failed there was no way to state one at all.
+describe('<RulesSection /> — adding a rule by hand', () => {
+  const addRule = async (name: string, kind?: string) => {
+    if (kind) await userEvent.selectOptions(screen.getByLabelText(/rule strength/i), kind)
+    await userEvent.type(screen.getByLabelText(/what to rule out/i), name)
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true, added: true }), { status: 200 })))
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('posts the rule and confirms what was stored', async () => {
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    await addRule('horror')
+
+    expect(fetch).toHaveBeenCalledWith('/api/dna/rules', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ kind: 'exclusion', name: 'horror' }),
+    }))
+    await waitFor(() => expect(screen.getByText(/added — horror/i)).toBeInTheDocument())
+  })
+
+  it('sends a hedge as a soft preference', async () => {
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    await addRule('romance', 'soft_preference')
+
+    expect(fetch).toHaveBeenCalledWith('/api/dna/rules', expect.objectContaining({
+      body: JSON.stringify({ kind: 'soft_preference', name: 'romance' }),
+    }))
+  })
+
+  it('says a preference got stronger rather than calling it a duplicate', async () => {
+    // Typing "romance" under "Less of" when a weaker one exists tightens it.
+    // Saying "already on your list" there hides a change the user just made.
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true, added: false, updated: true }), { status: 200 })))
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    await addRule('romance', 'soft_preference')
+
+    await waitFor(() => expect(screen.getByText(/strengthened — romance/i)).toBeInTheDocument())
+  })
+
+  it('says a rule was already there rather than claiming it added it again', async () => {
+    // The user typing it twice is the user unsure whether the first one took.
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true, added: false, updated: false }), { status: 200 })))
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    await addRule('anime')
+
+    await waitFor(() => expect(screen.getByText(/already on your list — anime/i)).toBeInTheDocument())
+  })
+
+  it('clears the box on success so the next rule starts empty', async () => {
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    await addRule('horror')
+    await waitFor(() => expect(screen.getByLabelText(/what to rule out/i)).toHaveValue(''))
+  })
+
+  it('keeps what was typed when the request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })))
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    await addRule('horror')
+
+    await waitFor(() => expect(screen.getByText(/couldn't add that/i)).toBeInTheDocument())
+    expect(screen.getByLabelText(/what to rule out/i)).toHaveValue('horror')
+  })
+
+  it('will not submit an empty or whitespace-only rule', async () => {
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+
+    await userEvent.type(screen.getByLabelText(/what to rule out/i), '   ')
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('points at the form when there are no rules yet', () => {
+    render(<RulesSection exclusions={[]} softPreferences={[]} />)
+    expect(screen.getByText(/or add one below/i)).toBeInTheDocument()
+  })
+})

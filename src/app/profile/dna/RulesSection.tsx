@@ -1,13 +1,20 @@
 "use client";
 
 // "Your Rules" — the standing instructions the user gave in conversation
-// ("never show me anime", "less romance"), and the only place they can take
-// one back. Client-side because removal has to be interactive; the list is
-// still rendered from the server-loaded DNA on first paint.
+// ("never show me anime", "less romance"), where they can take one back, and
+// where they can state one directly. Client-side because both have to be
+// interactive; the list is still rendered from the server-loaded DNA on first
+// paint.
 //
-// Removing a rule bumps taste_version server-side, which busts the rec cache,
-// so router.refresh() is followed by the next batch actually being regenerated
-// under the new rules rather than replayed from Redis.
+// Adding by hand exists because until 2026-09-20 the conversation was the only
+// writer, and when that path failed — which it did for everyone while Mistral
+// answered 429 — there was no way to state a rule at all. A user who has said
+// "no horror" three times and can see it is not on this page needs something
+// to click, not a fourth attempt at saying it.
+//
+// Either change bumps taste_version server-side, which busts the rec cache, so
+// router.refresh() is followed by the next batch actually being built under
+// the new rules rather than replayed from Redis.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,6 +37,48 @@ export function RulesSection({
   const [gone, setGone] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [draftKind, setDraftKind] = useState<Kind>("exclusion");
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState<string | null>(null);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    const name = draft.trim();
+    if (!name || adding) return;
+    setAdding(true);
+    setError(null);
+    setAdded(null);
+    try {
+      const res = await fetch("/api/dna/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: draftKind, name }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as { added?: boolean; updated?: boolean };
+      setDraft("");
+      // Say which of the three happened. "Already on your list" is the answer
+      // to a user who typed it again because they could not tell whether the
+      // first one took — telling them "added" a second time answers nothing.
+      // And a rule that already existed but got stronger is neither.
+      setAdded(
+        data.added
+          ? `Added — ${name}`
+          : data.updated
+            ? `Strengthened — ${name}`
+            : `Already on your list — ${name}`,
+      );
+      // Not optimistic, unlike removal: the server decides the rule's type and
+      // whether it merged into an existing one, so render what it actually
+      // stored rather than a guess that might differ.
+      router.refresh();
+    } catch {
+      setError("Couldn't add that — try again.");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   async function remove(kind: Kind, key: string) {
     const id = `${kind}|${key}`;
@@ -76,7 +125,7 @@ export function RulesSection({
       {empty && (
         <p className={styles.note}>
           No standing rules yet. Say something like &ldquo;never show me
-          anime&rdquo; in a session and it will appear here.
+          anime&rdquo; in a session, or add one below.
         </p>
       )}
 
@@ -141,6 +190,44 @@ export function RulesSection({
           })}
         </div>
       )}
+
+      <form className={styles.addRule} onSubmit={add}>
+        <p className={styles.subhead}>Add a rule</p>
+        <div className={styles.addRuleRow}>
+          {/* A two-way choice, not a type picker: the server works out whether
+              the name is a genre or a keyword. People are still added by
+              naming them in a session, where TMDB can resolve them — guessing
+              a person from typed text makes a rule that matches nothing while
+              looking like it works. */}
+          <select
+            className={styles.addRuleKind}
+            value={draftKind}
+            onChange={(e) => setDraftKind(e.target.value as Kind)}
+            aria-label="Rule strength"
+            disabled={adding}
+          >
+            <option value="exclusion">Never show me</option>
+            <option value="soft_preference">Less of</option>
+          </select>
+          <input
+            className={styles.addRuleInput}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="horror, anime, reality tv…"
+            aria-label="What to rule out"
+            maxLength={60}
+            disabled={adding}
+          />
+          <button
+            type="submit"
+            className={styles.addRuleSubmit}
+            disabled={adding || draft.trim().length === 0}
+          >
+            Add
+          </button>
+        </div>
+        {added && <p className={styles.ruleAdded}>{added}</p>}
+      </form>
 
       {error && <p className={styles.ruleError}>{error}</p>}
     </section>

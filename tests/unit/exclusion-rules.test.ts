@@ -7,6 +7,7 @@ import {
   matchesSoftSignal,
   softPreferenceMultiplier,
   ruleKey,
+  classifyRuleTarget,
   type MatchableTitle,
 } from '@/lib/exclusion-rules'
 import { applyDirectives, directivesChanged } from '@/modules/dna/lib/apply-directives'
@@ -331,6 +332,39 @@ describe('applyDirectives — escalation keeps a person matchable', () => {
     expect(isExcluded(title, l.exclusion_rules)).toBe(true)
   })
 
+  it('does not duplicate the rule when the same name is typed again', () => {
+    // classifyRuleTarget never infers a person, so the second add arrives as a
+    // keyword and a type+name lookup misses the person rule the first add
+    // created — leaving two rows for one person, one of them inert.
+    const l: ContextualLogic = { exclusion_rules: [], soft_preferences: [], temporal_modifiers: [] }
+    applyDirectives(l, [{
+      kind: 'soft_preference', target_type: 'person', name: 'Adam Sandler',
+      raw: '', reason: '', weight_modifier: 0.5, person_id: '19292',
+    }])
+    const typed = {
+      kind: 'exclusion' as const, target_type: 'keyword' as const,
+      name: 'Adam Sandler', raw: '', reason: '', person_id: '',
+    }
+    applyDirectives(l, [typed])
+    const second = applyDirectives(l, [typed])
+
+    expect(l.exclusion_rules).toHaveLength(1)
+    expect(l.exclusion_rules[0]).toMatchObject({ type: 'person', id: '19292' })
+    expect(second.exclusions_added).toBe(0)
+    expect(directivesChanged(second)).toBe(false)
+  })
+
+  it('still lets a real person directive match its own rule', () => {
+    const l: ContextualLogic = { exclusion_rules: [], soft_preferences: [], temporal_modifiers: [] }
+    const d = {
+      kind: 'exclusion' as const, target_type: 'person' as const,
+      name: 'Adam Sandler', raw: '', reason: '', person_id: '19292',
+    }
+    applyDirectives(l, [d])
+    expect(applyDirectives(l, [d]).exclusions_added).toBe(0)
+    expect(l.exclusion_rules).toHaveLength(1)
+  })
+
   it('leaves an ordinary escalation as the type it was given', () => {
     const l: ContextualLogic = { exclusion_rules: [], soft_preferences: [], temporal_modifiers: [] }
     applyDirectives(l, [{ kind: 'soft_preference', target_type: 'genre', name: 'romance', raw: '', reason: '', weight_modifier: 0.5, person_id: '' }])
@@ -338,5 +372,28 @@ describe('applyDirectives — escalation keeps a person matchable', () => {
 
     expect(l.soft_preferences).toHaveLength(0)
     expect(l.exclusion_rules[0]).toMatchObject({ type: 'genre', id: '' })
+  })
+})
+
+// 2026-09-20: a rule the user TYPED on the Taste DNA page, where nothing said
+// what kind of thing it is. This is the guarantee both of that page's silent-
+// failure bugs turn on, so it stays tested.
+describe('classifyRuleTarget', () => {
+  it.each(['horror', 'Documentary', ' science fiction '])('calls %j a genre', name => {
+    expect(classifyRuleTarget(name)).toBe('genre')
+  })
+
+  it.each(['anime', 'reality tv', 'Marvel', 'found footage'])('calls %j a keyword', name => {
+    expect(classifyRuleTarget(name)).toBe('keyword')
+  })
+
+  it('never guesses a person — an unresolved person rule matches nothing', () => {
+    expect(classifyRuleTarget('Adam Sandler')).toBe('keyword')
+  })
+
+  it('leaves a keyword rule able to match a genre anyway', () => {
+    // The distinction is for display: ruleTargets widens a keyword to both.
+    const t = ruleTargets({ type: 'keyword', name: 'horror' })
+    expect(t.genres).toContain('horror')
   })
 })
