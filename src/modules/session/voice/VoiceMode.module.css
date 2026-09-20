@@ -312,3 +312,84 @@
   0% { transform: translate(-4%, 0) scale(1.0); }
   100% { transform: translate(4%, -2%) scale(1.05); }
 }
+
+/* ─── Intro-only: the "or just type" escape hatch ───
+   The first-run surface has to accept either answer, so it carries a slim
+   field under the controls. VoiceMode proper has no equivalent — a live
+   session is speech by definition. */
+.introTypeRow {
+  /* Pinned, like .controls — the surface is absolutely positioned throughout,
+     so a flow-positioned row lands under the caption instead of the chrome. */
+  position: absolute;
+  bottom: 92px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+}
+.introTypeField {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--wtw-fg);
+  font: inherit;
+  font-size: 14.5px;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.introTypeField::placeholder {
+  color: var(--wtw-fg-muted);
+}
+.introTypeField:focus {
+  border-color: rgba(var(--wtw-rgb), 0.55);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+/* Primary action on the intro surface — the same amber-on-white treatment as
+   the chat's live button, so "talk to it" looks like the same affordance in
+   both places. */
+.controlBtnPrimary {
+  background: var(--wtw-green);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 18px var(--wtw-green-soft);
+}
+.controlBtnPrimary:hover {
+  background: var(--wtw-green);
+  box-shadow: 0 4px 22px var(--wtw-green-glow);
+}
+
+/* "Click to begin" — the intro can't autoplay without a gesture, so this is
+   the gesture. Disappears the instant the recording starts. */
+.introStart {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid var(--wtw-border);
+  background: rgba(20, 20, 22, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--wtw-fg);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  animation: introStartPulse 2.4s ease-in-out infinite;
+}
+.introStart:hover {
+  background: rgba(28, 28, 32, 0.85);
+}
+@keyframes introStartPulse {
+  0%, 100% { box-shadow: 0 0 14px var(--wtw-green-soft); }
+  50% { box-shadow: 0 0 26px var(--wtw-green-glow); }
+}
