@@ -104,6 +104,34 @@ export async function saveDNAIfUnchanged(
   return saved
 }
 
+export type DNAUpdateOutcome = 'saved' | 'unchanged' | 'missing' | 'conflict'
+
+/**
+ * Read-modify-write `users.dna` under a compare-and-set, redoing the work
+ * against a fresh read when another writer got there first.
+ *
+ * `mutate` returns whether it changed anything; false means "nothing to
+ * persist" and is reported as `unchanged` without a write. It must be safe to
+ * run more than once — on a conflict it is re-run against the newer row, never
+ * re-saved against the old one.
+ *
+ * One attempt to retry, then `conflict`. Two conflicts in a row means the row
+ * is genuinely hot, and every caller here has a backstop (the session-end fold,
+ * the next rating's refresh) that is better than spinning on a JSONB column.
+ */
+export async function withDNAUpdate(
+  user_id: string,
+  mutate: (dna: DNASchema) => boolean | Promise<boolean>,
+): Promise<DNAUpdateOutcome> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const row = await loadDNAForUpdate(user_id)
+    if (!row) return 'missing'
+    if (!(await mutate(row.dna))) return 'unchanged'
+    if (await saveDNAIfUnchanged(user_id, row.dna, row.updated_at)) return 'saved'
+  }
+  return 'conflict'
+}
+
 /**
  * Invalidates the Redis cache for a user's DNA.
  * Called automatically by saveDNA — exported in case a caller writes

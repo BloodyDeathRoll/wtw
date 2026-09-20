@@ -25,29 +25,35 @@
 
 import type { DNASchema, DNASignal } from '@/types/dna'
 import { recordKey, recordType, titleKey } from '@/lib/title-key'
-import { loadDNAForUpdate, saveDNAIfUnchanged, fetchTitleCrew, pickTitle } from './lib/load-save'
+import { withDNAUpdate, fetchTitleCrew, pickTitle } from './lib/load-save'
 import { applyCrewAffinityUpdate } from './lib/update-crew'
 import { applyStrandCUpdate } from './lib/update-strand-c'
 import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 
 export async function mergeFeedbackSignalsLight(user_id: string): Promise<number> {
-  // Two attempts. A compare-and-set miss means someone else wrote the row, so
-  // the snapshot this ran on is stale and the whole merge has to be redone
-  // against fresh state — never re-saved as-is.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const merged = await mergeOnce(user_id)
-    if (merged !== null) return merged
-    console.warn('[feedback-merge] row changed underneath, retrying')
+  // Reset on every attempt: a compare-and-set miss means the merge is redone
+  // against fresh state, and the count has to describe the attempt that
+  // actually saved.
+  let merged = 0
+
+  const outcome = await withDNAUpdate(user_id, async dna => {
+    merged = await mergeInto(dna)
+    return merged > 0
+  })
+  if (outcome === 'conflict') {
+    console.warn('[feedback-merge] conflicted twice; session-end fold will catch it')
+    return 0
   }
-  console.warn('[feedback-merge] gave up after a second conflict; session-end fold will catch it')
-  return 0
+  return outcome === 'saved' ? merged : 0
 }
 
-/** One read-modify-write. Returns null when the compare-and-set missed. */
-async function mergeOnce(user_id: string): Promise<number | null> {
-  const row = await loadDNAForUpdate(user_id)
-  if (!row) return 0
-  const dna: DNASchema = row.dna
+/**
+ * Fold every rated-but-unsignaled history entry into the fingerprint.
+ * Re-runnable, so `withDNAUpdate` can replay it against a newer row when its
+ * compare-and-set misses — a replay re-reads the catalog, which is the price
+ * of never saving a snapshot that went stale.
+ */
+async function mergeInto(dna: DNASchema): Promise<number> {
 
   // Dedup on the composite title key across ALL sources (NOT key+source like
   // the session merge): if a title is already signaled from any source (e.g.
@@ -103,6 +109,5 @@ async function mergeOnce(user_id: string): Promise<number | null> {
     merged++
   }
 
-  if (merged === 0) return 0
-  return (await saveDNAIfUnchanged(user_id, dna, row.updated_at)) ? merged : null
+  return merged
 }
