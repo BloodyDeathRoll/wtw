@@ -70,7 +70,9 @@ ${dimensionDescriptions}`
     system: systemPrompt,
     prompt: userPrompt,
     temperature: 0.3,
-    maxTokens: 400,
+    // Budgets the reasoning trace as well as the notes themselves — see the
+    // GROQ_TEXT_OPTIONS note in ai-models.ts.
+    maxTokens: 1200,
   })
 
   // Parse and apply — malformed JSON is silently ignored
