@@ -1,0 +1,5 @@
+{
+  "setup": ["./.superset/setup.sh"],
+  "teardown": ["./.superset/teardown.sh"],
+  "run": ["PORT=$(./.superset/port.sh) && echo \"dev server → http://localhost:$PORT\" && PORT=$PORT npm run dev"]
+}
