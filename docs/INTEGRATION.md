@@ -34,7 +34,8 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
   ⚠️ **Row 10 changed `WEIGHTS`** (2026-09-20) — crew .35→.32, narrative .30→.25, visceral .20→.15, external .14→.12, new `content` .15. The line above still holds (the pool is fixed by row 2, not by weights), but every existing batch re-ranks on the next generation, so judge the change on a live regen, not on the diff. **Not yet measured on a real account** — `npm run backfill-content-affinity` (dry run first) has not been run.
 - **Chat refused long histories instead of trimming — fixed 2026-09-20.** `/api/conversation/message` 413'd any history over 60 messages / 24k chars. Conversations never rotated until migration 0022, so ordinary accounts reached 107 messages and every turn returned "Couldn't reach the model" with nothing the user could do about it. The cost bound from the 2026-09-11 audit is now enforced by **trimming** to the most recent turns (`boundedTail`, always keeping the latest), not by refusing. Same shape as `analyze-session.ts`'s `boundedTranscript`, and the full transcript is re-read at session end regardless.
 - **Groq text calls need `GROQ_TEXT_OPTIONS` — fixed 2026-09-20.** `MODELS.text` (`openai/gpt-oss-120b`) is a reasoning model, and without `reasoningFormat: 'hidden'` it spends its budget on the trace and returns an **empty `content`**. Measured live: `generateText` returned `""`, and in the app the chat surfaced "Couldn't reach the model." `ai-models.ts` previously claimed a reasoning model was fine for text because "the answer is the returned text" — it is not, unless the reasoning is separated out. All four `MODELS.text` call sites (chat, welcome, DNA summary, dimension notes) now pass the shared options. Both `hidden` and `parsed` fix it; `hidden` is right for user-facing copy. ⚠️ **A correction to that entry (same day):** it claimed hidden reasoning does not come out of the `maxTokens` budget, measured at 121 completion tokens on a one-line prompt. That measurement was unrepresentative and the claim is wrong. The reasoning IS billed against `maxTokens`, before any reply token: with the chat's real system prompt and a 60-message history, a cap of 300 returned `finishReason: 'length'` with the reply cut off mid-sentence, and on a longer trace nothing at all — the empty assistant bubble seen in the app. The same prompt finishes at **552** completion tokens. Caps raised to cover the trace: chat 300 → 1200, DNA summary 150 → 1000, dimension notes 400 → 1200. `@ai-sdk/groq` forwards only `reasoningFormat`, not `reasoning_effort`, so the trace can be paid for but not shortened. `tests/unit/groq-text-options.test.ts` pins that every call site passes the options, since nothing in the type system requires it.
-- **`discover_pages`** — see §5; second-order now.
+- **Nightly catalog job, read 2026-09-25** (`~/Projects/Dream/assignments/wtw-catalog/summaries/`). Catalog **30,421** titles (target 35,000). Enrichment hits its 600-call Mistral budget every night (~244 titles) and the pending backlog is **shrinking**: 3,461 (09-20) → 2,617 (09-25) — the digest's `enrich_stalling` flag (21 nights) means "under the 300 cap", not "not draining". Seeding collapsed from 09-22 (250 → 11, 24, 47, 80 seeded against a budget of 250) because the sweep finished its first lap of all 5,040 slices (126 × `discover_pages` 40) and is on lap 2 (`1506-1906/5040`), where 99–100% of candidates are already in the catalog. Dream suggests going deeper (`discover_pages`); not decided.
+- **`discover_pages`** — see §5 and the line above.
 - **Scoring + fingerprint data — fixed 2026-08-28 (measured on the reporter, 250 ratings).** Three layers, all live:
   1. *Scorers were flat* (crew 0.50 for all 424 candidates, narrative cosine 0.94–0.99, visceral 1.0 → the 5% recency term decided the order → recent family/animation on top). Fixed: crew = strongest match per role, normalised so "always loved" = 1.0 (a strand_a `score` is the average reaction level, max +0.30); narrative = percentile within the pool; visceral = relative to the user's own mean and strand_c re-centred on 0.5 after every update (`scripts/recenter-strand-c.mts`, applied); recency 0.05 → 0.01, external 0.10 → 0.14.
   2. *Strand B never learned from card ratings* — all seven dimensions sat at their blank defaults after 250 ratings, so the embedding text described nobody. Fixed: `applyStrandBFromTitle` (src/modules/dna/lib/update-strand-b-from-title.ts) nudges each dimension from the rated title's `narrative_metadata` (reinforce a matching value, out-vote and adopt a different one, weaken on dislike, numeric moves toward/away), called from the per-click merge and the session merge.
@@ -163,6 +164,33 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 ## Standing handoff notes
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
+
+### 2026-09-25 — #80 spoken first-run intro and #81 Superset workspaces landed
+
+**#80** (merged 2026-09-20): a brand-new user lands on `IntroVoice`
+(`src/modules/session/voice/IntroVoice.tsx`), which plays the pre-recorded
+`public/intro.mp3` with the caption driven by `audio.currentTime`, and then
+continues by voice or text. Browser speech and per-visit Gemini TTS were both
+tried and dropped (wrong voice; Gemini free tier is ~20 req/day). Also a share
+button in the top bar, and the 20×20 icons went to 24×24 (one missed: the
+back arrow in `RecommendationsView.tsx` is still 20×20).
+- Deliberate: `isFirstOnboard` (`WTWApp.tsx:695`) no longer fires for new
+  users, so `favorites` is not written for them — the first reply answers the
+  intro's "Shall we begin?".
+- Open, not started:
+  - `public/intro.mp3` cannot be regenerated in-repo. If `INTRO_MESSAGE`
+    (`WTWApp.tsx:45`) changes, the recording is silently stale — needs a
+    `scripts/record-intro.mjs` (Gemini TTS, voice `Aoede`).
+  - The "…or just type" field on the intro is not in the design reference.
+  - The share button lives in `TopBar`, so the intro and VoiceMode screens
+    don't have it.
+  - Dead code for a separate PR: the `Welcome` component,
+    `stage === "welcome"` (`WTWApp.tsx:1050`) and the `favorites` write path.
+  - Never tested on a real mobile browser.
+
+**#81** (merged 2026-09-24): `.superset/` setup / teardown / run scripts so a
+new Superset workspace boots configured. Teardown stops only the dev server it
+started.
 
 ### 2026-09-11 — Upstash token was dead; replaced
 
