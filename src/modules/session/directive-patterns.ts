@@ -75,8 +75,10 @@ const LEADING = /^(?:any|some|another|more|the|a|an|all)\s+/
 /**
  * A later piece of the same sentence that asks for MORE of something starts
  * the contrast, and everything after it belongs to the contrast too: "no
- * horror, more comedy and thrillers" must not record "no thrillers". LEADING strips "more" because of "don't show me any more
- * horror" — which is only ever the FIRST piece after the opener.
+ * horror, more comedy and thrillers" must not record "no thrillers".
+ *
+ * LEADING strips "more" because of "don't show me any more horror" — which is
+ * only ever the FIRST piece after the opener.
  */
 const CONTRAST = /^(?:more|only|just|lots\s+of|plenty\s+of)\b/
 const TRAILING =
