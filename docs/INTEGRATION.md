@@ -180,7 +180,7 @@ Proposals:
 - Rate limits on `POST /generate` and `session/end` (20 per 10 min), and on `/recommendations/cowatch` and `/dna/update-from-session` (10 per 10 min). Like the other routes, these return 503 when Redis is down.
 - Stretch picks now fill every 20th slot (20 and 40 in a 50-long batch). It was 1 in 50.
 
-Also fixed: the "Why this?" panel in `RecCard.tsx` used to list a rated-down crew member under "Crew in your fingerprint" with a negative bar and a "-60%" score. Rated-down crew now get their own "Crew you've rated down" list, and the crew bar no longer goes below 0. Covered by `tests/component/RecCard-crew.test.tsx`.
+Also fixed: the "Why this?" panel in `RecCard.tsx` used to list a rated-down crew member under "Crew in your fingerprint" with a negative bar and a "-60%" score. Rated-down crew now get their own "Crew you've rated down" list, and the crew bar no longer goes below 0. Covered by `tests/component/RecCard-crew.test.tsx`. The card headline ("X is one of your strongest matches") now needs an affinity of at least `STRONG_CREW_AFFINITY` = 0.2 (about two "loved" ratings). Before, any positive score qualified, including a single rating at 0.15, which is the median across live fingerprints. Below the threshold the card falls back to the next reason. Covered by `tests/unit/explanation-crew-threshold.test.ts`.
 
 ### 2026-09-25 — #80 spoken first-run intro and #81 Superset workspaces landed
 

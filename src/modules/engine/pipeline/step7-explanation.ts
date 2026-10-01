@@ -60,11 +60,26 @@ export function resultToExplainItem(r: RecommendationResult): ExplainItem {
   return { tmdb_id: r.tmdb_id, type: r.type, title: r.title, reason_payload: r.reason_payload }
 }
 
-/** Crew the user actually rates highly, strongest first. */
+/**
+ * The affinity a crew member needs before a card calls them "one of your
+ * strongest matches". crew_matches carries confidence-weighted affinity
+ * (crew-affinity.ts): one "loved" rating is 0.15, one "liked" 0.075, two
+ * "loved" about 0.23. So 0.2 means the user has loved their work at least
+ * twice. Measured 2026-10-01 across live fingerprints: the median positive
+ * affinity is 0.15, so without a floor a single rating headlined the card.
+ */
+export const STRONG_CREW_AFFINITY = 0.2
+
+/** Crew the user has rated positively, strongest first. */
 function likedCrew(p: ReasonPayload): ReasonPayload['crew_matches'] {
   return p.crew_matches
     .filter(m => m.affinity_score > 0)
     .sort((a, b) => b.affinity_score - a.affinity_score)
+}
+
+/** Liked crew strong enough to be called a strong match. */
+function strongCrew(p: ReasonPayload): ReasonPayload['crew_matches'] {
+  return likedCrew(p).filter(m => m.affinity_score >= STRONG_CREW_AFFINITY)
 }
 
 export function payloadSummary(item: ExplainItem): string {
@@ -74,14 +89,16 @@ export function payloadSummary(item: ExplainItem): string {
   // crew_matches holds every crew member the fingerprint KNOWS, with a signed
   // score (crew-affinity.ts) — including the ones the user has rated down.
   // Only a positive affinity is a reason to watch; a negative one is a caveat.
-  const liked = likedCrew(p)
-  if (liked.length > 0) {
-    const top = liked
-      .slice(0, 2)
-      .map(m => `${m.name} (${m.role}, affinity ${m.affinity_score.toFixed(2)})`)
-      .join(', ')
-    parts.push(`Strong crew matches: ${top}`)
-  }
+  // Only crew above STRONG_CREW_AFFINITY are called strong; a weaker positive
+  // is still a reason, said as what it is.
+  const crewList = (ms: ReasonPayload['crew_matches']) => ms
+    .slice(0, 2)
+    .map(m => `${m.name} (${m.role}, affinity ${m.affinity_score.toFixed(2)})`)
+    .join(', ')
+  const strong = strongCrew(p)
+  const weak = likedCrew(p).filter(m => m.affinity_score < STRONG_CREW_AFFINITY)
+  if (strong.length > 0) parts.push(`Strong crew matches: ${crewList(strong)}`)
+  else if (weak.length > 0) parts.push(`Crew the user has liked before (weak signal): ${crewList(weak)}`)
   const ratedDown = p.crew_matches
     .filter(m => m.affinity_score < 0)
     .sort((a, b) => a.affinity_score - b.affinity_score)[0]
@@ -133,7 +150,7 @@ export function templateExplanation(item: ScoredTitleWithPayload): string {
   const p = item.reason_payload
   const parts: string[] = []
 
-  const crew = likedCrew(p)[0]
+  const crew = strongCrew(p)[0]
   if (crew) {
     parts.push(`${crew.name} (${crew.role}) is one of your strongest matches.`)
   } else if (p.lineage_connections[0]) {
