@@ -187,7 +187,7 @@ export async function analyzeSession(
   const { object: extracted } = await generateObject({
     model: mistral(MODELS.structured),
     schema: extractionSchema,
-    system: SYSTEM_PROMPT,
+    instructions: SYSTEM_PROMPT,
     prompt: transcript,
     temperature: 0.2,
   })

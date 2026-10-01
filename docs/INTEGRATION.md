@@ -82,7 +82,7 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
   - **#64** `next` 15.5.18 → 15.5.25 — two unauthenticated RCEs (GHSA-2xp9-vwfh-vxw4 via `/_next/image` + AVIF, GHSA-p293-qw3h-jr36 on Windows), fixed in 15.5.24.
   - **#65** `src/lib/rate-limit.ts` — fixed window on Upstash (INCR + `EXPIRE NX` every hit), **fails closed: Redis down → 503**. Co-watch join 10/user + 30/IP per 10 min (4-digit codes were sweepable); chat 60/user per 10 min, history ≤ 60 msgs / 24,000 chars (413), `maxTokens: 300`; voice token 10/user per 10 min. *(Both chat figures have since changed — the history is trimmed rather than 413'd, and `maxTokens` is 1200 to cover the reasoning trace; see the two 2026-09-20 entries above. Left as written because this line records the audit's state, not today's.)*
   - **#66** every workflow `uses:` SHA-pinned; `deploy-production.yml` `permissions: {}`; `persist-credentials: false` on `ci.yml` only (claude-code-action needs the token). Site-wide nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`, `Permissions-Policy` (mic kept) — verified live on production.
-  - Open from the audit's proposals (not started): AI SDK 5 migration, `npm audit fix` + Dependabot cooldown, report-only CSP, `SECURITY.md` / auth-failure logs / `timingSafeEqual` on `CRON_SECRET`, `server-only` on secret-reading modules.
+  - The audit's proposals were taken up on 2026-10-01: see the two sections dated 2026-10-01 below. `server-only` was not adopted, and the AI SDK went to v7, not v5.
 
 ## 4. Non-blocking — independent, any time
 - [ ] Generate the 30 voice WAV samples (`npm run generate-voice-samples`) over several days (Gemini free-tier 10/day); drop the `disabled` attribute on the voice play buttons ([WTWApp.tsx:502](../src/modules/session/components/WTWApp.tsx#L502)) once present · A1
@@ -183,13 +183,22 @@ Proposals:
 Also fixed: the "Why this?" panel in `RecCard.tsx` used to list a rated-down crew member under "Crew in your fingerprint" with a negative bar and a "-60%" score. Rated-down crew now get their own "Crew you've rated down" list, and the crew bar no longer goes below 0. Covered by `tests/component/RecCard-crew.test.tsx`. The card headline ("X is one of your strongest matches") now needs an affinity of at least `STRONG_CREW_AFFINITY` = 0.2 (about two "loved" ratings). Before, any positive score qualified, including a single rating at 0.15, which is the median across live fingerprints. Below the threshold the card falls back to the next reason. Covered by `tests/unit/explanation-crew-threshold.test.ts`.
 
 ### 2026-10-01 — swarm audit 2026-09-11 proposals (`fix/swarm-hardening`, stacked on the branch above)
-- `npm audit fix` (no `--force`): 27 → 17 advisories. Every remaining one needs a major bump: `ai` and `@ai-sdk/*` (v4 → v7 rewrites `useChat`; decision pending), `next` 16, `vitest` 5, and `next-pwa`/workbox.
+- `npm audit fix` (no `--force`): 27 → 17 advisories. Every remaining one needs a major bump: `ai` and `@ai-sdk/*` (done in the AI SDK v7 section below), `next` 16, `vitest` 5, and `next-pwa`/workbox.
 - `.github/dependabot.yml` (npm and actions, weekly, 7-day cooldown) and a weekly `osv-scan.yml`. The scan fails while any advisory is open, which is intended.
 - Report-only CSP from `src/middleware.ts`: a per-request nonce, which Next stamps on its own scripts, plus hashes for the two static inline scripts in `layout.tsx` (pinned by `tests/unit/csp-inline-hashes.test.ts`). Violations go to `/api/csp-report`. Checked on a production build: 23/23 inline scripts are covered. Switch the header to enforcing once a week of reports is clean.
 - `src/lib/auth-guard.ts`: every 401 (26 sites) logs `[auth] 401 <route>`, and the four `CRON_SECRET` checks compare in constant time.
 - `voice/transcript`: content longer than 4K characters is truncated, and `stage` is checked against the enum.
 - `SECURITY.md`.
 - **Not done: `server-only` on the secret-reading modules.** `scripts/*.mts` (run with tsx) and the vitest suite import those modules, and `server-only` throws outside Next's server bundle. Adding it would break the nightly catalog job.
+
+### 2026-10-01 — AI SDK v4 → v7 (`chore/ai-sdk-v7`, stacked on the branch above)
+- **Why v7 and not the audit's v5:** the audit targeted `provider-utils ≥3.0.98`, but the 3.x line stops at 3.0.41. The latest v5 (5.0.271) still fails `npm audit` with 13 high `undici` advisories, while v6 and v7 audit clean. A scratch-install test shows every line from v5 up blocks internal URLs (the CVE-2026-8768 SSRF), and v4 has no URL check at all. v7 needs Node ≥22 and ESM, which this repo already meets (Node 24 everywhere). `engines` is now `>=22`.
+- Packages: `ai` 7, `@ai-sdk/react`/`groq`/`mistral` 4. `zod` 3 and `@ai-sdk/react` are now direct dependencies; before, they were only installed indirectly. AI SDK advisories: all gone.
+- Chat: `useChat` uses a `DefaultChatTransport`, `sendMessage` replaces `append`, `regenerate` replaces `reload`, and messages are `parts`, not `content`. The route uses `convertToModelMessages` and `toUIMessageStreamResponse`. It still reads a `content`-shaped message, for a tab left open across the deploy.
+- Renames: `maxTokens` → `maxOutputTokens`, `system` → `instructions`, `onFinish` → `onEnd`, `textEmbeddingModel` → `embeddingModel`.
+- **Kept on purpose: `generateObject`** (7 sites). It is deprecated in v7 but works; the replacement is `generateText` with `output: Output.object()`. Switching would break the shared mock in `tests/mocks/ai.ts`, so it needs its own change with a test update.
+- Verified: tsc and lint clean; production build OK; the new `tests/unit/chat-route-stream.test.ts` sends the real route's stream through the SDK's own reader. Live against the real providers: Groq `streamText` returns a non-empty reply with `GROQ_TEXT_OPTIONS`, ministral `generateObject` parses, and `mistral-embed` returns 1024 dimensions. **Not clicked through in a browser** (the app needs a login).
+- ⚠️ **`tests/unit/chat-history-trim.test.ts:63` fails** and is left unedited. It checks the source for the exact text `convertToCoreMessages(history)`, which no longer exists in v7. The behaviour it guards (the trimmed history is what reaches the model) is unchanged: the call is now `convertToModelMessages(history.map(toPartsMessage))`. The assertion needs updating by hand.
 
 ### 2026-09-25 — #80 spoken first-run intro and #81 Superset workspaces landed
 

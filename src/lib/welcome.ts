@@ -126,7 +126,7 @@ Hard rules:
     const result = await generateText({
       model: groq(MODELS.text),
       providerOptions: GROQ_TEXT_OPTIONS,
-      system: systemPrompt,
+      instructions: systemPrompt,
       prompt: `Greet ${displayName} and ask the question.`,
     });
     const text = result.text.trim();

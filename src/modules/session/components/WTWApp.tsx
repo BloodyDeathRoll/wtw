@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { createClient } from "@/lib/supabase/client";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import {
@@ -51,6 +52,16 @@ const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
   movies: "Movies",
   series: "Series",
 };
+
+/** A plain text chat message in the AI SDK's parts shape. */
+function textMessage(id: string, role: "user" | "assistant", text: string): UIMessage {
+  return { id, role, parts: [{ type: "text", text }] };
+}
+
+/** The text of a chat message (its text parts, joined). */
+function textOf(m: UIMessage | undefined): string {
+  return m?.parts.map((p) => (p.type === "text" ? p.text : "")).join("") ?? "";
+}
 
 const DEFAULT_VOICE: Voice = "Aoede";
 const VOICE_IDS = VOICES.map((v) => v.id) as readonly string[];
@@ -663,19 +674,26 @@ export default function WTWApp({
     })();
   }, []);
 
-  const { messages, append, setMessages, status, error, reload } = useChat({
-    api: "/api/conversation/message",
-    initialMessages: conversation.messages,
-    body: { conversation_id: conversation.id },
-    // Intercept 401 at the fetch layer (the HTTP status is unambiguous here,
-    // whereas useChat's onError only sees the response body text). The
-    // server returns 401 when the Supabase session has expired — bounce to
-    // /login so the user can re-auth instead of hitting a dead chat.
-    fetch: async (input, init) => {
-      const res = await fetch(input, init);
-      if (res.status === 401) router.replace("/login");
-      return res;
-    },
+  // Created once: the conversation id and router are fixed for this mount.
+  const [transport] = useState(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/conversation/message",
+        body: { conversation_id: conversation.id },
+        // Intercept 401 at the fetch layer (the HTTP status is unambiguous here,
+        // whereas useChat's onError only sees the response body text). The
+        // server returns 401 when the Supabase session has expired — bounce to
+        // /login so the user can re-auth instead of hitting a dead chat.
+        fetch: async (input, init) => {
+          const res = await fetch(input, init);
+          if (res.status === 401) router.replace("/login");
+          return res;
+        },
+      }),
+  );
+  const { messages, sendMessage, setMessages, status, error, regenerate } = useChat({
+    transport,
+    messages: conversation.messages.map((m) => textMessage(m.id, m.role, m.content)),
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -704,10 +722,7 @@ export default function WTWApp({
       ? { stage: nextStage, favorites: text }
       : undefined;
 
-    void append(
-      { role: "user", content: text },
-      body ? { body } : undefined,
-    );
+    void sendMessage({ text }, body ? { body } : undefined);
   }
 
   // Asking for recommendations is the end of a "session": build the
@@ -852,24 +867,8 @@ export default function WTWApp({
     // `messages` snapshot and the second call would clobber the first.
     setMessages((prev) => [
       ...prev,
-      ...(userText
-        ? [
-            {
-              id: crypto.randomUUID(),
-              role: "user" as const,
-              content: userText,
-            },
-          ]
-        : []),
-      ...(assistantText
-        ? [
-            {
-              id: crypto.randomUUID(),
-              role: "assistant" as const,
-              content: assistantText,
-            },
-          ]
-        : []),
+      ...(userText ? [textMessage(crypto.randomUUID(), "user", userText)] : []),
+      ...(assistantText ? [textMessage(crypto.randomUUID(), "assistant", assistantText)] : []),
     ]);
 
     // First voice turn from onboard flips stage like the text path does.
@@ -1038,7 +1037,7 @@ export default function WTWApp({
             {stage === "onboard" && (
               <Onboard
                 continuePrompt={
-                  messages.findLast((m) => m.role === "assistant")?.content
+                  textOf(messages.findLast((m) => m.role === "assistant"))
                 }
                 matureGreeting={matureGreeting}
                 onPlayVoice={(primer) => {
@@ -1054,10 +1053,10 @@ export default function WTWApp({
               <div className={styles.messages}>
                 {messages.map((m) =>
                   m.role === "user" ? (
-                    <UserMessage key={m.id} text={m.content} />
+                    <UserMessage key={m.id} text={textOf(m)} />
                   ) : (
                     <AIMessage key={m.id}>
-                      <div className={styles.aiIntro}>{m.content}</div>
+                      <div className={styles.aiIntro}>{textOf(m)}</div>
                     </AIMessage>
                   ),
                 )}
@@ -1072,7 +1071,7 @@ export default function WTWApp({
                     <button
                       type="button"
                       className={styles.chatErrorBtn}
-                      onClick={() => void reload()}
+                      onClick={() => void regenerate()}
                     >
                       Try again
                     </button>

@@ -15,7 +15,7 @@
  * Verified both 'hidden' and 'parsed' fix it; 'hidden' is right for user-facing
  * copy, where the trace is noise.
  *
- * ⚠️ The reasoning IS billed against `maxTokens`, and an earlier note here
+ * ⚠️ The reasoning IS billed against `maxOutputTokens`, and an earlier note here
  * claimed otherwise. That claim came from a one-line prompt (121 completion
  * tokens, `finishReason: 'stop'` at a cap of 150) and did not survive a real
  * one: with the chat's full system prompt and a 60-message history, a cap of

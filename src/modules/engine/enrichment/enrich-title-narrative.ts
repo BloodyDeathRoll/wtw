@@ -259,7 +259,7 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
 
   recordMistralCall()
   const { embedding } = await embed({
-    model: mistral().textEmbeddingModel(MODELS.embedding),
+    model: mistral().embeddingModel(MODELS.embedding),
     value: embeddingText,
     maxRetries: BATCH_MAX_RETRIES,
   })
