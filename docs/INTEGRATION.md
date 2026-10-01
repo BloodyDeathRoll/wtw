@@ -185,7 +185,7 @@ Also fixed: the "Why this?" panel in `RecCard.tsx` used to list a rated-down cre
 ### 2026-10-01 — swarm audit 2026-09-11 proposals (`fix/swarm-hardening`, stacked on the branch above)
 - `npm audit fix` (no `--force`): 27 → 17 advisories. Every remaining one needs a major bump: `ai` and `@ai-sdk/*` (v4 → v7 rewrites `useChat`; decision pending), `next` 16, `vitest` 5, and `next-pwa`/workbox.
 - `.github/dependabot.yml` (npm and actions, weekly, 7-day cooldown) and a weekly `osv-scan.yml`. The scan fails while any advisory is open, which is intended.
-- Report-only CSP from `src/middleware.ts`: a per-request nonce, which Next stamps on its own scripts, plus a hash for the static `tz_offset` script. Violations go to `/api/csp-report`. Checked on a production build: 23/23 inline scripts are covered. Switch the header to enforcing once a week of reports is clean.
+- Report-only CSP from `src/middleware.ts`: a per-request nonce, which Next stamps on its own scripts, plus hashes for the two static inline scripts in `layout.tsx` (pinned by `tests/unit/csp-inline-hashes.test.ts`). Violations go to `/api/csp-report`. Checked on a production build: 23/23 inline scripts are covered. Switch the header to enforcing once a week of reports is clean.
 - `src/lib/auth-guard.ts`: every 401 (26 sites) logs `[auth] 401 <route>`, and the four `CRON_SECRET` checks compare in constant time.
 - `voice/transcript`: content longer than 4K characters is truncated, and `stage` is checked against the enum.
 - `SECURITY.md`.

@@ -5,15 +5,18 @@ import { NextResponse, type NextRequest } from "next/server";
 // Nothing is blocked yet: violations go to /api/csp-report and show in the
 // function logs. Enforce (rename the header) once a week of reports is clean.
 // Next reads the nonce from this request header and stamps its own inline
-// scripts; the tz_offset script in layout.tsx is static, so it is hashed.
+// scripts; the two inline scripts in layout.tsx are static, so they are hashed.
+// Changing either script's text means re-hashing it here.
 const TZ_SCRIPT_HASH = "'sha256-OcDdGZajAurFrd1rAkKOF0gUxHP6aYWi+75Kri5Wsss='";
+// Dev-only service-worker teardown; never rendered in production.
+const SW_TEARDOWN_SCRIPT_HASH = "'sha256-jpDpThEs+4JqJB7pCmZ5w3wHlf9hHXw2KT63/P4tpYo='";
 
 function contentSecurityPolicy(nonce: string): string {
   const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseWs = supabase.replace(/^https:/, "wss:");
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${TZ_SCRIPT_HASH}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${TZ_SCRIPT_HASH} ${SW_TEARDOWN_SCRIPT_HASH}`,
     "style-src 'self' 'unsafe-inline'",
     // TMDB posters/logos; Google avatars (AppMenu); data: for inline icons.
     "img-src 'self' data: blob: https://image.tmdb.org https://*.googleusercontent.com",
