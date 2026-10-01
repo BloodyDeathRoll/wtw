@@ -180,7 +180,7 @@ Proposals:
 - Rate limits on `POST /generate` and `session/end` (20 per 10 min), and on `/recommendations/cowatch` and `/dna/update-from-session` (10 per 10 min). Like the other routes, these return 503 when Redis is down.
 - Stretch picks now fill every 20th slot (20 and 40 in a 50-long batch). It was 1 in 50.
 
-Found, not fixed: `RecCard.tsx` still shows negative crew affinities unfiltered.
+Also fixed: the "Why this?" panel in `RecCard.tsx` used to list a rated-down crew member under "Crew in your fingerprint" with a negative bar and a "-60%" score. Rated-down crew now get their own "Crew you've rated down" list, and the crew bar no longer goes below 0. Covered by `tests/component/RecCard-crew.test.tsx`.
 
 ### 2026-09-25 — #80 spoken first-run intro and #81 Superset workspaces landed
 

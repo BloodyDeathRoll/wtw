@@ -222,8 +222,13 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
     return () => cancelAnimationFrame(id)
   }, [])
 
+  // crew_matches carries every known crew member with a SIGNED affinity. A
+  // rated-down director is a reason against, not a match: list them apart, and
+  // keep the bar at 0 or more (a negative width/percent rendered as nonsense).
+  const likedCrew = p.crew_matches.filter(m => m.affinity_score > 0)
+  const dislikedCrew = p.crew_matches.filter(m => m.affinity_score < 0)
   const crewScore = p.crew_matches.length > 0
-    ? p.crew_matches.reduce((s, m) => s + m.affinity_score, 0) / p.crew_matches.length
+    ? Math.max(0, p.crew_matches.reduce((s, m) => s + m.affinity_score, 0) / p.crew_matches.length)
     : result.composite_score * 0.8
 
   const ratingsScore = p.external_ratings.length > 0
@@ -256,10 +261,10 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
         ))}
       </div>
 
-      {p.crew_matches.length > 0 && (
+      {likedCrew.length > 0 && (
         <div className={styles.whySection}>
           <div className={styles.whySectionLabel}>Crew in your fingerprint</div>
-          {p.crew_matches.map((m, i) => (
+          {likedCrew.map((m, i) => (
             <div key={i} className={styles.crewRow}>
               <div className={styles.crewInfo}>
                 <span className={styles.crewName}>{m.name}</span>
@@ -269,6 +274,24 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
                 <div className={styles.crewFill} style={{ width: grown ? `${m.affinity_score * 100}%` : 0 }} />
               </div>
               <span className={styles.crewPct}>{Math.round(m.affinity_score * 100)}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {dislikedCrew.length > 0 && (
+        <div className={styles.whySection}>
+          <div className={styles.whySectionLabel}>Crew you&apos;ve rated down</div>
+          {dislikedCrew.map((m, i) => (
+            <div key={i} className={styles.crewRow}>
+              <div className={styles.crewInfo}>
+                <span className={styles.crewName}>{m.name}</span>
+                <span className={styles.crewRole}>{m.role}</span>
+              </div>
+              <div className={styles.crewTrack}>
+                <div className={`${styles.crewFill} ${styles.crewFillNeg}`} style={{ width: grown ? `${Math.min(1, -m.affinity_score) * 100}%` : 0 }} />
+              </div>
+              <span className={`${styles.crewPct} ${styles.crewPctNeg}`}>−{Math.round(-m.affinity_score * 100)}%</span>
             </div>
           ))}
         </div>

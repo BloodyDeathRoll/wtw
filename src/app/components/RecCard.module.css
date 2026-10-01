@@ -426,6 +426,14 @@
   text-align: right;
   flex-shrink: 0;
 }
+/* Crew the user rated down — same row, the card's negative tone */
+.crewFillNeg {
+  background: #E07C5A;
+}
+.crewPctNeg {
+  color: #E07C5A;
+  width: 36px;
+}
 
 /* Dimension alignment rows */
 .dimRow {
