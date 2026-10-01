@@ -16,6 +16,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -33,6 +34,7 @@ export async function POST() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
+    logAuthFailure('/api/cowatch/room')
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -77,6 +79,7 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
+    logAuthFailure('/api/cowatch/room')
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

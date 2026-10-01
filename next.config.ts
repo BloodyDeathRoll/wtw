@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 import withPWA from "@ducanh2912/next-pwa";
 
-// Site-wide response headers (audit 2026-09-11). No CSP yet: next-pwa and the
-// two inline scripts in layout.tsx need nonces or hashes first — see the
-// audit's proposals. Microphone stays allowed for voice mode.
+// Site-wide response headers (audit 2026-09-11). The CSP is set per request in
+// src/middleware.ts (it needs a nonce), report-only for now. Microphone stays
+// allowed for voice mode.
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },

@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
@@ -18,6 +19,7 @@ export async function POST(_req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    logAuthFailure('/api/dna/bootstrap')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

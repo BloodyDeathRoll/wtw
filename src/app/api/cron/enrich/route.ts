@@ -15,6 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized, logAuthFailure } from '@/lib/auth-guard'
 import { runNightlyEnrichment, SERVERLESS_COOLDOWN_CAP_MS } from '@/modules/engine/enrichment/nightly-enrichment'
 
 // 300s is the platform max on the Hobby/personal plan this project runs on
@@ -33,10 +34,8 @@ export const maxDuration = 300
 // reported stop this route used to give. See SERVERLESS_COOLDOWN_CAP_MS.
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  const secret = process.env.CRON_SECRET
-
-  if (!secret || authHeader !== `Bearer ${secret}`) {
+  if (!isCronAuthorized(req)) {
+    logAuthFailure('/api/cron/enrich')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 
 type MediaType = "movie" | "tv";
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    logAuthFailure("/api/recommendations/removed");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -69,6 +71,7 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    logAuthFailure("/api/recommendations/removed");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -93,6 +96,7 @@ export async function DELETE(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    logAuthFailure("/api/recommendations/removed");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

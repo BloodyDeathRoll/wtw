@@ -19,6 +19,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { tmdbPosterUrl } from '@/lib/tmdb'
 import type { Reaction } from '@/types/dna'
@@ -62,6 +63,7 @@ export async function GET() {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
+    logAuthFailure('/api/recommendations/ratings')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

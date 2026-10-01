@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { updateSchemaFromSurvey } from '@/modules/dna/update-from-survey'
 import { isMediaType, type MediaType } from '@/lib/title-key'
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    logAuthFailure('/api/recommendations/survey')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

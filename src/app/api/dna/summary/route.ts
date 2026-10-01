@@ -19,6 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { generateText } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
 import { MODELS, GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
@@ -39,6 +40,7 @@ export async function GET(_req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    logAuthFailure('/api/dna/summary')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -14,15 +14,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized, logAuthFailure } from '@/lib/auth-guard'
 import { getMovie, getTV } from '@/lib/tmdb'
 import { createServiceClient } from '@/lib/supabase/service'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  const secret = process.env.CRON_SECRET
-  if (!secret || authHeader !== `Bearer ${secret}`) {
+  if (!isCronAuthorized(req)) {
+    logAuthFailure('/api/admin/backfill-posters')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

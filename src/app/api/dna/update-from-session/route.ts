@@ -22,6 +22,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    logAuthFailure('/api/dna/update-from-session')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const limited = await enforceRateLimit(req, user.id, RATE_LIMIT)

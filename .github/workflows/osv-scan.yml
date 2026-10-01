@@ -1,0 +1,26 @@
+name: OSV scan
+
+# Weekly known-vulnerability scan of the lockfile (swarm audit 2026-09-11,
+# RULES C3). Scheduled, not a PR gate: it fails while any advisory is open,
+# which is the signal — the remaining ones need major bumps (see
+# docs/INTEGRATION.md).
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: google/osv-scanner-action/osv-scanner-action@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
+        with:
+          scan-args: |-
+            --lockfile=package-lock.json

@@ -4,6 +4,7 @@
 // POST — runs the full Assignment 2 engine pipeline and returns RecommendationResult[]
 
 import { NextRequest, NextResponse, after } from "next/server";
+import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -181,6 +182,7 @@ export async function GET(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    logAuthFailure("/api/recommendations/generate");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   // servePage below is a hoisted function declaration, so it can't see this
@@ -431,6 +433,7 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
+    logAuthFailure("/api/recommendations/generate");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const limited = await enforceRateLimit(req, user.id, RATE_LIMIT);

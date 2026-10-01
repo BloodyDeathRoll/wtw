@@ -9,16 +9,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized, logAuthFailure } from '@/lib/auth-guard'
 import { createServiceClient } from '@/lib/supabase/service'
 import { applyTemporalDecay } from '@/modules/dna/lib/apply-temporal-decay'
 import { bumpVersion } from '@/modules/dna/lib/load-save'
 import type { DNASchema } from '@/types/dna'
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  const secret = process.env.CRON_SECRET
-
-  if (!secret || authHeader !== `Bearer ${secret}`) {
+  if (!isCronAuthorized(req)) {
+    logAuthFailure('/api/cron/decay')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
