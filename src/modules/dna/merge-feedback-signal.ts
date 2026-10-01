@@ -95,7 +95,9 @@ async function mergeInto(dna: DNASchema): Promise<number> {
       dimensions_contradicted: [],
       confidence: 0.75,
       flag: null,
-      watched_at: null,
+      // The rating time is the clock temporal decay ages (CLAUDE.md:
+      // ratings older than 18 months weigh 50%). null skipped decay forever.
+      watched_at: new Date().toISOString(),
     }
 
     dna.signals.push(signal)

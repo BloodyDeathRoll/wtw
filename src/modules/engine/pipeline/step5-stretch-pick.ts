@@ -10,7 +10,8 @@
  *   - total_sessions < 3  (user is too new)
  *   - signals.length < 15 (not enough fingerprint data)
  *
- * For a 20-result list there is exactly 1 stretch pick (slot 20).
+ * One stretch pick per 20 slots: slot 20 of a 20-result list, slots 20 and
+ * 40 of a 50-result list, the last slot of a list shorter than 20.
  * The stretch pick is labeled clearly — it is never hidden from the user.
  *
  * Stretch pick selection criteria:
@@ -87,7 +88,13 @@ export function injectStretchPick(
   // Composite key — a movie and a TV show can share a tmdb_id
   const rankedIds = new Set(ranked.map(t => `${t.title.type}:${t.title.tmdb_id}`))
 
-  const stretchCandidate = allCandidates.find(candidate => {
+  // ── Slots: every 20th (20, 40, …), or the last slot for a shorter list ──
+  // 1 in 20 is the product rule; batches grew to 50, so one pick was 1 in 50.
+  const slots: number[] = []
+  for (let i = 19; i < ranked.length; i += 20) slots.push(i)
+  if (slots.length === 0) slots.push(ranked.length - 1)
+
+  const stretchCandidates = allCandidates.filter(candidate => {
     if (rankedIds.has(`${candidate.title.type}:${candidate.title.tmdb_id}`)) return false  // already in list
     if (candidate.composite_score >= MAX_COMPOSITE_SCORE) return false
     if (candidate.external_rating_score < MIN_EXTERNAL_RATING) return false
@@ -95,25 +102,38 @@ export function injectStretchPick(
     return mismatched
   })
 
-  if (!stretchCandidate) return ranked   // no suitable stretch pick found
+  if (stretchCandidates.length === 0) return ranked   // no suitable stretch pick found
 
-  const { dimensions_stretched } = hasDimensionMismatch(stretchCandidate, dna)
+  // In place, keeping everything around each slot. Fewer distinct candidates
+  // than slots fills the earliest slots only.
+  const result = [...ranked]
+  const used = new Set<string>()
+  let next = 0
+  for (const slot of slots) {
+    while (next < stretchCandidates.length) {
+      const c = stretchCandidates[next++]
+      const key = `${c.title.type}:${c.title.tmdb_id}`
+      if (used.has(key)) continue
+      used.add(key)
+      result[slot] = toStretchPick(c, dna)
+      break
+    }
+  }
+  return result
+}
+
+function toStretchPick(candidate: ScoredTitle, dna: DNASchema): ScoredTitle {
+  const { dimensions_stretched } = hasDimensionMismatch(candidate, dna)
 
   // Build a plain-language stretch rationale
   const dimensionLabels = dimensions_stretched
     .map(d => d.replace(/_/g, ' '))
     .join(' and ')
 
-  const stretchPick: ScoredTitle = {
-    ...stretchCandidate,
+  return {
+    ...candidate,
     is_stretch_pick:  true,
     stretch_rationale: `Intentional stretch: this title scores lower on your usual ${dimensionLabels} preferences. High critical rating. Accept or reject — both are useful signals.`,
     dimensions_stretched,
   }
-
-  // ── Replace slot 20 (or the last slot for shorter lists) ──
-  // In place, keeping everything after it — the list can now be 50 long.
-  const result = [...ranked]
-  result[Math.min(19, result.length - 1)] = stretchPick
-  return result
 }

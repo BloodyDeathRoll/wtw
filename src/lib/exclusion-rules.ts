@@ -78,6 +78,19 @@ const ALIASES: Record<string, RuleTargets> = {
   'korean drama': { genres: [], keywords: ['k-drama'], languages: [], conjunctions: [{ genres: ['drama'], languages: ['ko'] }] },
   telenovela: { genres: [], keywords: ['telenovela'], languages: [], conjunctions: [] },
   'reality tv': { genres: ['reality'], keywords: ['reality tv', 'reality show'], languages: [], conjunctions: [] },
+  // Sub-genres filter on their TMDB keyword, never the parent genre: "no
+  // superhero movies" must not take Die Hard with it. Catalog counts measured
+  // 2026-10-01 (of 31,856): superhero 641, mcu 87, dceu 17, slasher 394,
+  // gore 400, splatter 5, biography 391, biographical 15.
+  superhero: {
+    genres: [],
+    keywords: ['superhero', 'marvel cinematic universe (mcu)', 'dc extended universe (dceu)'],
+    languages: [],
+    conjunctions: [],
+  },
+  slasher: { genres: [], keywords: ['slasher'], languages: [], conjunctions: [] },
+  gore: { genres: [], keywords: ['gore', 'splatter'], languages: [], conjunctions: [] },
+  biography: { genres: [], keywords: ['biography', 'biographical'], languages: [], conjunctions: [] },
   cartoons: { genres: ['animation'], keywords: [], languages: [], conjunctions: [] },
   cartoon:  { genres: ['animation'], keywords: [], languages: [], conjunctions: [] },
   subtitles: { genres: [], keywords: [], languages: [], conjunctions: [] }, // "no subtitles" is not an exclusion we can honour

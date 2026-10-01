@@ -165,6 +165,23 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-01 — Dream review 2026-09-30: 5 findings + 4 proposals (`fix/dream-2026-09-30`)
+
+Findings (each red on `main`, green here with the report's proofs):
+- "Less romance, more action" no longer also writes a rule against action. A `but` ends the clause, and a later piece starting with "more / only / just" is skipped.
+- The "Why this?" card no longer calls a crew member the user rated down "one of your strongest matches". A negative affinity goes to the LLM as a caveat instead.
+- The co-watch cache key now includes both user ids. Before, a recycled room code with the same taste versions served another pair's results.
+- `/api/cron/decay` now exports `GET`. Vercel Cron calls with GET, so the scheduled decay used to get a 405.
+- The admin poster backfill now filters on `type`, so it no longer overwrites the poster of the TV title that shares the movie's id.
+
+Proposals:
+- "superhero", "slasher", "gore" and "biography" are keyword aliases in `exclusion-rules.ts`, no longer their parent genre. Before, "no superhero movies" excluded all of Action. Catalog keyword counts measured 2026-10-01 are in the code comment.
+- Card-rating signals now record `watched_at` (the time of the rating), so temporal decay has input. Still open, and needs all three owners: decay only changes crew confidence when the user has no recent signal at all; per-signal 50% weighting would need to be applied at scoring; `temporal_decay_applied` is a one-time flag.
+- Rate limits on `POST /generate` and `session/end` (20 per 10 min), and on `/recommendations/cowatch` and `/dna/update-from-session` (10 per 10 min). Like the other routes, these return 503 when Redis is down.
+- Stretch picks now fill every 20th slot (20 and 40 in a 50-long batch). It was 1 in 50.
+
+Found, not fixed: `RecCard.tsx` still shows negative crew affinities unfiltered.
+
 ### 2026-09-25 — #80 spoken first-run intro and #81 Superset workspaces landed
 
 **#80** (merged 2026-09-20): a brand-new user lands on `IntroVoice`

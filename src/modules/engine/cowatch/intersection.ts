@@ -60,7 +60,9 @@ export async function generateCowatchRecommendations(
   // ── Cache check ───────────────────────────────────────────
   const cached = await getCachedCowatch(
     roomCode,
+    userIdA,
     dnaA.metadata.taste_version,
+    userIdB,
     dnaB.metadata.taste_version
   )
   if (cached) return cached
@@ -150,7 +152,9 @@ For each title, write 2-3 sentences on why it works for BOTH viewers. Be specifi
 
   await cacheCowatchResults(
     roomCode,
+    userIdA,
     dnaA.metadata.taste_version,
+    userIdB,
     dnaB.metadata.taste_version,
     results
   )

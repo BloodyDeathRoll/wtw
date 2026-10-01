@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
           .from('titles')
           .update({ poster_path: detail.poster_path })
           .eq('tmdb_id', row.tmdb_id)
+          .eq('type', row.type) // composite key (0008) — a movie and a series can share an id
         if (upErr) failed++
         else updated++
       }
