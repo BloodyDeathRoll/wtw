@@ -73,9 +73,9 @@ const SOFT_WEIGHT = 0.5
 const LEADING = /^(?:any|some|another|more|the|a|an|all)\s+/
 
 /**
- * A later piece of the same sentence that asks for MORE of something is the
- * contrast, not another target: "less romance, more action" must not record
- * "less action". LEADING strips "more" because of "don't show me any more
+ * A later piece of the same sentence that asks for MORE of something starts
+ * the contrast, and everything after it belongs to the contrast too: "no
+ * horror, more comedy and thrillers" must not record "no thrillers". LEADING strips "more" because of "don't show me any more
  * horror" — which is only ever the FIRST piece after the opener.
  */
 const CONTRAST = /^(?:more|only|just|lots\s+of|plenty\s+of)\b/
@@ -144,7 +144,7 @@ export function extractDirectivesFromText(text: string): SessionDirective[] {
     // another target of it ("no horror but comedies please").
     const parts = hit.rest.split(/\bbut\b/)[0].split(/\s*(?:,|\bor\b|\band\b)\s*/)
     for (const [i, part] of parts.entries()) {
-      if (i > 0 && CONTRAST.test(part.trim())) continue
+      if (i > 0 && CONTRAST.test(part.trim())) break
       const target = canonicalTarget(part)
       if (!target) continue
       const key = `${hit.kind}:${target.name}`
