@@ -17,6 +17,7 @@ import { groq } from "@ai-sdk/groq";
 import { MODELS, GROQ_TEXT_OPTIONS } from "@/lib/ai-models";
 import { convertToCoreMessages, streamText, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
+import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { boundedTail } from "@/lib/bounded-tail";
@@ -132,6 +133,7 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    logAuthFailure("/api/conversation/message");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const limited = await enforceRateLimit(req, user.id, RATE_LIMIT);

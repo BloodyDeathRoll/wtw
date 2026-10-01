@@ -7,6 +7,7 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
 import { NextResponse } from "next/server";
+import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { MODELS } from "@/lib/ai-models";
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    logAuthFailure("/api/voice/session");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   // Every token is a live Gemini session billed to us; a person opens one,

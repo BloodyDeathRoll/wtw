@@ -182,6 +182,15 @@ Proposals:
 
 Also fixed: the "Why this?" panel in `RecCard.tsx` used to list a rated-down crew member under "Crew in your fingerprint" with a negative bar and a "-60%" score. Rated-down crew now get their own "Crew you've rated down" list, and the crew bar no longer goes below 0. Covered by `tests/component/RecCard-crew.test.tsx`. The card headline ("X is one of your strongest matches") now needs an affinity of at least `STRONG_CREW_AFFINITY` = 0.2 (about two "loved" ratings). Before, any positive score qualified, including a single rating at 0.15, which is the median across live fingerprints. Below the threshold the card falls back to the next reason. Covered by `tests/unit/explanation-crew-threshold.test.ts`.
 
+### 2026-10-01 — swarm audit 2026-09-11 proposals (`fix/swarm-hardening`, stacked on the branch above)
+- `npm audit fix` (no `--force`): 27 → 17 advisories. Every remaining one needs a major bump: `ai` and `@ai-sdk/*` (v4 → v7 rewrites `useChat`; decision pending), `next` 16, `vitest` 5, and `next-pwa`/workbox.
+- `.github/dependabot.yml` (npm and actions, weekly, 7-day cooldown) and a weekly `osv-scan.yml`. The scan fails while any advisory is open, which is intended.
+- Report-only CSP from `src/middleware.ts`: a per-request nonce, which Next stamps on its own scripts, plus hashes for the two static inline scripts in `layout.tsx` (pinned by `tests/unit/csp-inline-hashes.test.ts`). Violations go to `/api/csp-report`. Checked on a production build: 23/23 inline scripts are covered. Switch the header to enforcing once a week of reports is clean.
+- `src/lib/auth-guard.ts`: every 401 (26 sites) logs `[auth] 401 <route>`, and the four `CRON_SECRET` checks compare in constant time.
+- `voice/transcript`: content longer than 4K characters is truncated, and `stage` is checked against the enum.
+- `SECURITY.md`.
+- **Not done: `server-only` on the secret-reading modules.** `scripts/*.mts` (run with tsx) and the vitest suite import those modules, and `server-only` throws outside Next's server bundle. Adding it would break the nightly catalog job.
+
 ### 2026-09-25 — #80 spoken first-run intro and #81 Superset workspaces landed
 
 **#80** (merged 2026-09-20): a brand-new user lands on `IntroVoice`

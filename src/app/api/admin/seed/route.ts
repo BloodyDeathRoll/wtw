@@ -37,15 +37,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized, logAuthFailure } from '@/lib/auth-guard'
 import { discoverAndSeed } from '@/modules/engine/enrichment/fetch-and-cache-title'
 import { runNightlyEnrichment, SERVERLESS_COOLDOWN_CAP_MS } from '@/modules/engine/enrichment/nightly-enrichment'
 
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────
-  const authHeader = req.headers.get('authorization')
-  const secret = process.env.CRON_SECRET
-
-  if (!secret || authHeader !== `Bearer ${secret}`) {
+  if (!isCronAuthorized(req)) {
+    logAuthFailure('/api/admin/seed')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

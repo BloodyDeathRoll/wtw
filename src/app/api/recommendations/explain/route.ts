@@ -19,6 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getCachedRecommendations } from '@/modules/engine'
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    logAuthFailure('/api/recommendations/explain')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

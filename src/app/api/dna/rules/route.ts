@@ -25,6 +25,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { loadDNA, saveDNA, bumpVersion } from '@/modules/dna/lib/load-save'
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
+    logAuthFailure('/api/dna/rules')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const limited = await enforceRateLimit(req, user.id, RATE_LIMIT)
@@ -111,6 +113,7 @@ export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
+    logAuthFailure('/api/dna/rules')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   // Same bound as POST: a removal bumps taste_version and busts the rec cache

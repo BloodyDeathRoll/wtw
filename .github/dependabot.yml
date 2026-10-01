@@ -1,0 +1,19 @@
+# Dependency updates (swarm audit 2026-09-11, RULES C2). npm 11 has no
+# min-release-age, so the 7-day cooldown lives here instead: no update PR for
+# a release younger than a week.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
