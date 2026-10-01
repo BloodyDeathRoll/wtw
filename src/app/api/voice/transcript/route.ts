@@ -18,6 +18,12 @@ export const runtime = "nodejs";
 // longer text is truncated. Unbounded text and an unchecked stage used to go
 // straight into the user's conversation (swarm audit 2026-09-11).
 const MAX_CONTENT = 4 * 1024;
+/** Cut to `max` UTF-16 units without splitting a surrogate pair (an emoji). */
+function truncate(text: string, max: number): string {
+  const end = /[\uD800-\uDBFF]/.test(text[max - 1]) ? max - 1 : max;
+  return text.slice(0, end);
+}
+
 const STAGES: readonly ConversationStage[] = ["onboard", "welcome", "conversation"];
 
 export async function POST(req: Request) {
@@ -51,7 +57,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `${field} must be a string` }, { status: 400 });
     }
     // Truncate rather than reject: a long turn should still be saved.
-    if (typeof v === "string" && v.length > MAX_CONTENT) body[field] = v.slice(0, MAX_CONTENT);
+    if (typeof v === "string" && v.length > MAX_CONTENT) body[field] = truncate(v, MAX_CONTENT);
   }
   if (body.stage != null && !STAGES.includes(body.stage)) {
     return NextResponse.json({ error: "invalid stage" }, { status: 400 });

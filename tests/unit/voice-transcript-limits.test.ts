@@ -26,6 +26,12 @@ describe('voice transcript limits', () => {
     expect(saveMessage).toHaveBeenCalledWith(expect.anything(), 'c1', 'assistant', 'a'.repeat(4096))
   })
 
+  it('does not split an emoji at the cut', async () => {
+    // 4095 chars then a 2-unit emoji: a plain 4096 cut would keep half of it.
+    await post({ conversation_id: 'c1', user_content: 'u'.repeat(4095) + '😀' + 'tail' })
+    expect(saveMessage).toHaveBeenCalledWith(expect.anything(), 'c1', 'user', 'u'.repeat(4095))
+  })
+
   it('leaves a normal turn untouched', async () => {
     await post({ conversation_id: 'c1', user_content: 'something by Varda' })
     expect(saveMessage).toHaveBeenCalledWith(expect.anything(), 'c1', 'user', 'something by Varda')
