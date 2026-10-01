@@ -35,12 +35,16 @@ const GENRES = new Set([
   'soap', 'talk',
 ])
 
-/** What people say, mapped to the genre TMDB files it under. */
+/**
+ * What people say, mapped to the genre TMDB files it under. True synonyms
+ * only: a sub-genre ("superhero", "slasher", "gore", "biography") is a keyword
+ * alias in src/lib/exclusion-rules.ts, because mapping it to its parent wrote
+ * "no superhero movies" as a rule against all of Action.
+ */
 const GENRE_WORDS: Record<string, string> = {
   'sci-fi': 'science fiction', 'scifi': 'science fiction', 'sci fi': 'science fiction',
   'rom-com': 'romance', 'romcom': 'romance', 'rom com': 'romance', 'romantic': 'romance',
-  'musical': 'music', 'animated': 'animation', 'biography': 'history', 'docs': 'documentary',
-  'superhero': 'action', 'slasher': 'horror', 'gore': 'horror', 'scary': 'horror',
+  'musical': 'music', 'animated': 'animation', 'docs': 'documentary', 'scary': 'horror',
 }
 
 /** Absolute: "never", "no more", "stop showing me". */
@@ -67,6 +71,16 @@ const SOFT_OPENERS = [
 const SOFT_WEIGHT = 0.5
 
 const LEADING = /^(?:any|some|another|more|the|a|an|all)\s+/
+
+/**
+ * A later piece of the same sentence that asks for MORE of something starts
+ * the contrast, and everything after it belongs to the contrast too: "no
+ * horror, more comedy and thrillers" must not record "no thrillers".
+ *
+ * LEADING strips "more" because of "don't show me any more horror" — which is
+ * only ever the FIRST piece after the opener.
+ */
+const CONTRAST = /^(?:more|only|just|lots\s+of|plenty\s+of)\b/
 const TRAILING =
   /\s+(?:films?|movies?|shows?|series|tv|stuff|things?|content|anymore|any\s+more|again|please|ever|at\s+all|whatsoever|of\s+any\s+kind)$/
 
@@ -128,7 +142,11 @@ export function extractDirectivesFromText(text: string): SessionDirective[] {
     if (!hit) continue
 
     // "no horror or thrillers, and less romance" — one opener, several targets.
-    for (const part of hit.rest.split(/\s*(?:,|\bor\b|\band\b|\bbut\b)\s*/)) {
+    // Whatever follows a "but" is the exception to the instruction, never
+    // another target of it ("no horror but comedies please").
+    const parts = hit.rest.split(/\bbut\b/)[0].split(/\s*(?:,|\bor\b|\band\b)\s*/)
+    for (const [i, part] of parts.entries()) {
+      if (i > 0 && CONTRAST.test(part.trim())) break
       const target = canonicalTarget(part)
       if (!target) continue
       const key = `${hit.kind}:${target.name}`

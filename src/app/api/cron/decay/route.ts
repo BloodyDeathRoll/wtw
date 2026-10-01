@@ -58,3 +58,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, users_processed: processed, signals_decayed: totalDecayed })
 }
+
+// Vercel Cron invokes its path with GET — it cannot send a POST — and a route
+// with no GET export answers 405, so the schedule in vercel.json never reached
+// the handler above. Same handler, same CRON_SECRET check; POST stays for curl.
+export const GET = POST

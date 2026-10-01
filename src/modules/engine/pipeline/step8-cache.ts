@@ -8,7 +8,7 @@
  * superseded when Assignment 3 increments taste_version after a DNA update.
  * Old versions expire on their own after 6h — no explicit invalidation needed.
  *
- * Co-watch results are cached separately with a room-code key.
+ * Co-watch results are cached separately, keyed by room code AND both members.
  */
 
 import { getRedis } from '@/lib/redis'
@@ -32,12 +32,22 @@ export function recCacheKey(
   return `rec:${userId}:${tasteVersion}:${contentType}`
 }
 
+/**
+ * Both user ids are part of the key, in caller order. A room code is 4 digits
+ * and is recycled as rooms expire (minutes to 2h) while this entry lives 6h,
+ * and taste versions are small integers — so code + versions alone let a later,
+ * unrelated pair be served this pair's results, prose about their taste
+ * included. Caller order matters too: the result is built from user A's side
+ * (score_user_a, reason_payload), so the guest must not be handed the host's.
+ */
 export function cowatchCacheKey(
   roomCode: string,
+  userIdA: string,
   tasteVersionA: number,
+  userIdB: string,
   tasteVersionB: number
 ): string {
-  return `cowatch:${roomCode}:${tasteVersionA}:${tasteVersionB}`
+  return `cowatch:${roomCode}:${userIdA}:${tasteVersionA}:${userIdB}:${tasteVersionB}`
 }
 
 export async function getCachedRecommendations(
@@ -61,22 +71,28 @@ export async function cacheRecommendations(
 
 export async function getCachedCowatch(
   roomCode: string,
+  userIdA: string,
   tasteVersionA: number,
+  userIdB: string,
   tasteVersionB: number
 ): Promise<CowatchResult[] | null> {
   const redis = getRedis()
-  return redis.get<CowatchResult[]>(cowatchCacheKey(roomCode, tasteVersionA, tasteVersionB))
+  return redis.get<CowatchResult[]>(
+    cowatchCacheKey(roomCode, userIdA, tasteVersionA, userIdB, tasteVersionB)
+  )
 }
 
 export async function cacheCowatchResults(
   roomCode: string,
+  userIdA: string,
   tasteVersionA: number,
+  userIdB: string,
   tasteVersionB: number,
   results: CowatchResult[]
 ): Promise<void> {
   const redis = getRedis()
   await redis.set(
-    cowatchCacheKey(roomCode, tasteVersionA, tasteVersionB),
+    cowatchCacheKey(roomCode, userIdA, tasteVersionA, userIdB, tasteVersionB),
     results,
     { ex: TTL_SECONDS }
   )

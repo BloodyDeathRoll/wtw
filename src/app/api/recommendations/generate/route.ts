@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   MOCK_RECOMMENDATIONS,
@@ -416,6 +417,11 @@ export async function GET(req: Request) {
   });
 }
 
+// Each POST can spend a Mistral call on the shared free-tier key, and a
+// session_override_active body skips the cache (dream review 2026-09-30); the
+// window is generous for a real user.
+const RATE_LIMIT = { scope: "recommendations-generate", perUser: 20, windowSec: 10 * 60 };
+
 // ── POST: full engine pipeline (Assignment 2) ─────────────────
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -427,6 +433,8 @@ export async function POST(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = await enforceRateLimit(req, user.id, RATE_LIMIT);
+  if (limited) return limited;
 
   let session_context: SessionContext | undefined;
   // Which list to warm. Batches are cached per content type, so a warm-up

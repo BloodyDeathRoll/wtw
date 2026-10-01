@@ -18,6 +18,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { enforceRateLimit } from '@/lib/rate-limit'
 import { createServiceClient } from '@/lib/supabase/service'
 import { endConversation } from '@/lib/conversations'
 import { startTimer } from '@/lib/timing'
@@ -36,6 +37,10 @@ import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
 
+// Each call can spend a Mistral call on the shared free-tier key (dream
+// review 2026-09-30); the window is generous for a real user.
+const RATE_LIMIT = { scope: 'session-end', perUser: 20, windowSec: 10 * 60 }
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const {
@@ -45,6 +50,8 @@ export async function POST(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const limited = await enforceRateLimit(req, user.id, RATE_LIMIT)
+  if (limited) return limited
 
   const body = await req.json().catch(() => ({}))
   const conversationId: string | undefined = body.conversation_id

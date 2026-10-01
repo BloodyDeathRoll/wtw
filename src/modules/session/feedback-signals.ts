@@ -80,7 +80,9 @@ export async function foldRatedHistoryIntoSummary(
       dimensions_contradicted: [],
       confidence: 0.75, // explicit click on a shown rec — solid signal
       flag: null,
-      watched_at: null,
+      // The rating time is the clock temporal decay ages (CLAUDE.md:
+      // ratings older than 18 months weigh 50%). null skipped decay forever.
+      watched_at: new Date().toISOString(),
     }
     summary.new_signals.push(signal)
     signaledKeys.add(titleKey(t.type, h.tmdb_id))
