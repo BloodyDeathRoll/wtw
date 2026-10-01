@@ -133,7 +133,7 @@ export async function getUserEmbedding(
   // or the row is from an earlier taste_version.
   const text = strandBToEmbeddingText(strandB, strandC)
   const { embedding } = await embed({
-    model: mistral().textEmbeddingModel(MODELS.embedding),
+    model: mistral().embeddingModel(MODELS.embedding),
     value: text,
   })
 

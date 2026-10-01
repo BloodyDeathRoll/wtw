@@ -60,7 +60,7 @@ describe('the route wires the trim up', () => {
   it('sends the trimmed history to the model, not the raw array', () => {
     const src = readFileSync(ROUTE, 'utf8')
     expect(src).toContain('const history = boundedTail(messages, messageText, MAX_MESSAGES, MAX_HISTORY_CHARS)')
-    expect(src).toContain('convertToCoreMessages(history)')
+    expect(src).toContain('convertToModelMessages(history.map(toPartsMessage))')
   })
 
   it('still declares both cost bounds', () => {

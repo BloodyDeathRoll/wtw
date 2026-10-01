@@ -61,7 +61,7 @@ export async function regenerateEmbedding(
 
   // ── Changed (or never embedded) → Mistral ─────────────────
   const { embedding } = await embed({
-    model: getMistral().textEmbeddingModel(MODELS.embedding),
+    model: getMistral().embeddingModel(MODELS.embedding),
     value: text,
   })
 
