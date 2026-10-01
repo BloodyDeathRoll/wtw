@@ -15,7 +15,13 @@
 
 import { groq } from "@ai-sdk/groq";
 import { MODELS, GROQ_TEXT_OPTIONS } from "@/lib/ai-models";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from "ai";
 import { NextResponse } from "next/server";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
@@ -240,5 +246,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toUIMessageStreamResponse();
+  return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
 }

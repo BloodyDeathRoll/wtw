@@ -20,7 +20,7 @@
  * not the same session and must not produce the same summary.
  */
 
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { z } from 'zod'
 import { MODELS } from '@/lib/ai-models'
@@ -184,9 +184,9 @@ export async function analyzeSession(
   // decides what to do with the rest of the session; it must not be told the
   // transcript was empty.
   const mistral = createMistral({ apiKey: process.env.MISTRAL_API_KEY })
-  const { object: extracted } = await generateObject({
+  const { output: extracted } = await generateText({
     model: mistral(MODELS.structured),
-    schema: extractionSchema,
+    output: Output.object({ schema: extractionSchema }),
     instructions: SYSTEM_PROMPT,
     prompt: transcript,
     temperature: 0.2,

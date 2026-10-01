@@ -18,7 +18,7 @@ tests/
 ├── mocks/                # shared test doubles for external services
 │   ├── redis.ts          #   createFakeRedis()   — in-memory Upstash stand-in
 │   ├── supabase.ts       #   createFakeSupabase() — chainable query builder
-│   ├── ai.ts             #   makeAiMock()         — generateText/generateObject
+│   ├── ai.ts             #   makeAiMock()         — generateText (text + structured output)
 │   └── index.ts          #   import { … } from '../mocks'
 ├── unit/                 # pure logic — node-fast, no DOM (scoring, DNA, lib)
 └── component/            # React components (jsdom + RTL)

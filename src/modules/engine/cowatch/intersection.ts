@@ -14,7 +14,7 @@ import { getCandidates }       from '../pipeline/step1-candidate-gen'
 import { scoreCandidates }     from '../pipeline/step2-composite-score'
 import { applySoftModifiers }  from '../pipeline/step3-soft-modifiers'
 import { buildReasonPayloads } from '../pipeline/step6-reason-payload'
-import { generateObject }      from 'ai'
+import { generateText, Output }      from 'ai'
 import { createMistral }       from '@ai-sdk/mistral'
 import { MODELS }              from '@/lib/ai-models'
 import { z }                   from 'zod'
@@ -119,14 +119,14 @@ ${titleList}
 
 For each title, write 2-3 sentences on why it works for BOTH viewers. Be specific about what each person will appreciate.`
 
-  const { object } = await generateObject({
+  const { output } = await generateText({
     model: mistral()(MODELS.structured),
-    schema: cowatchExplanationSchema,
+    output: Output.object({ schema: cowatchExplanationSchema }),
     prompt,
   })
 
   const explanationMap = new Map(
-    object.explanations.map(e => [e.tmdb_id, e.cowatch_explanation])
+    output.explanations.map(e => [e.tmdb_id, e.cowatch_explanation])
   )
 
   const now = new Date().toISOString()

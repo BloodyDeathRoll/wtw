@@ -31,7 +31,7 @@ export const GROQ_TEXT_OPTIONS = { groq: { reasoningFormat: 'hidden' } } as cons
 export const MODELS = {
   /** Groq — free-form TEXT generation only: `generateText` / `streamText`
    *  (chat, welcome greeting, DNA summary, dimension notes). Do NOT use
-   *  this with `generateObject` (see `structured` below). Was
+   *  this for structured output (see `structured` below). Was
    *  `llama-3.3-70b-versatile` (Groq free-tier shutdown 2026-08-16).
    *
    *  ⚠️ It is a REASONING model, and every call site must pass
@@ -42,11 +42,11 @@ export const MODELS = {
    *  returned text"; it is not, unless the reasoning is separated out. */
   text: 'openai/gpt-oss-120b',
 
-  /** STRUCTURED output via `generateObject` on the low-volume, latency-sensitive
+  /** STRUCTURED output (`generateText` + `Output.object`) on the low-volume, latency-sensitive
    *  paths: engine rerank / explanation / co-watch, and session transcript
    *  analysis. MUST be NON-reasoning — reasoning models (Groq gpt-oss-*, qwen3.6)
    *  spend their budget on a `reasoning` trace and often return empty `content`,
-   *  which `generateObject` can't parse. Measured 2026-07-09: gpt-oss-120b fails
+   *  which structured output can't parse. Measured 2026-07-09: gpt-oss-120b fails
    *  ~1/6 on complex schemas (e.g. analyze-session) and these sites sit in the
    *  rec pipeline with no try/catch → one failure zeroes out generateRecommendations
    *  → GET keeps serving mocks. Mistral is reliable here. Kept separate from
@@ -57,7 +57,7 @@ export const MODELS = {
   structured: 'ministral-8b-latest',
 
   /** BULK structured enrichment (narrative extraction + lineage graphs) via
-   *  generateObject. Same NON-reasoning requirement as `structured`, but kept a
+   *  structured output. Same NON-reasoning requirement as `structured`, but kept a
    *  distinct key because it is HIGH-VOLUME + rate-sensitive and may diverge
    *  (e.g. move to a paid fast model) independently of the live-path sites.
    *  Mistral free tier measured live at 50K TPM / 50 req-min, no daily wall (vs

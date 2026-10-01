@@ -18,7 +18,7 @@
  * Lineage traversal is 2 degrees, weight halved per degree.
  */
 
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
 import { batchMistralApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
@@ -121,9 +121,9 @@ If you are uncertain about a connection, omit it rather than speculate.
 Focus on directors, writers, and cinematographers — not studios or movements.`
 
   recordMistralCall()
-  const { object: lineage } = await generateObject({
+  const { output: lineage } = await generateText({
     model: mistral()(MODELS.enrichment),
-    schema: lineageSchema,
+    output: Output.object({ schema: lineageSchema }),
     prompt,
     maxRetries: BATCH_MAX_RETRIES,
   })
