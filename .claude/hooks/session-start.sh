@@ -45,16 +45,19 @@ PULL_SKIPPED=""
 # Every git call that can wait on something (network, a GPG passphrase for a
 # signed merge commit) is time-boxed; a timed-out merge is rolled back.
 abort_merge() { git merge --abort 2>/dev/null || true; }
-if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+# A shallow clone has no merge base to compare or merge against, so its one
+# fetch also pulls the full history.
+FETCH_DEPTH=""
+[ "$(git rev-parse --is-shallow-repository)" = "true" ] && FETCH_DEPTH="--unshallow"
+if [ -n "${GITHUB_ACTIONS:-}" ]; then
+  # A CI agent (e.g. the PR reviewer) must see the checkout exactly as given.
+  echo "[session-start] GitHub Actions — not pulling main"
+elif [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   PULL_SKIPPED="uncommitted changes on $BRANCH"
 elif [ "$BRANCH" = "HEAD" ]; then
   # A merge here would make a commit no branch points at.
   PULL_SKIPPED="detached HEAD (no branch checked out)"
-elif [ "$(git rev-parse --is-shallow-repository)" = "true" ] \
-  && ! timeout 120 git fetch -q --unshallow origin; then
-  # A shallow clone has no merge base to compare or merge against.
-  PULL_SKIPPED="shallow clone and could not fetch full history"
-elif ! timeout 30 git fetch -q origin main; then
+elif ! timeout 120 git fetch -q $FETCH_DEPTH origin main; then
   PULL_SKIPPED="could not fetch origin/main"
 elif git merge-base --is-ancestor origin/main HEAD; then
   echo "[session-start] $BRANCH already contains origin/main"
