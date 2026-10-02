@@ -1,5 +1,5 @@
 #!/bin/bash
-# SessionStart hook for Claude Code on the web.
+# SessionStart hook for every Claude Code session in this repo.
 #
 # Why this exists:
 # A web session starts from a fresh clone with no node_modules, so `npm run
@@ -7,15 +7,78 @@
 # installed. This installs them once per container so the session can run the
 # same three checks CI runs (.github/workflows/ci.yml) before pushing.
 #
-# Local (VS Code / terminal) sessions are left alone — you manage node_modules
-# yourself there.
+# Local (VS Code / terminal) sessions only get the main pull below — you manage
+# node_modules yourself there.
 set -euo pipefail
+
+cd "${CLAUDE_PROJECT_DIR:-$(pwd)}"
+
+# Hook stdout must be the JSON below and nothing else, so every log line goes to
+# stderr; fd 3 keeps the real stdout for the JSON.
+exec 3>&1 1>&2
+
+# ── Pull main, every session (local and web) ───────────────────────────────
+# Start from the latest main. Skipped on a dirty tree, a failed fetch, a
+# diverged local main or a conflicting merge (aborted). Never fails the session,
+# but a skip is NOT silent: it is shown to the user and Claude is told to raise
+# it before anything else.
+# Starts as a failure so an early exit (set -e) still warns; cleared on success.
+PULL_SKIPPED="the hook stopped before the pull finished"
+emit_result() {
+  [ -n "$PULL_SKIPPED" ] || return 0
+  PULL_SKIPPED="$PULL_SKIPPED" node -e '
+    const why = process.env.PULL_SKIPPED
+    const msg = `main was NOT pulled this session: ${why}. You may be working on stale code.`
+    console.log(JSON.stringify({
+      systemMessage: `⚠️ ${msg}`,
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: `${msg} Before doing anything else, start your first reply by telling the user this in one line and ask them to confirm they have read it. Do not start the task until they confirm.`,
+      },
+    }))' >&3
+}
+# Registered before any git call, so a set -e exit mid-pull still warns.
+trap emit_result EXIT
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+PULL_SKIPPED=""
+# Every git call that can wait on something (network, a GPG passphrase for a
+# signed merge commit) is time-boxed; a timed-out merge is rolled back.
+abort_merge() { git merge --abort 2>/dev/null || true; }
+# A shallow clone has no merge base to compare or merge against, so its one
+# fetch also pulls the full history.
+FETCH_DEPTH="" FETCH_TIMEOUT=30
+if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+  FETCH_DEPTH="--unshallow" FETCH_TIMEOUT=120
+fi
+if [ -n "${GITHUB_ACTIONS:-}" ]; then
+  # A CI agent (e.g. the PR reviewer) must see the checkout exactly as given.
+  echo "[session-start] GitHub Actions — not pulling main"
+elif [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+  PULL_SKIPPED="uncommitted changes on $BRANCH"
+elif [ "$BRANCH" = "HEAD" ]; then
+  # A merge here would make a commit no branch points at.
+  PULL_SKIPPED="detached HEAD (no branch checked out)"
+elif ! timeout "$FETCH_TIMEOUT" git fetch -q $FETCH_DEPTH origin main; then
+  PULL_SKIPPED="could not fetch origin/main"
+elif git merge-base --is-ancestor origin/main HEAD; then
+  echo "[session-start] $BRANCH already contains origin/main"
+elif [ "$BRANCH" = "main" ]; then
+  if timeout 30 git merge -q --ff-only origin/main; then
+    echo "[session-start] main fast-forwarded to origin/main"
+  else
+    PULL_SKIPPED="local main has diverged from origin/main"
+  fi
+elif timeout 30 git merge -q --no-edit origin/main; then
+  echo "[session-start] merged origin/main into $BRANCH"
+else
+  abort_merge
+  PULL_SKIPPED="could not merge origin/main into $BRANCH (conflict or timeout; merge aborted)"
+fi
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
-
-cd "${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
 echo "[session-start] node $(node --version), npm $(npm --version)"
 
