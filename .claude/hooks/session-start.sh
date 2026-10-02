@@ -22,8 +22,26 @@ exec 3>&1 1>&2
 # diverged local main or a conflicting merge (aborted). Never fails the session,
 # but a skip is NOT silent: it is shown to the user and Claude is told to raise
 # it before anything else.
-PULL_SKIPPED=""
+# Starts as a failure so an early exit (set -e) still warns; cleared on success.
+PULL_SKIPPED="the hook stopped before the pull finished"
+emit_result() {
+  [ -n "$PULL_SKIPPED" ] || return 0
+  PULL_SKIPPED="$PULL_SKIPPED" node -e '
+    const why = process.env.PULL_SKIPPED
+    const msg = `main was NOT pulled this session: ${why}. You may be working on stale code.`
+    console.log(JSON.stringify({
+      systemMessage: `⚠️ ${msg}`,
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: `${msg} Before doing anything else, start your first reply by telling the user this in one line and ask them to confirm they have read it. Do not start the task until they confirm.`,
+      },
+    }))' >&3
+}
+# Registered before any git call, so a set -e exit mid-pull still warns.
+trap emit_result EXIT
+
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+PULL_SKIPPED=""
 # Every git call that can wait on something (network, a GPG passphrase for a
 # signed merge commit) is time-boxed; a timed-out merge is rolled back.
 abort_merge() { git merge --abort 2>/dev/null || true; }
@@ -48,21 +66,6 @@ else
   abort_merge
   PULL_SKIPPED="could not merge origin/main into $BRANCH (conflict or timeout; merge aborted)"
 fi
-
-emit_result() {
-  [ -n "$PULL_SKIPPED" ] || return 0
-  PULL_SKIPPED="$PULL_SKIPPED" node -e '
-    const why = process.env.PULL_SKIPPED
-    const msg = `main was NOT pulled this session: ${why}. You may be working on stale code.`
-    console.log(JSON.stringify({
-      systemMessage: `⚠️ ${msg}`,
-      hookSpecificOutput: {
-        hookEventName: "SessionStart",
-        additionalContext: `${msg} Before doing anything else, start your first reply by telling the user this in one line and ask them to confirm they have read it. Do not start the task until they confirm.`,
-      },
-    }))' >&3
-}
-trap emit_result EXIT
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
