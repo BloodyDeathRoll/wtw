@@ -102,4 +102,14 @@ describe('updateSchemaFromStretch', () => {
     expect(dbState.updates).toHaveLength(1)
     expect(saved().metadata.taste_version).toBe(10)
   })
+
+  it('warns when every compare-and-set attempt loses, since nothing re-applies the boost', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Another writer lands after every read, so no save can ever match.
+    dbState.onRead = () => { dbState.casValue += "'" }
+    await updateSchemaFromStretch('u1', '42', 'loved', 'movie')
+    expect(dbState.updates).toHaveLength(0)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[stretch]'), '42')
+    warn.mockRestore()
+  })
 })
