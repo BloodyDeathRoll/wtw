@@ -13,7 +13,7 @@ export async function updateSchemaFromStretch(
   // Compare-and-set, like the feedback route's other writers: this runs right
   // after mergeFeedbackSignalsLight and can race the batch refresh's after()
   // write, which a blind save would silently revert.
-  await withDNAUpdate(user_id, dna => {
+  const outcome = await withDNAUpdate(user_id, dna => {
     // 1. If loved/liked → the "stretched" dimensions may be an emerging preference.
     //    Boost their confidence so the engine explores that direction more.
     const record = dna.learning_loop.stretch_pick_history.find(s => s.tmdb_id === tmdb_id)
@@ -38,4 +38,7 @@ export async function updateSchemaFromStretch(
     bumpVersion(dna)
     return true
   })
+  // No backstop re-applies a lost boost (unlike the crew merge, which the
+  // session-end fold catches), so a conflict must at least be visible.
+  if (outcome === 'conflict') console.warn('[stretch] boost conflicted twice; dropped for', tmdb_id)
 }
