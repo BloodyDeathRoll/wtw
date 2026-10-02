@@ -1,5 +1,5 @@
 #!/bin/bash
-# SessionStart hook for Claude Code on the web.
+# SessionStart hook for every Claude Code session in this repo.
 #
 # Why this exists:
 # A web session starts from a fresh clone with no node_modules, so `npm run
@@ -7,15 +7,58 @@
 # installed. This installs them once per container so the session can run the
 # same three checks CI runs (.github/workflows/ci.yml) before pushing.
 #
-# Local (VS Code / terminal) sessions are left alone — you manage node_modules
-# yourself there.
+# Local (VS Code / terminal) sessions only get the main pull below — you manage
+# node_modules yourself there.
 set -euo pipefail
+
+cd "${CLAUDE_PROJECT_DIR:-$(pwd)}"
+
+# Hook stdout must be the JSON below and nothing else, so every log line goes to
+# stderr; fd 3 keeps the real stdout for the JSON.
+exec 3>&1 1>&2
+
+# ── Pull main, every session (local and web) ───────────────────────────────
+# Start from the latest main. Skipped on a dirty tree, a failed fetch, a
+# diverged local main or a conflicting merge (aborted). Never fails the session,
+# but a skip is NOT silent: it is shown to the user and Claude is told to raise
+# it before anything else.
+PULL_SKIPPED=""
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+  PULL_SKIPPED="uncommitted changes on $BRANCH"
+elif ! timeout 30 git fetch -q origin main; then
+  PULL_SKIPPED="could not fetch origin/main"
+elif [ "$BRANCH" = "main" ]; then
+  if git merge -q --ff-only origin/main; then
+    echo "[session-start] main is up to date with origin/main"
+  else
+    PULL_SKIPPED="local main has diverged from origin/main"
+  fi
+elif git merge -q --no-edit origin/main; then
+  echo "[session-start] merged origin/main into $BRANCH"
+else
+  git merge --abort || true
+  PULL_SKIPPED="origin/main conflicts with $BRANCH (merge aborted)"
+fi
+
+emit_result() {
+  [ -n "$PULL_SKIPPED" ] || return 0
+  PULL_SKIPPED="$PULL_SKIPPED" node -e '
+    const why = process.env.PULL_SKIPPED
+    const msg = `main was NOT pulled this session: ${why}. You may be working on stale code.`
+    console.log(JSON.stringify({
+      systemMessage: `⚠️ ${msg}`,
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: `${msg} Before doing anything else, start your first reply by telling the user this in one line and ask them to confirm they have read it. Do not start the task until they confirm.`,
+      },
+    }))' >&3
+}
+trap emit_result EXIT
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
-
-cd "${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
 echo "[session-start] node $(node --version), npm $(npm --version)"
 
