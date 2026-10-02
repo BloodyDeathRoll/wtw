@@ -47,8 +47,10 @@ PULL_SKIPPED=""
 abort_merge() { git merge --abort 2>/dev/null || true; }
 # A shallow clone has no merge base to compare or merge against, so its one
 # fetch also pulls the full history.
-FETCH_DEPTH=""
-[ "$(git rev-parse --is-shallow-repository)" = "true" ] && FETCH_DEPTH="--unshallow"
+FETCH_DEPTH="" FETCH_TIMEOUT=30
+if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+  FETCH_DEPTH="--unshallow" FETCH_TIMEOUT=120
+fi
 if [ -n "${GITHUB_ACTIONS:-}" ]; then
   # A CI agent (e.g. the PR reviewer) must see the checkout exactly as given.
   echo "[session-start] GitHub Actions — not pulling main"
@@ -57,7 +59,7 @@ elif [ -n "$(git status --porcelain 2>/dev/null)" ]; then
 elif [ "$BRANCH" = "HEAD" ]; then
   # A merge here would make a commit no branch points at.
   PULL_SKIPPED="detached HEAD (no branch checked out)"
-elif ! timeout 120 git fetch -q $FETCH_DEPTH origin main; then
+elif ! timeout "$FETCH_TIMEOUT" git fetch -q $FETCH_DEPTH origin main; then
   PULL_SKIPPED="could not fetch origin/main"
 elif git merge-base --is-ancestor origin/main HEAD; then
   echo "[session-start] $BRANCH already contains origin/main"
