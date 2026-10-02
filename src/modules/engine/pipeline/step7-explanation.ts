@@ -15,7 +15,7 @@
  *   reservation: you tend to rate slow second acts lower, and this has one."
  */
 
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
@@ -229,9 +229,9 @@ Return explanations for all ${items.length} titles.`
   // Every item already has a fallback (reason_payload.groq_rationale), so on
   // any LLM/validation error we just ship this chunk without LLM blurbs.
   try {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: mistral()(MODELS.structured),
-      schema: explanationSchema,
+      output: Output.object({ schema: explanationSchema }),
       prompt,
     })
     // Normalise whatever the model echoed to the composite key. It often
@@ -244,7 +244,7 @@ Return explanations for all ${items.length} titles.`
       bareToKey.set(item.tmdb_id, bareToKey.has(item.tmdb_id) ? null : `${item.type}:${item.tmdb_id}`)
     }
     const out = new Map<string, string>()
-    for (const e of object.explanations) {
+    for (const e of output.explanations) {
       const echoed = e.tmdb_id.trim().replace(/^\[|\]$/g, '')
       const key = /^(movie|tv):/.test(echoed) ? echoed : bareToKey.get(echoed) ?? null
       if (key) out.set(key, e.explanation)

@@ -15,7 +15,13 @@
 
 import { groq } from "@ai-sdk/groq";
 import { MODELS, GROQ_TEXT_OPTIONS } from "@/lib/ai-models";
-import { convertToCoreMessages, streamText, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from "ai";
 import { NextResponse } from "next/server";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
@@ -81,8 +87,15 @@ nothing was written is how a user ended up asking for the same thing across
 five sessions. Never promise to "keep it in mind" either.`;
 
 function messageText(m: UIMessage): string {
-  if (typeof m.content === "string") return m.content;
+  // A tab still running the pre-v7 bundle during a deploy sends `content`.
+  const legacy = (m as { content?: unknown }).content;
+  if (typeof legacy === "string") return legacy;
   return m.parts?.map((p) => (p.type === "text" ? p.text : "")).join("") ?? "";
+}
+
+/** The parts-only shape convertToModelMessages reads, whatever the client sent. */
+function toPartsMessage(m: UIMessage): UIMessage {
+  return { id: m.id, role: m.role, parts: [{ type: "text", text: messageText(m) }] };
 }
 
 /**
@@ -220,10 +233,10 @@ export async function POST(req: Request) {
   const result = streamText({
     model: groq(MODELS.text),
     providerOptions: GROQ_TEXT_OPTIONS,
-    system: SYSTEM_PROMPT + dnaContext + recordedContext(recorded),
-    messages: convertToCoreMessages(history),
-    maxTokens: MAX_REPLY_TOKENS,
-    onFinish: async ({ text }) => {
+    instructions: SYSTEM_PROMPT + dnaContext + recordedContext(recorded),
+    messages: await convertToModelMessages(history.map(toPartsMessage)),
+    maxOutputTokens: MAX_REPLY_TOKENS,
+    onEnd: async ({ text }) => {
       if (!text) return;
       try {
         await saveMessage(supabase, conversationId, "assistant", text);
@@ -233,5 +246,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toDataStreamResponse();
+  return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) });
 }

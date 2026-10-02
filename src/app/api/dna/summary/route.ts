@@ -86,13 +86,13 @@ Write a 2-3 sentence plain-English taste summary for this user.`
       const { text } = await generateText({
         model: getGroq()(MODELS.text),
         providerOptions: GROQ_TEXT_OPTIONS,
-        system: systemPrompt,
+        instructions: systemPrompt,
         prompt: userPrompt,
         temperature: 0.4,
         // Budgets the reasoning trace as well as the answer: MODELS.text is a
         // reasoning model and the trace is billed here first. At 150 the
         // summary risked coming back empty or cut off (see ai-models.ts).
-        maxTokens: 1000,
+        maxOutputTokens: 1000,
       })
       summary = text.trim()
     }

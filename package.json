@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "next dev --turbopack",
@@ -24,14 +24,15 @@
     "generate-icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
-    "@ai-sdk/groq": "^1",
-    "@ai-sdk/mistral": "^1",
+    "@ai-sdk/groq": "^4.0.54",
+    "@ai-sdk/mistral": "^4.0.56",
+    "@ai-sdk/react": "^4.0.129",
     "@ducanh2912/next-pwa": "^10",
     "@google/genai": "^2.6.0",
     "@supabase/ssr": "^0.6",
     "@supabase/supabase-js": "^2",
     "@upstash/redis": "^1",
-    "ai": "^4",
+    "ai": "^7.0.126",
     "class-variance-authority": "^0.7",
     "clsx": "^2",
     "framer-motion": "^12",
@@ -39,7 +40,8 @@
     "next": "^15.5.24",
     "react": "^19",
     "react-dom": "^19",
-    "tailwind-merge": "^2"
+    "tailwind-merge": "^2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",

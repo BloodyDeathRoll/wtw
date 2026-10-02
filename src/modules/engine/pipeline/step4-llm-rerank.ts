@@ -18,7 +18,7 @@
  * the top of the batch on tonal resonance alone.
  */
 
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
 import { z } from 'zod'
@@ -181,12 +181,12 @@ Return ALL ${top50.length} bracketed ids in your preferred order. Ids only — n
   // only refines it. On any LLM/validation error, fall back to that order.
   let ranked: string[]
   try {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: mistral()(MODELS.structured),
-      schema: rerankSchema,
+      output: Output.object({ schema: rerankSchema }),
       prompt,
     })
-    ranked = object.ranked
+    ranked = output.ranked
   } catch (err) {
     console.warn('[rerank] LLM rerank failed — falling back to composite order:', err instanceof Error ? err.message : err)
     return top50.map(item => ({ ...item, groq_rationale: '' }))

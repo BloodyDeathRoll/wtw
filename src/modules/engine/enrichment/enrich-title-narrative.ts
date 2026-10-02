@@ -15,7 +15,7 @@
  * This ensures cosine similarity is meaningful.
  */
 
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { embed } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
@@ -222,13 +222,13 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
   let extracted: z.infer<typeof narrativeSchema>
   try {
     recordMistralCall()
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: mistral()(MODELS.enrichment),
-      schema: narrativeSchema,
+      output: Output.object({ schema: narrativeSchema }),
       prompt,
       maxRetries: BATCH_MAX_RETRIES,
     })
-    extracted = object
+    extracted = output
   } catch (err) {
     const e = err as Error & { text?: unknown }
     if (typeof e.text !== 'string') throw err
@@ -259,7 +259,7 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
 
   recordMistralCall()
   const { embedding } = await embed({
-    model: mistral().textEmbeddingModel(MODELS.embedding),
+    model: mistral().embeddingModel(MODELS.embedding),
     value: embeddingText,
     maxRetries: BATCH_MAX_RETRIES,
   })

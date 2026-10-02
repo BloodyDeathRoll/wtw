@@ -26,10 +26,10 @@ describe('mock layer', () => {
   })
 
   it('ai mock can force success or failure', async () => {
-    const ok = makeAiMock({ object: { ranked: [] } })
-    expect((await ok.generateObject()).object).toEqual({ ranked: [] })
+    const ok = makeAiMock({ output: { ranked: [] } })
+    expect((await ok.generateText()).output).toEqual({ ranked: [] })
 
     const bad = makeAiMock({ throws: new Error('429 rate limit') })
-    await expect(bad.generateObject()).rejects.toThrow('429')
+    await expect(bad.generateText()).rejects.toThrow('429')
   })
 })

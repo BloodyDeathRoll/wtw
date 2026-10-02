@@ -67,12 +67,12 @@ ${dimensionDescriptions}`
   const { text } = await generateText({
     model: getGroq()(MODELS.text),
     providerOptions: GROQ_TEXT_OPTIONS,
-    system: systemPrompt,
+    instructions: systemPrompt,
     prompt: userPrompt,
     temperature: 0.3,
     // Budgets the reasoning trace as well as the notes themselves — see the
     // GROQ_TEXT_OPTIONS note in ai-models.ts.
-    maxTokens: 1200,
+    maxOutputTokens: 1200,
   })
 
   // Parse and apply — malformed JSON is silently ignored
