@@ -24,21 +24,29 @@ exec 3>&1 1>&2
 # it before anything else.
 PULL_SKIPPED=""
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+# Every git call that can wait on something (network, a GPG passphrase for a
+# signed merge commit) is time-boxed; a timed-out merge is rolled back.
+abort_merge() { git merge --abort 2>/dev/null || true; }
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   PULL_SKIPPED="uncommitted changes on $BRANCH"
+elif [ "$BRANCH" = "HEAD" ]; then
+  # A merge here would make a commit no branch points at.
+  PULL_SKIPPED="detached HEAD (no branch checked out)"
 elif ! timeout 30 git fetch -q origin main; then
   PULL_SKIPPED="could not fetch origin/main"
+elif git merge-base --is-ancestor origin/main HEAD; then
+  echo "[session-start] $BRANCH already contains origin/main"
 elif [ "$BRANCH" = "main" ]; then
-  if git merge -q --ff-only origin/main; then
-    echo "[session-start] main is up to date with origin/main"
+  if timeout 30 git merge -q --ff-only origin/main; then
+    echo "[session-start] main fast-forwarded to origin/main"
   else
     PULL_SKIPPED="local main has diverged from origin/main"
   fi
-elif git merge -q --no-edit origin/main; then
+elif timeout 30 git merge -q --no-edit origin/main; then
   echo "[session-start] merged origin/main into $BRANCH"
 else
-  git merge --abort || true
-  PULL_SKIPPED="origin/main conflicts with $BRANCH (merge aborted)"
+  abort_merge
+  PULL_SKIPPED="could not merge origin/main into $BRANCH (conflict or timeout; merge aborted)"
 fi
 
 emit_result() {
