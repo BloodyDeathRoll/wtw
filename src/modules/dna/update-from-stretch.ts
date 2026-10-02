@@ -1,23 +1,24 @@
 import type { Reaction } from '@/types/dna'
 import type { MediaType } from '@/lib/title-key'
-import { loadDNA, saveDNA, fetchTitleCrew, pickTitle, bumpVersion } from './lib/load-save'
-import { applyCrewAffinityUpdate } from './lib/update-crew'
+import { withDNAUpdate, bumpVersion } from './lib/load-save'
 import { clamp } from './lib/reaction-score'
 
 export async function updateSchemaFromStretch(
   user_id: string,
   tmdb_id: string,
   reaction: Reaction,
-  // Movie and TV ids collide — pass the type when known (the feedback route
-  // has it); without it we only act when the id is unambiguous.
-  type?: MediaType | null,
+  // Kept for the caller's contract; the crew half no longer needs it.
+  _type?: MediaType | null,
 ): Promise<void> {
-  const dna = await loadDNA(user_id)
+  // Compare-and-set, like the feedback route's other writers: this runs right
+  // after mergeFeedbackSignalsLight and can race the batch refresh's after()
+  // write, which a blind save would silently revert.
+  const outcome = await withDNAUpdate(user_id, dna => {
+    // 1. If loved/liked → the "stretched" dimensions may be an emerging preference.
+    //    Boost their confidence so the engine explores that direction more.
+    const record = dna.learning_loop.stretch_pick_history.find(s => s.tmdb_id === tmdb_id)
+    if (!record || (reaction !== 'loved' && reaction !== 'liked')) return false
 
-  // 1. If loved/liked → the "stretched" dimensions may be an emerging preference.
-  //    Boost their confidence so the engine explores that direction more.
-  const record = dna.learning_loop.stretch_pick_history.find(s => s.tmdb_id === tmdb_id)
-  if (record && (reaction === 'loved' || reaction === 'liked')) {
     const boost = reaction === 'loved' ? 0.08 : 0.04
     for (const dim of record.dimensions_stretched) {
       const key = dim as keyof typeof dna.strand_b_narrative_dimensions
@@ -28,15 +29,16 @@ export async function updateSchemaFromStretch(
         )
       }
     }
-  }
 
-  // 2. Apply crew affinity update (same weight as a normal watched signal)
-  const titleMap = await fetchTitleCrew([tmdb_id])
-  const title = pickTitle(titleMap, tmdb_id, type)
-  if (title) {
-    applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, reaction)
-  }
+    // 2. No crew update here: the feedback route's mergeFeedbackSignalsLight has
+    //    already folded this rating into strand A as a normal signal (and the
+    //    session-end fold dedups against it). Applying it again counted every
+    //    rated stretch pick's crew twice.
 
-  bumpVersion(dna)
-  await saveDNA(user_id, dna)
+    bumpVersion(dna)
+    return true
+  })
+  // No backstop re-applies a lost boost (unlike the crew merge, which the
+  // session-end fold catches), so a conflict must at least be visible.
+  if (outcome === 'conflict') console.warn('[stretch] boost conflicted twice; dropped for', tmdb_id)
 }
