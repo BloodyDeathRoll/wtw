@@ -24,7 +24,13 @@ export function applyCrewAffinityUpdate(
   ]
 
   for (const { pool, bucket } of groups) {
+    // One update per person per title: TMDB credits a writer once per job
+    // ("Screenplay" + "Story") and titles.crew keeps every credit, so the same
+    // id can appear twice in one role. sample_size counts titles, not credits.
+    const seen = new Set<string>()
     for (const member of pool) {
+      if (seen.has(member.tmdb_person_id)) continue
+      seen.add(member.tmdb_person_id)
       const existing = strand_a[bucket][member.tmdb_person_id]
 
       if (!existing) {
