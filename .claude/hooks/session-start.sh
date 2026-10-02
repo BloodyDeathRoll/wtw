@@ -50,6 +50,10 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
 elif [ "$BRANCH" = "HEAD" ]; then
   # A merge here would make a commit no branch points at.
   PULL_SKIPPED="detached HEAD (no branch checked out)"
+elif [ "$(git rev-parse --is-shallow-repository)" = "true" ] \
+  && ! timeout 120 git fetch -q --unshallow origin; then
+  # A shallow clone has no merge base to compare or merge against.
+  PULL_SKIPPED="shallow clone and could not fetch full history"
 elif ! timeout 30 git fetch -q origin main; then
   PULL_SKIPPED="could not fetch origin/main"
 elif git merge-base --is-ancestor origin/main HEAD; then
