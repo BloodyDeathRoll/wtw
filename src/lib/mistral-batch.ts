@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Mistral for the BATCH path (nightly enrichment + lineage graphs).
  *

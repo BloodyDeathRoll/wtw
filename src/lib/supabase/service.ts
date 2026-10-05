@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Supabase service-role client.
  * Server-side only — bypasses RLS for trusted write operations.

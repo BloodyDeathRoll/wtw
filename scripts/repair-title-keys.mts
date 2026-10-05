@@ -1,8 +1,8 @@
 /**
  * repair-title-keys — one-off data repair for the movie/TV id collision bug.
  *
- *   node --env-file=.env.local --import tsx scripts/repair-title-keys.mts          # dry run
- *   node --env-file=.env.local --import tsx scripts/repair-title-keys.mts --apply  # write
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/repair-title-keys.mts          # dry run
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/repair-title-keys.mts --apply  # write
  *
  * Before 2026-08-28, recommendation_history stored a bare tmdb_id and the
  * rating → signal merge looked the title up by that bare id. TMDB movie and TV

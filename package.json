@@ -16,11 +16,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "generate-voice-samples": "node --env-file=.env.local scripts/generate-voice-samples.mjs",
-    "grow-catalog": "node --env-file=.env.local --import tsx scripts/grow-catalog.mts",
-    "backfill-trailers": "node --env-file=.env.local --import tsx scripts/backfill-trailers.mts",
-    "backfill-language-keywords": "node --env-file=.env.local --import tsx scripts/backfill-language-keywords.mts",
-    "backfill-content-affinity": "node --env-file=.env.local --import tsx scripts/backfill-content-affinity.mts",
-    "repair-title-keys": "node --env-file=.env.local --import tsx scripts/repair-title-keys.mts",
+    "grow-catalog": "node --env-file=.env.local --conditions=react-server --import tsx scripts/grow-catalog.mts",
+    "backfill-trailers": "node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-trailers.mts",
+    "backfill-language-keywords": "node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-language-keywords.mts",
+    "backfill-content-affinity": "node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-content-affinity.mts",
+    "repair-title-keys": "node --env-file=.env.local --conditions=react-server --import tsx scripts/repair-title-keys.mts",
     "generate-icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
@@ -40,6 +40,7 @@
     "next": "^15.5.24",
     "react": "^19",
     "react-dom": "^19",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^2",
     "zod": "^3.25.76"
   },

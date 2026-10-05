@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * WTW — OMDB API Client
  * Server-side only. Never import in client components.

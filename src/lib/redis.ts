@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Upstash Redis client — singleton, server-side only.
  */

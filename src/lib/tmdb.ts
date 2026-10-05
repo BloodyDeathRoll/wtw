@@ -1,3 +1,4 @@
+import 'server-only'
 import { pickWatchProvider } from './watch-providers'
 /**
  * WTW — TMDB API Client

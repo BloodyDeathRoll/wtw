@@ -2,8 +2,8 @@
  * rebuild-strands — one-off: collapse duplicate signals and replay the
  * unique ones to rebuild strands A, B and C.
  *
- *   node --env-file=.env.local --import tsx scripts/rebuild-strands.mts          # dry run
- *   node --env-file=.env.local --import tsx scripts/rebuild-strands.mts --apply  # write
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/rebuild-strands.mts          # dry run
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/rebuild-strands.mts --apply  # write
  *
  * Why (2026-08-28): chat-extracted signals were deduped on type:id:SOURCE and
  * chat sources are session_N, so titles the user mentioned once were
