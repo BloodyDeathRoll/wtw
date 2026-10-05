@@ -25,16 +25,18 @@ export function applyStrandCUpdate(
   strand_c: StrandC,
   title: TitleMeta,
   reaction: Reaction,
+  /** Re-rate: the reaction this title was scored with before; its delta is taken back out. */
+  previous?: Reaction,
 ): void {
   // Pacing
-  const pDelta = PACING_DELTA[reaction]
+  const pDelta = PACING_DELTA[reaction] - (previous ? PACING_DELTA[previous] : 0)
   if (title.pacing_tag && VALID_PACING.has(title.pacing_tag)) {
     const key = title.pacing_tag as keyof typeof strand_c.pacing_weights
     strand_c.pacing_weights[key] = clamp(strand_c.pacing_weights[key] + pDelta, 0, 1)
   }
 
   // Tone
-  const tDelta = TONE_DELTA[reaction]
+  const tDelta = TONE_DELTA[reaction] - (previous ? TONE_DELTA[previous] : 0)
   for (const tag of title.tone_tags ?? []) {
     if (VALID_TONES.has(tag)) {
       const key = tag as keyof typeof strand_c.tone_weights

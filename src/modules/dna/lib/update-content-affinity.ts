@@ -50,6 +50,42 @@ export function applyContentAffinityUpdate(
   bump(strand_c, 'format_affinity', [title.type], delta, scoreDeltaOverride != null)
 }
 
+/**
+ * Re-rate: swap a title's earlier reaction for the new one in each running
+ * average it fed. Same rule as replaceCrewAffinity — one title, so
+ * `sample_size` and confidence stay; a missing entry starts fresh.
+ */
+export function replaceContentAffinity(
+  strand_c: StrandC,
+  title: ContentAttributes,
+  previous: Reaction,
+  reaction: Reaction,
+): void {
+  const swing = REACTION_SCORE[reaction] - REACTION_SCORE[previous]
+  const genres = (title.genres ?? [])
+    .map(g => g?.name?.trim().toLowerCase())
+    .filter((n): n is string => !!n)
+  const language = title.original_language?.trim().toLowerCase()
+
+  const targets: [ContentAffinityBucket, string[]][] = [
+    ['genre_affinity', genres],
+    ['language_affinity', language ? [language] : []],
+    ['format_affinity', [title.type]],
+  ]
+  for (const [bucket, keys] of targets) {
+    if (keys.length === 0) continue
+    const map = (strand_c[bucket] ??= {})
+    for (const key of new Set(keys)) {
+      const existing = map[key]
+      if (!existing) {
+        map[key] = { score: clamp(REACTION_SCORE[reaction], -1, 1), confidence: FIRST_CONFIDENCE, sample_size: 1 }
+        continue
+      }
+      existing.score = clamp(existing.score + swing / existing.sample_size, -1, 1)
+    }
+  }
+}
+
 function bump(
   strand_c: StrandC,
   bucket: ContentAffinityBucket,
