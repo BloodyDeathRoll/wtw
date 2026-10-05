@@ -290,28 +290,31 @@ export async function GET(req: Request) {
     // cache entry written before the split.
     const wanted = titleTypeFor(contentType);
     const typeFiltered = wanted ? recs.filter((r) => r.type === wanted) : recs;
-    // Drop removed + already-judged titles before paginating so pages stay
-    // full-sized.
-    let filtered = typeFiltered.filter(
-      (r) => !removed.has(titleKey(r.type, r.tmdb_id)) && !matchesKeySet(judged, r.type, r.tmdb_id),
-    );
 
     // The user's standing rules, applied to whatever the cache handed us.
     const rules = dna?.contextual_logic?.exclusion_rules ?? [];
-    if (rules.length > 0) {
-      const fields = await fetchRuleFields(filtered);
-      const before = filtered.length;
-      filtered = filtered.filter((r) => {
-        const t = fields.get(`${r.type}:${r.tmdb_id}`);
-        return !t || !isExcluded(t, rules);
-      });
-      if (filtered.length !== before) {
-        console.log(`[recommendations/generate] ${before - filtered.length} cached title(s) dropped by user rules`);
-      }
+    const fields = rules.length > 0 ? await fetchRuleFields(typeFiltered) : null;
+    const servable = (r: RecommendationResult) => {
+      if (removed.has(titleKey(r.type, r.tmdb_id)) || matchesKeySet(judged, r.type, r.tmdb_id)) return false;
+      const t = fields?.get(`${r.type}:${r.tmdb_id}`);
+      return !t || !isExcluded(t, rules);
+    };
+
+    // `offset` is a position in the cached batch, not in the filtered list.
+    // The user rates and removes cards they have already been served, and each
+    // of those drops out of the filtered list — so slicing the filtered list at
+    // the client's offset started the next page that many titles too far on,
+    // and those titles were never shown. Walk the batch from the offset instead,
+    // skipping what isn't servable, so pages stay full-sized and nothing unseen
+    // is passed over.
+    const items: RecommendationResult[] = [];
+    let cursor = offset;
+    while (cursor < typeFiltered.length && items.length < DEFAULT_PAGE_SIZE) {
+      const r = typeFiltered[cursor++];
+      if (servable(r)) items.push(r);
     }
-    const items = filtered.slice(offset, offset + DEFAULT_PAGE_SIZE);
-    const nextOffset = offset + items.length;
-    const hasMore = nextOffset < filtered.length;
+    const nextOffset = cursor;
+    const hasMore = typeFiltered.slice(cursor).some(servable);
     // Streaming availability for THIS page, before it renders: the batch-wide
     // check runs in the background after generation, so this is usually a
     // no-op — but a page served before it lands would otherwise show no

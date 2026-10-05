@@ -49,6 +49,14 @@ const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
 type FeedbackAction = typeof VALID_ACTIONS[number]
 
 /**
+ * Checked here because nothing downstream does: the light merge indexes its
+ * delta tables with the reaction, and an unknown one ('mixed', dropped in
+ * migration 0013, or any typo) is NaN in every crew, strand C and content
+ * affinity value it touches — stored as null, so the learned value is gone.
+ */
+const VALID_REACTIONS: readonly Reaction[] = ['loved', 'liked', 'disliked']
+
+/**
  * How many times the history write may lose a compare-and-set before giving
  * up. Higher than the default because nothing else records this rating.
  */
@@ -158,7 +166,7 @@ export async function POST(req: NextRequest) {
     tmdb_id        = body.tmdb_id
     action         = body.action
     is_stretch_pick = body.is_stretch_pick ?? false
-    reaction       = body.reaction
+    reaction       = body.reaction ?? undefined
     title          = typeof body.title === 'string' ? body.title : undefined
     media_type     = isMediaType(body.media_type) ? body.media_type : null
     contentType    = isContentType(body.content_type) ? body.content_type : 'all'
@@ -169,6 +177,12 @@ export async function POST(req: NextRequest) {
     if (!VALID_ACTIONS.includes(action)) {
       return NextResponse.json(
         { error: `action must be one of: ${VALID_ACTIONS.join(', ')}` },
+        { status: 400 }
+      )
+    }
+    if (reaction !== undefined && !VALID_REACTIONS.includes(reaction)) {
+      return NextResponse.json(
+        { error: `reaction must be one of: ${VALID_REACTIONS.join(', ')}` },
         { status: 400 }
       )
     }
