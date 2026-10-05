@@ -158,7 +158,7 @@ export async function applyReRates(dna: DNASchema): Promise<number> {
 
     const next = latest.get(titleKey(signal.type, signal.tmdb_id))!
     // A legacy reaction ('mixed', dropped in migration 0013) has no delta to
-    // take back out — score the new one as a first rating instead.
+    // take back out — fold the new one in as one more rating instead.
     const previous = REACTION_SCORE[signal.reaction] != null ? signal.reaction : null
     if (previous) {
       replaceCrewAffinity(dna.strand_a_creative_affinity, title.crew, previous, next)

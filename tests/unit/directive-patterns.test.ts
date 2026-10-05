@@ -122,6 +122,9 @@ describe('in-turn directives — refusals', () => {
     'you guys never suggest any westerns',
     'Why am I seeing fewer comedies?',
     'Is there really no horror?',
+    // Deliberate: "there" before the opener reads as a complaint even when it
+    // isn't one; the session-end extractor still gets the turn.
+    "there's no horror for me, please",
   ])('reads the complaint %j as no rule', text => {
     expect(extractDirectivesFromText(text)).toEqual([])
   })

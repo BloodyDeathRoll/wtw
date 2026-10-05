@@ -171,6 +171,9 @@ export function extractDirectivesFromText(text: string): SessionDirective[] {
  * thrillers", "how come I get fewer westerns". The user wants more of the
  * thing, so reading it as an instruction writes the opposite rule. A request
  * addressed to the assistant ("can you stop showing me horror") is still one.
+ * A bare "there" counts too ("is there really no horror?"), so the rare
+ * instruction phrased with it ("there's no horror for me, please") is left to
+ * the session-end extractor — the same precision-first trade as above.
  */
 const ASKS_WHY = /\b(?:why|how\s+come|there)\b/
 const ADDRESSED_TO_YOU = /\byou(?:\s+\w+)?\s*$/
