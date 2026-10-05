@@ -12,6 +12,7 @@ import { regenerateEmbedding } from './lib/regenerate-embedding'
 import { recordStretchPick } from './lib/record-stretch-pick'
 import { storeSnapshot } from './lib/snapshot'
 import { applyDirectives } from './lib/apply-directives'
+import { applyReRates } from './merge-feedback-signal'
 
 export async function updateSchemaFromSession(
   user_id: string,
@@ -25,6 +26,10 @@ export async function updateSchemaFromSession(
   preloaded?: DNASchema,
 ): Promise<DNASchema> {
   const dna = preloaded ?? await loadDNA(user_id)
+
+  // 0. Re-rates the per-click merge couldn't save (it gives up after two
+  //    compare-and-set misses) — the user's latest card rating wins.
+  await applyReRates(dna)
 
   // 1. Append new signals — one signal per title, first wins, across ALL
   //    sources. The key used to include `source`, and chat sources are

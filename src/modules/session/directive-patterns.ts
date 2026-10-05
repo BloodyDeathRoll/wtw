@@ -165,6 +165,20 @@ export function extractDirectivesFromText(text: string): SessionDirective[] {
   return [...found.values()]
 }
 
+/**
+ * Words before the opener that make the clause a remark about what the user
+ * is NOT being shown: "why is there no comedy", "you never recommend
+ * thrillers", "how come I get fewer westerns". The user wants more of the
+ * thing, so reading it as an instruction writes the opposite rule. A request
+ * addressed to the assistant ("can you stop showing me horror") is still one.
+ * A bare "there" counts too ("is there really no horror?"), so the rare
+ * instruction phrased with it ("there's no horror for me, please") is left to
+ * the session-end extractor — the same precision-first trade as above.
+ */
+const ASKS_WHY = /\b(?:why|how\s+come|there)\b/
+const ADDRESSED_TO_YOU = /\byou(?:\s+\w+)?\s*$/
+const POLITE_REQUEST = /\b(?:(?:can|could|would|will)\s+you(?:\s+please)?|thank\s+you)\s*$/
+
 function match(
   clause: string,
   openers: RegExp[],
@@ -179,5 +193,9 @@ function match(
       best = { index: m.index, rest: clause.slice(m.index + m[0].length) }
     }
   }
-  return best ? { kind, rest: best.rest } : null
+  if (!best) return null
+  const before = clause.slice(0, best.index)
+  if (ASKS_WHY.test(before)) return null
+  if (ADDRESSED_TO_YOU.test(before) && !POLITE_REQUEST.test(before)) return null
+  return { kind, rest: best.rest }
 }

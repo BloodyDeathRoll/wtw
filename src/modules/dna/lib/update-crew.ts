@@ -59,3 +59,52 @@ export function applyCrewAffinityUpdate(
     }
   }
 }
+
+/**
+ * Re-rate: swap a title's earlier reaction for the user's new one. The running
+ * average already holds the old contribution, so take it out and put the new
+ * one in — `sample_size` is unchanged, because it is still one title. A person
+ * with no entry (crew changed since, or never scored) gets a fresh one.
+ * Confidence is left as is: the user's correction is not extra evidence.
+ */
+export function replaceCrewAffinity(
+  strand_a: StrandA,
+  crew: TitleCrew,
+  previous: Reaction,
+  reaction: Reaction,
+): void {
+  const swing = REACTION_SCORE[reaction] - REACTION_SCORE[previous]
+
+  const groups: Array<{
+    pool:   { tmdb_person_id: string; name: string }[]
+    bucket: keyof StrandA
+  }> = [
+    { pool: crew.directors        ?? [],                    bucket: 'directors'        },
+    { pool: crew.writers          ?? [],                    bucket: 'writers'          },
+    { pool: crew.cinematographers ?? [],                    bucket: 'cinematographers' },
+    { pool: (crew.cast ?? []).slice(0, MAX_CAST),           bucket: 'actors'           },
+  ]
+
+  for (const { pool, bucket } of groups) {
+    const seen = new Set<string>()
+    for (const member of pool) {
+      if (seen.has(member.tmdb_person_id)) continue
+      seen.add(member.tmdb_person_id)
+      const existing = strand_a[bucket][member.tmdb_person_id]
+
+      if (!existing) {
+        const delta = REACTION_SCORE[reaction]
+        strand_a[bucket][member.tmdb_person_id] = {
+          name:          member.name,
+          score:         clamp(delta, -1, 1),
+          confidence:    0.15,
+          sample_size:   1,
+          lineage_boost: lineageBoost(delta),
+        }
+      } else {
+        existing.score         = clamp(existing.score + swing / existing.sample_size, -1, 1)
+        existing.lineage_boost = lineageBoost(existing.score)
+      }
+    }
+  }
+}

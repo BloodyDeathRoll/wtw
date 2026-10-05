@@ -3,6 +3,7 @@
  * Server-side only — bypasses RLS for trusted write operations.
  * Never expose the service role key to the client.
  */
+import 'server-only'
 import { createClient } from '@supabase/supabase-js'
 
 export function createServiceClient() {

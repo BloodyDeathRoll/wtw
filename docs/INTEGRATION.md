@@ -82,7 +82,7 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
   - **#64** `next` 15.5.18 → 15.5.25 — two unauthenticated RCEs (GHSA-2xp9-vwfh-vxw4 via `/_next/image` + AVIF, GHSA-p293-qw3h-jr36 on Windows), fixed in 15.5.24.
   - **#65** `src/lib/rate-limit.ts` — fixed window on Upstash (INCR + `EXPIRE NX` every hit), **fails closed: Redis down → 503**. Co-watch join 10/user + 30/IP per 10 min (4-digit codes were sweepable); chat 60/user per 10 min, history ≤ 60 msgs / 24,000 chars (413), `maxTokens: 300`; voice token 10/user per 10 min. *(Both chat figures have since changed — the history is trimmed rather than 413'd, and `maxTokens` is 1200 to cover the reasoning trace; see the two 2026-09-20 entries above. Left as written because this line records the audit's state, not today's.)*
   - **#66** every workflow `uses:` SHA-pinned; `deploy-production.yml` `permissions: {}`; `persist-credentials: false` on `ci.yml` only (claude-code-action needs the token). Site-wide nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`, `Permissions-Policy` (mic kept) — verified live on production.
-  - The audit's proposals were taken up on 2026-10-01: see the two sections dated 2026-10-01 below. `server-only` was not adopted, and the AI SDK went to v7, not v5.
+  - The audit's proposals were taken up on 2026-10-01: see the two sections dated 2026-10-01 below. `server-only` was adopted later, on 2026-10-05 (see that section). The AI SDK went to v7, not v5.
 
 ## 4. Non-blocking — independent, any time
 - [ ] Generate the 30 voice WAV samples (`npm run generate-voice-samples`) over several days (Gemini free-tier 10/day); drop the `disabled` attribute on the voice play buttons ([WTWApp.tsx:502](../src/modules/session/components/WTWApp.tsx#L502)) once present · A1
@@ -164,6 +164,18 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 ## Standing handoff notes
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
+
+### 2026-10-05 — Dream reviews 2026-10-04 + 2026-10-05, `server-only` (`fix/dream-2026-10-05`)
+
+Findings (each red on `main`, green here with the report's proofs):
+- A complaint ("Why is there no comedy?", "You never recommend thrillers") no longer saves a rule against that genre. `directive-patterns.ts` refuses a clause when the words before the opener ask why, or are addressed to "you" without being a request.
+- Re-rating a title now changes the fingerprint. `applyReRates` (`merge-feedback-signal.ts`) swaps the old reaction for the new one: exactly for the crew and content running averages, by the delta difference for strand C. Strand B takes the new reaction as one more observation. It also runs at session end. `docs/DNA-CONTRACT.md` notes this exception to "first wins".
+- The feed's `offset` / `next_offset` now count positions in the cached batch. Before, rating or removing cards made the next page skip titles the user hadn't seen.
+- `POST /recommendations/feedback` returns 400 for a `reaction` outside loved/liked/disliked. An unknown one used to turn learned values into null.
+
+`server-only` is now the first import in `supabase/service`, `redis`, `tmdb`, `omdb` and `mistral-batch`. The scripts run with `--conditions=react-server` (package.json and each script's usage line), which loads the package's empty build, and vitest aliases it the same way. Checked: every script's imports load, `next build` passes, and a client import of `omdb` fails the build.
+
+Still open: the deep survey isn't mounted and its labels don't match the server. The team is working on it.
 
 ### 2026-10-01 — Dream review 2026-09-30: 5 findings + 4 proposals (`fix/dream-2026-09-30`)
 

@@ -6,6 +6,8 @@
  * into DNASignals and applies the CHEAP updates only:
  *   - append signal (dedup vs existing signals)
  *   - Strand A crew affinity + Strand C visceral weights (pure arithmetic)
+ *   - re-rates: a title already signaled whose latest rating differs gets
+ *     its old reaction's contribution swapped for the new one (applyReRates)
  *
  * Deliberately NO taste_version bump, NO embedding regen, NO notes rewrite,
  * NO snapshot: bumping per click would invalidate the rec cache the user is
@@ -23,12 +25,13 @@
  * blind save from here would silently revert its version bump.
  */
 
-import type { DNASchema, DNASignal } from '@/types/dna'
+import type { DNASchema, DNASignal, Reaction } from '@/types/dna'
 import { recordKey, recordType, titleKey } from '@/lib/title-key'
 import { withDNAUpdate, fetchTitleCrew, pickTitle } from './lib/load-save'
-import { applyCrewAffinityUpdate } from './lib/update-crew'
+import { applyCrewAffinityUpdate, replaceCrewAffinity } from './lib/update-crew'
 import { applyStrandCUpdate } from './lib/update-strand-c'
-import { applyContentAffinityUpdate } from './lib/update-content-affinity'
+import { applyContentAffinityUpdate, replaceContentAffinity } from './lib/update-content-affinity'
+import { REACTION_SCORE } from './lib/reaction-score'
 import { applyStrandBFromTitle, type TitleNarrativeMetadata } from './lib/update-strand-b-from-title'
 
 export async function mergeFeedbackSignalsLight(user_id: string): Promise<number> {
@@ -55,6 +58,7 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
  * of never saving a snapshot that went stale.
  */
 async function mergeInto(dna: DNASchema): Promise<number> {
+  const reRated = await applyReRates(dna)
 
   // Dedup on the composite title key across ALL sources (NOT key+source like
   // the session merge): if a title is already signaled from any source (e.g.
@@ -70,11 +74,11 @@ async function mergeInto(dna: DNASchema): Promise<number> {
     if (!type) return !dna.signals.some((s) => s.tmdb_id === h.tmdb_id)
     return !signaled.has(recordKey(h))
   })
-  if (pending.length === 0) return 0
+  if (pending.length === 0) return reRated
 
   const titleMap = await fetchTitleCrew(pending.map((h) => h.tmdb_id))
 
-  let merged = 0
+  let merged = reRated
   for (const h of pending) {
     const title = pickTitle(titleMap, h.tmdb_id, recordType(h))
     if (!title) continue // not in catalog (or ambiguous legacy id) — session-end fold will retry
@@ -114,4 +118,69 @@ async function mergeInto(dna: DNASchema): Promise<number> {
   }
 
   return merged
+}
+
+/**
+ * Re-rates. "One signal per title, first wins" keeps chat re-extraction from
+ * stacking duplicates, but it also froze the user's own correction: re-rating
+ * on "Your ratings" (loved → disliked) rewrote the history row while the
+ * signal, the crew/content averages and strand C kept the first verdict.
+ *
+ * The user's latest card rating is what the fingerprint must hold, so for each
+ * signal whose title's latest rating differs, the old reaction's contribution
+ * is swapped for the new one: exact for the crew and content running averages,
+ * the delta difference for strand C. Strand B's categorical rule can't be
+ * undone, so it takes the new reaction as one more observation — which moves
+ * it the new way.
+ *
+ * Shared with the session-end write (updateSchemaFromSession) so a re-rate the
+ * light merge couldn't save still lands. Typed history rows only: a legacy
+ * bare row can't say which title it meant. Returns how many were re-rated.
+ */
+export async function applyReRates(dna: DNASchema): Promise<number> {
+  const latest = new Map<string, Reaction>()
+  for (const h of dna.learning_loop.recommendation_history) {
+    if (h.rating == null || !recordType(h)) continue
+    latest.set(recordKey(h), h.rating)
+  }
+  const changed = dna.signals.filter((s) => {
+    const next = latest.get(titleKey(s.type, s.tmdb_id))
+    return next != null && next !== s.reaction && REACTION_SCORE[next] != null
+  })
+  if (changed.length === 0) return 0
+
+  const titleMap = await fetchTitleCrew(changed.map((s) => s.tmdb_id))
+
+  let reRated = 0
+  for (const signal of changed) {
+    const title = pickTitle(titleMap, signal.tmdb_id, signal.type)
+    if (!title) continue // not in catalog — retried on the next merge
+
+    const next = latest.get(titleKey(signal.type, signal.tmdb_id))!
+    // A legacy reaction ('mixed', dropped in migration 0013) has no delta to
+    // take back out — fold the new one in as one more rating instead.
+    const previous = REACTION_SCORE[signal.reaction] != null ? signal.reaction : null
+    if (previous) {
+      replaceCrewAffinity(dna.strand_a_creative_affinity, title.crew, previous, next)
+      replaceContentAffinity(dna.strand_c_visceral_specs, title, previous, next)
+    } else {
+      applyCrewAffinityUpdate(dna.strand_a_creative_affinity, title.crew, next)
+      applyContentAffinityUpdate(dna.strand_c_visceral_specs, title, next)
+    }
+    applyStrandCUpdate(dna.strand_c_visceral_specs, title, next, previous ?? undefined)
+    applyStrandBFromTitle(
+      dna.strand_b_narrative_dimensions,
+      title.narrative_metadata as TitleNarrativeMetadata,
+      next,
+    )
+
+    signal.reaction = next
+    signal.reason = next === 'disliked'
+      ? 'Rejected from a recommendation card'
+      : 'Rated on a recommendation card'
+    // The re-rate is the newest opinion — temporal decay ages it from now.
+    signal.watched_at = new Date().toISOString()
+    reRated++
+  }
+  return reRated
 }

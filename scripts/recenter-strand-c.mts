@@ -5,8 +5,8 @@
  * update). Existing rows had drifted to ~1.0 across the board, which made
  * the visceral scorer give every title a perfect match.
  *
- *   node --env-file=.env.local --import tsx scripts/recenter-strand-c.mts          # dry run
- *   node --env-file=.env.local --import tsx scripts/recenter-strand-c.mts --apply  # write
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/recenter-strand-c.mts          # dry run
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/recenter-strand-c.mts --apply  # write
  *
  * Bumps taste_version + last_updated on write (standing rule) and drops the
  * user's DNA read-cache. Relative differences between tags are unchanged.

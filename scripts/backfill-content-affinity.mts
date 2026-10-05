@@ -2,8 +2,8 @@
  * backfill-content-affinity — fill strand_c genre / language / format affinity
  * from each user's existing signals.
  *
- *   node --env-file=.env.local --import tsx scripts/backfill-content-affinity.mts          # dry run
- *   node --env-file=.env.local --import tsx scripts/backfill-content-affinity.mts --apply  # write
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-content-affinity.mts          # dry run
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-content-affinity.mts --apply  # write
  *
  * Why (2026-09-20): the three maps were added with the scorer that reads them
  * (src/modules/engine/scoring/content-affinity.ts). They are written going
