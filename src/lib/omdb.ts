@@ -1,4 +1,3 @@
-import 'server-only'
 /**
  * WTW — OMDB API Client
  * Server-side only. Never import in client components.
@@ -16,6 +15,7 @@ import 'server-only'
  *
  * Returns null if OMDB has no record (common for non-English titles).
  */
+import 'server-only'
 
 const BASE = 'https://www.omdbapi.com'
 

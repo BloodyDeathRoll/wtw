@@ -111,6 +111,30 @@ describe('in-turn directives — refusals', () => {
     expect(extractDirectivesFromText(text)).toEqual([])
   })
 
+  // 2026-10-05 (Dream 2026-10-04): a complaint about what the user is NOT
+  // shown asks for more of it — reading it as an instruction wrote the
+  // opposite rule.
+  it.each([
+    'Why is there no comedy?',
+    'You never recommend thrillers',
+    'How come there are no westerns?',
+    'Why did you stop showing me comedies?',
+    'you guys never suggest any westerns',
+    'Why am I seeing fewer comedies?',
+    'Is there really no horror?',
+  ])('reads the complaint %j as no rule', text => {
+    expect(extractDirectivesFromText(text)).toEqual([])
+  })
+
+  it.each([
+    'Can you stop showing me horror?',
+    'Could you please never recommend me horror',
+    'Thank you, no horror',
+    'you know what, no horror',
+  ])('still reads the request %j', text => {
+    expect(one(text)).toMatchObject({ kind: 'exclusion', name: 'horror' })
+  })
+
   it('leaves people and franchises to the session-end extractor', () => {
     // A person needs a TMDB lookup to be matchable, and guessing a name from
     // free text is how you end up excluding a genre called "Sandler".

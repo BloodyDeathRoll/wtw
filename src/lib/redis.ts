@@ -1,7 +1,7 @@
-import 'server-only'
 /**
  * Upstash Redis client — singleton, server-side only.
  */
+import 'server-only'
 import { Redis } from '@upstash/redis'
 
 let _redis: Redis | null = null

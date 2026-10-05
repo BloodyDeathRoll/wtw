@@ -1,4 +1,3 @@
-import 'server-only'
 /**
  * Mistral for the BATCH path (nightly enrichment + lineage graphs).
  *
@@ -19,6 +18,7 @@ import 'server-only'
  *
  * Model IDs stay in ./ai-models.ts — this file only picks the key.
  */
+import 'server-only'
 
 import { APICallError, RetryError } from 'ai'
 
