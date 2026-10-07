@@ -48,7 +48,8 @@ const counterKey = (userId: string) => `rec_ratings_since_refresh:${userId}`
 const dueKey     = (userId: string) => `rec_refresh_due:${userId}`
 
 /**
- * Count this rating, and say whether it is the one that triggers a refresh.
+ * Count this rating, and say whether it is the one that armed a refresh (the
+ * answer is informational — nothing acts on it; `refreshIfDue` reads the flag).
  * Best-effort: if Redis is unreachable the answer is "no", and the batch
  * refreshes at session end as it always did.
  *
@@ -68,8 +69,10 @@ export async function countRatingTowardRefresh(userId: string): Promise<boolean>
     const n = await redis.incr(counterKey(userId))
     if (n === 1) await redis.expire(counterKey(userId), COUNTER_TTL_SECONDS)
     if (n < RATINGS_PER_REFRESH) return false
-    await redis.del(counterKey(userId))
+    // Arm first, then reset: the other order lost the refresh for a whole
+    // extra cycle when the set failed after the del.
     await redis.set(dueKey(userId), '1', { ex: COUNTER_TTL_SECONDS })
+    await redis.del(counterKey(userId))
     return true
   } catch (err) {
     console.warn('[refresh-batch] rating counter unavailable (non-fatal):', err instanceof Error ? err.message : err)

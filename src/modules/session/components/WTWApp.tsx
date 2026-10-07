@@ -768,14 +768,15 @@ export default function WTWApp({
         const body = await res.json().catch(() => null);
         if (body?.warning) console.error("[session/end]", body.warning);
         // Only clear the pending flags once the server confirms the intent
-        // write landed — a failed call, or a 200 whose watchlist write failed
-        // (watchlist_synced: false), leaves them queued for the next session
-        // end. Marking them synced on any 200 used to drop them for good.
-        if (body?.watchlist_synced === false) {
-          console.error("[session/end] watchlist intent not recorded; will retry next session end");
-        } else {
+        // write landed (watchlist_synced: true). A failed call, a 200 whose
+        // watchlist write failed, or a 200 with no readable body leaves them
+        // queued for the next session end — re-sending a save is idempotent,
+        // dropping one was permanent.
+        if (body?.watchlist_synced === true) {
           markSynced(savedIds);
           markRemovalsSynced(unsavedIds);
+        } else {
+          console.error("[session/end] watchlist intent not confirmed; will retry next session end");
         }
       }
     } catch (e) {

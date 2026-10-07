@@ -258,8 +258,11 @@ export async function POST(req: NextRequest) {
     // at that point found nothing parked (or a batch built before this
     // rating) and was skipped until the next Nth rating.
     const userId = user.id
-    await countRatingTowardRefresh(userId)
-    after(() => precomputeNextBatch(userId, contentType, () => refreshIfDue(userId, contentType)))
+    after(async () => {
+      // Counted here, off the request path; it only has to land before the park.
+      await countRatingTowardRefresh(userId)
+      await precomputeNextBatch(userId, contentType, () => refreshIfDue(userId, contentType))
+    })
   }
 
   // ── Log to recommendation_feedback (best-effort) ──────────

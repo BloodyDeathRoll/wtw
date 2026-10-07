@@ -326,21 +326,37 @@ export function matchesSoftSignal(
   // word boundaries. A bare `includes` let a three-letter genre match inside
   // an unrelated word: "fewer Star Wars" (the extractor prompt's own franchise
   // example), "less warm stuff" and "awards-bait dramas" all marked every
-  // War-genre title down. A trailing plural is still allowed on whichever
-  // side is the needle ("slashers" finds the keyword "slasher", "alien" finds
-  // the keyword "aliens"), except for a needle too short for that to be safe:
-  // "war" + "s" is "wars".
+  // War-genre title down. A trailing plural is still allowed on either side
+  // ("slashers" finds the keyword "slasher", "cop" finds "cops", "wars" finds
+  // the War genre) when the side being searched is a single word: inside a
+  // phrase, "wars" is part of a name ("star wars"), not a plural of the genre.
   const terms = titleTerms(title)
-  return terms.some(term => wordWithin(s, term, s.length > 3) || wordWithin(term, s, term.length > 3))
+  const signalRe = wordRe(s)
+  const signalPluralRe = wordRe(s, true)
+  return terms.some(term =>
+    (oneWord(term) ? signalPluralRe : signalRe).test(term) || wordRe(term, oneWord(s)).test(s),
+  )
 }
 
+const oneWord = (x: string) => !/\s/.test(x)
 const escapeRegExp = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** Is `needle` a whole word (or hyphenated part) of `hay`? `plural` also accepts -s / -es. */
-function wordWithin(needle: string, hay: string, plural = false): boolean {
-  if (!needle) return false
-  const tail = plural ? '(?:e?s)?' : ''
-  return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(needle)}${tail}(?:$|[^a-z0-9])`).test(hay)
+/**
+ * "Is `needle` a whole word (or hyphenated part) of the string?" as a RegExp;
+ * `plural` also accepts -s / -es. Memoised: step 3 asks this per candidate ×
+ * preference × term, for a handful of distinct needles.
+ */
+const WORD_RE = new Map<string, RegExp>()
+function wordRe(needle: string, plural = false): RegExp {
+  const key = plural ? `${needle}\u0000s` : needle
+  let re = WORD_RE.get(key)
+  if (!re) {
+    if (WORD_RE.size > 4096) WORD_RE.clear()
+    const tail = plural ? '(?:e?s)?' : ''
+    re = new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(needle)}${tail}(?:$|[^a-z0-9])`)
+    WORD_RE.set(key, re)
+  }
+  return re
 }
 
 /**

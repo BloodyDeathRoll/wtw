@@ -158,13 +158,17 @@ describe('soft preferences', () => {
     expect(matchesSoftSignal(war, 'world war')).toBe(true)
   })
 
-  it('still allows a plural on either side, unless the word is too short for that', () => {
+  it('still allows a plural on either side when that side is a single word', () => {
     const slasher = title({ keywords: ['slasher'] })
     expect(matchesSoftSignal(slasher, 'slashers')).toBe(true)
     const aliens = title({ keywords: ['aliens'] })
     expect(matchesSoftSignal(aliens, 'alien')).toBe(true)
-    const wars = title({ keywords: ['wars'] })
-    expect(matchesSoftSignal(wars, 'war')).toBe(false)
+    const cops = title({ keywords: ['cops'] })
+    expect(matchesSoftSignal(cops, 'cop')).toBe(true)
+    const war = title({ genres: [{ name: 'War' }] })
+    expect(matchesSoftSignal(war, 'wars')).toBe(true)
+    // Inside a phrase "wars" is a name, not the plural of the genre.
+    expect(matchesSoftSignal(war, 'star wars')).toBe(false)
   })
 
   it('honours a person named softly — "less Adam Sandler"', () => {

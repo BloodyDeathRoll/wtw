@@ -27,7 +27,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { isSavedMarker, recordKey, titleKey } from '@/lib/title-key'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
-import { checkBatchProviders, generateRecommendations, scheduleExplanationPatch } from './generate'
+import { generateRecommendations, scheduleExplanationPatch } from './generate'
 import { cacheRecommendations } from './step8-cache'
 
 const pendingKey = (userId: string, contentType: ContentType) => `rec_pending:${userId}:${contentType}`
@@ -122,12 +122,6 @@ export async function precomputeNextBatch(
           console.warn('[precompute] parked hook failed (non-fatal):', err instanceof Error ? err.message : err),
         )
       }
-      // Streaming availability for the batch, after it is parked (and, when
-      // a refresh was due, promoted) rather than before: the check writes to
-      // `titles`, which the GET route reads at serve time, and it also checks
-      // the few unchecked titles on each page it serves. Still inside the
-      // lock, so a burst does not run it twice for the same batch.
-      await checkBatchProviders(results)
 
       const dirty = await redis.get(dirtyKey(userId))
       if (!dirty) break
