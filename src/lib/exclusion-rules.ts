@@ -322,9 +322,25 @@ export function matchesSoftSignal(
   const asRule: ExclusionRule = { type: 'keyword', id: '', name: signal, raw: signal, reason: '' }
   if (matchesRule(title, asRule)) return true
 
-  // Legacy substring behaviour, both directions ("noir" vs "neo-noir").
+  // Legacy substring behaviour, both directions ("noir" vs "neo-noir") — on
+  // word boundaries. A bare `includes` let a three-letter genre match inside
+  // an unrelated word: "fewer Star Wars" (the extractor prompt's own franchise
+  // example), "less warm stuff" and "awards-bait dramas" all marked every
+  // War-genre title down. A trailing plural is still allowed on whichever
+  // side is the needle ("slashers" finds the keyword "slasher", "alien" finds
+  // the keyword "aliens"), except for a needle too short for that to be safe:
+  // "war" + "s" is "wars".
   const terms = titleTerms(title)
-  return terms.some(term => term.includes(s) || s.includes(term))
+  return terms.some(term => wordWithin(s, term, s.length > 3) || wordWithin(term, s, term.length > 3))
+}
+
+const escapeRegExp = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Is `needle` a whole word (or hyphenated part) of `hay`? `plural` also accepts -s / -es. */
+function wordWithin(needle: string, hay: string, plural = false): boolean {
+  if (!needle) return false
+  const tail = plural ? '(?:e?s)?' : ''
+  return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(needle)}${tail}(?:$|[^a-z0-9])`).test(hay)
 }
 
 /**

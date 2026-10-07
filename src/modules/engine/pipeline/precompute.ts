@@ -27,7 +27,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { isSavedMarker, recordKey, titleKey } from '@/lib/title-key'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
-import { generateRecommendations, scheduleExplanationPatch } from './generate'
+import { checkBatchProviders, generateRecommendations, scheduleExplanationPatch } from './generate'
 import { cacheRecommendations } from './step8-cache'
 
 const pendingKey = (userId: string, contentType: ContentType) => `rec_pending:${userId}:${contentType}`
@@ -84,6 +84,14 @@ export async function precomputeNextBatch(
   userId: string,
   /** The list the user is on — a batch is built for one content type. */
   contentType: ContentType = 'all',
+  /**
+   * Runs after each park, while this call still holds the lock — the one
+   * moment the parked batch is known to match the fingerprint it was built
+   * from. refresh-batch.ts promotes it here when a refresh is due. A call
+   * that found the lock taken never parks, so its hook never runs: the
+   * holder's does, after the extra run this call's dirty flag forces.
+   */
+  onParked?: () => Promise<unknown>,
 ): Promise<void> {
   const redis = getRedis()
   // Only the holder releases the lock. An earlier version deleted it in
@@ -109,6 +117,17 @@ export async function precomputeNextBatch(
       const results = await generateRecommendations(userId, undefined, { dna, precompute: true, contentType })
       const batch: PendingBatch = { hash, results }
       await redis.set(pendingKey(userId, contentType), batch, { ex: PENDING_TTL_SECONDS })
+      if (onParked) {
+        await onParked().catch(err =>
+          console.warn('[precompute] parked hook failed (non-fatal):', err instanceof Error ? err.message : err),
+        )
+      }
+      // Streaming availability for the batch, after it is parked (and, when
+      // a refresh was due, promoted) rather than before: the check writes to
+      // `titles`, which the GET route reads at serve time, and it also checks
+      // the few unchecked titles on each page it serves. Still inside the
+      // lock, so a burst does not run it twice for the same batch.
+      await checkBatchProviders(results)
 
       const dirty = await redis.get(dirtyKey(userId))
       if (!dirty) break

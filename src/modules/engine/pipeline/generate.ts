@@ -143,7 +143,12 @@ export function scheduleExplanationPatch(
  * demand per batch, not just by the nightly 150/night job). Best-effort —
  * a failure only means some cards stay without a streaming line.
  */
-async function checkBatchProviders(results: RecommendationResult[]): Promise<void> {
+/**
+ * Streaming availability for a whole batch. Writes to `titles`, not into the
+ * batch: the GET route reads `watch_providers` from the row at serve time,
+ * so this can run after a batch is parked or cached. Never throws.
+ */
+export async function checkBatchProviders(results: RecommendationResult[]): Promise<void> {
   try {
     await ensureWatchProviders(results.map(r => ({ tmdb_id: r.tmdb_id, type: r.type })))
   } catch (err) {
@@ -221,13 +226,11 @@ export async function generateRecommendations(
   }))
 
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─
-  // precompute.ts parks it under its key together with the inputs hash.
-  // Already in the background, so the provider check runs inline: by the
-  // time session/end adopts the batch every card that CAN name a service
-  // does.
+  // precompute.ts parks it under its key together with the inputs hash, and
+  // runs the batch-wide provider check AFTER the park (2026-10-07): the check
+  // writes to `titles`, not into the batch, and took up to ~4 s of throttled
+  // TMDB calls before the batch could be parked or promoted.
   if (opts.precompute) {
-    await checkBatchProviders(versioned)
-    t.mark('watch providers')
     t.done('total (pending)')
     return versioned
   }

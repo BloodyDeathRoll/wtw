@@ -44,11 +44,23 @@ export const RATINGS_PER_REFRESH = 5
 const COUNTER_TTL_SECONDS = 6 * 60 * 60
 
 const counterKey = (userId: string) => `rec_ratings_since_refresh:${userId}`
+/** Set on the Nth rating; cleared by the promotion that honours it. */
+const dueKey     = (userId: string) => `rec_refresh_due:${userId}`
 
 /**
  * Count this rating, and say whether it is the one that triggers a refresh.
  * Best-effort: if Redis is unreachable the answer is "no", and the batch
  * refreshes at session end as it always did.
+ *
+ * The Nth rating ARMS the refresh (`rec_refresh_due`) rather than running it:
+ * the batch to promote is the next one parked, and that may be built by a
+ * precompute an earlier rating started and is still running — precompute.ts
+ * coalesces a burst under one lock, so this rating's own precompute call only
+ * flags the build dirty and returns. A refresh run from this request found
+ * nothing parked (or a batch built before this rating, which fails the hash
+ * check) and was skipped — and the counter had already restarted, so a user
+ * rating at card-reading speed never saw the mid-session refresh at all.
+ * `refreshIfDue` runs instead, from the precompute, after every park.
  */
 export async function countRatingTowardRefresh(userId: string): Promise<boolean> {
   try {
@@ -57,10 +69,36 @@ export async function countRatingTowardRefresh(userId: string): Promise<boolean>
     if (n === 1) await redis.expire(counterKey(userId), COUNTER_TTL_SECONDS)
     if (n < RATINGS_PER_REFRESH) return false
     await redis.del(counterKey(userId))
+    await redis.set(dueKey(userId), '1', { ex: COUNTER_TTL_SECONDS })
     return true
   } catch (err) {
     console.warn('[refresh-batch] rating counter unavailable (non-fatal):', err instanceof Error ? err.message : err)
     return false
+  }
+}
+
+/**
+ * Promote the batch just parked, if a refresh is due. Meant to run right after
+ * a park, from the precompute that holds the lock — the one moment a parked
+ * batch is known to match the fingerprint it was built from. A promotion that
+ * does not land (nothing parked, a rating moved the inputs mid-build, a lost
+ * compare-and-set) leaves the refresh armed, so the NEXT park retries instead
+ * of the user waiting another RATINGS_PER_REFRESH ratings for one that may be
+ * skipped the same way. Never throws.
+ */
+export async function refreshIfDue(
+  userId: string,
+  contentType: ContentType = 'all',
+): Promise<number | null> {
+  try {
+    const redis = getRedis()
+    if (!(await redis.get(dueKey(userId)))) return null
+    const version = await refreshLiveBatch(userId, contentType)
+    if (version != null) await redis.del(dueKey(userId))
+    return version
+  } catch (err) {
+    console.warn('[refresh-batch] refresh-if-due failed (non-fatal):', err instanceof Error ? err.message : err)
+    return null
   }
 }
 
