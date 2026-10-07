@@ -169,22 +169,26 @@ export function extractDirectivesFromText(text: string): SessionDirective[] {
  * Words before the opener that make the clause a remark about what the user
  * is NOT being shown: "why is there no comedy", "you never recommend
  * thrillers", "how come I get fewer westerns". The user wants more of the
- * thing, so reading it as an instruction writes the opposite rule. A request
- * addressed to the assistant ("can you stop showing me horror") is still one.
+ * thing, so reading it as an instruction writes the opposite rule.
  * A bare "there" counts too ("is there really no horror?"), so the rare
  * instruction phrased with it ("there's no horror for me, please") is left to
  * the session-end extractor — the same precision-first trade as above.
+ *
+ * The complaint shape is "you" as the SUBJECT of the opener: at the start of
+ * the clause, after punctuation or a conjunction, or after another "you"
+ * ("I told you you never recommend…"). An object "you" is not one — "can you
+ * stop showing me horror", "thank you, no horror", "I told you no horror" are
+ * all instructions, the last a repeated one (2026-10-06).
+ *
+ * A denied instruction ("I never told you no horror", "did I tell you no
+ * horror") is not one either: nothing is written, the session-end extractor
+ * sees the turn.
  */
 const ASKS_WHY = /\b(?:why|how\s+come|there)\b/
-const ADDRESSED_TO_YOU = /\byou(?:\s+\w+)?\s*$/
-const POLITE_REQUEST = /\b(?:(?:can|could|would|will)\s+you(?:\s+please)?|thank\s+you)\s*$/
-/**
- * "I told you no horror": here "you" is who was told, not who is being
- * complained about, and the user is repeating an instruction that didn't
- * stick. A second "you" ("I told you you never…") is the complaint again.
- */
-const TOLD_YOU =
-  /\b(?:told|tell|telling|asked|ask|asking|said\s+to|begged|reminded|warned)\s+you(?:\s+(?!you\b)\w+)?\s*$/
+const COMPLAINT_SUBJECT_YOU =
+  /(?:^|[,;:.!?]\s*|\b(?:and|but|because|so|that)\s+|\byou\s+)you(?:\s+(?:guys|all|two))?\s*$/
+const DENIED_INSTRUCTION =
+  /\b(?:never|not|didn't|don't|haven't|hadn't|did\s+i|have\s+i|do\s+i)\s+(?:\w+\s+)?(?:told|tell|telling|asked|ask|asking|said|begged|reminded|warned)\s+(?:to\s+)?you\b/
 
 function match(
   clause: string,
@@ -203,6 +207,7 @@ function match(
   if (!best) return null
   const before = clause.slice(0, best.index)
   if (ASKS_WHY.test(before)) return null
-  if (ADDRESSED_TO_YOU.test(before) && !POLITE_REQUEST.test(before) && !TOLD_YOU.test(before)) return null
+  if (COMPLAINT_SUBJECT_YOU.test(before)) return null
+  if (DENIED_INSTRUCTION.test(before)) return null
   return { kind, rest: best.rest }
 }

@@ -15,6 +15,10 @@
  *   is_stretch_pick: boolean         (default false)
  *   reaction?:       'loved' | 'liked' | 'disliked'  // when action = 'watched'
  *   title?:          string
+ *   content_type?:   'movies' | 'series' | 'all'  // the list the user is on — the
+ *                                     // batch the rating rebuilds. Defaults from
+ *                                     // media_type, never to 'all' when the
+ *                                     // title's type is known.
  * }
  *
  * What each action does:
@@ -169,7 +173,14 @@ export async function POST(req: NextRequest) {
     reaction       = body.reaction ?? undefined
     title          = typeof body.title === 'string' ? body.title : undefined
     media_type     = isMediaType(body.media_type) ? body.media_type : null
-    contentType    = isContentType(body.content_type) ? body.content_type : 'all'
+    // A caller that omits content_type used to get 'all': a full precompute
+    // for a batch no list adopts, and on the 5th rating a promotion with no
+    // movies/series cache behind it (Dream 2026-10-06). The title's own type
+    // is the next best guess at the list the user is on.
+    contentType    = isContentType(body.content_type) ? body.content_type
+                   : media_type === 'movie' ? 'movies'
+                   : media_type === 'tv' ? 'series'
+                   : 'all'
 
     if (!tmdb_id || typeof tmdb_id !== 'string') {
       return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
