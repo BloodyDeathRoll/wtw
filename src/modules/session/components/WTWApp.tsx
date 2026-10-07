@@ -1011,7 +1011,7 @@ export default function WTWApp({
         </div>
       ) : stage === "ratings" ? (
         <div className={styles.shell}>
-          <RatingsView onBack={() => setStage("onboard")} headerRight={appMenu} />
+          <RatingsView onBack={() => setStage("onboard")} contentType={contentType} headerRight={appMenu} />
         </div>
       ) : (
         <div className={styles.shell}>

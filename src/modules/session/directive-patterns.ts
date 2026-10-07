@@ -178,6 +178,13 @@ export function extractDirectivesFromText(text: string): SessionDirective[] {
 const ASKS_WHY = /\b(?:why|how\s+come|there)\b/
 const ADDRESSED_TO_YOU = /\byou(?:\s+\w+)?\s*$/
 const POLITE_REQUEST = /\b(?:(?:can|could|would|will)\s+you(?:\s+please)?|thank\s+you)\s*$/
+/**
+ * "I told you no horror": here "you" is who was told, not who is being
+ * complained about, and the user is repeating an instruction that didn't
+ * stick. A second "you" ("I told you you never…") is the complaint again.
+ */
+const TOLD_YOU =
+  /\b(?:told|tell|telling|asked|ask|asking|said\s+to|begged|reminded|warned)\s+you(?:\s+(?!you\b)\w+)?\s*$/
 
 function match(
   clause: string,
@@ -196,6 +203,6 @@ function match(
   if (!best) return null
   const before = clause.slice(0, best.index)
   if (ASKS_WHY.test(before)) return null
-  if (ADDRESSED_TO_YOU.test(before) && !POLITE_REQUEST.test(before)) return null
+  if (ADDRESSED_TO_YOU.test(before) && !POLITE_REQUEST.test(before) && !TOLD_YOU.test(before)) return null
   return { kind, rest: best.rest }
 }
