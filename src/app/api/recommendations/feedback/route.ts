@@ -45,7 +45,7 @@ import { isContentType, type ContentType } from '@/lib/content-type'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
-import { countRatingTowardRefresh, refreshLiveBatch } from '@/modules/dna/refresh-batch'
+import { countRatingTowardRefresh, refreshIfDue } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate } from '@/modules/dna/lib/load-save'
 import type { DNASchema, Reaction } from '@/types/dna'
 
@@ -251,14 +251,17 @@ export async function POST(req: NextRequest) {
     //
     // Every Nth rating that parked batch is also promoted to the LIVE cache
     // under a bumped version, so a run of dislikes reaches the feed in the
-    // same sitting instead of waiting for "Find more" (refresh-batch.ts). It
-    // has to run after the precompute, not beside it: the batch it promotes is
-    // the one that precompute just built from this rating.
+    // same sitting instead of waiting for "Find more" (refresh-batch.ts). The
+    // promotion runs from INSIDE the precompute, right after a park — not
+    // beside it from here: when a build for an earlier rating is still
+    // running, this call only flags it dirty and returns, and a refresh run
+    // at that point found nothing parked (or a batch built before this
+    // rating) and was skipped until the next Nth rating.
     const userId = user.id
-    const dueForRefresh = await countRatingTowardRefresh(userId)
     after(async () => {
-      await precomputeNextBatch(userId, contentType)
-      if (dueForRefresh) await refreshLiveBatch(userId, contentType)
+      // Counted here, off the request path; it only has to land before the park.
+      await countRatingTowardRefresh(userId)
+      await precomputeNextBatch(userId, contentType, () => refreshIfDue(userId, contentType))
     })
   }
 

@@ -13,7 +13,7 @@
  *
  * Body: { conversation_id: string, skip_transcript?: boolean,
  *         watchlist_added?: string[] }   // "type:tmdb_id" — see step 2b
- * Response: { ok, taste_version, signal_count, rec_count, watchlist_recorded }
+ * Response: { ok, taste_version, signal_count, rec_count, watchlist_recorded, watchlist_synced }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -134,6 +134,11 @@ export async function POST(req: NextRequest) {
   // path stays fast — which is intended: a saved title keeps showing in the feed
   // with a "Remove from watchlist" CTA rather than disappearing from it.
   let watchlistRecorded = 0
+  // False when the intent write failed: the client then keeps the ids queued
+  // and re-sends them at the next session end instead of marking them synced
+  // (Dream 2026-10-07). A 200 alone used to mean "synced", so a transient
+  // Postgres error silently and permanently dropped a save or an unsave.
+  let watchlistSynced = true
   if (watchlistAdded.length > 0 || watchlistRemoved.length > 0) {
     const history = dna.learning_loop.recommendation_history
     let updated = unmarkSavedInHistory(history, watchlistRemoved)
@@ -149,6 +154,7 @@ export async function POST(req: NextRequest) {
         .eq('id', user.id)
       if (error) {
         console.error('[session/end] watchlist intent write failed (non-fatal):', error.message)
+        watchlistSynced = false
       } else {
         watchlistRecorded = watchlistAdded.length
         // We wrote users.dna directly, so drop the 60s loadDNA cache — otherwise
@@ -247,6 +253,7 @@ export async function POST(req: NextRequest) {
         rec_count: 0,
         unchanged: true,
         watchlist_recorded: watchlistRecorded,
+        watchlist_synced: watchlistSynced,
         ...extractionReport(extractionFailed),
       })
     }
@@ -293,6 +300,7 @@ export async function POST(req: NextRequest) {
       signal_count: summary.new_signals.length,
       rec_count: 0,
       watchlist_recorded: watchlistRecorded,
+      watchlist_synced: watchlistSynced,
       ...extractionReport(extractionFailed),
       warning: 'Fingerprint updated but recommendation generation failed',
     })
@@ -323,6 +331,7 @@ export async function POST(req: NextRequest) {
     signal_count: summary.new_signals.length,
     rec_count,
     watchlist_recorded: watchlistRecorded,
+    watchlist_synced: watchlistSynced,
     ...extractionReport(extractionFailed),
   })
 }

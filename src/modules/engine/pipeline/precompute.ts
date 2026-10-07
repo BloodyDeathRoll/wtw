@@ -84,6 +84,14 @@ export async function precomputeNextBatch(
   userId: string,
   /** The list the user is on — a batch is built for one content type. */
   contentType: ContentType = 'all',
+  /**
+   * Runs after each park, while this call still holds the lock — the one
+   * moment the parked batch is known to match the fingerprint it was built
+   * from. refresh-batch.ts promotes it here when a refresh is due. A call
+   * that found the lock taken never parks, so its hook never runs: the
+   * holder's does, after the extra run this call's dirty flag forces.
+   */
+  onParked?: () => Promise<unknown>,
 ): Promise<void> {
   const redis = getRedis()
   // Only the holder releases the lock. An earlier version deleted it in
@@ -109,6 +117,11 @@ export async function precomputeNextBatch(
       const results = await generateRecommendations(userId, undefined, { dna, precompute: true, contentType })
       const batch: PendingBatch = { hash, results }
       await redis.set(pendingKey(userId, contentType), batch, { ex: PENDING_TTL_SECONDS })
+      if (onParked) {
+        await onParked().catch(err =>
+          console.warn('[precompute] parked hook failed (non-fatal):', err instanceof Error ? err.message : err),
+        )
+      }
 
       const dirty = await redis.get(dirtyKey(userId))
       if (!dirty) break

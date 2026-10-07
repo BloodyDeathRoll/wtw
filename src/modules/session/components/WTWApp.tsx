@@ -755,12 +755,6 @@ export default function WTWApp({
           watchlist_removed: unsavedIds,
         }),
       });
-      // Only clear the pending flags once the server confirms — a failed call
-      // leaves them queued for the next session end.
-      if (res.ok) {
-        markSynced(savedIds);
-        markRemovalsSynced(unsavedIds);
-      }
       // fetch() resolves (doesn't throw) on 4xx/5xx — surface those so a failed
       // fingerprint/rec build is visible in logs rather than silently opening
       // the view to mocks. UX intent is still "never blocked", so we don't
@@ -773,6 +767,17 @@ export default function WTWApp({
         // difference between noticing in an hour and noticing in two days.
         const body = await res.json().catch(() => null);
         if (body?.warning) console.error("[session/end]", body.warning);
+        // Only clear the pending flags once the server confirms the intent
+        // write landed (watchlist_synced: true). A failed call, a 200 whose
+        // watchlist write failed, or a 200 with no readable body leaves them
+        // queued for the next session end — re-sending a save is idempotent,
+        // dropping one was permanent.
+        if (body?.watchlist_synced === true) {
+          markSynced(savedIds);
+          markRemovalsSynced(unsavedIds);
+        } else {
+          console.error("[session/end] watchlist intent not confirmed; will retry next session end");
+        }
       }
     } catch (e) {
       console.error("[session/end] failed", e);

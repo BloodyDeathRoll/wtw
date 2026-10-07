@@ -322,9 +322,41 @@ export function matchesSoftSignal(
   const asRule: ExclusionRule = { type: 'keyword', id: '', name: signal, raw: signal, reason: '' }
   if (matchesRule(title, asRule)) return true
 
-  // Legacy substring behaviour, both directions ("noir" vs "neo-noir").
+  // Legacy substring behaviour, both directions ("noir" vs "neo-noir") — on
+  // word boundaries. A bare `includes` let a three-letter genre match inside
+  // an unrelated word: "fewer Star Wars" (the extractor prompt's own franchise
+  // example), "less warm stuff" and "awards-bait dramas" all marked every
+  // War-genre title down. A trailing plural is still allowed on either side
+  // ("slashers" finds the keyword "slasher", "cop" finds "cops", "wars" finds
+  // the War genre) when the side being searched is a single word: inside a
+  // phrase, "wars" is part of a name ("star wars"), not a plural of the genre.
   const terms = titleTerms(title)
-  return terms.some(term => term.includes(s) || s.includes(term))
+  const signalRe = wordRe(s)
+  const signalPluralRe = wordRe(s, true)
+  return terms.some(term =>
+    (oneWord(term) ? signalPluralRe : signalRe).test(term) || wordRe(term, oneWord(s)).test(s),
+  )
+}
+
+const oneWord = (x: string) => !/\s/.test(x)
+const escapeRegExp = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * "Is `needle` a whole word (or hyphenated part) of the string?" as a RegExp;
+ * `plural` also accepts -s / -es. Memoised: step 3 asks this per candidate ×
+ * preference × term, for a handful of distinct needles.
+ */
+const WORD_RE = new Map<string, RegExp>()
+function wordRe(needle: string, plural = false): RegExp {
+  const key = plural ? `${needle}\u0000s` : needle
+  let re = WORD_RE.get(key)
+  if (!re) {
+    if (WORD_RE.size > 4096) WORD_RE.clear()
+    const tail = plural ? '(?:e?s)?' : ''
+    re = new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(needle)}${tail}(?:$|[^a-z0-9])`)
+    WORD_RE.set(key, re)
+  }
+  return re
 }
 
 /**

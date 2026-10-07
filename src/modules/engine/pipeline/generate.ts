@@ -223,8 +223,11 @@ export async function generateRecommendations(
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─
   // precompute.ts parks it under its key together with the inputs hash.
   // Already in the background, so the provider check runs inline: by the
-  // time session/end adopts the batch every card that CAN name a service
-  // does.
+  // time session/end adopts the batch (or a refresh promotes it) every card
+  // that CAN name a service does, and the first page never pays the per-page
+  // check in the request path. (Moving it after the park was tried and
+  // reverted 2026-10-07: a promoted batch then served up to 6 inline TMDB
+  // calls and duplicate row writes on its first page.)
   if (opts.precompute) {
     await checkBatchProviders(versioned)
     t.mark('watch providers')

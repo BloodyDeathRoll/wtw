@@ -62,7 +62,7 @@ vi.mock('@/modules/dna/lib/regenerate-embedding', () => ({
   regenerateEmbedding: () => regenerateEmbedding(),
 }))
 
-const { countRatingTowardRefresh, refreshLiveBatch, RATINGS_PER_REFRESH } =
+const { countRatingTowardRefresh, refreshLiveBatch, refreshIfDue, RATINGS_PER_REFRESH } =
   await import('@/modules/dna/refresh-batch')
 
 const savedDna = () => dbState.updates.at(-1) as { dna: DNASchema } | undefined
@@ -99,6 +99,41 @@ describe('rating counter', () => {
   it('says no rather than throwing when Redis is unreachable', async () => {
     redis.incr.mockRejectedValueOnce(new Error('ECONNREFUSED'))
     expect(await countRatingTowardRefresh('u1')).toBe(false)
+  })
+})
+
+// 2026-10-07 (Dream 2026-10-07): the Nth rating used to run the refresh
+// itself, right after its own precompute call. When an earlier rating's build
+// still held the lock that call only flagged it dirty, so the refresh found
+// nothing parked, was skipped, and the counter had already restarted — a user
+// rating at card-reading speed never saw the mid-session refresh. The Nth
+// rating now ARMS it; the precompute promotes after each park.
+describe('refreshIfDue', () => {
+  const arm = async () => { for (let i = 0; i < RATINGS_PER_REFRESH; i++) await countRatingTowardRefresh('u1') }
+
+  it('does nothing until the Nth rating has armed it', async () => {
+    expect(await refreshIfDue('u1', 'all')).toBeNull()
+    expect(adoptPendingBatch).not.toHaveBeenCalled()
+  })
+
+  it('promotes the parked batch once armed, then disarms', async () => {
+    await arm()
+    expect(await refreshIfDue('u1', 'all')).toBe(8)
+    expect(savedDna()?.dna.metadata.taste_version).toBe(8)
+
+    adoptPendingBatch.mockClear()
+    expect(await refreshIfDue('u1', 'all')).toBeNull()
+    expect(adoptPendingBatch).not.toHaveBeenCalled()
+  })
+
+  it('stays armed when there was nothing to promote, so the next park retries', async () => {
+    await arm()
+    adoptPendingBatch.mockResolvedValueOnce(null)
+    expect(await refreshIfDue('u1', 'all')).toBeNull()
+    expect(dbState.updates).toHaveLength(0)
+
+    expect(await refreshIfDue('u1', 'all')).not.toBeNull()
+    expect(dbState.updates).toHaveLength(1)
   })
 })
 

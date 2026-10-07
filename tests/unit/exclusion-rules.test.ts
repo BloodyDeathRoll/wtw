@@ -146,6 +146,31 @@ describe('soft preferences', () => {
     expect(matchesSoftSignal(noir, 'noir')).toBe(true)
   })
 
+  // 2026-10-07 (Dream 2026-10-07): the substring fallback matched the
+  // three-letter War genre inside unrelated words. "fewer Star Wars" is the
+  // extractor prompt's own franchise example, and it halved every War film.
+  it('matches on word boundaries, not inside unrelated words', () => {
+    const war = title({ genres: [{ name: 'War' }], keywords: ['world war ii'] })
+    expect(matchesSoftSignal(war, 'star wars')).toBe(false)
+    expect(matchesSoftSignal(war, 'warm stuff')).toBe(false)
+    expect(matchesSoftSignal(war, 'awards-bait dramas')).toBe(false)
+    expect(matchesSoftSignal(war, 'war')).toBe(true)
+    expect(matchesSoftSignal(war, 'world war')).toBe(true)
+  })
+
+  it('still allows a plural on either side when that side is a single word', () => {
+    const slasher = title({ keywords: ['slasher'] })
+    expect(matchesSoftSignal(slasher, 'slashers')).toBe(true)
+    const aliens = title({ keywords: ['aliens'] })
+    expect(matchesSoftSignal(aliens, 'alien')).toBe(true)
+    const cops = title({ keywords: ['cops'] })
+    expect(matchesSoftSignal(cops, 'cop')).toBe(true)
+    const war = title({ genres: [{ name: 'War' }] })
+    expect(matchesSoftSignal(war, 'wars')).toBe(true)
+    // Inside a phrase "wars" is a name, not the plural of the genre.
+    expect(matchesSoftSignal(war, 'star wars')).toBe(false)
+  })
+
   it('honours a person named softly — "less Adam Sandler"', () => {
     // Without target_type the name is compared against genres and keywords,
     // where a person's name never appears, so the preference did nothing.
