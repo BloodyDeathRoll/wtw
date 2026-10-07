@@ -165,6 +165,15 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-07 — Dream review 2026-10-07 (`fix/dream-2026-10-07`, PR #100)
+
+Findings (each red on `main`, green here with the report's proofs; both pinned as vitest cases):
+- The every-5th-rating refresh landed only for a user who paused a whole build between the 4th and 5th rating. A contended 5th rating's precompute call only flagged the running build dirty, the refresh ran at once, found nothing parked, and the counter restarted. The Nth rating now arms `rec_refresh_due`; `precomputeNextBatch` takes an `onParked` hook and the feedback route passes `refreshIfDue`, which promotes right after a park and stays armed until a promotion lands.
+- A soft preference containing "war" ("fewer Star Wars") marked every War-genre title down through the substring fallback in `matchesSoftSignal`. It matches on word boundaries now; a plural is allowed on either side unless the word is too short ("war" never finds "wars").
+
+Proposals taken:
+- The batch-wide provider check runs after the park (and promotion), inside the precompute lock, not before the batch is handed back. It writes to `titles`, which the GET route reads at serve time.
+- `session/end` returns `watchlist_synced: false` when the watchlist intent write failed; the client keeps those ids queued for the next session end instead of marking them synced on any 200.
 ### 2026-10-07 — Dream review 2026-10-06 (`fix/dream-2026-10-06`, PR #99)
 
 Findings (each red on `main`, green here with the report's proofs; both pinned as vitest cases):
