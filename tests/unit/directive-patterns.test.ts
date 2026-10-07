@@ -138,6 +138,32 @@ describe('in-turn directives — refusals', () => {
     expect(one(text)).toMatchObject({ kind: 'exclusion', name: 'horror' })
   })
 
+  // 2026-10-07 (Dream 2026-10-06): "I told you no horror" is an instruction
+  // being repeated — "you" is who was told, not who is being complained
+  // about. The complaint guard above must not swallow it.
+  it.each([
+    ['I told you no horror', 'horror'],
+    ['I keep telling you no anime', 'anime'],
+    ["I've asked you no more horror", 'horror'],
+    ['I told you twice no thrillers', 'thriller'],
+  ])('still reads the repeated instruction %j', (text, name) => {
+    expect(one(text)).toMatchObject({ kind: 'exclusion', name })
+  })
+
+  it('still reads "I told you you never recommend thrillers" as a complaint', () => {
+    expect(extractDirectivesFromText('I told you you never recommend thrillers')).toEqual([])
+  })
+
+  // A denial of the instruction must not write it.
+  it.each([
+    'I never told you no horror',
+    "I didn't tell you no horror",
+    'did I tell you no horror',
+    "I haven't asked you no more horror",
+  ])('writes nothing for the denial %j', text => {
+    expect(extractDirectivesFromText(text)).toEqual([])
+  })
+
   it('leaves people and franchises to the session-end extractor', () => {
     // A person needs a TMDB lookup to be matchable, and guessing a name from
     // free text is how you end up excluding a genre called "Sandler".

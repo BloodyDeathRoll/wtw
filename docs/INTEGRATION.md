@@ -165,6 +165,14 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-07 — Dream review 2026-10-06 (`fix/dream-2026-10-06`, PR #99)
+
+Findings (each red on `main`, green here with the report's proofs; both pinned as vitest cases):
+- A re-rate on "Your ratings" now sends the Movies/Series list the user is on. Before, the feedback route defaulted to `'all'`: a full precompute per re-rate that nothing adopted, and on every 5th rating an `'all'` batch promoted under a bumped `taste_version` with no `movies`/`series` cache behind it, so the feed regenerated cold. `WTWApp` passes `contentType` to `RatingsView`, and the route now defaults a missing `content_type` from `media_type` (movie → movies, tv → series) so no caller can trigger it by forgetting the field.
+- "I told you no horror" writes the rule again. The 2026-10-05 complaint guard refused any "you" before the opener; it now refuses only a SUBJECT "you" ("you never recommend…", "I told you you never…") and a denied instruction ("I never told you no horror", "did I tell you no horror"). The object-"you" exemptions (polite request, told-you) are gone with it.
+
+Note: the 2026-10-06 worktree that first applied these was lost before a commit; re-applied from the report on 2026-10-07.
+
 ### 2026-10-05 — Dream reviews 2026-10-04 + 2026-10-05, `server-only` (`fix/dream-2026-10-05`)
 
 Findings (each red on `main`, green here with the report's proofs):

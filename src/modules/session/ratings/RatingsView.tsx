@@ -15,6 +15,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Reaction } from "@/types/dna";
+import type { ContentType } from "@/lib/content-type";
 import type {
   RatingsSummary,
   RatingItem,
@@ -80,9 +81,12 @@ const REACTION_ORDER: Reaction[] = ["loved", "liked", "disliked"];
 
 export default function RatingsView({
   onBack,
+  contentType,
   headerRight,
 }: {
   onBack: () => void;
+  /** The Movies/Series list the user is on — the batch a re-rate rebuilds. */
+  contentType: ContentType;
   /** App menu — same slot on every screen (2026-08-29). */
   headerRight?: ReactNode;
 }) {
@@ -132,6 +136,9 @@ export default function RatingsView({
           tmdb_id: item.tmdb_id,
           media_type: item.media_type ?? undefined,
           title: item.title ?? undefined,
+          // Without it the route builds (and every 5th rating promotes) an
+          // 'all' batch, leaving the user's list with nothing cached.
+          content_type: contentType,
         }),
       });
       if (!res.ok) throw new Error(String(res.status));
