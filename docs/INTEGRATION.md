@@ -165,6 +165,13 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-13 — Dependabot batch, Tailwind 4 (`chore/tailwind-v4`, PR #107)
+
+- Merged: #101 claude-code-action, #103 @upstash/redis, #102 lucide-react 1.x, #105 framer-motion 14. Nothing in `src/` imports lucide-react or framer-motion yet.
+- #104 (Tailwind 4) and #106 (tailwind-merge 3) are replaced by #107. tailwind-merge v3 supports only Tailwind 4, so the two land together.
+- Tailwind 4: the theme is now in `globals.css` (`@theme inline`), and `tailwind.config.ts` is gone. The next/font variable is `--font-inter`, so `--font-sans` can be built on it.
+- Logged-out pages are pixel-identical to Tailwind 3. Signed-in screens use CSS modules, so the only Tailwind change that reaches them is the v4 base styles (preflight). Not yet checked by eye.
+
 ### 2026-10-07 — Dream review 2026-10-07 (`fix/dream-2026-10-07`, PR #100)
 
 Findings (each red on `main`, green here with the report's proofs; both pinned as vitest cases):
