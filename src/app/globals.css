@@ -57,6 +57,12 @@
     border-color: var(--color-gray-200, currentcolor);
   }
 
+  /* v4 preflight dropped v3's pointer cursor on buttons. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
   :root {
     /* wtw design tokens (from claude.ai/design handoff) */
     --wtw-green: #D49B3A;
