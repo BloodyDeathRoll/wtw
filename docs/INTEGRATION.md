@@ -165,6 +165,13 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-15 — Next 16 (`chore/next-16`, replaces dependabot #111)
+
+- `next build --webpack`: Next 16 builds with Turbopack by default and refuses a webpack config, which `@ducanh2912/next-pwa` injects. Moving off webpack means replacing next-pwa (e.g. Serwist). `dev` keeps `--turbopack` (PWA is disabled in dev).
+- `eslint-config-next` 16 ships flat configs, so `eslint.config.mjs` drops FlatCompat and `@eslint/eslintrc`. Its new React Compiler rules (`react-hooks/set-state-in-effect`, `refs`, `purity`, `immutability`) flag 16 existing call sites; they are warnings for now. Fix those, then make them errors.
+- `src/middleware.ts` still works but is deprecated in favour of `src/proxy.ts`. Renaming also means updating `tests/unit/csp-inline-hashes.test.ts`, which reads the file by path.
+- CI does not run `next build`, so a green CI did not catch the Turbopack failure on #111.
+
 ### 2026-10-13 — Dependabot batch, Tailwind 4 (`chore/tailwind-v4`, PR #107)
 
 - Merged: #101 claude-code-action, #103 @upstash/redis, #102 lucide-react 1.x, #105 framer-motion 14. Nothing in `src/` imports lucide-react or framer-motion yet.

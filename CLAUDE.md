@@ -64,7 +64,7 @@ These decisions are made. Do not refactor, rename, or redesign without team agre
 ## Tech stack
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 15, App Router, TypeScript |
+| Framework | Next.js 16, App Router, TypeScript (builds with `--webpack` for next-pwa) |
 | UI | Tailwind CSS + shadcn/ui + Radix UI |
 | Motion | Framer Motion |
 | PWA | next-pwa |
