@@ -24,6 +24,18 @@ import type {
   Recommendation,
 } from "@/types/recommendation";
 import type { RecommendationResult } from "@/types/dna";
+import {
+  Bookmark,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Maximize2,
+  Minimize2,
+  Play,
+  Star,
+  X,
+} from "lucide-react";
 import styles from "./RecommendationsView.module.css";
 import { FingerprintLoader } from "../components/FingerprintLoader";
 import { WhyPanel } from "@/app/components/RecCard";
@@ -39,6 +51,7 @@ import {
   addToWatchlist,
   removeFromWatchlist,
   setWatchlistRating,
+  type WatchlistEntry,
   type WatchlistRating,
 } from "@/lib/watchlist";
 import { addToRegretQueue } from "@/lib/regret-queue";
@@ -96,6 +109,37 @@ function tmdbIdOf(id: string): string {
 }
 
 /**
+ * Watchlist sort (Figma 29:4262). Client-side over the saved entries — every
+ * key is already on the stored card. "Rating" is the external ★ score shown on
+ * the card, not the user's own reaction. Ties keep storage order (newest
+ * first) because Array.prototype.sort is stable.
+ */
+type SortKey = "year" | "added" | "rating" | "name";
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "year", label: "Year" },
+  { key: "added", label: "Date Added" },
+  { key: "rating", label: "Rating" },
+  { key: "name", label: "Name" },
+];
+
+function sortEntries(entries: WatchlistEntry[], key: SortKey): WatchlistEntry[] {
+  const list = [...entries];
+  switch (key) {
+    case "added":
+      return list.sort((a, b) => b.added_at - a.added_at);
+    case "year":
+      return list.sort((a, b) => (b.rec.year ?? 0) - (a.rec.year ?? 0));
+    case "rating":
+      return list.sort((a, b) => (b.rec.rating ?? 0) - (a.rec.rating ?? 0));
+    case "name":
+      return list.sort((a, b) =>
+        a.rec.title.localeCompare(b.rec.title, undefined, { sensitivity: "base" }),
+      );
+  }
+}
+
+/**
  * Streaming service — brand icon + name only, under the year/runtime/rating
  * meta on every card (compact, full, watchlist, and the Why detail). Hidden
  * entirely when `where` is null (never checked, or not streaming in this
@@ -106,11 +150,11 @@ function tmdbIdOf(id: string): string {
  * to be visible wherever availability is shown — it needs to reappear
  * somewhere (a footer or an about/legal line) before this ships publicly.
  */
-function WherePill({ where, hero = false }: { where: string | null; hero?: boolean }) {
+function WherePill({ where }: { where: string | null }) {
   if (!where) return null;
   const { key, label } = canonicalProvider(where);
   return (
-    <div className={`${styles.wherePill} ${hero ? styles.wherePillHero : ""}`}>
+    <div className={styles.wherePill}>
       <ProviderIcon providerKey={key} className={styles.whereIcon} />
       <span>{label}</span>
     </div>
@@ -162,9 +206,7 @@ function TypePicker({
         aria-label={`content type: ${CONTENT_TYPE_LABEL[contentType]}`}
       >
         <span>{CONTENT_TYPE_LABEL[contentType]}</span>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <ChevronDown size={16} strokeWidth={1.8} aria-hidden />
       </button>
       {open && (
         <div className={styles.typeMenu} role="menu">
@@ -216,6 +258,9 @@ export default function RecommendationsView({
   // Watchlist membership by rec.id, seeded from localStorage on mount so the
   // CTA renders in the right state without re-reading storage per card.
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  // Watchlist mode only — the order the saved cards are paged in.
+  const [sortKey, setSortKey] = useState<SortKey>("added");
+  const [sortOpen, setSortOpen] = useState(false);
 
   // Refs mirror loading/offset/hasMore so loadMore doesn't depend on
   // those changing via setState (which would create stale closures and
@@ -322,9 +367,11 @@ export default function RecommendationsView({
           .map((e) => [e.rec.id, e.rating as WatchlistRating]),
       ),
     );
-    watchlistRef.current = entries.map((e) => e.rec);
+    watchlistRef.current = sortEntries(entries, sortKey).map((e) => e.rec);
     void loadMore();
-  }, [contentType, loadMore]);
+    // sortKey only changes in watchlist mode (the control renders nowhere
+    // else); re-running here re-pages the list from the top in the new order.
+  }, [contentType, loadMore, sortKey]);
 
   // "Find more": rebuild the fingerprint (feedback so far included) and
   // regenerate recs server-side, then APPEND the fresh batch — existing cards
@@ -517,23 +564,14 @@ export default function RecommendationsView({
           onClick={onBack}
           aria-label="back"
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
+          <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
         </button>
         {setContentType && mode !== "watchlist" ? (
           <TypePicker contentType={contentType} setContentType={setContentType} />
         ) : (
-          <span className={styles.headerTitle}>{HEADER_TITLE[mode]}</span>
+          <span className={styles.headerTitle}>
+            {mode === "watchlist" ? `${HEADER_TITLE[mode]} (${saved.size})` : HEADER_TITLE[mode]}
+          </span>
         )}
         <div className={styles.headerRight}>
           <button
@@ -542,12 +580,29 @@ export default function RecommendationsView({
             onClick={() => setView((v) => (v === "compact" ? "full" : "compact"))}
             aria-label={view === "compact" ? "switch to full view" : "switch to list view"}
           >
-            {view === "compact" ? IconCardFull : IconListGrid}
+            {view === "compact" ? (
+              <Maximize2 size={30} strokeWidth={1.5} aria-hidden />
+            ) : (
+              <Minimize2 size={30} strokeWidth={1.5} aria-hidden />
+            )}
           </button>
           {headerRight}
         </div>
       </div>
 
+      {mode === "watchlist" && saved.size > 0 && (
+        <div className={styles.sortBar}>
+          <span className={styles.sortLabel}>Sort by</span>
+          <SortMenu
+            value={sortKey}
+            onChange={setSortKey}
+            open={sortOpen}
+            setOpen={setSortOpen}
+          />
+        </div>
+      )}
+
+      <div className={`${styles.content} ${sortOpen ? styles.contentDimmed : ""}`}>
       {view === "compact" ? (
         <CompactList
           recs={recs}
@@ -565,7 +620,7 @@ export default function RecommendationsView({
           onToggleWatchlist={toggleWatchlist}
           emptyMessage={
             mode === "watchlist"
-              ? "Nothing saved yet. Tap “Add to watchlist” on a recommendation to keep it here."
+              ? "Nothing saved yet. Tap “Add to Watchlist” on a recommendation to keep it here."
               : undefined
           }
           onBrowse={mode === "watchlist" ? onBrowse : undefined}
@@ -586,6 +641,7 @@ export default function RecommendationsView({
           onToggleWatchlist={toggleWatchlist}
         />
       )}
+      </div>
 
       {detail && (
         <WhyDetailOverlay
@@ -707,8 +763,9 @@ function CompactList({
       <div ref={sentinelRef} className={styles.sentinel}>
         {refreshing && (
           <div className={styles.findMoreLoading}>
-            <FingerprintLoader size={40} />
-            <span className={styles.muted}>Updating your fingerprint…</span>
+            <span className={styles.loadingEyebrow}>Reading your taste</span>
+            <span className={styles.loadingTitle}>Updating your fingerprint…</span>
+            <FingerprintLoader size={66} />
           </div>
         )}
         {!refreshing && loading && <span className={styles.muted}>Loading more…</span>}
@@ -748,39 +805,22 @@ function CompactCard({
 }) {
   return (
     <article className={styles.card}>
-      {/* Row 1 — title + meta | % match | trailer */}
+      {/* Row 1 — title + meta | match ring */}
       <div className={styles.cardTop}>
         <div className={styles.cardTitleBlock}>
           <h3 className={styles.cardTitle}>{rec.title}</h3>
-          <div className={styles.cardMeta}>
-            <span>{rec.year}</span>
-            <span className={styles.dot} />
-            <span>{rec.meta}</span>
-            <span className={styles.dot} />
-            <span>★ {rec.rating.toFixed(1)}</span>
-          </div>
-          <WherePill where={rec.where} />
+          <MetaRow rec={rec} />
         </div>
-        <div className={styles.cardMatch}>
-          <span className={styles.matchDot} />
-          {Math.round(rec.match * 100)}% match
-        </div>
-        <TrailerButton rec={rec} />
+        <MatchRing match={rec.match} />
       </div>
 
-      {/* Row 2 — Why pill | watchlist CTA across from it */}
-      <div className={styles.ctaRow}>
-        <button
-          type="button"
-          className={styles.whyPill}
-          onClick={() => onWhy(rec)}
-          aria-label={`Why we picked ${rec.title}`}
-        >
-          <span aria-hidden>🤔</span>
-          <span>Why this pick?</span>
-        </button>
-        <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} />
-      </div>
+      {/* Row 2 — provider | trailer; Why pill | watchlist CTA */}
+      <CtaBlock
+        rec={rec}
+        onWhy={onWhy}
+        saved={saved}
+        onToggleWatchlist={onToggleWatchlist}
+      />
 
       {/* Row 3 — poster | fingerprint text */}
       <div className={styles.cardMid}>
@@ -797,76 +837,124 @@ function CompactCard({
         rated={rated}
         onFeedback={onFeedback}
         onRemove={onRemove}
-        compact
       />
     </article>
   );
 }
 
-// The card's primary CTA — deliberately heavier than the "Why this pick?" pill
+/** Year · runtime · ★ rating — shared by every card variant. */
+function MetaRow({ rec, className }: { rec: Recommendation; className?: string }) {
+  return (
+    <div className={`${styles.cardMeta} ${className ?? ""}`}>
+      <span>{rec.year}</span>
+      <span>{rec.meta}</span>
+      <span className={styles.metaRating}>
+        <Star size={16} className={styles.metaStar} aria-hidden />
+        {rec.rating.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Fingerprint match as a gold ring badge (Figma "Card" 33:427). Replaces the
+ * old "97% match" text; the % is kept in the accessible name.
+ */
+function MatchRing({ match, className }: { match: number; className?: string }) {
+  const pct = Math.round(match * 100);
+  return (
+    <div
+      className={`${styles.matchRing} ${className ?? ""}`}
+      role="img"
+      aria-label={`${pct}% match`}
+    >
+      <div className={styles.matchRingInner} aria-hidden>
+        <span>
+          <span className={styles.matchRingPct}>{pct}</span>
+          <span className={styles.matchRingSign}>%</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Provider + trailer row, then the Why pill + watchlist CTA row. */
+function CtaBlock({
+  rec,
+  onWhy,
+  saved,
+  onToggleWatchlist,
+}: {
+  rec: Recommendation;
+  /** Omitted on the Why detail itself — the CTA spans the row instead. */
+  onWhy?: (rec: Recommendation) => void;
+  saved: boolean;
+  onToggleWatchlist: (rec: Recommendation) => void;
+}) {
+  return (
+    <div className={styles.ctaBlock}>
+      <div className={styles.providerRow}>
+        <WherePill where={rec.where} />
+        <TrailerButton rec={rec} />
+      </div>
+      <div className={styles.ctaRow}>
+        {onWhy && (
+          <button
+            type="button"
+            className={styles.whyPill}
+            onClick={() => onWhy(rec)}
+            aria-label={`Why we picked ${rec.title}`}
+          >
+            <span aria-hidden>🤔</span>
+            <span>Why ?</span>
+          </button>
+        )}
+        <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} />
+      </div>
+    </div>
+  );
+}
+
+// The card's primary CTA — yellow-tinted pill, heavier than the "Why ?" pill
 // it sits across from. Toggles: saved cards offer removal instead.
 function WatchlistButton({
   rec,
   saved,
   onToggle,
-  variant,
 }: {
   rec: Recommendation;
   saved: boolean;
   onToggle: (rec: Recommendation) => void;
-  /** "strong" = over a poster (blurred backing); "block" = full-width column. */
-  variant?: "strong" | "block";
 }) {
-  const label = saved ? "Remove from watchlist" : "Add to watchlist";
+  const label = saved ? "Remove from watchlist" : "Add to Watchlist";
   return (
     <button
       type="button"
-      className={[
-        styles.watchlistBtn,
-        saved ? styles.watchlistBtnSaved : "",
-        variant === "strong" ? styles.watchlistBtnStrong : "",
-        variant === "block" ? styles.watchlistBtnBlock : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={`${styles.watchlistBtn} ${saved ? styles.watchlistBtnSaved : ""}`}
       onClick={() => onToggle(rec)}
       aria-pressed={saved}
       aria-label={`${label}: ${rec.title}`}
       title={label}
     >
-      <svg
-        viewBox="0 0 24 24"
-        width="15"
-        height="15"
+      <Bookmark
+        size={16}
+        strokeWidth={1.8}
         fill={saved ? "currentColor" : "none"}
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
         aria-hidden
-      >
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-      </svg>
+      />
       <span>{label}</span>
     </button>
   );
 }
 
-// Play button for the title's trailer. Disabled (greyed) when no trailer has
+// "Play Trailer ▶" pill. Disabled (greyed, "No trailer") when no trailer has
 // been ingested for the title.
-function TrailerButton({
-  rec,
-  showLabel,
-}: {
-  rec: Recommendation;
-  /** Render a "Play trailer" text label next to the icon (details page). */
-  showLabel?: boolean;
-}) {
+function TrailerButton({ rec }: { rec: Recommendation }) {
   const hasTrailer = Boolean(rec.trailer_url);
   return (
     <button
       type="button"
-      className={`${styles.playBtn} ${showLabel ? styles.playBtnLabeled : ""}`}
+      className={styles.playBtn}
       disabled={!hasTrailer}
       onClick={
         hasTrailer
@@ -876,14 +964,8 @@ function TrailerButton({
       aria-label={hasTrailer ? `Play ${rec.title} trailer` : "Trailer unavailable"}
       title={hasTrailer ? "Play trailer" : "Trailer unavailable"}
     >
-      {showLabel && (
-        <span className={styles.playBtnText}>
-          {hasTrailer ? "Play trailer" : "No trailer"}
-        </span>
-      )}
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden>
-        <path d="M8 5v14l11-7z" />
-      </svg>
+      <span>{hasTrailer ? "Play Trailer" : "No trailer"}</span>
+      <Play size={16} fill="currentColor" strokeWidth={0} className={styles.playIcon} aria-hidden />
     </button>
   );
 }
@@ -1115,9 +1197,7 @@ function FullSwiper({
             onClick={() => slideTo(-1)}
             aria-label="Previous recommendation"
           >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <ChevronLeft size={22} strokeWidth={2} aria-hidden />
           </button>
         )}
         {nextRec && (
@@ -1127,9 +1207,7 @@ function FullSwiper({
             onClick={() => slideTo(1)}
             aria-label="Next recommendation"
           >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
+            <ChevronRight size={22} strokeWidth={2} aria-hidden />
           </button>
         )}
       </div>
@@ -1165,46 +1243,22 @@ function FullCard({
     <div className={`${styles.fullCard} ${className}`} style={style}>
       <PosterTile rec={rec} size="lg" />
       <div className={styles.fullGradient} />
+      <MatchRing match={rec.match} className={styles.fullRing} />
       <div className={styles.fullContent}>
-        {/* Circular match badge — same look as the detail-view hero — sits
-            just above the title, left-aligned. */}
-        <div className={styles.heroMatch}>
-          <span className={styles.heroMatchPct}>{Math.round(rec.match * 100)}</span>
-          <span className={styles.heroMatchLabel}>match</span>
+        <div className={styles.cardTitleBlock}>
+          <h2 className={styles.fullTitle}>{rec.title}</h2>
+          <MetaRow rec={rec} />
         </div>
-        <h2 className={styles.fullTitle}>{rec.title}</h2>
-        <div className={styles.cardMeta}>
-          <span>{rec.year}</span>
-          <span className={styles.dot} />
-          <span>{rec.meta}</span>
-          <span className={styles.dot} />
-          <span>★ {rec.rating.toFixed(1)}</span>
-        </div>
-        <WherePill where={rec.where} hero />
-        {/* "Why this pick?" pill under the title/meta block, watchlist CTA
-            across from it. */}
-        <div className={styles.ctaRow}>
-          <button
-            type="button"
-            className={`${styles.whyPill} ${styles.whyPillStrong}`}
-            onClick={() => onWhy(rec)}
-            aria-label={`Why we picked ${rec.title}`}
-          >
-            <span aria-hidden>🤔</span>
-            <span>Why this pick?</span>
-          </button>
-          <WatchlistButton
-            rec={rec}
-            saved={saved}
-            onToggle={onToggleWatchlist}
-            variant="strong"
-          />
-        </div>
+        <CtaBlock
+          rec={rec}
+          onWhy={onWhy}
+          saved={saved}
+          onToggleWatchlist={onToggleWatchlist}
+        />
         <div className={styles.fullReason}>
           <span className={styles.reasonEyebrow}>FINGERPRINT</span>
           <span>{rec.reason}</span>
         </div>
-        {/* No onWhy here — the Why control is the pill above, not a CTA button. */}
         <FeedbackRow
           rec={rec}
           rated={rated}
@@ -1225,18 +1279,11 @@ function FeedbackRow({
   rated,
   onFeedback,
   onRemove,
-  onWhy,
-  compact,
 }: {
   rec: Recommendation;
   rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
-  /** When set, a leading "Why" button (same size/style as the reactions) is
-   *  rendered first — used where the poster is full-bleed and can't host its
-   *  own corner button (the full-swipe view). */
-  onWhy?: (rec: Recommendation) => void;
-  compact?: boolean;
 }) {
   if (rated) {
     return (
@@ -1244,21 +1291,7 @@ function FeedbackRow({
     );
   }
   return (
-    <div
-      className={`${styles.feedback} ${compact ? styles.feedbackCompact : ""}`}
-    >
-      {onWhy && (
-        <button
-          type="button"
-          className={styles.reactionBtn}
-          onClick={() => onWhy(rec)}
-          aria-label={`Why we picked ${rec.title}`}
-          title="Why this pick?"
-        >
-          <span className={styles.reactionEmoji}>🤔</span>
-          <span className={styles.reactionLabel}>Why</span>
-        </button>
-      )}
+    <div className={styles.feedback}>
       {REACTIONS.map((r) => (
         <button
           key={r.value}
@@ -1281,9 +1314,7 @@ function FeedbackRow({
         title="Never recommend this again"
       >
         <span className={styles.reactionEmoji} aria-hidden>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
+          <X size={20} strokeWidth={1.5} />
         </span>
         <span className={styles.reactionLabel}>Remove</span>
       </button>
@@ -1301,7 +1332,7 @@ const REACTIONS: {
 }[] = [
   { value: "loved", emoji: "❤️", label: "Loved", aria: "Loved it" },
   { value: "liked", emoji: "👍", label: "Liked", aria: "Liked it" },
-  { value: "disliked", emoji: "👎", label: "Dislike", aria: "Watched it, didn't like it" },
+  { value: "disliked", emoji: "👎", label: "Disliked", aria: "Watched it, didn't like it" },
 ];
 
 const RATED_MESSAGE: Record<WatchlistRating, string> = {
@@ -1428,8 +1459,8 @@ function WhyDetailOverlay({
       aria-modal="true"
       aria-label={`Why we picked ${rec.title}`}
     >
-      {/* Fixed poster background + dark gradient scrim (poster visible up top,
-          fading to full black at the bottom where the dense info sits). */}
+      {/* Fixed poster background (faded) + gradient into the dark base, per
+          Figma 28:3288 — data sits on top, no per-block scrims needed. */}
       {rec.poster_url && (
         <div
           className={styles.heroBg}
@@ -1442,15 +1473,16 @@ function WhyDetailOverlay({
       {/* Scrollable content column over the fixed background. Clicking the
           empty area (outside the content) closes. */}
       <div className={styles.heroScroll} onClick={onClose}>
+        {status === "loading" ? (
+          // Centred in the whole overlay (Figma 28:3112 "taste loading").
+          <div className={styles.whyLoading}>
+            <span className={styles.loadingEyebrow}>Reading your taste</span>
+            <FingerprintLoader size={66} />
+          </div>
+        ) : (
         <div className={styles.heroInner} onClick={(e) => e.stopPropagation()}>
-          {status === "loading" && (
-            <div className={styles.whyLoading}>
-              <FingerprintLoader size={56} />
-              <span className={styles.muted}>Reading your fingerprint…</span>
-            </div>
-          )}
           {status === "error" && (
-            <div className={styles.whyLoading}>
+            <div className={styles.whyError}>
               <span className={styles.error}>{errMsg}</span>
             </div>
           )}
@@ -1462,38 +1494,24 @@ function WhyDetailOverlay({
                 onClick={onClose}
                 aria-label="back"
               >
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
+                <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
               </button>
-              <div className={styles.heroHeader}>
-                <div className={styles.heroMatch}>
-                  <span className={styles.heroMatchPct}>
-                    {Math.round(rec.match * 100)}%
-                  </span>
-                  <span className={styles.heroMatchLabel}>match</span>
-                </div>
-                <TrailerButton rec={rec} showLabel />
+              <div className={styles.heroRingRow}>
+                <MatchRing match={rec.match} />
               </div>
-              <h2 className={styles.heroTitle}>{rec.title}</h2>
-              <div className={styles.heroMeta}>
-                <span>{rec.year}</span>
-                <span className={styles.dot} />
-                <span>{rec.meta}</span>
-                <span className={styles.dot} />
-                <span>★ {rec.rating.toFixed(1)}</span>
+              <div className={styles.cardTitleBlock}>
+                <h2 className={styles.heroTitle}>{rec.title}</h2>
+                <MetaRow rec={rec} />
               </div>
-              <WherePill where={rec.where} hero />
+              <CtaBlock
+                rec={rec}
+                saved={saved}
+                onToggleWatchlist={onToggleWatchlist}
+              />
               <div className={styles.heroFingerprint}>
                 <span className={styles.reasonEyebrow}>FINGERPRINT</span>
                 <span>{result.explanation}</span>
               </div>
-              <WatchlistButton
-                rec={rec}
-                saved={saved}
-                onToggle={onToggleWatchlist}
-                variant="block"
-              />
               <FeedbackRow
                 rec={rec}
                 rated={rated}
@@ -1504,6 +1522,7 @@ function WhyDetailOverlay({
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
@@ -1614,19 +1633,82 @@ function Motif({ kind, fg }: { kind: MotifKind; fg: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Header icons
+// Watchlist sort dropdown (Figma 29:4262)
 // ─────────────────────────────────────────────────────────────
 
-const IconCardFull = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="5" y="4" width="14" height="16" rx="2" />
-  </svg>
-);
+function SortMenu({
+  value,
+  onChange,
+  open,
+  setOpen,
+}: {
+  value: SortKey;
+  onChange: (k: SortKey) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const current = SORT_OPTIONS.find((o) => o.key === value)!;
 
-const IconListGrid = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="5" width="6" height="6" rx="1" />
-    <rect x="3" y="13" width="6" height="6" rx="1" />
-    <path d="M13 6h8M13 12h8M13 18h8" />
-  </svg>
-);
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, setOpen]);
+
+  return (
+    <div className={styles.sortMenu} ref={ref}>
+      <button
+        type="button"
+        className={styles.sortTrigger}
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={`Sort by: ${current.label}`}
+      >
+        <span>{current.label}</span>
+        <ChevronDown size={16} strokeWidth={1.8} aria-hidden />
+      </button>
+      {open && (
+        <div className={styles.sortPanel}>
+          <button
+            type="button"
+            className={styles.sortPanelHead}
+            onClick={() => setOpen(false)}
+            aria-label="Close sort menu"
+          >
+            <span>{current.label}</span>
+            <ChevronUp size={16} strokeWidth={1.8} aria-hidden />
+          </button>
+          <div role="menu" className={styles.sortOptions}>
+            {SORT_OPTIONS.map((o) => (
+              <button
+                key={o.key}
+                type="button"
+                role="menuitemradio"
+                aria-checked={o.key === value}
+                className={`${styles.sortOption} ${o.key === value ? styles.sortOptionActive : ""}`}
+                onClick={() => {
+                  onChange(o.key);
+                  setOpen(false);
+                }}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

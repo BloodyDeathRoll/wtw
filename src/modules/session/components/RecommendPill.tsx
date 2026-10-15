@@ -1,9 +1,10 @@
 "use client";
 
 // Single source of truth for the "Recommendations Ready" button.
-// Used by WTWApp (onboard + conversation views) and VoiceMode so they
-// stay visually identical without duplicating styles.
+// Used by WTWApp (text chat) and VoiceMode so they stay visually identical
+// without duplicating styles.
 
+import { Sparkles } from "lucide-react";
 import styles from "./RecommendPill.module.css";
 
 interface RecommendPillProps {
@@ -21,7 +22,8 @@ export default function RecommendPill({
       className={`${styles.pill}${className ? ` ${className}` : ""}`}
       onClick={onClick}
     >
-      Recommendations Ready
+      <Sparkles size={26.5} strokeWidth={1.5} aria-hidden="true" />
+      <span>Recommendations Ready</span>
     </button>
   );
 }

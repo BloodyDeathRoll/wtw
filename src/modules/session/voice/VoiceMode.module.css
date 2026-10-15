@@ -5,13 +5,16 @@
    Layout:
      • .aurora — animated radial-gradient background, fades in with AI audio
      • .aiText — assistant transcript, top of screen, large readable
-     • .userCard — user's live transcript, floats above the pill
-     • .recommendBtn — appears bottom-center after N turns
-     • .controls — bottom row with mute / pill blob / exit
+     • .transcript / .aiLine / .meBlock — VoiceMode's in-flow transcript
+     • .voiceBottom / .controlsRow — VoiceMode's pill + mute / wave / exit
+     • .controls — IntroVoice's absolute bottom row
 */
 
 .voice {
   position: relative;
+  /* Own stacking context so the aurora (z-index -1) sits behind every
+     in-flow child — the top bar included — without positioning them. */
+  isolation: isolate;
   width: 100%;
   height: 100%;
   display: flex;
@@ -30,7 +33,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   transition: opacity 0.2s ease-out;
   background:
     radial-gradient(60% 50% at 25% 30%, rgba(39, 24, 255, 0.55), transparent 70%),
@@ -72,47 +75,6 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
   text-wrap: pretty;
-}
-
-/* ─── User live transcript card ─── */
-.userCard {
-  position: absolute;
-  left: 50%;
-  bottom: 140px;
-  transform: translateX(-50%);
-  z-index: 2;
-  max-width: min(360px, calc(100% - 32px));
-  padding: 12px 16px;
-  background: rgba(20, 20, 22, 0.78);
-  border: 1px solid var(--wtw-border);
-  border-radius: 16px;
-  color: var(--wtw-fg);
-  font-size: 15px;
-  line-height: 1.4;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: cardIn 0.2s ease-out;
-}
-.userCard em {
-  font-style: italic;
-  color: var(--wtw-fg-muted);
-}
-
-@keyframes cardIn {
-  from { opacity: 0; transform: translate(-50%, 6px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
-}
-
-/* ─── Recommend pill positioning (styling lives in RecommendPill.module.css) ─── */
-.recommendPos {
-  position: absolute;
-  left: 50%;
-  bottom: 96px;
-  transform: translateX(-50%);
-  z-index: 3;
-}
-.recommendPos:hover {
-  transform: translate(-50%, -2px);
 }
 
 /* ─── Status / error overlays ─── */
@@ -206,18 +168,17 @@
 }
 
 .controlBtn {
-  width: 48px;
-  height: 48px;
+  /* Figma: 24 padding + 72 icon = 120 → 50px dark-50 disc. */
+  width: 50px;
+  height: 50px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 20, 22, 0.7);
-  border: 1px solid var(--wtw-border);
+  background: #161614;
+  border: 0;
   border-radius: 50%;
-  color: var(--wtw-fg);
+  color: #fff;
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transition:
     background 0.15s ease,
     transform 0.12s ease,
@@ -225,7 +186,7 @@
   flex-shrink: 0;
 }
 .controlBtn:hover {
-  background: rgba(28, 28, 32, 0.85);
+  background: #232320;
   transform: translateY(-1px);
 }
 .controlBtn.controlMuted {
@@ -248,27 +209,26 @@
   display: block;
 }
 .wavePause {
+  /* Figma: 24 padding + 40 icon = 88 → 36.5px dark-50 disc. */
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 34px;
-  height: 34px;
+  width: 36.5px;
+  height: 36.5px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #161614;
+  border: 0;
   border-radius: 50%;
-  color: var(--wtw-fg);
+  color: #fff;
   cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   transition: background 0.15s ease, transform 0.12s ease;
   animation: pauseIn 0.18s ease-out both;
 }
 .wavePause:hover {
-  background: rgba(0, 0, 0, 0.8);
+  background: #232320;
   transform: translate(-50%, -50%) scale(1.04);
 }
 @keyframes pauseIn {
@@ -392,4 +352,73 @@
 @keyframes introStartPulse {
   0%, 100% { box-shadow: 0 0 14px var(--wtw-green-soft); }
   50% { box-shadow: 0 0 26px var(--wtw-green-glow); }
+}
+
+/* ─── Redesign layout (Figma 22:949) — VoiceMode only ───
+   In-flow column under the top bar. IntroVoice keeps the absolute .aiText /
+   .controls layout above. Design px ÷ 2.4: container-padding 40 → 16px,
+   container-padding-larger 64 → 26.5px, default-texts 56 → 23px,
+   default-labels 40 → 16px. */
+.transcript {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5.5px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+.aiLine {
+  padding: 16px 26.5px 16px 16px;
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #fff;
+  text-wrap: pretty;
+}
+.meBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 16px 16px 16px 26.5px;
+  animation: meIn 0.2s ease-out;
+}
+.meLabel {
+  font-size: 16px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.7);
+}
+.meText {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.2;
+  color: #fff;
+  text-align: right;
+}
+@keyframes meIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.voiceBottom {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 16px 26px;
+  gap: 16px;
+}
+.controlsRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 26.5px;
+}
+.controlsRow .wave {
+  flex: 1;
+  width: auto;
+  height: 35.5px;
 }

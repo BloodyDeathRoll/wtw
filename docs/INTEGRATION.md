@@ -165,6 +165,13 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-15 — Figma UI refresh (`feat/figma-ui-update`)
+
+- Source: Figma file `7rH793m9iGwE1QRRsYibfb`, page "screens" (current screenshots left, redesign right). Design px ÷ 2.4 = CSS px.
+- Restyled home, text/voice chat, menu ("Fast learning" → "Play", "Your …" → "My …"), voice picker, recs card/max view, Why-this detail, watchlist (new sort: Year / Date Added / Rating / Name), ratings (expandable rows, sort, random-poster background) and Taste DNA.
+- `lucide-react` is now used in `src/`.
+- Not checked by eye: every changed screen is signed-in.
+
 ### 2026-10-13 — Dependabot batch, Tailwind 4 (`chore/tailwind-v4`, PR #107)
 
 - Merged: #101 claude-code-action, #103 @upstash/redis, #102 lucide-react 1.x, #105 framer-motion 14. Nothing in `src/` imports lucide-react or framer-motion yet.

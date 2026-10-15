@@ -116,7 +116,7 @@ export function RulesSection({
   return (
     <section className={styles.section}>
       <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>Your Rules</h2>
+        <h2 className={`${styles.sectionTitle} ${styles.sectionTitleAccent}`}>Your Rules</h2>
         <span className={styles.groupLegend}>From what you&rsquo;ve told me</span>
       </div>
 
@@ -132,99 +132,116 @@ export function RulesSection({
       {visibleExclusions.length > 0 && (
         <div className={styles.specGroup}>
           <p className={styles.subhead}>Never show me</p>
-          {visibleExclusions.map((r) => {
-            const key = ruleKey(r);
-            const id = `exclusion|${key}`;
-            return (
-              <div key={key} className={styles.ruleRow}>
-                {/* Tag + name + reason wrap among themselves; Remove stays
-                    pinned right on the first line, so rows with and without a
-                    reason still line up. */}
-                <span className={styles.ruleText}>
+          <div className={styles.ruleList}>
+            {visibleExclusions.map((r) => {
+              const key = ruleKey(r);
+              const id = `exclusion|${key}`;
+              return (
+                <div key={key} className={styles.ruleRow}>
+                  {/* Type pill, then name + reason wrapping among themselves;
+                      Remove stays pinned to the far edge. */}
                   <span className={`${styles.tag} ${styles.tagDeny}`}>{r.type}</span>
-                  <span className={styles.ruleName}>{r.name}</span>
-                  {r.reason && <span className={styles.ruleReason}>— {r.reason}</span>}
-                </span>
-                <button
-                  type="button"
-                  className={styles.ruleRemove}
-                  onClick={() => remove("exclusion", key)}
-                  disabled={busy === id}
-                  aria-label={`Remove rule: never show me ${r.name}`}
-                >
-                  Remove
-                </button>
-              </div>
-            );
-          })}
+                  <span className={styles.ruleText}>
+                    <span className={styles.ruleName}>{r.name}</span>
+                    {r.reason && <span className={styles.ruleReason}>— {r.reason}</span>}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    onClick={() => remove("exclusion", key)}
+                    disabled={busy === id}
+                    aria-label={`Remove rule: never show me ${r.name}`}
+                  >
+                    <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M30 10L10 30M10 10L30 30" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {visiblePrefs.length > 0 && (
         <div className={styles.specGroup}>
           <p className={styles.subhead}>Less of</p>
-          {visiblePrefs.map((p) => {
-            const key = p.signal.trim().toLowerCase();
-            const id = `soft_preference|${key}`;
-            return (
-              <div key={key} className={styles.ruleRow}>
-                <span className={styles.ruleText}>
-                  <span className={styles.ruleName}>{p.signal}</span>
-                  <span className={styles.tag}>
-                    {/* 0.3 means "shown at 30% weight" — say the part the user
-                        asked for, which is how much less. */}
-                    {Math.round((1 - p.weight_modifier) * 100)}% less
+          <div className={styles.ruleList}>
+            {visiblePrefs.map((p) => {
+              const key = p.signal.trim().toLowerCase();
+              const id = `soft_preference|${key}`;
+              return (
+                <div key={key} className={styles.ruleRow}>
+                  <span className={styles.ruleText}>
+                    <span className={styles.ruleName}>{p.signal}</span>
+                    <span className={styles.tag}>
+                      {/* 0.3 means "shown at 30% weight" — say the part the user
+                          asked for, which is how much less. */}
+                      {Math.round((1 - p.weight_modifier) * 100)}% less
+                    </span>
                   </span>
-                </span>
-                <button
-                  type="button"
-                  className={styles.ruleRemove}
-                  onClick={() => remove("soft_preference", key)}
-                  disabled={busy === id}
-                  aria-label={`Remove preference: less ${p.signal}`}
-                >
-                  Remove
-                </button>
-              </div>
-            );
-          })}
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    onClick={() => remove("soft_preference", key)}
+                    disabled={busy === id}
+                    aria-label={`Remove preference: less ${p.signal}`}
+                  >
+                    <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M30 10L10 30M10 10L30 30" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
       <form className={styles.addRule} onSubmit={add}>
         <p className={styles.subhead}>Add a rule</p>
-        <div className={styles.addRuleRow}>
+        <div className={styles.addRuleFields}>
           {/* A two-way choice, not a type picker: the server works out whether
               the name is a genre or a keyword. People are still added by
               naming them in a session, where TMDB can resolve them — guessing
               a person from typed text makes a rule that matches nothing while
               looking like it works. */}
-          <select
-            className={styles.addRuleKind}
-            value={draftKind}
-            onChange={(e) => setDraftKind(e.target.value as Kind)}
-            aria-label="Rule strength"
-            disabled={adding}
-          >
-            <option value="exclusion">Never show me</option>
-            <option value="soft_preference">Less of</option>
-          </select>
-          <input
-            className={styles.addRuleInput}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="horror, anime, reality tv…"
-            aria-label="What to rule out"
-            maxLength={60}
-            disabled={adding}
-          />
-          <button
-            type="submit"
-            className={styles.addRuleSubmit}
-            disabled={adding || draft.trim().length === 0}
-          >
-            Add
-          </button>
+          <div className={styles.addRuleKindWrap}>
+            <select
+              className={styles.addRuleKind}
+              value={draftKind}
+              onChange={(e) => setDraftKind(e.target.value as Kind)}
+              aria-label="Rule strength"
+              disabled={adding}
+            >
+              <option value="exclusion">Never show me</option>
+              <option value="soft_preference">Less of</option>
+            </select>
+            <svg className={styles.addRuleChevron} viewBox="0 0 72 72" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 27L36 45L54 27" />
+            </svg>
+          </div>
+          <div className={styles.addRuleRow}>
+            <input
+              className={styles.addRuleInput}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="horror, anime, reality tv…"
+              aria-label="What to rule out"
+              maxLength={60}
+              disabled={adding}
+            />
+            <button
+              type="submit"
+              className={styles.iconBtn}
+              disabled={adding || draft.trim().length === 0}
+              aria-label="Add"
+            >
+              <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 8.33V31.67M8.33 20H31.67" />
+              </svg>
+            </button>
+          </div>
         </div>
         {added && <p className={styles.ruleAdded}>{added}</p>}
       </form>

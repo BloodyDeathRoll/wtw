@@ -9,11 +9,13 @@
 //   4. Server messages drop transcripts (input + output) and PCM audio chunks
 //   5. AudioPlayer queues audio chunks; flush() on `interrupted` (barge-in)
 //
-// Per the design frames: pill blob bottom-center, mic-mute left, X-exit right,
-// live transcript card above the pill, streaming AI text at top with an aurora
-// background that activates while the assistant speaks.
+// Per the Figma redesign (22:949): the app's top bar, streaming AI text under
+// it, the user's live words right-aligned under a small "Me" label, then the
+// Recommendations Ready pill and a mic · waveform · X row at the bottom. An
+// aurora background activates while the assistant speaks.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ChevronLeft, Mic, MicOff, Pause, X } from "lucide-react";
 import {
   GoogleGenAI,
   type LiveServerMessage,
@@ -41,6 +43,10 @@ interface VoiceModeProps {
    * the "play" button on the welcome screen so voice mode starts with the
    * AI reading the current question aloud. */
   primer: string | null;
+  /** The app's top bar (back · Movies/Series · share · menu), rendered by the
+   * parent so the menu and content-type state stay in one place. Without it
+   * VoiceMode falls back to a lone back button. */
+  header?: ReactNode;
 }
 
 type Status = "connecting" | "live" | "error" | "closed";
@@ -54,6 +60,7 @@ export default function VoiceMode({
   recommendVisible,
   voice,
   primer,
+  header,
 }: VoiceModeProps) {
   const [status, setStatus] = useState<Status>("connecting");
   const [error, setError] = useState<string | null>(null);
@@ -353,26 +360,31 @@ export default function VoiceMode({
         aria-hidden="true"
       />
 
-      <button
-        type="button"
-        className={styles.backBtn}
-        onClick={onBack}
-        aria-label="back"
-      >
-        {IconBack}
-      </button>
-
-      {aiTranscript && (
-        <div className={styles.aiText} aria-live="polite">
-          {aiTranscript}
-        </div>
+      {header ?? (
+        <button
+          type="button"
+          className={styles.backBtn}
+          onClick={onBack}
+          aria-label="back"
+        >
+          {IconBack}
+        </button>
       )}
 
-      {userTranscript && (
-        <div className={styles.userCard} aria-live="polite">
-          <em>{userTranscript}</em>
-        </div>
-      )}
+      <div className={styles.transcript}>
+        {aiTranscript && (
+          <div className={styles.aiLine} aria-live="polite">
+            {aiTranscript}
+          </div>
+        )}
+
+        {userTranscript && (
+          <div className={styles.meBlock} aria-live="polite">
+            <span className={styles.meLabel}>Me</span>
+            <p className={styles.meText}>{userTranscript}</p>
+          </div>
+        )}
+      </div>
 
       {status === "connecting" && (
         <div className={styles.statusOverlay}>
@@ -412,83 +424,56 @@ export default function VoiceMode({
         </div>
       )}
 
-      {showRecommend && (
-        <RecommendPill onClick={onRecommend} className={styles.recommendPos} />
-      )}
+      <div className={styles.voiceBottom}>
+        {showRecommend && <RecommendPill onClick={onRecommend} />}
 
-      <div className={styles.controls}>
-        <button
-          type="button"
-          className={`${styles.controlBtn} ${muted ? styles.controlMuted : ""}`}
-          onClick={toggleMute}
-          aria-label={muted ? "unmute microphone" : "mute microphone"}
-        >
-          {muted ? IconMicOff : IconMic}
-        </button>
+        <div className={styles.controlsRow}>
+          <button
+            type="button"
+            className={`${styles.controlBtn} ${muted ? styles.controlMuted : ""}`}
+            onClick={toggleMute}
+            aria-label={muted ? "unmute microphone" : "mute microphone"}
+          >
+            {muted ? IconMicOff : IconMic}
+          </button>
 
-        <div className={styles.wave}>
-          <canvas
-            ref={waveCanvasRef}
-            className={styles.waveCanvas}
-            aria-hidden="true"
-          />
-          {aiPlaying && (
-            <button
-              type="button"
-              className={styles.wavePause}
-              onClick={interruptAi}
-              aria-label="interrupt and listen"
-            >
-              {IconPauseBars}
-            </button>
-          )}
+          <div className={styles.wave}>
+            <canvas
+              ref={waveCanvasRef}
+              className={styles.waveCanvas}
+              aria-hidden="true"
+            />
+            {aiPlaying && (
+              <button
+                type="button"
+                className={styles.wavePause}
+                onClick={interruptAi}
+                aria-label="interrupt and listen"
+              >
+                {IconPauseBars}
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className={styles.controlBtn}
+            onClick={onExit}
+            aria-label="exit voice chat"
+          >
+            {IconX}
+          </button>
         </div>
-
-        <button
-          type="button"
-          className={styles.controlBtn}
-          onClick={onExit}
-          aria-label="exit voice chat"
-        >
-          {IconX}
-        </button>
       </div>
     </div>
   );
 }
 
-const IconMic = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="3" width="6" height="12" rx="3" />
-    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-  </svg>
-);
-
-const IconMicOff = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 3l18 18" />
-    <path d="M9 9v2a3 3 0 0 0 5.12 2.12" />
-    <path d="M15 9.34V6a3 3 0 0 0-5.94-.6" />
-    <path d="M19 11a7 7 0 0 1-.11 1.24M12 18v3" />
-    <path d="M5 11a7 7 0 0 0 11 5.66" />
-  </svg>
-);
-
-const IconX = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 6l12 12M18 6L6 18" />
-  </svg>
-);
-
-const IconBack = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m15 18-6-6 6-6" />
-  </svg>
-);
-
+// lucide-react glyphs at the redesign's sizes (Figma 72 → 30px, 40 → 16.5px).
+const IconMic = <Mic size={30} strokeWidth={1.5} aria-hidden="true" />;
+const IconMicOff = <MicOff size={30} strokeWidth={1.5} aria-hidden="true" />;
+const IconX = <X size={30} strokeWidth={1.5} aria-hidden="true" />;
+const IconBack = <ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" />;
 const IconPauseBars = (
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-    <rect x="6" y="5" width="4" height="14" rx="1" />
-    <rect x="14" y="5" width="4" height="14" rx="1" />
-  </svg>
+  <Pause size={16.5} fill="currentColor" strokeWidth={0} aria-hidden="true" />
 );

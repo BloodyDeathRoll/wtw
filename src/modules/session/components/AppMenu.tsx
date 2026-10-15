@@ -12,6 +12,14 @@
 // (guarded by tests/unit/drawer-containing-block.test.ts).
 
 import { useEffect, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  Pause,
+  Play,
+  X,
+} from "lucide-react";
 import type { AppUser } from "../types";
 import styles from "./WTWApp.module.css";
 
@@ -52,40 +60,15 @@ const VOICES = [
 ] as const;
 type Voice = (typeof VOICES)[number]["id"];
 
-const IconPlay = (
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-    <path d="M8 5v14l11-7L8 5Z" />
-  </svg>
-);
-
-const IconPause = (
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-    <rect x="6" y="5" width="4" height="14" rx="1" />
-    <rect x="14" y="5" width="4" height="14" rx="1" />
-  </svg>
-);
+// lucide-react glyphs, sized from the Figma redesign (40 → 16.5px, 72 → 30px).
+const IconPlay = <Play size={16.5} fill="currentColor" strokeWidth={0} aria-hidden="true" />;
+const IconPause = <Pause size={16.5} fill="currentColor" strokeWidth={0} aria-hidden="true" />;
 
 const I = {
-  back: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m15 18-6-6 6-6" />
-    </svg>
-  ),
-  chevRight: (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  ),
-  close: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 6l12 12M18 6L6 18" />
-    </svg>
-  ),
-  hamburger: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  ),
+  back: <ChevronLeft size={16.5} strokeWidth={2} aria-hidden="true" />,
+  chevRight: <ChevronRight size={16.5} strokeWidth={2} aria-hidden="true" />,
+  close: <X size={16.5} strokeWidth={2} aria-hidden="true" />,
+  hamburger: <Menu size={30} strokeWidth={1.5} aria-hidden="true" />,
 };
 
 export { VOICES };
@@ -196,6 +179,24 @@ export function AppMenu({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [menuOpen]);
 
+  function closeMenu() {
+    setMenuOpen(false);
+    setMenuView("root");
+  }
+
+  // The drawer covers the whole app now, hamburger included, so it carries
+  // its own round close button in the header row (Figma 23:1423 / 35:1734).
+  const closeBtn = (
+    <button
+      type="button"
+      className={styles.userMenuClose}
+      onClick={closeMenu}
+      aria-label="close menu"
+    >
+      {I.close}
+    </button>
+  );
+
   const initial =
     (user.name?.trim()[0] || user.email?.trim()[0] || "?").toUpperCase();
 
@@ -213,7 +214,7 @@ export function AppMenu({
           aria-expanded={menuOpen}
           type="button"
         >
-          {menuOpen ? I.close : I.hamburger}
+          {I.hamburger}
         </button>
       </div>
     {menuOpen && (
@@ -232,8 +233,8 @@ export function AppMenu({
                     src={user.avatarUrl}
                     alt={user.name ?? user.email ?? "account"}
                     referrerPolicy="no-referrer"
-                    width={36}
-                    height={36}
+                    width={30}
+                    height={30}
                   />
                 ) : (
                   <span className={styles.userMenuAvatarInitial}>{initial}</span>
@@ -246,6 +247,7 @@ export function AppMenu({
                     <div className={styles.userMenuEmail}>{user.email}</div>
                   )}
                 </div>
+                {closeBtn}
               </div>
               <button
                 type="button"
@@ -280,7 +282,7 @@ export function AppMenu({
                   onFastLearning();
                 }}
               >
-                <span>Fast learning</span>
+                <span>Play</span>
                 <span className={styles.userMenuTrail}>{I.chevRight}</span>
               </button>
               <button
@@ -292,7 +294,7 @@ export function AppMenu({
                   onRatings();
                 }}
               >
-                <span>Your ratings</span>
+                <span>My Ratings</span>
                 <span className={styles.userMenuTrail}>{I.chevRight}</span>
               </button>
               <button
@@ -304,7 +306,7 @@ export function AppMenu({
                   onProfile();
                 }}
               >
-                <span>Your taste DNA</span>
+                <span>My Taste DNA</span>
                 <span className={styles.userMenuTrail}>{I.chevRight}</span>
               </button>
               <button
@@ -313,7 +315,7 @@ export function AppMenu({
                 className={styles.userMenuItem}
                 onClick={() => setMenuView("voice")}
               >
-                <span>Set voice</span>
+                <span>Set Voice</span>
                 <span className={styles.userMenuTrail}>
                   {voice}
                   {I.chevRight}
@@ -341,9 +343,11 @@ export function AppMenu({
                   aria-label="back to menu"
                 >
                   {I.back}
+                  <span className={styles.userMenuSubTitle}>Voice</span>
                 </button>
-                <span className={styles.userMenuSubTitle}>Voice</span>
+                {closeBtn}
               </div>
+              <div className={styles.voiceList}>
               {VOICES.map((v) => (
                 <div
                   key={v.id}
@@ -377,6 +381,7 @@ export function AppMenu({
                   </button>
                 </div>
               ))}
+              </div>
             </>
           )}
         </div>
