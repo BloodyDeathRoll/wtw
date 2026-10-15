@@ -209,7 +209,7 @@ export default function RatingsView({
     setBgPoster(urls.length ? urls[Math.floor(Math.random() * urls.length)] : null);
   }
   const viewStyle: CSSProperties | undefined = bgPoster
-    ? ({ "--rv-poster": `url("${bgPoster}")` } as CSSProperties)
+    ? ({ "--rv-poster": `url(${JSON.stringify(encodeURI(bgPoster))})` } as CSSProperties)
     : undefined;
 
   const sectionLabel = `${tabMeta(tab).label} titles`;
