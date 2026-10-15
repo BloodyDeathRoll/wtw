@@ -1,11 +1,6 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({ baseDirectory: __dirname });
+// eslint-config-next 16 ships native flat configs (no FlatCompat needed).
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 
 const config = [
   {
@@ -22,9 +17,18 @@ const config = [
       "coverage/**",
     ],
   },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...nextVitals,
+  ...nextTs,
   {
     rules: {
+      // New in eslint-config-next 16 (React Compiler rules from
+      // eslint-plugin-react-hooks 7). Existing code trips 16 of them; kept as
+      // warnings so the Next 16 upgrade lands without a behaviour refactor.
+      // Tighten back to errors once those call sites are fixed.
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/refs": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/immutability": "warn",
       // Honour the underscore-prefix convention for intentionally-unused params
       // (used heavily in stub interfaces under src/modules/dna/ and src/modules/engine/).
       "@typescript-eslint/no-unused-vars": [
