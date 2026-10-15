@@ -1495,63 +1495,63 @@ function WhyDetailOverlay({
       </div>
 
       <div className={styles.whyBody}>
-      {/* Fixed poster background (faded) + gradient into the dark base, per
-          Figma 28:3288 — data sits on top, no per-block scrims needed. */}
-      {rec.poster_url && (
-        <div
-          className={styles.heroBg}
-          style={{ backgroundImage: `url(${rec.poster_url})` }}
-          aria-hidden
-        />
-      )}
-      <div className={styles.heroScrim} aria-hidden />
+        {/* Fixed poster background (faded) + gradient into the dark base, per
+            Figma 28:3288 — data sits on top, no per-block scrims needed. */}
+        {rec.poster_url && (
+          <div
+            className={styles.heroBg}
+            style={{ backgroundImage: `url(${rec.poster_url})` }}
+            aria-hidden
+          />
+        )}
+        <div className={styles.heroScrim} aria-hidden />
 
-      {/* Scrollable content column over the fixed background. Clicking the
-          empty area (outside the content) closes. */}
-      <div className={styles.heroScroll} onClick={onClose}>
-        {status === "loading" ? (
-          // Centred in the whole overlay (Figma 28:3112 "taste loading").
-          <div className={styles.whyLoading}>
-            <span className={styles.loadingEyebrow}>Reading your taste</span>
-            <FingerprintLoader size={66} />
+        {/* Scrollable content column over the fixed background. Clicking the
+            empty area (outside the content) closes. */}
+        <div className={styles.heroScroll} onClick={onClose}>
+          {status === "loading" ? (
+            // Centred in the whole overlay (Figma 28:3112 "taste loading").
+            <div className={styles.whyLoading}>
+              <span className={styles.loadingEyebrow}>Reading your taste</span>
+              <FingerprintLoader size={66} />
+            </div>
+          ) : (
+          <div className={styles.heroInner} onClick={(e) => e.stopPropagation()}>
+            {status === "error" && (
+              <div className={styles.whyError}>
+                <span className={styles.error}>{errMsg}</span>
+              </div>
+            )}
+            {status === "ready" && result && (
+              <div className={styles.heroData}>
+                <div className={styles.heroRingRow}>
+                  <MatchRing match={rec.match} />
+                </div>
+                <div className={styles.cardTitleBlock}>
+                  <h2 className={styles.heroTitle}>{rec.title}</h2>
+                  <MetaRow rec={rec} />
+                </div>
+                <CtaBlock
+                  rec={rec}
+                  saved={saved}
+                  onToggleWatchlist={onToggleWatchlist}
+                />
+                <div className={styles.heroFingerprint}>
+                  <span className={styles.reasonEyebrow}>FINGERPRINT</span>
+                  <span><Emphasis text={result.explanation} /></span>
+                </div>
+                <FeedbackRow
+                  rec={rec}
+                  rated={rated}
+                  onFeedback={onFeedback}
+                  onRemove={onRemove}
+                />
+                <WhyPanel result={result} />
+              </div>
+            )}
           </div>
-        ) : (
-        <div className={styles.heroInner} onClick={(e) => e.stopPropagation()}>
-          {status === "error" && (
-            <div className={styles.whyError}>
-              <span className={styles.error}>{errMsg}</span>
-            </div>
-          )}
-          {status === "ready" && result && (
-            <div className={styles.heroData}>
-              <div className={styles.heroRingRow}>
-                <MatchRing match={rec.match} />
-              </div>
-              <div className={styles.cardTitleBlock}>
-                <h2 className={styles.heroTitle}>{rec.title}</h2>
-                <MetaRow rec={rec} />
-              </div>
-              <CtaBlock
-                rec={rec}
-                saved={saved}
-                onToggleWatchlist={onToggleWatchlist}
-              />
-              <div className={styles.heroFingerprint}>
-                <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-                <span><Emphasis text={result.explanation} /></span>
-              </div>
-              <FeedbackRow
-                rec={rec}
-                rated={rated}
-                onFeedback={onFeedback}
-                onRemove={onRemove}
-              />
-              <WhyPanel result={result} />
-            </div>
           )}
         </div>
-        )}
-      </div>
       </div>
     </div>
   );
