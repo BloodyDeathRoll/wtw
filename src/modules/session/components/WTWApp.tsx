@@ -13,6 +13,16 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import {
+  AudioLines,
+  Bookmark,
+  ChevronDown,
+  ChevronLeft,
+  MessageSquare,
+  Share2,
+  Sparkles,
+  Volume2,
+} from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { createClient } from "@/lib/supabase/client";
@@ -32,8 +42,10 @@ import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
 import IntroVoice from "../voice/IntroVoice";
 import { FingerprintLoader } from "./FingerprintLoader";
+import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
+import { shareApp } from "@/lib/share";
 import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
@@ -70,80 +82,25 @@ const isVoice = (s: unknown): s is Voice =>
 
 
 // ─────────────────────────────────────────────────────────────
-// Icons (Lucide-style, currentColor strokes)
+// Icons — lucide-react, named as in the Figma redesign (icon/share-2 etc.).
+// Design sizes are phone px at ~2.4x: 72 → 30, 64 → 26.5, 40 → 16.5.
 // ─────────────────────────────────────────────────────────────
+const ICON_STROKE = 1.5;
 const I = {
-  chevDown: (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  ),
-  liveBars: (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-      <rect x="1.5" y="10.5" width="2" height="3" rx="1" />
-      <rect x="4.5" y="7" width="2" height="10" rx="1" />
-      <rect x="7.5" y="3.5" width="2" height="17" rx="1" />
-      <rect x="10.5" y="9" width="2" height="6" rx="1" />
-      <rect x="13.5" y="5" width="2" height="14" rx="1" />
-      <rect x="16.5" y="8" width="2" height="8" rx="1" />
-      <rect x="19.5" y="10.5" width="2" height="3" rx="1" />
-    </svg>
-  ),
-  back: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m15 18-6-6 6-6" />
-    </svg>
-  ),
-  hamburger: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  ),
-  chevRight: (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  ),
-  message: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="14" rx="2" />
-      <path d="M7 18v3l4-3" />
-    </svg>
-  ),
-  close: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 6l12 12M18 6L6 18" />
-    </svg>
-  ),
+  chevDown: <ChevronDown size={16.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
+  back: <ChevronLeft size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
+  message: <MessageSquare size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   // Android's share mark (three nodes, two arms) rather than the iOS
   // box-and-arrow — this ships as a PWA and Android is the target surface.
-  share: (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="18" cy="5" r="3" />
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="19" r="3" />
-      <path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4" />
-    </svg>
-  ),
-  // Home-screen circles. Sparkle = the fingerprint's picks; bookmark matches the
-  // "Add to watchlist" CTA on the cards.
-  sparkle: (
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
-      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
-    </svg>
-  ),
-  bookmark: (
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    </svg>
-  ),
+  share: <Share2 size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
+  // Home-screen circles. Sparkles = the fingerprint's picks; bookmark matches
+  // the "Add to watchlist" CTA on the cards.
+  sparkle: <Sparkles size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
+  bookmark: <Bookmark size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
+  // The input's live/send button ("speak" in the design).
+  speak: <AudioLines size={25} strokeWidth={2} aria-hidden="true" />,
+  replay: <Volume2 size={20} strokeWidth={ICON_STROKE} aria-hidden="true" />,
 };
-
-
-
-
-
 
 // ─────────────────────────────────────────────────────────────
 // Top bar
@@ -283,26 +240,6 @@ function TopBar({
   );
 }
 
-/** Hands the app's URL to the OS share sheet, falling back to the clipboard
- *  on desktop browsers that don't implement Web Share. */
-async function shareApp() {
-  const url = window.location.origin;
-  const data = {
-    title: "WTW — What To Watch",
-    text: "Find something worth watching.",
-    url,
-  };
-  try {
-    if (navigator.share) {
-      await navigator.share(data);
-      return;
-    }
-    await navigator.clipboard.writeText(url);
-  } catch {
-    // Cancelled from the sheet, or clipboard denied — nothing to recover.
-  }
-}
-
 // ─────────────────────────────────────────────────────────────
 // Onboard / Welcome
 // ─────────────────────────────────────────────────────────────
@@ -326,19 +263,21 @@ function Onboard({
     continuePrompt ??
     "Let's start by calibrating your taste. Name a few of your all-time favorite films.";
   return (
-    <div className={styles.welcome}>
-      <div className={styles.welcomeLogoRow}>
+    <div className={styles.homeHero}>
+      <div className={styles.homeLogoRow}>
         <Image
           src="/logo_vector.svg"
           alt=""
-          width={40}
-          height={40}
-          className={styles.welcomeLogo}
+          width={64}
+          height={64}
+          className={styles.homeLogo}
           priority
         />
-        <span className={styles.welcomeLogoName}>WTW</span>
+        <span className={styles.homeLogoName}>WTW</span>
       </div>
-      <p className={styles.onboardHint}>{hint}</p>
+      <p className={styles.homeQuestion}>{hint}</p>
+      {/* Not in the redesign, kept on purpose: it re-opens the question in
+          voice mode, read aloud — the only way to HEAR the prompt. */}
       {onPlayVoice && (
         <button
           type="button"
@@ -346,20 +285,7 @@ function Onboard({
           onClick={() => onPlayVoice(spoken)}
           aria-label="play message"
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M11 5 6 9H2v6h4l5 4Z" />
-            <path d="M16 9a4 4 0 0 1 0 6" />
-          </svg>
+          {I.replay}
         </button>
       )}
     </div>
@@ -429,7 +355,9 @@ function AIMessage({ children }: { children: ReactNode }) {
   return (
     <div className={`${styles.msgRow} ${styles.msgRowLeft}`}>
       <div className={styles.aiMark}>
-        <Image src="/logo_vector.svg" alt="wtw" width={18} height={18} />
+        {/* The glyph fills ~half of logo_vector.svg's square canvas, so the
+            image is oversized and clipped by the round mark. */}
+        <Image src="/logo_vector.svg" alt="wtw" width={35} height={35} />
       </div>
       <div className={styles.aiBody}>{children}</div>
     </div>
@@ -467,18 +395,21 @@ type Stage =
   | "learning"
   | "ratings";
 
-// The home screen's two primary destinations. Replaces the old
-// "Recommendations Ready" pill (which VoiceMode still uses on its own surface).
+// The home screen's two primary destinations. In the chat log the recs circle
+// gives way to the wide "Recommendations Ready" pill (as in VoiceMode).
 function HomeCircles({
   onRecommend,
   onWatchlist,
   showRecommend,
   watchlistN,
+  contentLabel,
 }: {
   onRecommend: () => void;
   onWatchlist: () => void;
   showRecommend: boolean;
   watchlistN: number;
+  /** The current media type ("Movies" / "Series") — labels the recs circle. */
+  contentLabel: string;
 }) {
   return (
     <div className={styles.circleRow}>
@@ -488,11 +419,11 @@ function HomeCircles({
             type="button"
             className={`${styles.circleBtn} ${styles.circleBtnRecs}`}
             onClick={onRecommend}
-            aria-label="Recommendations"
+            aria-label={`${contentLabel} recommendations`}
           >
             {I.sparkle}
           </button>
-          <span className={styles.circleLabel}>Recommendations</span>
+          <span className={styles.circleLabel}>{contentLabel}</span>
         </div>
       )}
       {/* Only once something is saved — an empty watchlist has nothing to show. */}
@@ -552,7 +483,7 @@ function InputBar({
           onClick={handleLiveBtn}
           aria-label={value.trim() ? "send" : "start live session"}
         >
-          {I.liveBars}
+          {I.speak}
         </button>
       </div>
       <p className={styles.inputHint}>You can always skip a question</p>
@@ -862,6 +793,12 @@ export default function WTWApp({
     setInput("");
   }
 
+  function leaveVoiceToHome() {
+    setVoiceOpen(false);
+    setVoicePrimer(null);
+    backToOnboard();
+  }
+
   // Voice mode hands us one completed turn at a time — user's transcribed
   // input + AI's transcribed output. We mirror it into the local chat so
   // it shows up next to text messages, and persist to the same table as
@@ -921,25 +858,13 @@ export default function WTWApp({
     <AppShell>
       {buildingRecs ? (
         <div className={styles.shell}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.75rem",
-              height: "100%",
-              textAlign: "center",
-              opacity: 0.85,
-            }}
-          >
-            <div style={{ fontSize: "1.05rem", fontWeight: 600 }}>
-              Reading your taste…
-            </div>
-            <div style={{ fontSize: "0.85rem", opacity: 0.7, maxWidth: "22rem" }}>
-              Updating your fingerprint and finding matches from what you&rsquo;ve told us.
-            </div>
-            <FingerprintLoader size={48} />
+          <div className={styles.readingTaste}>
+            <p className={styles.readingTasteTitle}>Reading your taste</p>
+            <p className={styles.readingTasteBody}>
+              Updating your fingerprint and finding matches from what you&rsquo;ve told me
+            </p>
+            {/* Figma 160 → 66px. */}
+            <FingerprintLoader size={66} />
           </div>
         </div>
       ) : stage === "intro" ? (
@@ -960,15 +885,30 @@ export default function WTWApp({
         />
       ) : voiceOpen ? (
         <VoiceMode
+          header={
+            <TopBar
+              hasConversation
+              hasMessages={messages.length > 0}
+              onBack={leaveVoiceToHome}
+              onOpenChat={() => {}}
+              onRecommend={handleRecommend}
+              onWatchlist={handleWatchlist}
+              onFastLearning={handleFastLearning}
+              onRatings={handleRatings}
+              onProfile={() => router.push("/profile/dna")}
+              user={user}
+              onSignOut={signOut}
+              contentType={contentType}
+              setContentType={setContentType}
+              voice={voice}
+              setVoice={setVoice}
+            />
+          }
           onExit={() => {
             setVoiceOpen(false);
             setVoicePrimer(null);
           }}
-          onBack={() => {
-            setVoiceOpen(false);
-            setVoicePrimer(null);
-            backToOnboard();
-          }}
+          onBack={leaveVoiceToHome}
           onBackToChat={() => {
             // Voice failed/closed → recover into the text chat log so the user
             // can keep going by typing, instead of being dumped on the home
@@ -1107,16 +1047,23 @@ export default function WTWApp({
             </div>
           )}
 
-          {(showRecommend || watchlistN > 0) && (
-            <div className={styles.recommendBar}>
-              <HomeCircles
-                onRecommend={handleRecommend}
-                onWatchlist={handleWatchlist}
-                showRecommend={showRecommend}
-                watchlistN={watchlistN}
-              />
-            </div>
-          )}
+          {stage === "conversation"
+            ? showRecommend && (
+                <div className={styles.recommendBar}>
+                  <RecommendPill onClick={handleRecommend} />
+                </div>
+              )
+            : (showRecommend || watchlistN > 0) && (
+                <div className={styles.recommendBar}>
+                  <HomeCircles
+                    onRecommend={handleRecommend}
+                    onWatchlist={handleWatchlist}
+                    showRecommend={showRecommend}
+                    watchlistN={watchlistN}
+                    contentLabel={CONTENT_TYPE_LABEL[contentType]}
+                  />
+                </div>
+              )}
 
           <InputBar
             value={input}

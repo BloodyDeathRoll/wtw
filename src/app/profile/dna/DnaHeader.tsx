@@ -46,8 +46,9 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
         onClick={() => router.push("/")}
         aria-label="back"
       >
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m15 18-6-6 6-6" />
+        {/* Figma icon/chevron-left, 72px design → 30px. */}
+        <svg viewBox="0 0 72 72" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M45 54L27 36L45 18" />
         </svg>
       </button>
 

@@ -1,4 +1,19 @@
+/* Recommendations / watchlist surface.
+   Figma redesign 2026-10 (nodes 28:2900 card view, 28:2770 max view,
+   28:3288 why-this-pick, 29:3716 / 29:4262 watchlist). Design frames are
+   945px wide = phone at ~2.4x; every design px here is ÷2.4. */
+
 .view {
+  /* Local design tokens (not global — keep the redesign scoped). */
+  --rv-white-70: rgba(255, 255, 255, 0.7);
+  --rv-white-10: rgba(255, 255, 255, 0.1);
+  --rv-dark-50: #161614;
+  --rv-yellow: #ffa900;
+  --rv-yellow-20: rgba(255, 169, 0, 0.2);
+  --rv-blue: #1460ec;
+  --rv-blue-20: rgba(20, 96, 236, 0.2);
+  --rv-orange: #ff4400;
+
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -15,7 +30,7 @@
      measured 2026-08-29, and it applied to the plain title too. */
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 10px 14px 10px;
+  padding: 10px 16px;
   flex-shrink: 0;
 }
 .headerBtn {
@@ -27,7 +42,7 @@
   background: transparent;
   border: 0;
   border-radius: 8px;
-  color: var(--wtw-fg);
+  color: #fff;
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -39,7 +54,7 @@
 .headerRight {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 10px;
   justify-self: end;
 }
 .headerBtn:hover {
@@ -58,15 +73,14 @@
 .typePickerBtn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 3.5px;
   padding: 4px 8px;
   background: transparent;
   border: 0;
   border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  color: var(--wtw-fg);
+  font-size: 20px;
+  font-weight: 400;
+  color: #fff;
   cursor: pointer;
 }
 .typePickerBtn:hover {
@@ -95,26 +109,124 @@
   border: 0;
   border-radius: 8px;
   text-align: left;
-  font-size: 15px;
-  color: var(--wtw-fg-muted);
+  font-size: 16px;
+  color: var(--rv-white-70);
   cursor: pointer;
 }
 .typeMenuItem:hover {
   background: rgba(255, 255, 255, 0.06);
-  color: var(--wtw-fg);
+  color: #fff;
 }
 .typeMenuItemActive {
-  color: var(--wtw-fg);
-  background: rgba(var(--wtw-rgb), 0.14);
+  color: #fff;
+  background: var(--rv-yellow-20);
 }
 
 .headerTitle {
   justify-self: center;
   text-align: center;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--wtw-fg);
-  letter-spacing: -0.005em;
+  font-size: 20px;
+  font-weight: 400;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ─── Watchlist "Sort by" bar ─── */
+.sortBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px 16px;
+  flex-shrink: 0;
+}
+.sortLabel {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--rv-white-70);
+}
+/* Anchor for the panel. A sibling of the drawer overlay, never an ancestor. */
+.sortMenu {
+  position: relative;
+  flex-shrink: 0;
+}
+.sortTrigger,
+.sortPanelHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  color: #fff;
+  font-size: 13.5px;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sortTrigger {
+  padding: 6.5px 16px;
+  background: var(--rv-dark-50);
+  border-radius: 16.5px;
+}
+.sortPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 40;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 0 10px 6.5px;
+  background: var(--rv-dark-50);
+  border-radius: 16.5px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  animation: cardIn 0.15s ease both;
+}
+.sortPanelHead {
+  padding: 6.5px 6.5px;
+  background: transparent;
+}
+.sortOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+.sortOption {
+  display: block;
+  width: 100%;
+  padding: 6.5px;
+  background: transparent;
+  border: 0;
+  border-radius: 16.5px;
+  text-align: left;
+  color: #fff;
+  font-size: 13.5px;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sortOption:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.sortOptionActive,
+.sortOptionActive:hover {
+  background: var(--rv-yellow-20);
+}
+
+/* Wraps whichever list view is showing. Unpositioned on purpose — the Why
+   overlay and the app drawer resolve to .shell, past this box. */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition: opacity 0.15s ease;
+}
+/* Sort panel open: the list behind fades back (Figma 29:4262). */
+.contentDimmed {
+  opacity: 0.2;
+  pointer-events: none;
 }
 
 /* ─── Compact list view ─── */
@@ -124,31 +236,53 @@
   /* No bottom padding: the trailing .sentinel owns the space below the last
      card so the "Find more" gaps stay symmetric (list padding-bottom would be
      partly clipped by the frame and skew the bottom gap smaller). */
-  padding: 6px 14px 0;
+  padding: 6px 16px 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 .sentinel {
   /* Margin (not padding) so the space below "Find more" isn't clipped by the
-     list's overflow. With the list's 12px row gap above, margin-top 20 makes a
+     list's overflow. With the list's 16px row gap above, margin-top 16 makes a
      32px top gap to match the 32px bottom margin. */
-  margin: 20px 0 32px;
+  margin: 16px 0 32px;
   text-align: center;
   min-height: 40px;
 }
+/* "Reading your taste / Updating your fingerprint…" — Figma 24:1578. */
 .findMoreLoading {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  /* Extra bottom padding: the "Updating your fingerprint…" state is auto-
-     scrolled to the bottom edge (block: "end"), so this padding is what lifts
-     the label clear of the frame so it stays visible under the loader. */
-  padding: 8px 0 56px;
+  gap: 5.5px;
+  /* Extra bottom padding: the state is auto-scrolled to the bottom edge, so
+     this lifts the loader clear of the frame. */
+  padding: 8px 16px 56px;
+}
+.initialLoading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5.5px;
+  padding: 16px;
+}
+.initialLoading > :last-child,
+.findMoreLoading > :last-child {
+  margin-top: 10px;
+}
+.loadingEyebrow {
+  font-size: 20px;
+  color: var(--rv-white-70);
+}
+.loadingTitle {
+  font-size: 23px;
+  color: #fff;
+  text-align: center;
 }
 
 .findMoreBtn {
@@ -158,10 +292,10 @@
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
-  color: var(--wtw-fg);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px 22px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 10px 26.5px;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -171,7 +305,7 @@
   border-color: rgba(255, 255, 255, 0.28);
 }
 
-/* Empty-state CTA into the feed — carries the blue gradient + glow of the
+/* Empty-state CTA into the feed — the blue CTA gradient of the
    Recommendations button it navigates to, so the two read as the same action. */
 .browseBtn {
   display: inline-flex;
@@ -179,24 +313,22 @@
   justify-content: center;
   gap: 8px;
   border: 0;
-  background: linear-gradient(135deg, #2563eb 0%, #0b0b0c 95%);
-  color: var(--wtw-fg);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 11px 22px;
+  background: linear-gradient(135deg, #1460ec 0%, #1e3cf5 50%, #2718ff 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 10px 26.5px;
   border-radius: 999px;
   cursor: pointer;
   box-shadow:
-    0 0 22px rgba(37, 99, 235, 0.5),
-    0 0 56px rgba(37, 99, 235, 0.22),
+    0 0 22px rgba(20, 96, 236, 0.5),
     0 6px 18px rgba(0, 0, 0, 0.5);
   transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
 .browseBtn:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 0 30px rgba(37, 99, 235, 0.65),
-    0 0 72px rgba(37, 99, 235, 0.28),
+    0 0 30px rgba(20, 96, 236, 0.65),
     0 8px 22px rgba(0, 0, 0, 0.55);
 }
 
@@ -213,36 +345,29 @@
 }
 
 .muted {
-  color: var(--wtw-fg-muted);
-  font-size: 12.5px;
-  letter-spacing: 0.02em;
+  color: var(--rv-white-70);
+  font-size: 13.5px;
 }
 .error {
   color: #ff8b8b;
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 
-/* ─── Card (compact) — three stacked rows ─── */
+/* ─── Card (compact) — Figma "Card" 33:427 ─── */
 .card {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  padding: 16px 18px;
-  background: rgba(20, 20, 22, 0.6);
-  border: 0;
-  border-radius: 14px;
-  /* Faint amber glow so each card lifts off the black backdrop, plus a soft
-     dark drop shadow underneath to keep it grounded. */
-  box-shadow:
-    0 0 26px rgba(var(--wtw-rgb), 0.12),
-    0 0 64px rgba(var(--wtw-rgb), 0.06),
-    0 6px 18px rgba(0, 0, 0, 0.45);
+  gap: 16px;
+  padding: 30px 16px 16px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 16.5px;
   animation: cardIn 0.25s ease both;
 }
-/* Row 1: title+meta | % match | play */
+/* Row 1: title + meta | match ring */
 .cardTop {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 .cardTitleBlock {
@@ -250,117 +375,177 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
-/* Row 2: poster | fingerprint text. Items stretch so the poster fills the
-   full row height (cropping its sides via object-fit: cover). */
-.cardMid {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 12px;
-  align-items: stretch;
+.cardTitle {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #fff;
 }
-/* Play (trailer) button */
-.playBtn {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+.cardMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 13.5px;
+  color: var(--rv-white-70);
+}
+.metaRating {
   display: inline-flex;
+  align-items: center;
+  gap: 6.5px;
+}
+.metaStar {
+  color: var(--rv-yellow);
+  fill: var(--rv-yellow);
+  stroke: none;
+  flex-shrink: 0;
+}
+
+/* Match ring badge: gold ring + glow around a dark radial disc. */
+.matchRing {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  border: 0;
+  border: 1.5px solid #f4b940;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--wtw-fg);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  box-shadow: 0 0 13.5px var(--rv-yellow);
 }
-.playBtn:hover:not(:disabled) {
-  background: rgba(var(--wtw-rgb), 0.18);
-  color: var(--wtw-green);
-}
-.playBtn:disabled {
-  opacity: 0.28;
-  cursor: default;
-}
-/* Labeled variant (details page) — pill with "Play trailer" text beside the icon. */
-.playBtnLabeled {
-  width: auto;
-  height: 38px;
-  gap: 7px;
-  padding: 0 12px 0 14px;
-  border-radius: 999px;
-}
-.playBtnText {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-/* "Why this pick?" pill — sits under the title/meta. */
-.whyPill {
-  align-self: flex-start;
-  margin-top: 5px;
-  display: inline-flex;
+.matchRingInner {
+  width: 46px;
+  height: 46px;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 0;
-  border-radius: 999px;
-  color: var(--wtw-fg-muted);
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1.5px solid #111016;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 65% 94%,
+    #0c0b11 0%,
+    #1e1e1e 57%,
+    #2c2c2c 100%
+  );
+  color: #fff;
+  font-weight: 700;
+  line-height: 1.3;
 }
-.whyPill:hover {
-  background: rgba(var(--wtw-rgb), 0.14);
-  color: var(--wtw-fg);
+.matchRingPct {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
 }
-/* Row pairing the "Why this pick?" pill with the watchlist CTA across from it.
-   The CTA is deliberately the heavier of the two — accent fill, larger type. */
-.ctaRow {
+.matchRingSign {
+  font-size: 13.5px;
+}
+
+/* Rows 2–3: provider | trailer, then Why | watchlist */
+.ctaBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6.5px;
+}
+.providerRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-height: 50px;
+  padding: 6.5px 0;
 }
-/* Two equal halves. The pill drops its own top margin and its flex-start
-   self-alignment (which would pin it to the row's top) and grows to match. */
-/* Sized to its own text, not to half the row: "Remove from watchlist" is the
-   longer label of the two, so an even split left the pill with slack while the
-   CTA clipped. The pill takes what it needs and the CTA absorbs the rest. */
-.ctaRow .whyPill {
-  flex: 0 1 auto;
+/* Streaming service — brand icon + name. Hidden when unknown. */
+.wherePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6.5px;
   min-width: 0;
-  align-self: stretch;
-  justify-content: center;
-  margin-top: 0;
-  gap: 6px;
-  padding: 7px 12px;
-  font-size: 12.5px;
-  white-space: nowrap;
+  font-size: 13.5px;
+  color: var(--rv-white-70);
 }
-/* Same geometry as the pill across from it — the CTA earns its dominance from
-   the accent fill and heavier text, not from being bigger. */
-.watchlistBtn {
-  /* Grows into the leftover space but never shrinks below its label — the pill
-     across from it yields first, so "Remove from watchlist" can't get clipped. */
-  flex: 1 0 auto;
-  align-self: stretch;
+.whereIcon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+/* "Play Trailer ▶" pill — right-aligned even with no provider beside it. */
+.playBtn {
+  margin-left: auto;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 7px 12px;
-  background: rgba(var(--wtw-rgb), 0.18);
+  gap: 6.5px;
+  padding: 10px 16px;
   border: 0;
   border-radius: 999px;
-  color: var(--wtw-fg);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  background: var(--rv-blue-20);
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.playIcon {
+  color: var(--rv-blue);
+}
+.playBtn:hover:not(:disabled) {
+  background: rgba(20, 96, 236, 0.32);
+}
+.playBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ctaRow {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+}
+/* "🤔 Why ?" pill — sized to its text; the watchlist CTA takes the rest. */
+.whyPill {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6.5px;
+  padding: 10px 16px;
+  background: var(--rv-white-10);
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.whyPill:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.watchlistBtn {
+  /* Grows into the leftover space but never shrinks below its label — the
+     pill across from it yields first, so "Remove from watchlist" can't clip. */
+  flex: 1 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6.5px;
+  padding: 10px 16px;
+  background: var(--rv-yellow-20);
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -369,30 +554,37 @@
   flex-shrink: 0;
 }
 .watchlistBtn:hover {
-  background: rgba(var(--wtw-rgb), 0.3);
+  background: rgba(255, 169, 0, 0.32);
 }
-/* Saved — inverted fill so the "on" state is unmistakable and reads as a
+/* Saved — solid fill so the "on" state is unmistakable and reads as a
    toggle the user can tap again to undo. */
-.watchlistBtnSaved {
-  background: rgb(var(--wtw-rgb));
-  color: #0b0b0c;
-}
+.watchlistBtnSaved,
 .watchlistBtnSaved:hover {
-  background: rgba(var(--wtw-rgb), 0.85);
+  background: var(--rv-yellow);
+  color: var(--rv-dark-50);
 }
-/* Full-view variant — sits over the poster, so it needs a blurred backing like
-   .whyPillStrong does. */
-.watchlistBtnStrong {
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+
+/* Row 4: poster | fingerprint text. Poster has a fixed 9:16 frame. */
+.cardMid {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 16px;
+  align-items: start;
 }
-/* Detail overlay — no pill beside it, so it spans the column. */
-.watchlistBtnBlock {
-  width: 100%;
-  justify-content: center;
-  padding: 11px 14px;
+.cardReason {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.reasonEyebrow {
   font-size: 13.5px;
+  line-height: normal;
+  color: var(--rv-white-70);
 }
+
 @keyframes cardIn {
   from {
     opacity: 0;
@@ -403,134 +595,58 @@
     transform: translateY(0);
   }
 }
-.cardBody {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-}
-.cardHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.cardTitle {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--wtw-fg);
-  letter-spacing: -0.005em;
-  line-height: 1.2;
-}
-.cardMatch {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  color: var(--wtw-green);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
-}
-.matchDot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--wtw-green);
-  box-shadow: 0 0 6px var(--wtw-green-glow);
-}
-.cardMeta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-  color: var(--wtw-fg-muted);
-}
-.dot {
-  display: inline-block;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.6;
-}
-.cardReason {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 9px 11px;
-  border-radius: 8px;
-  color: var(--wtw-fg);
-  font-size: 14px;
-  line-height: 1.45;
-}
-.reasonEyebrow {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: var(--wtw-fg-muted);
-}
 
-/* ─── Feedback row ─── */
+/* ─── Feedback row: Loved / Liked / Disliked / Remove ─── */
 .feedback {
   display: flex;
-  gap: 8px;
-  margin-top: 10px;
-  min-height: 34px;
+  gap: 6.5px;
 }
-/* One-tap reactions (loved / liked / disliked / pass) — same enum the
-   scoring pipeline consumes. Emoji on top, tiny label under. */
 .reactionBtn {
   flex: 1;
+  min-width: 0;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
   border: 0;
-  background: #000;
-  color: var(--wtw-fg-muted);
-  padding: 7px 4px;
-  border-radius: 10px;
+  background: var(--rv-white-10);
+  color: var(--rv-white-70);
+  padding: 10px 4px;
+  border-radius: 6.5px;
+  font-family: inherit;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 .reactionBtn:hover {
-  background: #111;
-  color: var(--wtw-fg);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
   transform: translateY(-1px);
 }
 .reactionEmoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
   font-size: 16px;
   line-height: 1;
 }
 .reactionLabel {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 13.5px;
+  white-space: nowrap;
 }
-.feedbackCompact .reactionBtn {
-  padding: 6px 2px;
-}
-.feedbackCompact .reactionEmoji {
-  font-size: 14px;
-}
-.feedbackCompact .reactionLabel {
-  font-size: 10px;
+/* "Remove" — suppression, warmer hover. */
+.removeBtn:hover {
+  background: rgba(255, 68, 0, 0.16);
+  color: var(--rv-orange);
 }
 .feedbackAcked {
-  margin-top: 8px;
-  padding: 10px 12px;
+  padding: 12px;
   text-align: center;
-  font-size: 12.5px;
-  color: var(--wtw-fg-muted);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 10px;
+  font-size: 13.5px;
+  color: var(--rv-white-70);
+  background: var(--rv-white-10);
+  border-radius: 6.5px;
   animation: cardIn 0.18s ease both;
 }
 
@@ -541,10 +657,10 @@
   flex-shrink: 0;
 }
 .poster_md {
-  /* Fills the middle row's height; the image covers + crops the sides. */
+  /* Fixed 2:3 poster frame; the image covers + crops. */
   width: 100%;
-  height: 100%;
-  border-radius: 10px;
+  aspect-ratio: 2 / 3;
+  border-radius: 3.5px;
 }
 .poster_lg {
   /* Full-bleed poster fills the entire .fullCard container — content
@@ -573,41 +689,39 @@
 }
 .posterTitle {
   position: absolute;
-  left: 10px;
-  bottom: 10px;
-  right: 10px;
-  font-size: 16px;
+  left: 8px;
+  bottom: 8px;
+  right: 8px;
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: -0.005em;
   line-height: 1.15;
   z-index: 1;
 }
 
-/* ─── Full-screen view ─── */
+/* ─── Full-screen ("max") view ─── */
 .full {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 14px 16px;
+  padding: 0 16px 16px;
   overflow: hidden;
   touch-action: pan-y;
 }
 .fullProgress {
   display: flex;
   gap: 4px;
-  padding: 0 4px 10px;
+  padding: 0 0 16px;
   flex-shrink: 0;
 }
 .fullProgressDot {
   flex: 1;
-  height: 2px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
+  height: 1.5px;
+  background: var(--rv-dark-50);
   transition: background 0.15s ease;
 }
 .fullProgressDotActive {
-  background: var(--wtw-green);
+  background: var(--rv-yellow-20);
 }
 /* Stage — the swipe viewport. Cards are absolutely-positioned layers inside
    it so the outgoing card and the incoming neighbour can slide across it
@@ -623,13 +737,13 @@
   -webkit-user-select: none;
 }
 /* Each card fills the stage; the full-bleed poster, gradient scrim, match
-   badge and bottom content all position against it. No internal scroll. */
+   ring and bottom content all position against it. */
 .fullCard {
   position: absolute;
   inset: 0;
-  border-radius: 18px;
+  border-radius: 16.5px;
   overflow: hidden;
-  background: #0a0a0a;
+  background: var(--rv-dark-50);
   isolation: isolate;
   will-change: transform;
 }
@@ -665,11 +779,17 @@
   z-index: 2;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0) 35%,
-    rgba(0, 0, 0, 0.55) 65%,
-    rgba(0, 0, 0, 0.92) 100%
+    rgba(14, 13, 11, 0) 22.7%,
+    rgba(14, 13, 11, 0.8) 61.3%,
+    var(--rv-dark-50) 100%
   );
   pointer-events: none;
+}
+.fullRing {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
 }
 .fullContent {
   position: absolute;
@@ -677,14 +797,17 @@
   z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px 18px 20px;
-  color: var(--wtw-fg);
+  gap: 16px;
+  padding: 16px;
+  color: #fff;
 }
 /* Edge nav chevrons — vertically centred over the card, above the content. */
 .fullNav {
   position: absolute;
-  top: 50%;
+  /* Fixed offset into the poster art: the title / action stack is
+     bottom-anchored and grows upward with the reason text, so a % position
+     lands on it. */
+  top: 150px;
   transform: translateY(-50%);
   z-index: 5;
   width: 40px;
@@ -695,7 +818,7 @@
   border: 0;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.42);
-  color: var(--wtw-fg);
+  color: #fff;
   cursor: pointer;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -710,88 +833,37 @@
 .fullNavRight {
   right: 10px;
 }
-/* "Why this pick?" pill in the full view sits over the poster, so give it a
-   darker, blurred backing than the compact card's translucent pill. */
-.whyPillStrong {
-  background: rgba(0, 0, 0, 0.5);
-  color: var(--wtw-fg);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-.whyPillStrong:hover {
-  background: rgba(0, 0, 0, 0.68);
-  color: var(--wtw-fg);
-}
 .fullTitle {
   margin: 0;
-  font-size: 26px;
+  font-size: 23px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-/* Streaming service — brand icon + name, directly under the year/runtime/rating
-   meta on every card. Compact variant is text-sized and unboxed so it reads
-   as a fourth meta line; the hero variant (full card, Why detail) is the pill
-   that sits on a poster. */
-.wherePill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--wtw-fg);
-  max-width: 100%;
-}
-.wherePillHero {
-  font-size: 13px;
-  padding: 6px 12px 6px 8px;
-  background: rgba(var(--wtw-rgb), 0.18);
-  border-radius: 999px;
-  width: max-content;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  text-shadow: none;
-}
-.whereIcon {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  line-height: 1.2;
 }
 .fullReason {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 8px 0 4px;
-  color: var(--wtw-fg);
-  font-size: 14.5px;
-  line-height: 1.5;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  gap: 4px;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.3;
 }
 .fullEmpty {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--wtw-fg-muted);
-  font-size: 14px;
+  color: var(--rv-white-70);
+  font-size: 16px;
 }
 
-/* ─── "Remove" control in the reaction row ─── */
-.removeBtn:hover {
-  background: rgba(224, 124, 90, 0.14);
-  color: #E07C5A;
-}
-
-
-/* ─── "Why this?" detail overlay (poster hero, confined to the phone frame) ─── */
+/* ─── "Why this pick?" detail overlay (confined to the phone frame) ─── */
 .whyOverlay {
   position: absolute;
   inset: 0;
   z-index: 100;
-  background: #000;
+  display: flex;
+  flex-direction: column;
+  background: var(--rv-dark-50);
   overflow: hidden;
   animation: whyFadeIn 0.2s ease both;
 }
@@ -799,20 +871,27 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-/* Poster background — absolute inside the overlay so it stays put while the
-   content column (.heroScroll) scrolls. */
+.whyHeader {
+  background: #000;
+}
+/* Poster, scrim and scrolling content live under the top bar. */
+.whyBody {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+/* Poster background, faded to 20% — stays put while .heroScroll scrolls. */
 .heroBg {
   position: absolute;
   inset: 0;
   z-index: 0;
+  opacity: 0.2;
   background-size: cover;
-  background-position: center;
+  background-position: center top;
   background-repeat: no-repeat;
   pointer-events: none;
 }
-/* Dark gradient. The data now sits at the top, so darken the top band for
-   legibility, let the poster glow through the upper-middle, then fade to
-   full black where the dense breakdown scrolls. */
 .heroScrim {
   position: absolute;
   inset: 0;
@@ -820,40 +899,18 @@
   pointer-events: none;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.72) 0%,
-    rgba(0, 0, 0, 0.5) 26%,
-    rgba(0, 0, 0, 0.82) 62%,
-    #000 100%
+    rgba(14, 13, 11, 0) 22.7%,
+    var(--rv-dark-50) 100%
   );
 }
-/* Back arrow — sits at the top-left of the hero content, above the match. */
-.heroBack {
-  align-self: flex-start;
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -8px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--wtw-border);
-  border-radius: 999px;
-  color: var(--wtw-fg);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.heroBack:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-/* Scroll container over the fixed background. */
+/* Back arrow — top-left of the hero content. */
 .heroScroll {
   position: absolute;
   inset: 0;
   z-index: 2;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* Data (starting with the back arrow) sits at the top, not pushed down. */
-  padding: 20px 14px 56px;
+  padding: 10px 16px 56px;
 }
 .heroInner {
   width: 100%;
@@ -861,106 +918,65 @@
   margin: 0 auto;
   animation: whySheetIn 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
-
-/* ─── Hero data column (title, match, fingerprint, reactions, breakdown) ─── */
 .heroData {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
-.heroHeader {
+.heroRingRow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-/* Hero play button matches the fingerprint box's background. */
-.heroHeader .playBtn {
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-}
-.heroHeader .playBtn:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.85);
-  color: var(--wtw-green);
-}
-.heroMatch {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  flex-shrink: 0;
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  color: var(--wtw-green);
-  background: rgba(0, 0, 0, 0.55);
-  border: 3px solid rgba(var(--wtw-rgb), 0.5);
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
-}
-.heroMatchPct {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-.heroMatchLabel {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: lowercase;
-  color: var(--wtw-fg-muted);
+  justify-content: flex-end;
+  margin-top: -6px;
 }
 .heroTitle {
   margin: 0;
-  font-size: 27px;
+  font-size: 23px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  color: var(--wtw-fg);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+  line-height: 1.2;
+  color: #fff;
 }
-.heroMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--wtw-fg-muted);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+/* The detail has no Why pill, so the watchlist CTA spans its row. */
+.heroData .watchlistBtn {
+  flex: 1 1 auto;
 }
 .heroFingerprint {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-top: 2px;
-  padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.72);
-  border-left: 2px solid rgba(var(--wtw-rgb), 0.6);
-  border-radius: 0 8px 8px 0;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--wtw-fg);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  padding: 16px;
+  background: rgba(22, 22, 20, 0.7);
+  border-radius: 16.5px;
+  font-size: 16px;
+  line-height: 1.3;
+  color: #fff;
+}
+/* Reactions over the faded poster — white-10% on a dark-70% base. */
+.heroData .reactionBtn {
+  background:
+    linear-gradient(var(--rv-white-10), var(--rv-white-10)),
+    rgba(22, 22, 20, 0.7);
 }
 @keyframes whySheetIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
+/* "Reading your taste" + fingerprint, centred in the overlay (Figma 28:3112). */
 .whyLoading {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 13px;
+  text-align: center;
+}
+.whyError {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 180px;
   padding: 36px 24px;
-  border-radius: var(--wtw-radius-card);
-  background: rgba(10, 10, 12, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid var(--wtw-border);
+  border-radius: 16.5px;
+  background: rgba(22, 22, 20, 0.7);
   text-align: center;
 }

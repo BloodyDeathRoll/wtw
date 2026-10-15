@@ -12,9 +12,11 @@
  */
 
 import { useEffect, useState } from "react"
+import { ArrowRight, TriangleAlert } from "lucide-react"
 import type { RecommendationResult, Reaction } from "@/types/dna"
 import { addToRegretQueue } from "@/lib/regret-queue"
 import DeepSurvey from "./DeepSurvey"
+import { Emphasis } from "./Emphasis"
 import styles from "./RecCard.module.css"
 
 // ─── Poster generation ───────────────────────────────────────
@@ -55,12 +57,6 @@ const I = {
   chevUp: (
     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m18 15-6-6-6 6" />
-    </svg>
-  ),
-  warn: (
-    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-      <path d="M12 9v4M12 17h.01" />
     </svg>
   ),
   heart: (
@@ -203,12 +199,13 @@ function DoneState({ reaction }: { reaction: Reaction | null }) {
 }
 
 // ─── Why panel ───────────────────────────────────────────────
+// All bars share one colour (brand yellow, set in CSS) — Figma 28:3288.
 const SCORE_SEGMENTS = [
-  { key: "crew",      label: "Crew",      weight: 35, color: "#D49B3A" },
-  { key: "narrative", label: "Narrative", weight: 30, color: "#C7B8FF" },
-  { key: "visceral",  label: "Visceral",  weight: 20, color: "#7FB3FF" },
-  { key: "ratings",   label: "Ratings",   weight: 10, color: "#F5C9A6" },
-  { key: "recency",   label: "Recency",   weight: 5,  color: "#8A8A8E" },
+  { key: "crew",      label: "Crew",      weight: 35 },
+  { key: "narrative", label: "Narrative", weight: 30 },
+  { key: "visceral",  label: "Visceral",  weight: 20 },
+  { key: "ratings",   label: "Ratings",   weight: 10 },
+  { key: "recency",   label: "Recency",   weight: 5  },
 ]
 
 export function WhyPanel({ result }: { result: RecommendationResult }) {
@@ -254,7 +251,7 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
               <span className={styles.scoreWeight}>{seg.weight}%</span>
             </div>
             <div className={styles.scoreTrack}>
-              <div className={styles.scoreFill} style={{ width: grown ? `${scores[seg.key] * 100}%` : 0, background: seg.color }} />
+              <div className={styles.scoreFill} style={{ width: grown ? `${scores[seg.key] * 100}%` : 0 }} />
             </div>
             <span className={styles.scoreNum}>{Math.round(scores[seg.key] * 100)}</span>
           </div>
@@ -305,7 +302,7 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
               <span className={styles.dimName}>{d.dimension}</span>
               <span className={styles.dimArrow}>
                 <span className={styles.dimVal}>{d.user_value}</span>
-                <span className={styles.dimSep}>→</span>
+                <span className={styles.dimSep}><ArrowRight size={20} strokeWidth={1.5} aria-hidden /><span className={styles.srOnly}>to</span></span>
                 <span className={styles.dimVal}>{d.title_value}</span>
               </span>
             </div>
@@ -318,7 +315,7 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
           <div className={styles.whySectionLabelWarn}>Doesn&apos;t quite fit</div>
           {p.negative_signals.map((s, i) => (
             <div key={i} className={styles.negRow}>
-              <span className={styles.negIcon}>{I.warn}</span>
+              <span className={styles.negIcon}><TriangleAlert size={20} strokeWidth={1.5} aria-hidden /></span>
               <span>{s}</span>
             </div>
           ))}
@@ -426,7 +423,7 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
             <>
               <div className={styles.recWhy}>
                 <span className={styles.whyEyebrow}>FINGERPRINT</span>
-                <span>{result.explanation}</span>
+                <span><Emphasis text={result.explanation} /></span>
               </div>
 
               <div className={styles.recActions}>

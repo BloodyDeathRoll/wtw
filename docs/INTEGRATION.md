@@ -165,6 +165,13 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-15 — Figma UI refresh (`feat/figma-ui-update`)
+
+- Source: Figma file `7rH793m9iGwE1QRRsYibfb`, page "screens" (current screenshots left, redesign right). Design px ÷ 2.4 = CSS px.
+- Restyled home, text/voice chat, menu ("Fast learning" → "Play", "Your …" → "My …"), voice picker, recs card/max view, Why-this detail, watchlist (new sort: Year / Date Added / Rating / Name), ratings (expandable rows, sort, random-poster background) and Taste DNA.
+- `lucide-react` is now used in `src/`.
+- Checked logged-in at 394px; not checked: text chat and voice mode (would write to a real account).
+
 ### 2026-10-15 — Next 16 (`chore/next-16`, replaces dependabot #111)
 
 - `next build --webpack`: Next 16 builds with Turbopack by default and refuses a webpack config, which `@ducanh2912/next-pwa` injects. Moving off webpack means replacing next-pwa (e.g. Serwist). `dev` keeps `--turbopack` (PWA is disabled in dev).

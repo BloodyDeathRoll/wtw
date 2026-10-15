@@ -1,54 +1,41 @@
+/* Figma 22:949 / 23:1270 — a single-line wide pill. Design px are phone
+   screenshots at ~2.4x: 40 padding → 16px, 64 icon → 26.5px, 10 gap → 4px,
+   default-labels 40 → 16px, glow 37 → 15px. */
 .pill {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
   display: inline-flex;
   align-items: center;
-  /* Blue → black diagonal gradient */
-  background: linear-gradient(135deg, #2563eb 0%, #0b0b0c 95%);
-  color: var(--wtw-fg);
+  gap: 4px;
+  /* Figma radial gradient (635×144 frame, centre ≈ 26% 13%). */
+  background: radial-gradient(
+    ellipse 80% 130% at 26% 13%,
+    #1460ec 0%,
+    #1e3cf5 50%,
+    #2718ff 100%
+  );
+  color: #fff;
   border: 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  padding: 11px 22px;
-  border-radius: var(--wtw-radius-pill);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+  padding: 16px;
+  border-radius: 999px;
   cursor: pointer;
-  /* Blue-tinted outer glow to match the gradient. */
-  box-shadow:
-    0 0 22px rgba(37, 99, 235, 0.5),
-    0 0 56px rgba(37, 99, 235, 0.22),
-    0 6px 18px rgba(0, 0, 0, 0.5);
+  filter: drop-shadow(0 0 15px #1460ec);
   transition:
     transform 0.15s ease,
-    box-shadow 0.2s ease;
+    filter 0.2s ease;
   animation: pillIn 0.3s ease-out;
 }
-/* Glare — soft top-left highlight to catch the eye. */
-.pill::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(
-    120% 80% at 25% 0%,
-    rgba(255, 255, 255, 0.22),
-    rgba(255, 255, 255, 0) 55%
-  );
-  pointer-events: none;
-  z-index: 1;
-}
-/* Lift the children above the glare overlay. */
 .pill > * {
-  position: relative;
-  z-index: 2;
+  flex-shrink: 0;
 }
 .pill:hover {
   transform: translateY(-1px);
-  box-shadow:
-    0 0 30px rgba(37, 99, 235, 0.65),
-    0 0 72px rgba(37, 99, 235, 0.28),
-    0 8px 22px rgba(0, 0, 0, 0.55);
+  filter: drop-shadow(0 0 20px #1460ec);
 }
 
 @keyframes pillIn {

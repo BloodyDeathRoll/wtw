@@ -45,7 +45,7 @@ function dimensionValue(value: unknown): string {
 
 function Meter({
   value,
-  color = 'var(--wtw-green)',
+  color = 'var(--brand-yellow)',
   /**
    * Draw a tick at the midpoint. Only for the visceral WEIGHTS, where 50 is
    * neutral and the interesting thing is which side of it a value sits on —
@@ -65,7 +65,7 @@ function Meter({
   )
 }
 
-function SpecRow({ label, value, color }: { label: string; value: number; color: string }) {
+function SpecRow({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
     <div className={styles.specRow}>
       <span className={styles.specLabel}>{label.replace(/_/g, ' ')}</span>
@@ -78,17 +78,24 @@ function SpecRow({ label, value, color }: { label: string; value: number; color:
 function Section({
   title,
   legend,
+  accent = false,
   children,
 }: {
   title: string
   /** Names the unit of the numbers in this section, once, across from the title. */
   legend?: string
+  /**
+   * Brand-yellow title. The design alternates: a section whose own sub-labels
+   * are yellow (affinity groups, dimension names) keeps a white-70 title; one
+   * whose sub-labels are white-70 gets the yellow title instead.
+   */
+  accent?: boolean
   children: React.ReactNode
 }) {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHead}>
-        <h2 className={styles.sectionTitle}>{title}</h2>
+        <h2 className={`${styles.sectionTitle} ${accent ? styles.sectionTitleAccent : ''}`}>{title}</h2>
         {legend && <span className={styles.groupLegend}>{legend}</span>}
       </div>
       {children}
@@ -203,23 +210,23 @@ export default async function DNAProfilePage() {
             (update-strand-c.ts); craft aspects come from the deep survey and
             sit at 50 until one is filled in. Unlabelled, they read as
             confidence — the section next door — so the head names them. */}
-        <Section title="Visceral Specs" legend="Weight · 50 = neutral">
+        <Section title="Visceral Specs" legend="Weight · 50 = neutral" accent>
           <div className={styles.specGroup}>
             <p className={styles.subhead}>Pacing</p>
             {Object.entries(sc.pacing_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} color="var(--wtw-green)" />
+              <SpecRow key={k} label={k} value={v} />
             ))}
           </div>
           <div className={styles.specGroup}>
             <p className={styles.subhead}>Tone</p>
             {Object.entries(sc.tone_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} color="#7c6df2" />
+              <SpecRow key={k} label={k} value={v} color="var(--brand-purple)" />
             ))}
           </div>
           <div className={styles.specGroup}>
             <p className={styles.subhead}>Craft aspects (from deep surveys)</p>
             {Object.entries(sc.aspect_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} color="#4a9d7f" />
+              <SpecRow key={k} label={k} value={v} color="var(--brand-blue)" />
             ))}
           </div>
         </Section>
@@ -233,7 +240,7 @@ export default async function DNAProfilePage() {
 
         {/* Learning Loop */}
         {ll.open_questions.length > 0 && (
-          <Section title="Open Questions">
+          <Section title="Open Questions" accent>
             <div className={styles.questions}>
               {ll.open_questions.map((q, i) => (
                 <p key={i} className={styles.question}>
@@ -247,22 +254,24 @@ export default async function DNAProfilePage() {
 
         {/* Stretch picks summary */}
         {ll.stretch_pick_history.length > 0 && (
-          <Section title="Stretch Pick Results">
-            {ll.stretch_pick_history.slice(-5).reverse().map((s, i) => (
-              <div key={i} className={styles.ruleRow}>
-                <span style={{ flex: 1 }}>{s.title}</span>
-                <span
-                  className={styles.tag}
-                  style={
-                    s.accepted
-                      ? { background: 'var(--wtw-green-soft)', color: 'var(--wtw-green)' }
-                      : undefined
-                  }
-                >
-                  {s.reaction ?? (s.accepted ? 'watched' : 'skipped')}
-                </span>
-              </div>
-            ))}
+          <Section title="Stretch Pick Results" accent>
+            <div className={styles.ruleList}>
+              {ll.stretch_pick_history.slice(-5).reverse().map((s, i) => (
+                <div key={i} className={styles.ruleRow}>
+                  <span style={{ flex: 1 }}>{s.title}</span>
+                  <span
+                    className={styles.tag}
+                    style={
+                      s.accepted
+                        ? { background: 'var(--wtw-green-soft)', color: 'var(--wtw-green)' }
+                        : undefined
+                    }
+                  >
+                    {s.reaction ?? (s.accepted ? 'watched' : 'skipped')}
+                  </span>
+                </div>
+              ))}
+            </div>
           </Section>
         )}
 
