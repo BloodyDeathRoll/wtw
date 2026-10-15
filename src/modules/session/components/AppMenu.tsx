@@ -25,38 +25,18 @@ import styles from "./WTWApp.module.css";
 
 // Gemini Live prebuilt voices. Display name === voice ID (constellations
 // and mythology). Descriptors come from Google's own catalogue and give the
-// user a hint of timbre before they pick.
+// user a hint of timbre before they pick. Only voices with a preview sample
+// in /public/voice-samples are offered.
 const VOICES = [
   { id: "Aoede", desc: "Breezy" },
   { id: "Charon", desc: "Informative" },
   { id: "Fenrir", desc: "Excitable" },
   { id: "Kore", desc: "Firm" },
   { id: "Puck", desc: "Upbeat" },
-  { id: "Zephyr", desc: "Bright" },
   { id: "Leda", desc: "Youthful" },
   { id: "Orus", desc: "Firm" },
   { id: "Callirrhoe", desc: "Easy-going" },
   { id: "Autonoe", desc: "Bright" },
-  { id: "Enceladus", desc: "Breathy" },
-  { id: "Iapetus", desc: "Clear" },
-  { id: "Umbriel", desc: "Easy-going" },
-  { id: "Algieba", desc: "Smooth" },
-  { id: "Despina", desc: "Smooth" },
-  { id: "Erinome", desc: "Clear" },
-  { id: "Algenib", desc: "Gravelly" },
-  { id: "Rasalgethi", desc: "Informative" },
-  { id: "Laomedeia", desc: "Upbeat" },
-  { id: "Achernar", desc: "Soft" },
-  { id: "Alnilam", desc: "Firm" },
-  { id: "Schedar", desc: "Even" },
-  { id: "Gacrux", desc: "Mature" },
-  { id: "Pulcherrima", desc: "Forward" },
-  { id: "Achird", desc: "Friendly" },
-  { id: "Zubenelgenubi", desc: "Casual" },
-  { id: "Vindemiatrix", desc: "Gentle" },
-  { id: "Sadachbia", desc: "Lively" },
-  { id: "Sadaltager", desc: "Knowledgeable" },
-  { id: "Sulafat", desc: "Warm" },
 ] as const;
 type Voice = (typeof VOICES)[number]["id"];
 
@@ -373,9 +353,6 @@ export function AppMenu({
                     className={styles.voicePlay}
                     onClick={() => playSample(v.id)}
                     aria-label={`preview ${v.id}`}
-                    // Disabled until /public/voice-samples/* is filled in
-                    // (see scripts/generate-voice-samples.mjs).
-                    disabled
                   >
                     {previewVoice === v.id ? IconPause : IconPlay}
                   </button>

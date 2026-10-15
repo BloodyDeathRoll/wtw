@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronDown, ChevronLeft, ChevronUp, Maximize2, RotateCcw, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronUp, RotateCcw, X } from "lucide-react";
 import type { Reaction } from "@/types/dna";
 import type { ContentType } from "@/lib/content-type";
 import type {
@@ -178,13 +178,6 @@ export default function RatingsView({
     }
   }
 
-  // Header expand icon → browser fullscreen toggle (no-op where unsupported).
-  function toggleFullscreen() {
-    if (typeof document === "undefined") return;
-    if (document.fullscreenElement) void document.exitFullscreen?.();
-    else void document.documentElement.requestFullscreen?.();
-  }
-
   const rated = useMemo(
     () =>
       sortBy(
@@ -229,9 +222,6 @@ export default function RatingsView({
         </button>
         <span className={styles.headerTitle}>Ratings</span>
         <div className={styles.headerRight}>
-          <button className={styles.headerBtn} onClick={toggleFullscreen} aria-label="toggle fullscreen">
-            <Maximize2 size={30} strokeWidth={1.5} />
-          </button>
           {headerRight}
         </div>
       </div>

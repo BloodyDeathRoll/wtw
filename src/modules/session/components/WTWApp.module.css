@@ -308,15 +308,19 @@
   border-radius: 999px;
   transition: background 0.12s ease;
 }
-.voiceRow:hover {
-  background: rgba(255, 255, 255, 0.05);
+@media (hover: hover) {
+  .voiceRow:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
 .voiceRowActive {
   /* Figma white-10%: the selected voice is a full rounded pill. */
   background: rgba(255, 255, 255, 0.1);
 }
-.voiceRowActive:hover {
-  background: rgba(255, 255, 255, 0.14);
+@media (hover: hover) {
+  .voiceRowActive:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
 }
 .voiceSelect {
   flex: 1;

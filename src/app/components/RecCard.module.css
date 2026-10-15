@@ -426,12 +426,12 @@
   text-align: right;
   flex-shrink: 0;
 }
-/* Crew the user rated down — the panel's negative tone ("Doesn't quite fit") */
+/* Crew the user rated down — same brand bar colour; the "−" marks it */
 .crewFillNeg {
-  background: var(--why-orange);
+  background: var(--why-yellow);
 }
 .crewPctNeg {
-  color: var(--why-orange);
+  color: var(--why-muted);
 }
 
 /* Narrative alignment rows: "Tone" | user → title */

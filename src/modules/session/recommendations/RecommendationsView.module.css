@@ -262,6 +262,16 @@
      this lifts the loader clear of the frame. */
   padding: 8px 16px 56px;
 }
+.initialLoading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5.5px;
+  padding: 16px;
+}
+.initialLoading > :last-child,
 .findMoreLoading > :last-child {
   margin-top: 10px;
 }
@@ -647,9 +657,9 @@
   flex-shrink: 0;
 }
 .poster_md {
-  /* Fixed 9:16 frame (Figma watchlist note); the image covers + crops. */
+  /* Fixed 2:3 poster frame; the image covers + crops. */
   width: 100%;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 2 / 3;
   border-radius: 3.5px;
 }
 .poster_lg {
@@ -794,7 +804,10 @@
 /* Edge nav chevrons — vertically centred over the card, above the content. */
 .fullNav {
   position: absolute;
-  top: 50%;
+  /* Fixed offset into the poster art: the title / action stack is
+     bottom-anchored and grows upward with the reason text, so a % position
+     lands on it. */
+  top: 150px;
   transform: translateY(-50%);
   z-index: 5;
   width: 40px;

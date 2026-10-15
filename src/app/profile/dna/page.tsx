@@ -65,11 +65,11 @@ function Meter({
   )
 }
 
-function SpecRow({ label, value }: { label: string; value: number }) {
+function SpecRow({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
     <div className={styles.specRow}>
       <span className={styles.specLabel}>{label.replace(/_/g, ' ')}</span>
-      <Meter value={value} neutral />
+      <Meter value={value} color={color} neutral />
       <span className={styles.specValue}>{Math.round(value * 100)}</span>
     </div>
   )
@@ -220,13 +220,13 @@ export default async function DNAProfilePage() {
           <div className={styles.specGroup}>
             <p className={styles.subhead}>Tone</p>
             {Object.entries(sc.tone_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} />
+              <SpecRow key={k} label={k} value={v} color="var(--brand-purple)" />
             ))}
           </div>
           <div className={styles.specGroup}>
             <p className={styles.subhead}>Craft aspects (from deep surveys)</p>
             {Object.entries(sc.aspect_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} />
+              <SpecRow key={k} label={k} value={v} color="var(--brand-blue)" />
             ))}
           </div>
         </Section>

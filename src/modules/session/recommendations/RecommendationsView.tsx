@@ -731,6 +731,20 @@ function CompactList({
     return () => cancelAnimationFrame(id);
   }, [refreshing]);
 
+  // First page still loading — same centred state as the chat's
+  // "Reading your taste" screen (Figma 24:1578), not a bare "Loading more…".
+  if (recs.length === 0 && loading && !refreshing) {
+    return (
+      <div className={styles.initialLoading}>
+        <span className={styles.loadingEyebrow}>Reading your taste</span>
+        <span className={styles.loadingTitle}>
+          Updating your fingerprint and finding matches from what you&rsquo;ve told me
+        </span>
+        <FingerprintLoader size={66} />
+      </div>
+    );
+  }
+
   if (emptyMessage && recs.length === 0 && !loading) {
     return (
       <div className={styles.list}>

@@ -13,6 +13,8 @@
   --dark-50: #161614;
   --brand-yellow: #ffa900;
   --brand-yellow-20: rgba(255, 169, 0, 0.2);
+  --brand-purple: #8a38f5; /* Visceral Specs → Tone bars */
+  --brand-blue: #1460ec;   /* Visceral Specs → Craft bars */
   --text-small: 13.5px;   /* --default-texts-small 32 */
   --text-label: 16px;     /* --default-labels 40 */
   --text-menu: 20px;      /* --default-menus 48 */
