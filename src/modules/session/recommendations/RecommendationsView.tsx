@@ -857,9 +857,9 @@ function CompactCard({
 }
 
 /** Year · runtime · ★ rating — shared by every card variant. */
-function MetaRow({ rec, className }: { rec: Recommendation; className?: string }) {
+function MetaRow({ rec }: { rec: Recommendation }) {
   return (
-    <div className={`${styles.cardMeta} ${className ?? ""}`}>
+    <div className={styles.cardMeta}>
       <span>{rec.year}</span>
       <span>{rec.meta}</span>
       <span className={styles.metaRating}>
