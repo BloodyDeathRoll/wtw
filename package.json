@@ -24,7 +24,7 @@
     "generate-icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
-    "@ai-sdk/groq": "^4.0.54",
+    "@ai-sdk/groq": "^4.0.58",
     "@ai-sdk/mistral": "^4.0.56",
     "@ai-sdk/react": "^4.0.136",
     "@ducanh2912/next-pwa": "^10",
