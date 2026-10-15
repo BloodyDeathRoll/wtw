@@ -861,6 +861,8 @@
   position: absolute;
   inset: 0;
   z-index: 100;
+  display: flex;
+  flex-direction: column;
   background: var(--rv-dark-50);
   overflow: hidden;
   animation: whyFadeIn 0.2s ease both;
@@ -868,6 +870,16 @@
 @keyframes whyFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+.whyHeader {
+  background: #000;
+}
+/* Poster, scrim and scrolling content live under the top bar. */
+.whyBody {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 /* Poster background, faded to 20% — stays put while .heroScroll scrolls. */
 .heroBg {
@@ -892,24 +904,6 @@
   );
 }
 /* Back arrow — top-left of the hero content. */
-.heroBack {
-  align-self: flex-start;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -4px;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.heroBack:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
 .heroScroll {
   position: absolute;
   inset: 0;

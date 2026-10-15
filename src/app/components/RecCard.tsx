@@ -16,6 +16,7 @@ import { ArrowRight, TriangleAlert } from "lucide-react"
 import type { RecommendationResult, Reaction } from "@/types/dna"
 import { addToRegretQueue } from "@/lib/regret-queue"
 import DeepSurvey from "./DeepSurvey"
+import { Emphasis } from "./Emphasis"
 import styles from "./RecCard.module.css"
 
 // ─── Poster generation ───────────────────────────────────────
@@ -422,7 +423,7 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
             <>
               <div className={styles.recWhy}>
                 <span className={styles.whyEyebrow}>FINGERPRINT</span>
-                <span>{result.explanation}</span>
+                <span><Emphasis text={result.explanation} /></span>
               </div>
 
               <div className={styles.recActions}>

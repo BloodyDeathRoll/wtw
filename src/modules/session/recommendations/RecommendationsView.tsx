@@ -33,12 +33,14 @@ import {
   Maximize2,
   Minimize2,
   Play,
+  Share2,
   Star,
   X,
 } from "lucide-react";
 import styles from "./RecommendationsView.module.css";
 import { FingerprintLoader } from "../components/FingerprintLoader";
 import { WhyPanel } from "@/app/components/RecCard";
+import { Emphasis } from "@/app/components/Emphasis";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import {
@@ -55,6 +57,7 @@ import {
   type WatchlistRating,
 } from "@/lib/watchlist";
 import { addToRegretQueue } from "@/lib/regret-queue";
+import { shareApp } from "@/lib/share";
 
 type Mode = "recommendations" | "learning" | "watchlist";
 
@@ -655,6 +658,7 @@ export default function RecommendationsView({
             handleRemove(r);
           }}
           onClose={() => setDetail(null)}
+          headerRight={headerRight}
         />
       )}
     </div>
@@ -841,7 +845,7 @@ function CompactCard({
         <PosterTile rec={rec} size="md" />
         <div className={styles.cardReason}>
           <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-          <span>{rec.reason}</span>
+          <span><Emphasis text={rec.reason} /></span>
         </div>
       </div>
 
@@ -1271,7 +1275,7 @@ function FullCard({
         />
         <div className={styles.fullReason}>
           <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-          <span>{rec.reason}</span>
+          <span><Emphasis text={rec.reason} /></span>
         </div>
         <FeedbackRow
           rec={rec}
@@ -1384,6 +1388,7 @@ function WhyDetailOverlay({
   onFeedback,
   onRemove,
   onClose,
+  headerRight,
 }: {
   rec: Recommendation;
   rated: WatchlistRating | undefined;
@@ -1392,6 +1397,7 @@ function WhyDetailOverlay({
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onClose: () => void;
+  headerRight?: ReactNode;
 }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
@@ -1473,6 +1479,22 @@ function WhyDetailOverlay({
       aria-modal="true"
       aria-label={`Why we picked ${rec.title}`}
     >
+      {/* Top bar (Figma 28:3288): back · share · menu. Unpositioned, like
+          every .header — the menu drawer must resolve to the overlay. */}
+      <div className={`${styles.header} ${styles.whyHeader}`}>
+        <button type="button" className={styles.headerBtn} onClick={onClose} aria-label="back">
+          <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
+        </button>
+        <span />
+        <div className={styles.headerRight}>
+          <button type="button" className={styles.headerBtn} onClick={shareApp} aria-label="share WTW">
+            <Share2 size={30} strokeWidth={1.5} aria-hidden />
+          </button>
+          {headerRight}
+        </div>
+      </div>
+
+      <div className={styles.whyBody}>
       {/* Fixed poster background (faded) + gradient into the dark base, per
           Figma 28:3288 — data sits on top, no per-block scrims needed. */}
       {rec.poster_url && (
@@ -1502,14 +1524,6 @@ function WhyDetailOverlay({
           )}
           {status === "ready" && result && (
             <div className={styles.heroData}>
-              <button
-                type="button"
-                className={styles.heroBack}
-                onClick={onClose}
-                aria-label="back"
-              >
-                <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
-              </button>
               <div className={styles.heroRingRow}>
                 <MatchRing match={rec.match} />
               </div>
@@ -1524,7 +1538,7 @@ function WhyDetailOverlay({
               />
               <div className={styles.heroFingerprint}>
                 <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-                <span>{result.explanation}</span>
+                <span><Emphasis text={result.explanation} /></span>
               </div>
               <FeedbackRow
                 rec={rec}
@@ -1537,6 +1551,7 @@ function WhyDetailOverlay({
           )}
         </div>
         )}
+      </div>
       </div>
     </div>
   );
