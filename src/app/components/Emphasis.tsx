@@ -2,8 +2,9 @@ import { Fragment, type ReactNode } from "react";
 
 // The engine's reason text marks titles with markdown emphasis
 // ("*The Shawshank Redemption*"). Render those spans as <em> instead of
-// showing raw asterisks; unpaired asterisks are left as typed.
-const EMPHASIS = /\*{1,2}([^*\n]+?)\*{1,2}/g;
+// showing raw asterisks. Like markdown, the span must hug its text
+// ("*x*", not "5* and 4*"), so loose asterisks are left as typed.
+const EMPHASIS = /\*{1,2}(?=\S)([^*\n]+?)(?<=\S)\*{1,2}/g;
 
 export function Emphasis({ text }: { text: string }) {
   const parts: ReactNode[] = [];

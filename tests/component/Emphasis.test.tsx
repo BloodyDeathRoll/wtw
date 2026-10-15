@@ -14,6 +14,9 @@ describe('<Emphasis />', () => {
   it('leaves an unpaired asterisk as typed', () => {
     expect(html('rated 5* overall')).toBe('<p>rated 5* overall</p>')
   })
+  it('does not pair loose asterisks across text', () => {
+    expect(html('5* and 4* films')).toBe('<p>5* and 4* films</p>')
+  })
   it('passes plain text through', () => {
     expect(html('no markup here')).toBe('<p>no markup here</p>')
   })
