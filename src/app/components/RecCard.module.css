@@ -479,3 +479,13 @@
   color: var(--why-orange);
   flex-shrink: 0;
 }
+
+/* Text for screen readers only */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

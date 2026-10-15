@@ -301,7 +301,7 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
               <span className={styles.dimName}>{d.dimension}</span>
               <span className={styles.dimArrow}>
                 <span className={styles.dimVal}>{d.user_value}</span>
-                <span className={styles.dimSep} aria-label="to"><ArrowRight size={20} strokeWidth={1.5} aria-hidden /></span>
+                <span className={styles.dimSep}><ArrowRight size={20} strokeWidth={1.5} aria-hidden /><span className={styles.srOnly}>to</span></span>
                 <span className={styles.dimVal}>{d.title_value}</span>
               </span>
             </div>
