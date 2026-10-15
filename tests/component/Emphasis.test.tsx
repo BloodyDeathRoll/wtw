@@ -17,6 +17,9 @@ describe('<Emphasis />', () => {
   it('does not pair loose asterisks across text', () => {
     expect(html('5* and 4* films')).toBe('<p>5* and 4* films</p>')
   })
+  it('keeps adjacent spans separate', () => {
+    expect(html('*a* and *b*')).toBe('<p><em>a</em> and <em>b</em></p>')
+  })
   it('passes plain text through', () => {
     expect(html('no markup here')).toBe('<p>no markup here</p>')
   })
