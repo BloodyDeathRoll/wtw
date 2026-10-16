@@ -74,11 +74,12 @@ export function ViewportDebug() {
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("vp");
-    let enabled = false;
+    // ?vp=1 works for this page load even when storage is blocked.
+    let enabled = q === "1";
     try {
       if (q === "1") window.localStorage.setItem(KEY, "1");
       if (q === "0") window.localStorage.removeItem(KEY);
-      enabled = window.localStorage.getItem(KEY) === "1";
+      enabled = enabled || window.localStorage.getItem(KEY) === "1";
     } catch {}
     // Deferred a tick: reading storage has to wait for mount (SSR), and the
     // panel is diagnostic-only, so the extra frame doesn't matter.
