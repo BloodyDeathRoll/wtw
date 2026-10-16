@@ -6,6 +6,7 @@
 // (Taste DNA and the home page both read the database before they paint).
 
 import { createPortal } from "react-dom";
+import AppShell from "@/modules/session/components/AppShell";
 import { FingerprintLoader } from "@/modules/session/components/FingerprintLoader";
 import styles from "./RouteLoading.module.css";
 
@@ -22,11 +23,17 @@ export function RouteLoading({
    *  navigation away from it is tapped, before loading.tsx can arrive. */
   overlay?: boolean;
 }) {
+  // Inside AppShell like every other screen: wherever the bottom gradient
+  // shows, the particles show too.
   const screen = (
-    <div className={`${styles.page} ${overlay ? styles.overlay : ""}`}>
-      <p className={styles.label}>{label}</p>
-      {/* Same size as the "Reading your taste" screen. */}
-      <FingerprintLoader size={66} />
+    <div className={overlay ? styles.overlay : undefined}>
+      <AppShell>
+        <div className={styles.content}>
+          <p className={styles.label}>{label}</p>
+          {/* Same size as the "Reading your taste" screen. */}
+          <FingerprintLoader size={66} />
+        </div>
+      </AppShell>
     </div>
   );
   // Portalled: an overlay rendered inside a header or drawer would otherwise

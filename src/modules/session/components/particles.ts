@@ -100,6 +100,22 @@ export function mountParticles(
   let raf = 0;
   let running = true;
   let lastT = performance.now();
+  // Reduced motion: draw the field once, as a still image, and redraw only on
+  // resize — the look stays, the movement goes.
+  // Follows the setting live: switching it mid-session stops or restarts the
+  // loop without a remount.
+  const motionQuery =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+  let still = motionQuery?.matches ?? false;
+  function onMotionChange(e: MediaQueryListEvent) {
+    still = e.matches;
+    cancelAnimationFrame(raf);
+    lastT = performance.now();
+    step();
+  }
+  motionQuery?.addEventListener?.("change", onMotionChange);
 
   // Lazily baked per "color|bucket" (and "color|glow") so any palette works.
   const sprites = new Map<string, Sprite>();
@@ -203,10 +219,10 @@ export function mountParticles(
 
   function step(now?: number) {
     if (!running) return;
-    raf = requestAnimationFrame(step);
+    if (!still) raf = requestAnimationFrame(step);
     now = now || performance.now();
-    if (now - lastT < MIN_FRAME_MS) return; // 30fps cap
-    const dt = Math.min(0.05, (now - lastT) / 1000);
+    if (!still && now - lastT < MIN_FRAME_MS) return; // 30fps cap
+    const dt = still ? 0 : Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
     // Per-frame velocities were tuned for 60fps — scale by elapsed frames so
     // the capped loop moves at the same apparent speed.
@@ -245,7 +261,10 @@ export function mountParticles(
     ctx!.globalAlpha = 1;
   }
 
-  const ro = new ResizeObserver(size);
+  const ro = new ResizeObserver(() => {
+    size();
+    if (still) step();
+  });
   ro.observe(canvas);
   size();
   step();
@@ -255,6 +274,7 @@ export function mountParticles(
       running = false;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      motionQuery?.removeEventListener?.("change", onMotionChange);
     },
     setColor(rgb: string) {
       cfg.color = rgb;
@@ -262,6 +282,7 @@ export function mountParticles(
     setDensity(d: number) {
       cfg.density = d;
       seed();
+      if (still) step();
     },
     setSpeed(s: number) {
       cfg.speed = s;
