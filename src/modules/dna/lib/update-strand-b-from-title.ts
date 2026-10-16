@@ -19,7 +19,13 @@
  *     current value is X  → confidence down (this is evidence AGAINST X)
  *     otherwise           → nothing — disliking "high" says nothing about "medium"
  *   originality_weight is numeric: move toward the title's value on a
- *     positive reaction, away on a negative one.
+ *     positive reaction, away on a negative one. Confidence follows the same
+ *     rule as the categories, with "same" meaning within AGREE_GAP: a liked
+ *     title near the current value raises it, one far away lowers it, and a
+ *     disliked title near it lowers it. (It used to rise on every positive
+ *     reaction, agreeing or not, and sat at 100% for most active users.)
+ *     Unlike the categories it never "adopts" at zero confidence: the value
+ *     already moves toward every liked title, so there is nothing to swap in.
  *
  * Deltas scale with the title's own confidence in the dimension; below
  * MIN_TITLE_CONFIDENCE the tag is too weak to count. Notes are untouched —
@@ -41,6 +47,8 @@ const MIN_TITLE_CONFIDENCE = 0.4
 const ADOPT_CONFIDENCE = 0.2
 /** Fraction of the gap a numeric dimension moves per loved title. */
 const NUMERIC_STEP = 2
+/** A numeric title value this close to the current one agrees with it. */
+const AGREE_GAP = 0.15
 
 const DIMENSIONS: (keyof StrandB)[] = [
   'moral_ambiguity', 'narrative_complexity', 'emotional_demand', 'originality_weight',
@@ -97,11 +105,13 @@ export function applyStrandBFromTitle(
     if (typeof tag.value === 'number' && typeof current.value === 'number') {
       if (!Number.isFinite(tag.value)) continue
       const gap = tag.value - current.value
+      const agrees = Math.abs(gap) <= AGREE_GAP
       if (delta > 0) {
         current.value = clamp(current.value + gap * delta * NUMERIC_STEP, 0, 1)
-        current.confidence = clamp(current.confidence + delta, 0, 1)
+        current.confidence = clamp(current.confidence + (agrees ? delta : -delta), 0, 1)
       } else {
         current.value = clamp(current.value - gap * Math.abs(delta), 0, 1)
+        if (agrees) current.confidence = clamp(current.confidence + delta, 0, 1) // delta < 0
       }
       continue
     }
