@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 
 /**
@@ -45,6 +45,10 @@ describe('no viewport units', () => {
     const files = styleSources(ROOT)
     expect(files.filter((f) => f.endsWith('.css')).length).toBeGreaterThan(5)
     expect(files.filter((f) => f.endsWith('.tsx')).length).toBeGreaterThan(5)
+  })
+
+  it('every allow-listed file still exists (drop the entry when it goes)', () => {
+    for (const f of ALLOWED) expect(existsSync(join(process.cwd(), f)), f).toBe(true)
   })
 
   it('nothing is sized in vh / vw / vmin / vmax (or the d/s/l variants)', () => {
