@@ -310,6 +310,7 @@ function pushPending(): Promise<WireEntry[] | null> {
       let result: WireEntry[] | null
       do {
         pushAgain = false
+        splitRetry = false
         result = await pushOnce()
       } while ((pushAgain && result !== null) || takeSplitRetry())
       return result
@@ -380,11 +381,10 @@ async function pushOnce(): Promise<WireEntry[] | null> {
     splitRetry = true
     return null
   }
-  pushLimit = MAX_CHANGES_PER_PUSH
   // Clear only what this push carried; a newer change to the same id stays.
-  // A single change the server refused, and any it skipped as malformed,
-  // would be refused again on every retry and block everything queued
-  // behind it — so those are cleared too, and stay local only.
+  // That includes a lone change the server refused and any it skipped as
+  // malformed: they'd be refused on every retry and block the queue behind
+  // them, so they stay local only.
   const now = readPending()
   for (const id of ids) {
     if (now[id]?.token === sent[id].token) delete now[id]
@@ -393,6 +393,9 @@ async function pushOnce(): Promise<WireEntry[] | null> {
   if (res !== "rejected" && res.rejected.length > 0) {
     console.error(`[watchlist] server skipped ${res.rejected.length} malformed change(s)`)
   }
+  // Back to full-size pushes once the bad change is gone (or nothing is left);
+  // until then stay small so it isn't re-bundled with good changes.
+  if (res === "rejected" || Object.keys(now).length === 0) pushLimit = MAX_CHANGES_PER_PUSH
   if (Object.keys(now).length > 0) pushAgain = true
   if (res !== "rejected") return res.entries
   const list = await fetchEntries("GET")
@@ -409,9 +412,10 @@ async function fetchEntries(
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     })
-    // Refused as a whole (bad request / too large): retrying can't succeed.
+    // Refused as a whole (bad request / too large): resending it unchanged
+    // can't succeed — pushOnce splits it, or drops a lone change.
     if (res.status === 400 || res.status === 413) {
-      console.error(`[watchlist] sync rejected (HTTP ${res.status}); dropping those changes`)
+      console.error(`[watchlist] sync refused (HTTP ${res.status})`)
       return "rejected"
     }
     if (!res.ok) {
