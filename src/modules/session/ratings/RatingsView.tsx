@@ -319,7 +319,10 @@ export default function RatingsView({
               <select
                 className={styles.sortSelect}
                 value={sort}
-                onChange={(e) => setSort(e.target.value as SortKey)}
+                onChange={(e) => {
+                  setSort(e.target.value as SortKey);
+                  setEditing(null);
+                }}
                 aria-label="sort by"
               >
                 {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
