@@ -12,6 +12,7 @@ All three modules are built and **merged into `main`**. There are no open PRs; t
 
 ## ⚠️ Open now
 
+- **TODO — Android "app taller than the screen" (open, 2026-10-16).** Two fixes didn't hold: `dvh` (#52) and safe-area insets (#119). Emulation fits at every size tried, so the device must report a taller viewport than it shows. `ViewportDebug` (#123, `?vp=1` on, `?vp=0` off) collects the real numbers from the user's phone. Fix from those numbers, add a regression check, then **delete `ViewportDebug.tsx` and the `data-vp` hooks**. Driver: A1.
 - **UI polish — `feat/ui-polish` (2026-10-16).**
   - **Safe areas:** `viewportFit: "cover"` plus `env(safe-area-inset-*)` padding on the app shell, the DNA page and the DeepSurvey drawer. Android's edge-to-edge PWA was drawing the input bar under the nav bar. Not verified on a real device yet.
   - **Ratings filter:** All / Movies / Series. The counts follow the filter. Legacy rows with no media type show under All only.

@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { mountParticles, type ParticleHandle } from "./particles";
+import { ViewportDebug } from "./ViewportDebug";
 import styles from "./WTWApp.module.css";
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -29,10 +30,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={styles.page}>
-      <div className={styles.app}>
+      <div className={styles.app} data-vp="app">
         <canvas ref={canvasRef} className={styles.canvas} />
         <div className={styles.appInner}>{children}</div>
       </div>
+      <ViewportDebug />
     </div>
   );
 }
