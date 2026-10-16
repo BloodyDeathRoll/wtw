@@ -16,34 +16,45 @@ import { join } from 'path'
  */
 
 const ROOT = join(process.cwd(), 'src')
-// A number followed by vh / dvh / svh / lvh, not part of an identifier.
-const VIEWPORT_UNIT = /(?<![\w-])\d*\.?\d+(?:d|s|l)?vh\b/
+// A number followed by any viewport unit — vh/vw/vmin/vmax and their
+// d/s/l variants — not part of an identifier.
+const VIEWPORT_UNIT = /(?<![\w-])\d*\.?\d+(?:[dsl]?(?:vh|vw|vmin|vmax))\b/
 
-function cssFiles(dir: string): string[] {
+// The on-device diagnostic measures the units on purpose. Remove this entry
+// when ViewportDebug.tsx is deleted (tracked in docs/INTEGRATION.md).
+const ALLOWED = new Set(['src/modules/session/components/ViewportDebug.tsx'])
+
+/** Stylesheets, plus TS/TSX for inline styles and style strings. */
+function styleSources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const p = join(dir, name)
-    if (statSync(p).isDirectory()) return cssFiles(p)
-    return p.endsWith('.css') ? [p] : []
+    if (statSync(p).isDirectory()) return styleSources(p)
+    return /\.(css|tsx?)$/.test(p) ? [p] : []
   })
 }
 
-/** CSS with comments removed, so the history notes don't trip the check. */
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '')
+const rel = (file: string) => file.replace(process.cwd() + '/', '')
+
+/** Source with comments removed, so the history notes don't trip the check. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 }
 
-describe('no viewport units in CSS', () => {
-  it('finds the stylesheets it is meant to scan', () => {
-    expect(cssFiles(ROOT).length).toBeGreaterThan(5)
+describe('no viewport units', () => {
+  it('finds the sources it is meant to scan', () => {
+    const files = styleSources(ROOT)
+    expect(files.filter((f) => f.endsWith('.css')).length).toBeGreaterThan(5)
+    expect(files.filter((f) => f.endsWith('.tsx')).length).toBeGreaterThan(5)
   })
 
-  it('no stylesheet sizes anything in vh / dvh / svh / lvh', () => {
-    const hits = cssFiles(ROOT).flatMap((file) =>
+  it('nothing is sized in vh / vw / vmin / vmax (or the d/s/l variants)', () => {
+    const files = styleSources(ROOT).filter((f) => !ALLOWED.has(rel(f)))
+    const hits = files.flatMap((file) =>
       stripComments(readFileSync(file, 'utf8'))
         .split('\n')
         .map((line, i) => ({ line: line.trim(), n: i + 1 }))
         .filter(({ line }) => VIEWPORT_UNIT.test(line))
-        .map(({ line, n }) => `${file.replace(process.cwd() + '/', '')}:${n}  ${line}`),
+        .map(({ line, n }) => `${rel(file)}:${n}  ${line}`),
     )
     expect(hits, `use % of a fixed/inset-0 box instead:\n${hits.join('\n')}`).toEqual([])
   })
@@ -52,7 +63,8 @@ describe('no viewport units in CSS', () => {
     const css = stripComments(
       readFileSync(join(ROOT, 'modules/session/components/WTWApp.module.css'), 'utf8'),
     )
-    const page = /\.page\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    // The top-level rule (at line start), not one nested in a media query.
+    const page = /^\.page\s*\{([^}]*)\}/m.exec(css)?.[1] ?? ''
     expect(page).toMatch(/position:\s*fixed/)
     expect(page).toMatch(/inset:\s*0/)
   })
