@@ -102,9 +102,20 @@ export function mountParticles(
   let lastT = performance.now();
   // Reduced motion: draw the field once, as a still image, and redraw only on
   // resize — the look stays, the movement goes.
-  const still =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Follows the setting live: switching it mid-session stops or restarts the
+  // loop without a remount.
+  const motionQuery =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+  let still = motionQuery?.matches ?? false;
+  function onMotionChange(e: MediaQueryListEvent) {
+    still = e.matches;
+    cancelAnimationFrame(raf);
+    lastT = performance.now();
+    step();
+  }
+  motionQuery?.addEventListener?.("change", onMotionChange);
 
   // Lazily baked per "color|bucket" (and "color|glow") so any palette works.
   const sprites = new Map<string, Sprite>();
@@ -263,6 +274,7 @@ export function mountParticles(
       running = false;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      motionQuery?.removeEventListener?.("change", onMotionChange);
     },
     setColor(rgb: string) {
       cfg.color = rgb;
@@ -270,6 +282,7 @@ export function mountParticles(
     setDensity(d: number) {
       cfg.density = d;
       seed();
+      if (still) step();
     },
     setSpeed(s: number) {
       cfg.speed = s;
