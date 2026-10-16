@@ -76,3 +76,58 @@ describe('applyStrandBFromTitle', () => {
     expect(applyStrandBFromTitle(b, null, 'loved')).toBe(0)
   })
 })
+
+// 2026-10-16: originality confidence rose on every positive reaction, agreeing
+// or not, and sat at 100% for 3 of 4 active users.
+describe('applyStrandBFromTitle — originality confidence', () => {
+  const withOriginality = (value: number, confidence: number) => {
+    const b = blank()
+    b.originality_weight = { value, confidence, notes: '' }
+    return b
+  }
+
+  it('rises when a liked title agrees with the current value', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.65, 1) }, 'loved')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.56)
+  })
+
+  it('falls when a liked title disagrees, while the value still moves toward it', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.1, 1) }, 'loved')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.44)
+    expect(b.originality_weight.value as number).toBeLessThan(0.6)
+  })
+
+  it('falls when a disliked title agrees with the current value', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.6, 1) }, 'disliked')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.46)
+  })
+
+  it('is untouched by a disliked title far from the current value', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.1, 1) }, 'disliked')
+    expect(b.originality_weight.confidence).toBe(0.5)
+  })
+
+  it('does not saturate when liked titles agree and disagree in turn', () => {
+    const b = withOriginality(0.6, 0.5)
+    for (let i = 0; i < 100; i++) {
+      const current = b.originality_weight.value as number
+      // Agreeing tags hug the current value; disagreeing ones sit far off and
+      // are re-centred on it so the value can't drift into "agree" range.
+      const value = i % 2 ? current + 0.05 : (current > 0.5 ? current - 0.5 : current + 0.5)
+      applyStrandBFromTitle(b, { originality_weight: tag(value, 1) }, 'liked')
+    }
+    expect(b.originality_weight.confidence).toBeGreaterThan(0)
+    expect(b.originality_weight.confidence).toBeLessThan(1)
+  })
+
+  it('treats a gap of exactly AGREE_GAP (0.15) as agreeing', () => {
+    // 0.16 - 0.01 is exactly 0.15 in floating point; most pairs are not.
+    const b = withOriginality(0.01, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.16, 1) }, 'loved')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.56)
+  })
+})

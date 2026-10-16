@@ -179,7 +179,10 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 ### 2026-10-16 — DNA page values audited (`fix/dna-page-values`, PR #126)
 - Every number on `/profile/dna` matches the stored DNA. The "mismatch" on Originality was the bar: it shows **confidence**, not the 61/100 value. Each dimension bar is now labelled "Confidence".
 - Creative Affinities ranked by `score`, which caps at one loved title (0.3), so 1-film crew outranked Tarantino (13 films). Now ranked by confidence; disliked crew are not listed.
-- ⚠️ Open, A3: `originality_weight` confidence rises on every positive reaction, even when the title pulls the value away (`update-strand-b-from-title.ts`). It sits at 100% for 3 of 4 active users.
+- `originality_weight` confidence saturating at 100%: fixed in #127 (entry below).
+
+### 2026-10-16 — Originality confidence no longer saturates (`fix/originality-confidence`)
+- `originality_weight` confidence rose on every positive reaction, agreeing or not, and sat at 100% for 3 of 4 active users. It now follows the categorical rule: a title within 0.15 of the current value counts as agreeing (`AGREE_GAP` in `update-strand-b-from-title.ts`). Stored confidences were recomputed on 2026-10-16 with `scripts/reset-originality-confidence.mts --apply` (replays each user's signals under the new rule, so the result is an estimate; value and notes kept). 5 users written; e.g. 1.00 → 0.13, 1.00 → 0.60, 1.00 → 0.85.
 
 ### 2026-10-15 — Figma UI refresh (`feat/figma-ui-update`)
 
