@@ -33,6 +33,8 @@ import {
   markRemovalsSynced,
   markSynced,
   watchlistCount,
+  hydrateWatchlist,
+  WATCHLIST_HYDRATED_EVENT,
 } from "@/lib/watchlist";
 import { getPendingRegretChecks, type RegretEntry } from "@/lib/regret-queue";
 import RegretPrompt from "@/app/components/RegretPrompt";
@@ -563,6 +565,15 @@ export default function WTWApp({
   useEffect(() => {
     setWatchlistN(watchlistCount());
   }, [stage]);
+
+  // Pull the account's watchlist (and upload this device's, the first time) so
+  // it matches whatever was saved on other devices.
+  useEffect(() => {
+    const refresh = () => setWatchlistN(watchlistCount());
+    window.addEventListener(WATCHLIST_HYDRATED_EVENT, refresh);
+    void hydrateWatchlist(user.id);
+    return () => window.removeEventListener(WATCHLIST_HYDRATED_EVENT, refresh);
+  }, [user.id]);
 
   useEffect(() => {
     setRegretChecks(getPendingRegretChecks());

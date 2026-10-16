@@ -53,6 +53,7 @@ import {
   addToWatchlist,
   removeFromWatchlist,
   setWatchlistRating,
+  WATCHLIST_HYDRATED_EVENT,
   type WatchlistEntry,
   type WatchlistRating,
 } from "@/lib/watchlist";
@@ -261,6 +262,18 @@ export default function RecommendationsView({
   // Watchlist membership by rec.id, seeded from localStorage on mount so the
   // CTA renders in the right state without re-reading storage per card.
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  // When the server's watchlist lands after mount (hydrateWatchlist): the
+  // watchlist view re-pages from it; the feed only refreshes its saved marks,
+  // since re-paging there would throw away the cards on screen.
+  const [hydratedAt, setHydratedAt] = useState(0);
+  useEffect(() => {
+    const onHydrated = () => {
+      if (mode === "watchlist") setHydratedAt(Date.now());
+      else setSaved(new Set(getWatchlist().map((e) => e.rec.id)));
+    };
+    window.addEventListener(WATCHLIST_HYDRATED_EVENT, onHydrated);
+    return () => window.removeEventListener(WATCHLIST_HYDRATED_EVENT, onHydrated);
+  }, [mode]);
   // Watchlist mode only — the order the saved cards are paged in.
   const [sortKey, setSortKey] = useState<SortKey>("added");
   const [sortOpen, setSortOpen] = useState(false);
@@ -374,7 +387,8 @@ export default function RecommendationsView({
     void loadMore();
     // sortKey only changes in watchlist mode (the control renders nowhere
     // else); re-running here re-pages the list from the top in the new order.
-  }, [contentType, loadMore, sortKey]);
+    // hydratedAt bumps when the server's watchlist lands after mount.
+  }, [contentType, loadMore, sortKey, hydratedAt]);
 
   // "Find more": rebuild the fingerprint (feedback so far included) and
   // regenerate recs server-side, then APPEND the fresh batch — existing cards

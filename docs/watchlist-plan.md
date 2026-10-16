@@ -25,9 +25,14 @@ existing feedback path.
 | 8 | No cross-tab `storage` sync. |
 | 9 | Full unit coverage for both pure modules. |
 
-**Accepted trade-off:** localStorage is one device, one browser. The watchlist
-does not sync across devices, and iOS PWAs can evict it under storage pressure.
-That is the price of "no extra DB calls" and is accepted deliberately.
+~~**Accepted trade-off:** localStorage is one device, one browser.~~
+**Reversed 2026-10-16:** the watchlist now follows the login. Supabase
+`watchlist_entries` (migration 0023) holds it via `/api/watchlist`; localStorage
+is the cache every read uses. Changes are queued and pushed in the background
+(a failed push stays queued); `hydrateWatchlist()` reads the server list on app
+load, and on a device's first load uploads what it already had. The
+fingerprint's "saved" marker (decision #6) is unchanged and still rides on
+`/api/session/end`.
 
 ---
 
