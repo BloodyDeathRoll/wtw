@@ -466,8 +466,9 @@ export async function hydrateWatchlist(userId: string): Promise<void> {
     window.localStorage.setItem(OWNER_KEY, userId)
   } catch {}
   // A fresh start for batch sizing: a split left over from an earlier,
-  // never-drained queue shouldn't slow this load down.
-  pushLimit = MAX_CHANGES_PER_PUSH
+  // never-drained queue shouldn't slow this load down. Not while a push is
+  // mid-split — widening it then would re-bundle the change being isolated.
+  if (!inFlight) pushLimit = MAX_CHANGES_PER_PUSH
 
   const server = await pushPending()
   if (server === null) return

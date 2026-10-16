@@ -322,3 +322,40 @@ describe('isolating a bad change', () => {
     expect(posts).toBe(1)
   })
 })
+
+describe('batch size after a skipped change', () => {
+  beforeEach(async () => {
+    fakeServer([])
+    await hydrateWatchlist('user-a')
+  })
+
+  it('returns to full-size pushes once the server names the bad change', async () => {
+    fakeServer([], { fail: true })
+    for (let i = 0; i < 8; i++) addToWatchlist(rec(`movie:${i}`))
+    await settle()
+
+    // Refuses whole batches carrying both movie:0 and movie:3 (forcing two
+    // splits), then skips movie:0 by name once it travels without movie:3.
+    const sizes: number[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_u: string, init?: RequestInit) => {
+        const body = init?.body ? JSON.parse(init.body as string) : null
+        const ids: string[] = body ? body.upsert.map((e: { rec: { id: string } }) => e.rec.id) : []
+        if (body) sizes.push(ids.length)
+        if (ids.includes('movie:0') && ids.includes('movie:3')) {
+          return new Response('bad', { status: 400 })
+        }
+        return Response.json({
+          entries: [],
+          rejected: ids.includes('movie:0') ? ['movie:0'] : [],
+        })
+      }),
+    )
+    await hydrateWatchlist('user-a')
+    // 8 refused → 4 refused → 2 sent (movie:0 skipped by name) → limit back
+    // to full, so the remaining 6 go in one push rather than in 2s.
+    expect(sizes).toEqual([8, 4, 2, 6])
+    expect(window.localStorage.getItem('wtw_watchlist_pending')).toBeNull()
+  })
+})
