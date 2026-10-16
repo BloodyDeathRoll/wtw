@@ -270,3 +270,50 @@ describe('partial and oversized rejections', () => {
     expect(server.entries()).toHaveLength(50)
   })
 })
+
+describe('isolating a bad change', () => {
+  beforeEach(async () => {
+    fakeServer([])
+    await hydrateWatchlist('user-a')
+  })
+
+  it('splits a refused batch until the bad change is dropped alone', async () => {
+    fakeServer([], { fail: true })
+    for (let i = 0; i < 6; i++) addToWatchlist(rec(`movie:${i}`))
+    await settle()
+
+    // A server that refuses any batch carrying movie:3.
+    let stored: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_u: string, init?: RequestInit) => {
+        const body = init?.body ? JSON.parse(init.body as string) : null
+        const ids: string[] = body ? body.upsert.map((e: { rec: { id: string } }) => e.rec.id) : []
+        if (ids.includes('movie:3')) return new Response('bad', { status: 400 })
+        stored = [...new Set([...stored, ...ids])]
+        return Response.json({ entries: stored.map((id) => wire(id, 1)), rejected: [] })
+      }),
+    )
+    await hydrateWatchlist('user-a')
+    expect(stored.sort()).toEqual(['movie:0', 'movie:1', 'movie:2', 'movie:4', 'movie:5'])
+  })
+
+  it('drops only the changes the server names as rejected', async () => {
+    fakeServer([], { fail: true })
+    addToWatchlist(rec('movie:1'))
+    addToWatchlist(rec('movie:2'))
+    await settle()
+
+    let posts = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_u: string, init?: RequestInit) => {
+        if (init?.method === 'POST') posts++
+        return Response.json({ entries: [wire('movie:2', 1)], rejected: ['movie:1'] })
+      }),
+    )
+    await hydrateWatchlist('user-a')
+    await hydrateWatchlist('user-a')
+    expect(posts).toBe(1)
+  })
+})

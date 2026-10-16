@@ -311,7 +311,7 @@ function pushPending(): Promise<WireEntry[] | null> {
       do {
         pushAgain = false
         result = await pushOnce()
-      } while (pushAgain && result !== null)
+      } while ((pushAgain && result !== null) || takeSplitRetry())
       return result
     } finally {
       inFlight = null
@@ -325,6 +325,16 @@ function pushPending(): Promise<WireEntry[] | null> {
 // cut by size, well under Vercel's 4.5MB request body limit.
 const MAX_CHANGES_PER_PUSH = 200
 const MAX_PUSH_BYTES = 1_000_000
+// Shrinks while the server refuses whole batches, so one bad change is
+// isolated (and dropped alone) instead of taking its batch-mates with it.
+let pushLimit = MAX_CHANGES_PER_PUSH
+let splitRetry = false
+
+function takeSplitRetry(): boolean {
+  const r = splitRetry
+  splitRetry = false
+  return r
+}
 
 async function pushOnce(): Promise<WireEntry[] | null> {
   if (typeof window === "undefined") return null
@@ -341,7 +351,7 @@ async function pushOnce(): Promise<WireEntry[] | null> {
   const del: string[] = []
   let bytes = 0
   for (const id of queued) {
-    if (ids.length >= MAX_CHANGES_PER_PUSH) break
+    if (ids.length >= pushLimit) break
     if (sent[id].op === "delete") {
       ids.push(id)
       del.push(id)
@@ -364,10 +374,17 @@ async function pushOnce(): Promise<WireEntry[] | null> {
 
   const res = await fetchEntries("POST", { upsert, delete: del })
   if (res === null) return null
+  // Refused outright: retry in halves until the culprit travels alone.
+  if (res === "rejected" && ids.length > 1) {
+    pushLimit = Math.max(1, Math.floor(ids.length / 2))
+    splitRetry = true
+    return null
+  }
+  pushLimit = MAX_CHANGES_PER_PUSH
   // Clear only what this push carried; a newer change to the same id stays.
-  // A batch the server refused outright, and any change it skipped as
-  // malformed, would be refused again on every retry and block everything
-  // queued behind it — so those are cleared too, and stay local only.
+  // A single change the server refused, and any it skipped as malformed,
+  // would be refused again on every retry and block everything queued
+  // behind it — so those are cleared too, and stay local only.
   const now = readPending()
   for (const id of ids) {
     if (now[id]?.token === sent[id].token) delete now[id]
