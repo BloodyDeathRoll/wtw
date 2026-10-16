@@ -86,6 +86,9 @@ export default function RatingsView({
   const [tab, setTab] = useState<Tab>("loved");
   const [sort, setSort] = useState<SortKey>("newest");
   const [kind, setKind] = useState<KindFilter>("all");
+  // The rows' staggered entrance plays once, when the list first loads; any
+  // tab / filter / sort change ends it so the new rows appear at once.
+  const [intro, setIntro] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -234,6 +237,7 @@ export default function RatingsView({
     : undefined;
 
   const sectionLabel = `${tabMeta(tab).label} titles`;
+  const listClass = `${styles.list} ${intro ? styles.listIntro : ""}`;
 
   return (
     <div className={`${styles.view} ${bgPoster ? styles.viewPoster : ""}`} style={viewStyle}>
@@ -281,6 +285,7 @@ export default function RatingsView({
                   onClick={() => {
                     setTab(t);
                     setEditing(null);
+                    setIntro(false);
                   }}
                 >
                   <span className={styles.tabTop}>
@@ -304,6 +309,7 @@ export default function RatingsView({
                 onChange={(e) => {
                   setKind(e.target.value as KindFilter);
                   setEditing(null);
+                  setIntro(false);
                 }}
                 aria-label="show movies, series or all"
               >
@@ -322,6 +328,7 @@ export default function RatingsView({
                 onChange={(e) => {
                   setSort(e.target.value as SortKey);
                   setEditing(null);
+                  setIntro(false);
                 }}
                 aria-label="sort by"
               >
@@ -339,9 +346,7 @@ export default function RatingsView({
             (rated.length === 0 ? (
               <div className={styles.empty}>Nothing in {tabMeta(tab).label} yet.</div>
             ) : (
-              // Keyed by what's shown, so a tab / filter / sort change replays
-              // the entrance instead of swapping rows in place.
-              <ul key={`${tab}-${kind}-${sort}`} className={styles.list}>
+              <ul className={listClass}>
                 {rated.map((item) => {
                   const open = editing === item.id;
                   return (
@@ -389,7 +394,7 @@ export default function RatingsView({
             (removed.length === 0 ? (
               <div className={styles.empty}>You haven&rsquo;t removed any titles.</div>
             ) : (
-              <ul key={`removed-${kind}-${sort}`} className={styles.list}>
+              <ul className={listClass}>
                 {removed.map((rem) => {
                   const key = `${rem.media_type}:${rem.tmdb_id}`;
                   const open = editing === key;

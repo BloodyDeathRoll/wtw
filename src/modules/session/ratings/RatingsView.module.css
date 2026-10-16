@@ -233,8 +233,9 @@
   background: var(--rv-dark-50);
   color: var(--rv-white);
 }
+/* Same gold as the selected tab and rating pick — never a white ring. */
 .sortPill:focus-within {
-  outline: 1px solid var(--rv-white-70);
+  outline: 1px solid var(--rv-gold);
 }
 
 .note,
@@ -262,17 +263,21 @@
   padding: var(--rv-pad);
   border-radius: var(--rv-pad);
   background: var(--rv-dark-50-70);
-  /* Rows arrive one after another (40ms apart, first eight only — anything
-     further down is off screen anyway). Never blocks a tap. */
+}
+/* Rows arrive one after another (40ms apart, first eight only — anything
+   further down is off screen anyway) when the list first loads. Only then:
+   switching tab, filter or sort is frequent, so those swap rows instantly —
+   replaying the stagger made every sort take ~half a second to settle. */
+.listIntro > .row {
   animation: rowIn 240ms var(--ease-out) both;
 }
-.row:nth-child(2) { animation-delay: 40ms; }
-.row:nth-child(3) { animation-delay: 80ms; }
-.row:nth-child(4) { animation-delay: 120ms; }
-.row:nth-child(5) { animation-delay: 160ms; }
-.row:nth-child(6) { animation-delay: 200ms; }
-.row:nth-child(7) { animation-delay: 240ms; }
-.row:nth-child(n + 8) { animation-delay: 280ms; }
+.listIntro > .row:nth-child(2) { animation-delay: 40ms; }
+.listIntro > .row:nth-child(3) { animation-delay: 80ms; }
+.listIntro > .row:nth-child(4) { animation-delay: 120ms; }
+.listIntro > .row:nth-child(5) { animation-delay: 160ms; }
+.listIntro > .row:nth-child(6) { animation-delay: 200ms; }
+.listIntro > .row:nth-child(7) { animation-delay: 240ms; }
+.listIntro > .row:nth-child(n + 8) { animation-delay: 280ms; }
 @keyframes rowIn {
   from {
     opacity: 0;
