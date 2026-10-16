@@ -24,6 +24,8 @@
  *     title near the current value raises it, one far away lowers it, and a
  *     disliked title near it lowers it. (It used to rise on every positive
  *     reaction, agreeing or not, and sat at 100% for most active users.)
+ *     Unlike the categories it never "adopts" at zero confidence: the value
+ *     already moves toward every liked title, so there is nothing to swap in.
  *
  * Deltas scale with the title's own confidence in the dimension; below
  * MIN_TITLE_CONFIDENCE the tag is too weak to count. Notes are untouched —

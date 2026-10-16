@@ -111,11 +111,23 @@ describe('applyStrandBFromTitle — originality confidence', () => {
     expect(b.originality_weight.confidence).toBe(0.5)
   })
 
-  it('does not saturate under mixed liked titles', () => {
+  it('does not saturate when liked titles agree and disagree in turn', () => {
     const b = withOriginality(0.6, 0.5)
     for (let i = 0; i < 100; i++) {
-      applyStrandBFromTitle(b, { originality_weight: tag(i % 2 ? 0.9 : 0.2, 1) }, 'liked')
+      const current = b.originality_weight.value as number
+      // Agreeing tags hug the current value; disagreeing ones sit far off and
+      // are re-centred on it so the value can't drift into "agree" range.
+      const value = i % 2 ? current + 0.05 : (current > 0.5 ? current - 0.5 : current + 0.5)
+      applyStrandBFromTitle(b, { originality_weight: tag(value, 1) }, 'liked')
     }
-    expect(b.originality_weight.confidence).toBeLessThan(0.5)
+    expect(b.originality_weight.confidence).toBeGreaterThan(0)
+    expect(b.originality_weight.confidence).toBeLessThan(1)
+  })
+
+  it('treats a gap of exactly AGREE_GAP (0.15) as agreeing', () => {
+    // 0.16 - 0.01 is exactly 0.15 in floating point; most pairs are not.
+    const b = withOriginality(0.01, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.16, 1) }, 'loved')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.56)
   })
 })
