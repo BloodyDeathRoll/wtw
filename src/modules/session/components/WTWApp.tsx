@@ -474,7 +474,6 @@ function InputBar({
       <div className={styles.inputbar}>
         <input
           className={styles.inputfield}
-          data-vp="input"
           placeholder="Speak or type"
           value={value}
           onChange={(e) => setValue(e.target.value)}

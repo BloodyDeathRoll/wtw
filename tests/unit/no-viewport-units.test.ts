@@ -20,9 +20,9 @@ const ROOT = join(process.cwd(), 'src')
 // d/s/l variants — not part of an identifier.
 const VIEWPORT_UNIT = /(?<![\w-])\d*\.?\d+(?:[dsl]?(?:vh|vw|vmin|vmax))\b/
 
-// The on-device diagnostic measures the units on purpose. Remove this entry
-// when ViewportDebug.tsx is deleted (tracked in docs/INTEGRATION.md).
-const ALLOWED = new Set(['src/modules/session/components/ViewportDebug.tsx'])
+// Files that may use viewport units on purpose (none today). The test
+// below fails if an entry outlives its file.
+const ALLOWED = new Set<string>([])
 
 /** Stylesheets, plus TS/TSX for inline styles and style strings. */
 function styleSources(dir: string): string[] {
