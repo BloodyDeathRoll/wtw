@@ -172,8 +172,14 @@ Also fixed on the way: the Remove POST now rides the feedback queue (a quick Rem
 Found, not fixed (report only): chat-extracted signals duplicate per session (`movie:18 ×15` in one DNA — `analyze-session` re-extracts titles named in earlier turns; the session-merge dedup is `type:id:source` and `source` is `session_N`); `stretch_pick_history` is never written (`analyzeSession` always returns `recommendation_made: null`); the regret prompt and `leaveCards` still write the DNA blob outside the rating queue.
 
 ## Standing handoff notes
+
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
+
+### 2026-10-16 — DNA page values audited (`fix/dna-page-values`, PR #126)
+- Every number on `/profile/dna` matches the stored DNA. The "mismatch" on Originality was the bar: it shows **confidence**, not the 61/100 value. Each dimension bar is now labelled "Confidence".
+- Creative Affinities ranked by `score`, which caps at one loved title (0.3), so 1-film crew outranked Tarantino (13 films). Now ranked by confidence; disliked crew are not listed.
+- `originality_weight` confidence saturating at 100%: fixed in #127 (entry below).
 
 ### 2026-10-16 — Originality confidence no longer saturates (`fix/originality-confidence`)
 - `originality_weight` confidence rose on every positive reaction, agreeing or not, and sat at 100% for 3 of 4 active users. It now follows the categorical rule: a title within 0.15 of the current value counts as agreeing (`AGREE_GAP` in `update-strand-b-from-title.ts`). Stored confidences were recomputed on 2026-10-16 with `scripts/reset-originality-confidence.mts --apply` (replays each user's signals under the new rule, so the result is an estimate; value and notes kept). 5 users written; e.g. 1.00 → 0.13, 1.00 → 0.60, 1.00 → 0.85.

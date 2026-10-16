@@ -230,9 +230,13 @@
 .dimMeter {
   display: grid;
   /* Fixed number column so every meter ends at the same x. */
-  grid-template-columns: 1fr 42.5px;
+  grid-template-columns: auto 1fr 42.5px;
   align-items: center;
   gap: var(--pad);
+}
+.dimMeterLabel {
+  font-size: var(--text-small);
+  color: var(--white-70);
 }
 .dimConf {
   text-align: right;
