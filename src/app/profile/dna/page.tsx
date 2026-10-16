@@ -13,9 +13,16 @@ export const metadata = { title: 'Your Taste DNA — WTW' }
 
 function pct(n: number) { return `${Math.round(n * 100)}%` }
 
+/**
+ * The people the fingerprint is surest the user likes. Not by score: score is
+ * a reaction average that tops out at one loved title, so ranking by it put
+ * a one-film director above one with thirteen. Disliked crew (score ≤ 0) are
+ * not affinities and stay out.
+ */
 function topCrew(bucket: StrandA[keyof StrandA], limit = 5) {
   return Object.values(bucket)
-    .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+    .filter(p => p.score > 0)
+    .sort((a, b) => b.confidence - a.confidence || b.score - a.score)
     .slice(0, limit)
 }
 
@@ -187,7 +194,7 @@ export default async function DNAProfilePage() {
           {/* Strand B — Narrative Dimensions.
               Each dimension is a block: quiet label, the reading as the
               headline, the plain-English note, then a confidence meter. */}
-          <Section title="Narrative Dimensions" legend="Confidence">
+          <Section title="Narrative Dimensions">
             {(Object.keys(sb) as (keyof typeof sb)[]).map(dim => {
               const d = sb[dim]
               const unsure = d.confidence < UNSURE_BELOW
@@ -198,7 +205,10 @@ export default async function DNAProfilePage() {
                     {unsure ? 'Not enough signal yet' : dimensionValue(d.value)}
                   </div>
                   {!unsure && d.notes && <p className={styles.dimNote}>{d.notes}</p>}
+                  {/* Named on every row: under a numeric headline ("61 / 100")
+                      an unlabelled bar reads as that number. */}
                   <div className={styles.dimMeter}>
+                    <span className={styles.dimMeterLabel}>Confidence</span>
                     <Meter value={d.confidence} />
                     <span className={styles.dimConf}>{pct(d.confidence)}</span>
                   </div>
