@@ -384,7 +384,8 @@ async function pushOnce(): Promise<WireEntry[] | null> {
   // Clear only what this push carried; a newer change to the same id stays.
   // That includes a lone change the server refused and any it skipped as
   // malformed: they'd be refused on every retry and block the queue behind
-  // them, so they stay local only.
+  // them, so they stay local only — and vanish at the next hydrate, which
+  // replaces the cache with the server's list.
   const now = readPending()
   for (const id of ids) {
     if (now[id]?.token === sent[id].token) delete now[id]
@@ -395,7 +396,9 @@ async function pushOnce(): Promise<WireEntry[] | null> {
   }
   // Back to full-size pushes once the bad change is gone (or nothing is left);
   // until then stay small so it isn't re-bundled with good changes.
-  if (res === "rejected" || Object.keys(now).length === 0) pushLimit = MAX_CHANGES_PER_PUSH
+  if (res === "rejected" || res.rejected.length > 0 || Object.keys(now).length === 0) {
+    pushLimit = MAX_CHANGES_PER_PUSH
+  }
   if (Object.keys(now).length > 0) pushAgain = true
   if (res !== "rejected") return res.entries
   const list = await fetchEntries("GET")
@@ -462,6 +465,9 @@ export async function hydrateWatchlist(userId: string): Promise<void> {
   try {
     window.localStorage.setItem(OWNER_KEY, userId)
   } catch {}
+  // A fresh start for batch sizing: a split left over from an earlier,
+  // never-drained queue shouldn't slow this load down.
+  pushLimit = MAX_CHANGES_PER_PUSH
 
   const server = await pushPending()
   if (server === null) return

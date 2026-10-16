@@ -284,11 +284,13 @@ describe('isolating a bad change', () => {
 
     // A server that refuses any batch carrying movie:3.
     let stored: string[] = []
+    const batches: string[][] = []
     vi.stubGlobal(
       'fetch',
       vi.fn(async (_u: string, init?: RequestInit) => {
         const body = init?.body ? JSON.parse(init.body as string) : null
         const ids: string[] = body ? body.upsert.map((e: { rec: { id: string } }) => e.rec.id) : []
+        if (body) batches.push(ids)
         if (ids.includes('movie:3')) return new Response('bad', { status: 400 })
         stored = [...new Set([...stored, ...ids])]
         return Response.json({ entries: stored.map((id) => wire(id, 1)), rejected: [] })
@@ -296,6 +298,9 @@ describe('isolating a bad change', () => {
     )
     await hydrateWatchlist('user-a')
     expect(stored.sort()).toEqual(['movie:0', 'movie:1', 'movie:2', 'movie:4', 'movie:5'])
+    // Full batch, then the refused half, then alone — never re-bundled after.
+    expect(batches.filter((b) => b.includes('movie:3')).map((b) => b.length)).toEqual([6, 3, 1])
+    expect(window.localStorage.getItem('wtw_watchlist_pending')).toBeNull()
   })
 
   it('drops only the changes the server names as rejected', async () => {
