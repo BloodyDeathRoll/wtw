@@ -321,59 +321,80 @@ function pushPending(): Promise<WireEntry[] | null> {
 }
 
 // /api/watchlist takes at most this many changes per request; a longer queue
-// (e.g. many unsaves made offline) goes in successive pushes.
+// (e.g. many unsaves made offline) goes in successive pushes. Pushes are also
+// cut by size, well under Vercel's 4.5MB request body limit.
 const MAX_CHANGES_PER_PUSH = 200
+const MAX_PUSH_BYTES = 1_000_000
 
 async function pushOnce(): Promise<WireEntry[] | null> {
   if (typeof window === "undefined") return null
   const sent = readPending()
-  const ids = Object.keys(sent).slice(0, MAX_CHANGES_PER_PUSH)
-  if (ids.length === 0) {
-    const entries = await fetchEntries("GET")
-    return entries === "rejected" ? null : entries
+  const queued = Object.keys(sent)
+  if (queued.length === 0) {
+    const res = await fetchEntries("GET")
+    return res === "rejected" || res === null ? null : res.entries
   }
 
   const byId = new Map(readList().map((e) => [e.rec.id, e]))
+  const ids: string[] = []
   const upsert: WireEntry[] = []
   const del: string[] = []
-  for (const id of ids) {
+  let bytes = 0
+  for (const id of queued) {
+    if (ids.length >= MAX_CHANGES_PER_PUSH) break
     if (sent[id].op === "delete") {
+      ids.push(id)
       del.push(id)
+      bytes += id.length + 3
       continue
     }
     const e = byId.get(id)
     // Queued as a save but gone locally (removed since): nothing to send.
-    if (e) upsert.push({ rec: e.rec, explain: e.explain, rating: e.rating, added_at: e.added_at })
+    if (!e) {
+      ids.push(id)
+      continue
+    }
+    const wire = { rec: e.rec, explain: e.explain, rating: e.rating, added_at: e.added_at }
+    const size = JSON.stringify(wire).length
+    if (upsert.length > 0 && bytes + size > MAX_PUSH_BYTES) break
+    ids.push(id)
+    upsert.push(wire)
+    bytes += size
   }
 
-  const entries = await fetchEntries("POST", { upsert, delete: del })
-  // A rejected batch (400) would be rejected again on every retry and block
-  // everything queued behind it, so it is dropped like a successful one.
-  if (entries === null) return null
+  const res = await fetchEntries("POST", { upsert, delete: del })
+  if (res === null) return null
   // Clear only what this push carried; a newer change to the same id stays.
+  // A batch the server refused outright, and any change it skipped as
+  // malformed, would be refused again on every retry and block everything
+  // queued behind it — so those are cleared too, and stay local only.
   const now = readPending()
   for (const id of ids) {
     if (now[id]?.token === sent[id].token) delete now[id]
   }
   writePending(now)
+  if (res !== "rejected" && res.rejected.length > 0) {
+    console.error(`[watchlist] server skipped ${res.rejected.length} malformed change(s)`)
+  }
   if (Object.keys(now).length > 0) pushAgain = true
-  if (entries !== "rejected") return entries
+  if (res !== "rejected") return res.entries
   const list = await fetchEntries("GET")
-  return list === "rejected" ? null : list
+  return list === "rejected" || list === null ? null : list.entries
 }
 
 async function fetchEntries(
   method: "GET" | "POST",
   body?: { upsert: WireEntry[]; delete: string[] },
-): Promise<WireEntry[] | null | "rejected"> {
+): Promise<{ entries: WireEntry[]; rejected: string[] } | null | "rejected"> {
   try {
     const res = await fetch("/api/watchlist", {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     })
-    if (res.status === 400) {
-      console.error("[watchlist] sync rejected; dropping those changes")
+    // Refused as a whole (bad request / too large): retrying can't succeed.
+    if (res.status === 400 || res.status === 413) {
+      console.error(`[watchlist] sync rejected (HTTP ${res.status}); dropping those changes`)
       return "rejected"
     }
     if (!res.ok) {
@@ -381,7 +402,11 @@ async function fetchEntries(
       return null
     }
     const data = await res.json()
-    return Array.isArray(data?.entries) ? (data.entries as WireEntry[]) : null
+    if (!Array.isArray(data?.entries)) return null
+    return {
+      entries: data.entries as WireEntry[],
+      rejected: Array.isArray(data.rejected) ? data.rejected : [],
+    }
   } catch (e) {
     console.error("[watchlist] sync failed", e)
     return null

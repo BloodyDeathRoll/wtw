@@ -239,3 +239,34 @@ describe('rejected and long queues', () => {
     expect(posted.reduce((n, c) => n + c.body!.delete.length, 0)).toBe(250)
   })
 })
+
+describe('partial and oversized rejections', () => {
+  beforeEach(async () => {
+    fakeServer([])
+    await hydrateWatchlist('user-a')
+  })
+
+  it('treats 413 like 400 — dropped, not retried', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('too big', { status: 413 })))
+    addToWatchlist(rec('movie:1'))
+    await settle()
+
+    const server = fakeServer([])
+    await hydrateWatchlist('user-a')
+    expect(server.calls.filter((c) => c.method === 'POST')).toHaveLength(0)
+  })
+
+  it('cuts pushes by size as well as count', async () => {
+    fakeServer([], { fail: true })
+    const big = 'x'.repeat(30_000)
+    for (let i = 0; i < 50; i++) addToWatchlist({ ...rec(`movie:${i}`), reason: big })
+    await settle()
+
+    const server = fakeServer([])
+    await hydrateWatchlist('user-a')
+    const posted = server.calls.filter((c) => c.method === 'POST')
+    expect(posted.length).toBeGreaterThanOrEqual(2)
+    expect(posted.every((c) => JSON.stringify(c.body).length < 1_100_000)).toBe(true)
+    expect(server.entries()).toHaveLength(50)
+  })
+})

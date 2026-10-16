@@ -7,6 +7,7 @@
  *   GET  — the list, newest first
  *   POST — apply queued changes, then return the list
  *          body: { upsert?: WireEntry[], delete?: string[] }
+ *          → { entries, rejected: string[] }  (ids of changes skipped as malformed)
  *
  * The fingerprint's "saved" marker is separate and still rides on
  * /api/session/end. All operations are scoped to the authenticated user via RLS.
@@ -124,12 +125,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "too many changes" }, { status: 400 });
   }
 
-  const parsed = upsertIn.map((e) => toRow(user.id, e));
-  const rows = parsed.filter((r): r is NonNullable<typeof r> => r !== null);
-  if (rows.length !== parsed.length || !deleteIn.every(isId)) {
-    return NextResponse.json({ error: "malformed watchlist change" }, { status: 400 });
+  // Malformed changes are skipped and named back, not allowed to fail the
+  // batch: the client drops what it's told was rejected and keeps the rest.
+  const rejected: string[] = [];
+  const rows: NonNullable<ReturnType<typeof toRow>>[] = [];
+  for (const e of upsertIn) {
+    const row = toRow(user.id, e);
+    if (row) rows.push(row);
+    else {
+      const id = (e as { rec?: { id?: unknown } } | null)?.rec?.id;
+      if (typeof id === "string") rejected.push(id);
+    }
   }
-  const deletes = deleteIn as string[];
+  const deletes = deleteIn.filter(isId);
 
   if (deletes.length > 0) {
     const { error } = await supabase
@@ -177,5 +185,5 @@ export async function POST(req: NextRequest) {
     console.error("[watchlist] list failed", error.message);
     return NextResponse.json({ error: "Failed to load watchlist" }, { status: 500 });
   }
-  return NextResponse.json({ entries });
+  return NextResponse.json({ entries, rejected });
 }
