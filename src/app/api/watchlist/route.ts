@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => null)) ?? {};
   const upsertIn: unknown[] = Array.isArray(body.upsert) ? body.upsert : [];
   const deleteIn: unknown[] = Array.isArray(body.delete) ? body.delete : [];
   if (upsertIn.length > MAX_ENTRIES || deleteIn.length > MAX_ENTRIES) {

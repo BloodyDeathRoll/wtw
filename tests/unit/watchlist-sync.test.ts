@@ -204,3 +204,38 @@ describe('changes', () => {
     expect(getWatchlist()).toEqual([])
   })
 })
+
+describe('rejected and long queues', () => {
+  beforeEach(async () => {
+    fakeServer([])
+    await hydrateWatchlist('user-a')
+  })
+
+  it('drops a change the server rejects instead of retrying it forever', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('bad', { status: 400 })))
+    addToWatchlist(rec('movie:1'))
+    await settle()
+
+    const server = fakeServer([])
+    addToWatchlist(rec('movie:2'))
+    await settle()
+    const posted = server.calls.filter((c) => c.method === 'POST')
+    expect(posted.flatMap((c) => c.body!.upsert.map((e) => e.rec.id))).toEqual(['movie:2'])
+  })
+
+  it('sends more than 200 queued changes in successive pushes', async () => {
+    fakeServer([], { fail: true })
+    for (let i = 0; i < 250; i++) {
+      addToWatchlist(rec(`movie:${i}`))
+      removeFromWatchlist(`movie:${i}`)
+    }
+    await settle()
+
+    const server = fakeServer([])
+    await hydrateWatchlist('user-a')
+    const posted = server.calls.filter((c) => c.method === 'POST')
+    expect(posted.length).toBeGreaterThanOrEqual(2)
+    expect(posted.every((c) => c.body!.delete.length <= 200)).toBe(true)
+    expect(posted.reduce((n, c) => n + c.body!.delete.length, 0)).toBe(250)
+  })
+})

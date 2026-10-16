@@ -320,11 +320,18 @@ function pushPending(): Promise<WireEntry[] | null> {
   return inFlight
 }
 
+// /api/watchlist takes at most this many changes per request; a longer queue
+// (e.g. many unsaves made offline) goes in successive pushes.
+const MAX_CHANGES_PER_PUSH = 200
+
 async function pushOnce(): Promise<WireEntry[] | null> {
   if (typeof window === "undefined") return null
   const sent = readPending()
-  const ids = Object.keys(sent)
-  if (ids.length === 0) return fetchEntries("GET")
+  const ids = Object.keys(sent).slice(0, MAX_CHANGES_PER_PUSH)
+  if (ids.length === 0) {
+    const entries = await fetchEntries("GET")
+    return entries === "rejected" ? null : entries
+  }
 
   const byId = new Map(readList().map((e) => [e.rec.id, e]))
   const upsert: WireEntry[] = []
@@ -340,6 +347,8 @@ async function pushOnce(): Promise<WireEntry[] | null> {
   }
 
   const entries = await fetchEntries("POST", { upsert, delete: del })
+  // A rejected batch (400) would be rejected again on every retry and block
+  // everything queued behind it, so it is dropped like a successful one.
   if (entries === null) return null
   // Clear only what this push carried; a newer change to the same id stays.
   const now = readPending()
@@ -347,19 +356,26 @@ async function pushOnce(): Promise<WireEntry[] | null> {
     if (now[id]?.token === sent[id].token) delete now[id]
   }
   writePending(now)
-  return entries
+  if (Object.keys(now).length > 0) pushAgain = true
+  if (entries !== "rejected") return entries
+  const list = await fetchEntries("GET")
+  return list === "rejected" ? null : list
 }
 
 async function fetchEntries(
   method: "GET" | "POST",
   body?: { upsert: WireEntry[]; delete: string[] },
-): Promise<WireEntry[] | null> {
+): Promise<WireEntry[] | null | "rejected"> {
   try {
     const res = await fetch("/api/watchlist", {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     })
+    if (res.status === 400) {
+      console.error("[watchlist] sync rejected; dropping those changes")
+      return "rejected"
+    }
     if (!res.ok) {
       console.error(`[watchlist] sync HTTP ${res.status}`)
       return null
@@ -403,6 +419,11 @@ export async function hydrateWatchlist(userId: string): Promise<void> {
 
   const server = await pushPending()
   if (server === null) return
+  // Another account took over this cache while the request was out (sign-out
+  // and back in as someone else): this result belongs to the old one.
+  try {
+    if (window.localStorage.getItem(OWNER_KEY) !== userId) return
+  } catch {}
 
   // Server is the truth, except for changes queued after the push was sent.
   const local = new Map(readList().map((e) => [e.rec.id, e]))

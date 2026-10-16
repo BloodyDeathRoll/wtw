@@ -53,3 +53,17 @@ create policy "watchlist_entries_delete_own"
 
 create index if not exists watchlist_entries_user_time_idx
   on public.watchlist_entries (user_id, added_at desc);
+
+-- Keep updated_at honest for writes that don't go through /api/watchlist.
+create or replace function public.watchlist_entries_touch()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists watchlist_entries_touch on public.watchlist_entries;
+create trigger watchlist_entries_touch
+  before update on public.watchlist_entries
+  for each row execute function public.watchlist_entries_touch();
