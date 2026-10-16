@@ -176,7 +176,7 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
 ### 2026-10-16 — Originality confidence no longer saturates (`fix/originality-confidence`)
-- `originality_weight` confidence rose on every positive reaction, agreeing or not, and sat at 100% for 3 of 4 active users. It now follows the categorical rule: a title within 0.15 of the current value counts as agreeing (`AGREE_GAP` in `update-strand-b-from-title.ts`). Stored confidences are not reset; they correct as new ratings arrive.
+- `originality_weight` confidence rose on every positive reaction, agreeing or not, and sat at 100% for 3 of 4 active users. It now follows the categorical rule: a title within 0.15 of the current value counts as agreeing (`AGREE_GAP` in `update-strand-b-from-title.ts`). Stored confidences were recomputed on 2026-10-16 with `scripts/reset-originality-confidence.mts --apply` (replays each user's signals under the new rule; value and notes kept). 5 users written; e.g. 1.00 → 0.13, 1.00 → 0.60, 1.00 → 0.85.
 
 ### 2026-10-15 — Figma UI refresh (`feat/figma-ui-update`)
 
