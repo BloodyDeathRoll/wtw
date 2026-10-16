@@ -25,9 +25,11 @@ function fakeMotionQuery(initial: boolean) {
 
 let raf: ReturnType<typeof vi.fn>
 let drawn: number
+let resize: (() => void) | null
 
 beforeEach(() => {
   drawn = 0
+  resize = null
   const ctx = {
     setTransform() {},
     clearRect() {},
@@ -49,6 +51,9 @@ beforeEach(() => {
   vi.stubGlobal(
     'ResizeObserver',
     class {
+      constructor(cb: () => void) {
+        resize = cb
+      }
       observe() {}
       disconnect() {}
     },
@@ -98,6 +103,16 @@ describe('particles under reduced motion', () => {
     drawn = 0
     h.setDensity(2)
     expect(drawn).toBeGreaterThan(0)
+    h.stop()
+  })
+
+  it('redraws after a resize in still mode', () => {
+    fakeMotionQuery(true)
+    const h = mountParticles(document.createElement('canvas'))
+    drawn = 0
+    resize!()
+    expect(drawn).toBeGreaterThan(0)
+    expect(raf).not.toHaveBeenCalled()
     h.stop()
   })
 
