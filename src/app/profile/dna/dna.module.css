@@ -11,6 +11,7 @@
   --white-20: rgba(255, 255, 255, 0.2);
   --white-10: rgba(255, 255, 255, 0.1);
   --dark-50: #161614;
+  --dark-50-70: rgba(22, 22, 20, 0.7); /* cards — lets the particles show through */
   --brand-yellow: #ffa900;
   --brand-yellow-20: rgba(255, 169, 0, 0.2);
   --brand-purple: #8a38f5; /* Visceral Specs → Tone bars */
@@ -23,14 +24,15 @@
   --pad-2: 6.5px;         /* --container-padding-2 16 */
   --pad-large: 26.5px;    /* --container-padding-larger 64 */
 
-  min-height: 100dvh;
-  /* Same background as the app shell, anchored to the top of this long page
-     the way the design places it. */
-  background: url("/wtw-bg.svg") center top / 100% auto no-repeat, #000;
+  /* Rendered inside AppShell, like the home screen: the gradient, background
+     art and particles stay fixed while only this page scrolls. AppShell also
+     handles the safe-area insets. */
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--white);
   font-weight: 400;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  padding-bottom: 16px;
 }
 .container {
   max-width: 560px;
@@ -97,7 +99,7 @@
 
 /* ─── Cards ─── */
 .section {
-  background: var(--dark-50);
+  background: var(--dark-50-70);
   border-radius: 16.5px;
   padding: var(--pad-large);
   display: flex;

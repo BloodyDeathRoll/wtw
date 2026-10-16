@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import type { DNASchema, StrandA } from '@/types/dna'
+import AppShell from '@/modules/session/components/AppShell'
 import { DnaHeader } from './DnaHeader'
 import { RulesSection } from './RulesSection'
 import styles from './dna.module.css'
@@ -115,11 +116,13 @@ export default async function DNAProfilePage() {
     dna = await loadDNA(user.id)
   } catch {
     return (
-      <main className={styles.page}>
-        <div className={styles.container}>
-          <p className={styles.note}>Could not load your DNA profile.</p>
-        </div>
-      </main>
+      <AppShell>
+        <main className={styles.page}>
+          <div className={styles.container}>
+            <p className={styles.note}>Could not load your DNA profile.</p>
+          </div>
+        </main>
+      </AppShell>
     )
   }
 
@@ -138,148 +141,150 @@ export default async function DNAProfilePage() {
     `v${metadata.taste_version} · ${new Date(metadata.last_updated).toLocaleDateString()}`
 
   return (
-    <main className={styles.page}>
-      <DnaHeader user={appUser} subtitle={subtitle} />
+    <AppShell>
+      <main className={styles.page}>
+        <DnaHeader user={appUser} subtitle={subtitle} />
 
-      <div className={styles.container}>
-        {!hasData && (
-          <section className={styles.section}>
-            <p className={styles.note}>
-              Your fingerprint is just getting started. Rate a few more films and have a
-              conversation to see your DNA take shape.
-            </p>
-          </section>
-        )}
+        <div className={styles.container}>
+          {!hasData && (
+            <section className={styles.section}>
+              <p className={styles.note}>
+                Your fingerprint is just getting started. Rate a few more films and have a
+                conversation to see your DNA take shape.
+              </p>
+            </section>
+          )}
 
-        {/* Strand A — Creative Affinities.
-            One number per person: how confident the fingerprint is. The raw
-            ±score it used to show is an internal reaction-average, and the
-            unit is named once per group instead of on every row. */}
-        <Section title="Creative Affinities">
-          {(['directors', 'writers', 'actors'] as const).map(bucket => {
-            const crew = topCrew(sa[bucket])
-            if (crew.length === 0) return null
-            return (
-              <div key={bucket} className={styles.group}>
-                <div className={styles.groupHead}>
-                  <span className={styles.groupName}>{bucket}</span>
-                  <span className={styles.groupLegend}>Confidence</span>
+          {/* Strand A — Creative Affinities.
+              One number per person: how confident the fingerprint is. The raw
+              ±score it used to show is an internal reaction-average, and the
+              unit is named once per group instead of on every row. */}
+          <Section title="Creative Affinities">
+            {(['directors', 'writers', 'actors'] as const).map(bucket => {
+              const crew = topCrew(sa[bucket])
+              if (crew.length === 0) return null
+              return (
+                <div key={bucket} className={styles.group}>
+                  <div className={styles.groupHead}>
+                    <span className={styles.groupName}>{bucket}</span>
+                    <span className={styles.groupLegend}>Confidence</span>
+                  </div>
+                  {crew.map(person => (
+                    <div key={person.name} className={styles.personRow}>
+                      <span className={styles.personName}>{person.name}</span>
+                      <Meter value={person.confidence} />
+                      <span className={styles.personPct}>{pct(person.confidence)}</span>
+                    </div>
+                  ))}
                 </div>
-                {crew.map(person => (
-                  <div key={person.name} className={styles.personRow}>
-                    <span className={styles.personName}>{person.name}</span>
-                    <Meter value={person.confidence} />
-                    <span className={styles.personPct}>{pct(person.confidence)}</span>
+              )
+            })}
+            {Object.values(sa.directors).length === 0 && Object.values(sa.actors).length === 0 && (
+              <p className={styles.note}>No crew affinities yet.</p>
+            )}
+          </Section>
+
+          {/* Strand B — Narrative Dimensions.
+              Each dimension is a block: quiet label, the reading as the
+              headline, the plain-English note, then a confidence meter. */}
+          <Section title="Narrative Dimensions" legend="Confidence">
+            {(Object.keys(sb) as (keyof typeof sb)[]).map(dim => {
+              const d = sb[dim]
+              const unsure = d.confidence < UNSURE_BELOW
+              return (
+                <div key={dim} className={styles.dim}>
+                  <div className={styles.dimLabel}>{STRAND_B_LABELS[dim] ?? dim}</div>
+                  <div className={`${styles.dimValue} ${unsure ? styles.dimUnknown : ''}`}>
+                    {unsure ? 'Not enough signal yet' : dimensionValue(d.value)}
+                  </div>
+                  {!unsure && d.notes && <p className={styles.dimNote}>{d.notes}</p>}
+                  <div className={styles.dimMeter}>
+                    <Meter value={d.confidence} />
+                    <span className={styles.dimConf}>{pct(d.confidence)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </Section>
+
+          {/* Strand C — Visceral Specs */}
+          {/* The numbers here are WEIGHTS, not confidence: 50 is neutral, above
+              is favoured, below is not. Pacing and tone are learned from
+              ratings and re-centred so each group averages 50
+              (update-strand-c.ts); craft aspects come from the deep survey and
+              sit at 50 until one is filled in. Unlabelled, they read as
+              confidence — the section next door — so the head names them. */}
+          <Section title="Visceral Specs" legend="Weight · 50 = neutral" accent>
+            <div className={styles.specGroup}>
+              <p className={styles.subhead}>Pacing</p>
+              {Object.entries(sc.pacing_weights).map(([k, v]) => (
+                <SpecRow key={k} label={k} value={v} />
+              ))}
+            </div>
+            <div className={styles.specGroup}>
+              <p className={styles.subhead}>Tone</p>
+              {Object.entries(sc.tone_weights).map(([k, v]) => (
+                <SpecRow key={k} label={k} value={v} color="var(--brand-purple)" />
+              ))}
+            </div>
+            <div className={styles.specGroup}>
+              <p className={styles.subhead}>Craft aspects (from deep surveys)</p>
+              {Object.entries(sc.aspect_weights).map(([k, v]) => (
+                <SpecRow key={k} label={k} value={v} color="var(--brand-blue)" />
+              ))}
+            </div>
+          </Section>
+
+          {/* Contextual Logic — the user's own standing instructions, and the
+              only place to take one back (RulesSection is a client island). */}
+          <RulesSection
+            exclusions={cl.exclusion_rules}
+            softPreferences={cl.soft_preferences}
+          />
+
+          {/* Learning Loop */}
+          {ll.open_questions.length > 0 && (
+            <Section title="Open Questions" accent>
+              <div className={styles.questions}>
+                {ll.open_questions.map((q, i) => (
+                  <p key={i} className={styles.question}>
+                    <span className={styles.questionMark}>?</span>
+                    <span>{q}</span>
+                  </p>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Stretch picks summary */}
+          {ll.stretch_pick_history.length > 0 && (
+            <Section title="Stretch Pick Results" accent>
+              <div className={styles.ruleList}>
+                {ll.stretch_pick_history.slice(-5).reverse().map((s, i) => (
+                  <div key={i} className={styles.ruleRow}>
+                    <span style={{ flex: 1 }}>{s.title}</span>
+                    <span
+                      className={styles.tag}
+                      style={
+                        s.accepted
+                          ? { background: 'var(--wtw-green-soft)', color: 'var(--wtw-green)' }
+                          : undefined
+                      }
+                    >
+                      {s.reaction ?? (s.accepted ? 'watched' : 'skipped')}
+                    </span>
                   </div>
                 ))}
               </div>
-            )
-          })}
-          {Object.values(sa.directors).length === 0 && Object.values(sa.actors).length === 0 && (
-            <p className={styles.note}>No crew affinities yet.</p>
+            </Section>
           )}
-        </Section>
 
-        {/* Strand B — Narrative Dimensions.
-            Each dimension is a block: quiet label, the reading as the
-            headline, the plain-English note, then a confidence meter. */}
-        <Section title="Narrative Dimensions" legend="Confidence">
-          {(Object.keys(sb) as (keyof typeof sb)[]).map(dim => {
-            const d = sb[dim]
-            const unsure = d.confidence < UNSURE_BELOW
-            return (
-              <div key={dim} className={styles.dim}>
-                <div className={styles.dimLabel}>{STRAND_B_LABELS[dim] ?? dim}</div>
-                <div className={`${styles.dimValue} ${unsure ? styles.dimUnknown : ''}`}>
-                  {unsure ? 'Not enough signal yet' : dimensionValue(d.value)}
-                </div>
-                {!unsure && d.notes && <p className={styles.dimNote}>{d.notes}</p>}
-                <div className={styles.dimMeter}>
-                  <Meter value={d.confidence} />
-                  <span className={styles.dimConf}>{pct(d.confidence)}</span>
-                </div>
-              </div>
-            )
-          })}
-        </Section>
-
-        {/* Strand C — Visceral Specs */}
-        {/* The numbers here are WEIGHTS, not confidence: 50 is neutral, above
-            is favoured, below is not. Pacing and tone are learned from
-            ratings and re-centred so each group averages 50
-            (update-strand-c.ts); craft aspects come from the deep survey and
-            sit at 50 until one is filled in. Unlabelled, they read as
-            confidence — the section next door — so the head names them. */}
-        <Section title="Visceral Specs" legend="Weight · 50 = neutral" accent>
-          <div className={styles.specGroup}>
-            <p className={styles.subhead}>Pacing</p>
-            {Object.entries(sc.pacing_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} />
-            ))}
-          </div>
-          <div className={styles.specGroup}>
-            <p className={styles.subhead}>Tone</p>
-            {Object.entries(sc.tone_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} color="var(--brand-purple)" />
-            ))}
-          </div>
-          <div className={styles.specGroup}>
-            <p className={styles.subhead}>Craft aspects (from deep surveys)</p>
-            {Object.entries(sc.aspect_weights).map(([k, v]) => (
-              <SpecRow key={k} label={k} value={v} color="var(--brand-blue)" />
-            ))}
-          </div>
-        </Section>
-
-        {/* Contextual Logic — the user's own standing instructions, and the
-            only place to take one back (RulesSection is a client island). */}
-        <RulesSection
-          exclusions={cl.exclusion_rules}
-          softPreferences={cl.soft_preferences}
-        />
-
-        {/* Learning Loop */}
-        {ll.open_questions.length > 0 && (
-          <Section title="Open Questions" accent>
-            <div className={styles.questions}>
-              {ll.open_questions.map((q, i) => (
-                <p key={i} className={styles.question}>
-                  <span className={styles.questionMark}>?</span>
-                  <span>{q}</span>
-                </p>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* Stretch picks summary */}
-        {ll.stretch_pick_history.length > 0 && (
-          <Section title="Stretch Pick Results" accent>
-            <div className={styles.ruleList}>
-              {ll.stretch_pick_history.slice(-5).reverse().map((s, i) => (
-                <div key={i} className={styles.ruleRow}>
-                  <span style={{ flex: 1 }}>{s.title}</span>
-                  <span
-                    className={styles.tag}
-                    style={
-                      s.accepted
-                        ? { background: 'var(--wtw-green-soft)', color: 'var(--wtw-green)' }
-                        : undefined
-                    }
-                  >
-                    {s.reaction ?? (s.accepted ? 'watched' : 'skipped')}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        <p className={styles.footer}>
-          Schema v{metadata.schema_version} · {metadata.total_sessions} session
-          {metadata.total_sessions !== 1 ? 's' : ''}
-        </p>
-      </div>
-    </main>
+          <p className={styles.footer}>
+            Schema v{metadata.schema_version} · {metadata.total_sessions} session
+            {metadata.total_sessions !== 1 ? 's' : ''}
+          </p>
+        </div>
+      </main>
+    </AppShell>
   )
 }
