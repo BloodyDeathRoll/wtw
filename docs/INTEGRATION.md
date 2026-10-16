@@ -175,6 +175,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-16 — Originality confidence no longer saturates (`fix/originality-confidence`)
+- `originality_weight` confidence rose on every positive reaction, agreeing or not, and sat at 100% for 3 of 4 active users. It now follows the categorical rule: a title within 0.15 of the current value counts as agreeing (`AGREE_GAP` in `update-strand-b-from-title.ts`). Stored confidences are not reset; they correct as new ratings arrive.
+
 ### 2026-10-15 — Figma UI refresh (`feat/figma-ui-update`)
 
 - Source: Figma file `7rH793m9iGwE1QRRsYibfb`, page "screens" (current screenshots left, redesign right). Design px ÷ 2.4 = CSS px.

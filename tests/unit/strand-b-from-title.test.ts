@@ -76,3 +76,46 @@ describe('applyStrandBFromTitle', () => {
     expect(applyStrandBFromTitle(b, null, 'loved')).toBe(0)
   })
 })
+
+// 2026-10-16: originality confidence rose on every positive reaction, agreeing
+// or not, and sat at 100% for 3 of 4 active users.
+describe('applyStrandBFromTitle — originality confidence', () => {
+  const withOriginality = (value: number, confidence: number) => {
+    const b = blank()
+    b.originality_weight = { value, confidence, notes: '' }
+    return b
+  }
+
+  it('rises when a liked title agrees with the current value', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.65, 1) }, 'loved')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.56)
+  })
+
+  it('falls when a liked title disagrees, while the value still moves toward it', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.1, 1) }, 'loved')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.44)
+    expect(b.originality_weight.value as number).toBeLessThan(0.6)
+  })
+
+  it('falls when a disliked title agrees with the current value', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.6, 1) }, 'disliked')
+    expect(b.originality_weight.confidence).toBeCloseTo(0.46)
+  })
+
+  it('is untouched by a disliked title far from the current value', () => {
+    const b = withOriginality(0.6, 0.5)
+    applyStrandBFromTitle(b, { originality_weight: tag(0.1, 1) }, 'disliked')
+    expect(b.originality_weight.confidence).toBe(0.5)
+  })
+
+  it('does not saturate under mixed liked titles', () => {
+    const b = withOriginality(0.6, 0.5)
+    for (let i = 0; i < 100; i++) {
+      applyStrandBFromTitle(b, { originality_weight: tag(i % 2 ? 0.9 : 0.2, 1) }, 'liked')
+    }
+    expect(b.originality_weight.confidence).toBeLessThan(0.5)
+  })
+})
