@@ -310,3 +310,10 @@
   margin-top: 3px;
   line-height: 1.4;
 }
+
+/* Reduced motion: the drawer fades in instead of sliding up. */
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    animation: fadeIn 0.2s var(--ease-out) both;
+  }
+}

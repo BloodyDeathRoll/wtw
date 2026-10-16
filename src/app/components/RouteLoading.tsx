@@ -9,6 +9,10 @@ import { createPortal } from "react-dom";
 import { FingerprintLoader } from "@/modules/session/components/FingerprintLoader";
 import styles from "./RouteLoading.module.css";
 
+/** How long a screen keeps its leaving overlay before giving up on the
+ *  navigation and handing the screen back. Well past a slow server render. */
+export const LEAVE_TIMEOUT_MS = 15_000;
+
 export function RouteLoading({
   label,
   overlay = false,

@@ -48,7 +48,7 @@ import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { shareApp } from "@/lib/share";
-import { RouteLoading } from "@/app/components/RouteLoading";
+import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
@@ -654,6 +654,13 @@ export default function WTWApp({
     setLeaving(true);
     router.push("/profile/dna");
   }
+  // If the navigation never lands (offline, a server error), don't trap the
+  // user under the loader: give the screen back after a while.
+  useEffect(() => {
+    if (!leaving) return;
+    const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [leaving]);
 
   async function signOut() {
     const supabase = createClient();

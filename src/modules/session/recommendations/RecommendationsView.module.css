@@ -962,7 +962,7 @@
     rgba(22, 22, 20, 0.7);
 }
 @keyframes whySheetIn {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(var(--enter-y)); }
   to   { opacity: 1; transform: translateY(0);    }
 }
 /* "Reading your taste" + fingerprint, centred in the overlay (Figma 28:3112). */

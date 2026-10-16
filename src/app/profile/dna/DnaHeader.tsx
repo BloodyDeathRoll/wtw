@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
-import { RouteLoading } from "@/app/components/RouteLoading";
+import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./dna.module.css";
 
 /** Same key WTWApp persists the Gemini Live voice under. */
@@ -52,6 +52,13 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
     router.push(href);
   };
   const go = (stage: string) => () => leave(`/?stage=${stage}`);
+  // If the navigation never lands (offline, a server error), don't trap the
+  // user under the loader: give the screen back after a while.
+  useEffect(() => {
+    if (!leaving) return;
+    const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [leaving]);
 
   return (
     <header className={styles.header}>

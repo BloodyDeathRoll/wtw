@@ -41,7 +41,7 @@
 @keyframes pillIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(var(--enter-y));
   }
   to {
     opacity: 1;
