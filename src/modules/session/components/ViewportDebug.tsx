@@ -37,6 +37,11 @@ function read() {
     clientH: document.documentElement.clientHeight,
     vvH: vv ? Math.round(vv.height * 10) / 10 : null,
     vvTop: vv ? vv.offsetTop : null,
+    vvScale: vv ? vv.scale : null,
+    vvPageTop: vv ? vv.pageTop : null,
+    scrollH: document.documentElement.scrollHeight,
+    htmlH: getComputedStyle(document.documentElement).height,
+    bodyH: getComputedStyle(document.body).height,
     screenH: screen.height,
     availH: screen.availHeight,
     dvh: probe("height:100dvh"),
@@ -45,13 +50,21 @@ function read() {
     vh: probe("height:100vh"),
     insetTop: probe("height:env(safe-area-inset-top)"),
     insetBottom: probe("height:env(safe-area-inset-bottom)"),
-    kbBottom: probe("height:env(keyboard-inset-height, 0px)"),
+    // env(keyboard-inset-*) is only set in VirtualKeyboard overlay mode, so
+    // also read the API directly.
+    kbInsetH: probe("height:env(keyboard-inset-height, 0px)"),
+    kbRectH:
+      (navigator as Navigator & { virtualKeyboard?: { boundingRect: DOMRect } })
+        .virtualKeyboard?.boundingRect.height ?? null,
     // Where the app's own box and the input bar actually end, in the same
     // coordinates as innerH — if these exceed what's visible, it's clipped.
     appBottom: bottom("[data-vp=app]"),
-    inputBottom: bottom("input"),
+    inputBottom: bottom("[data-vp=input]"),
     dpr: window.devicePixelRatio,
-    ua: navigator.userAgent.match(/Android [\d.]+|Chrome\/[\d.]+/g)?.join(" ") ?? "",
+    ua:
+      navigator.userAgent
+        .match(/Android [\d.]+|Chrome\/[\d.]+|SamsungBrowser\/[\d.]+|\bwv\b/g)
+        ?.join(" ") ?? "",
   };
 }
 
@@ -75,7 +88,14 @@ export function ViewportDebug() {
 
   useEffect(() => {
     if (!on) return;
-    const update = () => setData(read());
+    let last = "";
+    const update = () => {
+      const next = read();
+      const json = JSON.stringify(next);
+      if (json === last) return;
+      last = json;
+      setData(next);
+    };
     const first = setTimeout(update, 0);
     window.addEventListener("resize", update);
     window.visualViewport?.addEventListener("resize", update);
@@ -93,7 +113,8 @@ export function ViewportDebug() {
     <pre
       style={{
         position: "fixed",
-        top: "30%",
+        // Top-left, under the header: clear of the input bar being measured.
+        top: 64,
         left: 8,
         zIndex: 2000,
         margin: 0,
