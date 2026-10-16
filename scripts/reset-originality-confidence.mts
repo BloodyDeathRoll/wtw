@@ -15,6 +15,10 @@
  * notes are kept — other writers (deep survey, chat) move the value too, and
  * this only repairs what the old rule got wrong. Idempotent: the replay
  * always starts from blank.
+ *
+ * The result is an estimate, not a reconstruction: the replay's value starts
+ * at the blank 0.5 and sees only title signals, while the real value was also
+ * moved by the survey and chat, so agree/disagree calls can differ.
  */
 
 import { titleKey } from '@/lib/title-key'
