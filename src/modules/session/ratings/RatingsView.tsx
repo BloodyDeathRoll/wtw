@@ -33,6 +33,7 @@ import styles from "./RatingsView.module.css";
 
 type Tab = Reaction | "removed";
 type SortKey = "newest" | "oldest" | "title";
+type KindFilter = "all" | "movie" | "tv";
 
 const REACTION_META: Record<Reaction, { label: string; icon: ReactNode }> = {
   loved: { label: "Loved", icon: "❤️" },
@@ -49,6 +50,12 @@ const SORT_LABELS: Record<SortKey, string> = {
   newest: "Date Added",
   oldest: "Oldest First",
   title: "Title A–Z",
+};
+
+const KIND_LABELS: Record<KindFilter, string> = {
+  all: "All",
+  movie: "Movies",
+  tv: "Series",
 };
 
 /** Sort a bucket client-side. `date` is created_at / removed_at (ISO). */
@@ -78,6 +85,7 @@ export default function RatingsView({
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [tab, setTab] = useState<Tab>("loved");
   const [sort, setSort] = useState<SortKey>("newest");
+  const [kind, setKind] = useState<KindFilter>("all");
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -178,23 +186,36 @@ export default function RatingsView({
     }
   }
 
+  // Movies / Series / All. Legacy ratings stored without a media type can't be
+  // placed, so they show under All only.
+  const ofKind = useMemo(() => {
+    const keep = (t: "movie" | "tv" | null) => kind === "all" || t === kind;
+    return {
+      items: data?.items.filter((i) => keep(i.media_type)) ?? [],
+      removed: data?.removed.filter((r) => keep(r.media_type)) ?? [],
+    };
+  }, [data, kind]);
+  const counts = useMemo(() => {
+    const c: Record<Tab, number> = { loved: 0, liked: 0, disliked: 0, removed: ofKind.removed.length };
+    for (const i of ofKind.items) c[i.rating] += 1;
+    return c;
+  }, [ofKind]);
+
   const rated = useMemo(
     () =>
       sortBy(
-        data?.items.filter((i) => i.rating === tab) ?? [],
+        ofKind.items.filter((i) => i.rating === tab),
         sort,
         (i) => i.created_at,
         (i) => i.title,
       ),
-    [data, tab, sort],
+    [ofKind, tab, sort],
   );
   const removed = useMemo(
-    () => sortBy(data?.removed ?? [], sort, (r) => r.removed_at, (r) => r.title),
-    [data, sort],
+    () => sortBy(ofKind.removed, sort, (r) => r.removed_at, (r) => r.title),
+    [ofKind, sort],
   );
-  const reviewedTotal = data
-    ? data.counts.loved + data.counts.liked + data.counts.disliked + data.counts.removed
-    : 0;
+  const reviewedTotal = counts.loved + counts.liked + counts.disliked + counts.removed;
 
   // One random poster from the whole list for the screen background — picked
   // once, when the first load lands (not on re-rate / restore / tab switch,
@@ -266,7 +287,7 @@ export default function RatingsView({
                     <span className={styles.tabIcon} aria-hidden>
                       {m.icon}
                     </span>
-                    <span className={styles.tabCount}>{data.counts[t]}</span>
+                    <span className={styles.tabCount}>{counts[t]}</span>
                   </span>
                   <span className={styles.tabLabel}>{m.label}</span>
                 </button>
@@ -276,6 +297,24 @@ export default function RatingsView({
 
           <div className={styles.sectionBar}>
             <span className={styles.sectionLabel}>{sectionLabel}</span>
+            <label className={styles.sortPill}>
+              <select
+                className={styles.sortSelect}
+                value={kind}
+                onChange={(e) => {
+                  setKind(e.target.value as KindFilter);
+                  setEditing(null);
+                }}
+                aria-label="show movies, series or all"
+              >
+                {(Object.keys(KIND_LABELS) as KindFilter[]).map((k) => (
+                  <option key={k} value={k}>
+                    {KIND_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} strokeWidth={2} aria-hidden />
+            </label>
             <label className={styles.sortPill}>
               <select
                 className={styles.sortSelect}
@@ -297,7 +336,9 @@ export default function RatingsView({
             (rated.length === 0 ? (
               <div className={styles.empty}>Nothing in {tabMeta(tab).label} yet.</div>
             ) : (
-              <ul className={styles.list}>
+              // Keyed by what's shown, so a tab / filter / sort change replays
+              // the entrance instead of swapping rows in place.
+              <ul key={`${tab}-${kind}-${sort}`} className={styles.list}>
                 {rated.map((item) => {
                   const open = editing === item.id;
                   return (
@@ -345,7 +386,7 @@ export default function RatingsView({
             (removed.length === 0 ? (
               <div className={styles.empty}>You haven&rsquo;t removed any titles.</div>
             ) : (
-              <ul className={styles.list}>
+              <ul key={`removed-${kind}-${sort}`} className={styles.list}>
                 {removed.map((rem) => {
                   const key = `${rem.media_type}:${rem.tmdb_id}`;
                   const open = editing === key;

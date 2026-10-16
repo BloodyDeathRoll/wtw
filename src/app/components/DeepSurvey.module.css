@@ -19,7 +19,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  animation: fadeIn 0.2s ease both;
+  animation: fadeIn 0.2s var(--ease-out) both;
 }
 
 /* ─── Bottom drawer ─── */
@@ -31,10 +31,11 @@
   border-radius: 24px 24px 0 0;
   border: 1px solid var(--wtw-border);
   border-bottom: none;
+  padding-bottom: env(safe-area-inset-bottom);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: slideUp 0.3s var(--ease-drawer) both;
 }
 
 /* ─── Header ─── */

@@ -28,7 +28,7 @@
   transition:
     transform 0.15s ease,
     filter 0.2s ease;
-  animation: pillIn 0.3s ease-out;
+  animation: pillIn 0.3s var(--ease-out);
 }
 .pill > * {
   flex-shrink: 0;

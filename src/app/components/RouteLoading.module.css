@@ -1,0 +1,26 @@
+.page {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: url("/wtw-bg.svg") center bottom / cover no-repeat, #000;
+  color: #fff;
+}
+/* Matches the "Reading your taste" title (WTWApp.module.css). */
+.label {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  height: auto;
+}

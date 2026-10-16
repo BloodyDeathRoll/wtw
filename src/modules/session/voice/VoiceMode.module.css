@@ -225,7 +225,7 @@
   color: #fff;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.12s ease;
-  animation: pauseIn 0.18s ease-out both;
+  animation: pauseIn 0.18s var(--ease-out) both;
 }
 .wavePause:hover {
   background: #232320;
@@ -383,7 +383,7 @@
   align-items: flex-end;
   gap: 4px;
   padding: 16px 16px 16px 26.5px;
-  animation: meIn 0.2s ease-out;
+  animation: meIn 0.2s var(--ease-out);
 }
 .meLabel {
   font-size: 16px;

@@ -29,7 +29,8 @@
   background: url("/wtw-bg.svg") center top / 100% auto no-repeat, #000;
   color: var(--white);
   font-weight: 400;
-  padding-bottom: 16px;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 .container {
   max-width: 560px;
@@ -468,4 +469,41 @@
 .ruleAdded {
   font-size: var(--text-small);
   color: var(--white-70);
+}
+
+/* ─── Entrance ───
+   Sections arrive one after another, then each bar grows to its value from
+   the left. Transform/opacity only; reduced motion keeps the fades and drops
+   the travel and the growth. */
+.section {
+  animation: sectionIn 300ms var(--ease-out) both;
+}
+.section:nth-of-type(2) { animation-delay: 60ms; }
+.section:nth-of-type(3) { animation-delay: 120ms; }
+.section:nth-of-type(4) { animation-delay: 180ms; }
+.section:nth-of-type(n + 5) { animation-delay: 240ms; }
+@keyframes sectionIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-y));
+  }
+}
+.fill {
+  transform-origin: left center;
+  animation: fillGrow 400ms 150ms var(--ease-out) both;
+}
+@keyframes fillGrow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    animation: fillFade 200ms var(--ease-out) both;
+  }
+  @keyframes fillFade {
+    from {
+      opacity: 0;
+    }
+  }
 }

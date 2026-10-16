@@ -48,6 +48,7 @@ import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { shareApp } from "@/lib/share";
+import { RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
@@ -579,6 +580,12 @@ export default function WTWApp({
     setRegretChecks(getPendingRegretChecks());
   }, []);
 
+  // Fetch Taste DNA's loading state ahead of time, so opening it shows the
+  // loader the instant it's tapped instead of after a round trip.
+  useEffect(() => {
+    router.prefetch("/profile/dna");
+  }, [router]);
+
   // Warm-up on load: bootstrap the DNA row (idempotent), then pre-generate
   // recommendations in the background. POST /generate returns the cached set
   // when it's still fresh (cheap no-op) and otherwise runs the pipeline and
@@ -639,6 +646,14 @@ export default function WTWApp({
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Taste DNA is its own route and renders on the server first; cover the
+  // screen with a loader the moment it's tapped so the tap visibly registers.
+  const [leaving, setLeaving] = useState(false);
+  function openProfile() {
+    setLeaving(true);
+    router.push("/profile/dna");
+  }
 
   async function signOut() {
     const supabase = createClient();
@@ -857,7 +872,7 @@ export default function WTWApp({
       onWatchlist={handleWatchlist}
       onFastLearning={handleFastLearning}
       onRatings={handleRatings}
-      onProfile={() => router.push("/profile/dna")}
+      onProfile={openProfile}
       user={user}
       onSignOut={signOut}
       voice={voice}
@@ -906,7 +921,7 @@ export default function WTWApp({
               onWatchlist={handleWatchlist}
               onFastLearning={handleFastLearning}
               onRatings={handleRatings}
-              onProfile={() => router.push("/profile/dna")}
+              onProfile={openProfile}
               user={user}
               onSignOut={signOut}
               contentType={contentType}
@@ -980,7 +995,7 @@ export default function WTWApp({
             onWatchlist={handleWatchlist}
             onFastLearning={handleFastLearning}
             onRatings={handleRatings}
-            onProfile={() => router.push("/profile/dna")}
+            onProfile={openProfile}
             user={user}
             onSignOut={signOut}
             contentType={contentType}
@@ -1087,6 +1102,7 @@ export default function WTWApp({
           />
         </div>
       )}
+      {leaving && <RouteLoading label="Reading your Taste DNA" overlay />}
     </AppShell>
   );
 }

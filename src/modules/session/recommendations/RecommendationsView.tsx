@@ -1579,6 +1579,9 @@ function PosterTile({
   size: "md" | "lg";
 }) {
   const [imgFailed, setImgFailed] = useState(false);
+  // Fade the poster in once it has actually loaded, rather than letting it
+  // paint in top-down over the motif colour.
+  const [imgLoaded, setImgLoaded] = useState(false);
   const showImg = rec.poster_url && !imgFailed;
   const [bg, fg] = rec.palette;
 
@@ -1593,7 +1596,8 @@ function PosterTile({
         <img
           src={rec.poster_url!}
           alt=""
-          className={styles.posterImg}
+          className={`${styles.posterImg} ${imgLoaded ? styles.posterImgLoaded : ""}`}
+          onLoad={() => setImgLoaded(true)}
           onError={() => setImgFailed(true)}
         />
       ) : (

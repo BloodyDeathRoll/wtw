@@ -19,6 +19,11 @@
   height: 100vh;
   height: 100dvh;
   width: 100%;
+  /* Keep the app clear of the status and navigation bars (viewportFit:
+     "cover" in layout.tsx). Zero where the browser already insets the page. */
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* ─── Mobile app surface ─── */
@@ -26,10 +31,9 @@
   position: relative;
   width: 100%;
   max-width: 420px;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100vh;
-  max-height: 100dvh;
+  /* The page's height minus its safe-area padding. */
+  height: 100%;
+  max-height: 100%;
   background: #000;
   overflow: hidden;
   display: flex;
@@ -194,7 +198,7 @@
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(28px) saturate(120%);
   -webkit-backdrop-filter: blur(28px) saturate(120%);
-  animation: fadeIn 0.18s ease-out both;
+  animation: fadeIn 0.18s var(--ease-out) both;
 }
 .userMenuPanel {
   position: relative;
@@ -205,7 +209,7 @@
   padding: 0 0 16px;
   /* Figma dark-100 @ 80%, full-screen. */
   background: rgba(14, 13, 11, 0.8);
-  animation: panelDown 0.18s ease-out both;
+  animation: panelDown 0.18s var(--ease-out) both;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
@@ -391,7 +395,7 @@
     0 0 0 1px rgba(255, 255, 255, 0.04);
   /* Custom keyframes preserve translateX(-50%) in both states — a plain
      fadeUp animation would overwrite the centering transform. */
-  animation: brandMenuIn 0.16s ease both;
+  animation: brandMenuIn 0.16s var(--ease-out) both;
   z-index: 10;
 }
 @keyframes brandMenuIn {
@@ -496,7 +500,7 @@
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.04);
-  animation: fadeUp 0.16s ease both;
+  animation: fadeUp 0.16s var(--ease-out) both;
   z-index: 10;
 }
 .userMenuHeader {
@@ -593,7 +597,7 @@
   align-items: center;
   gap: 0;
   margin-bottom: 4px;
-  animation: fadeUp 0.6s ease both;
+  animation: fadeUp 0.6s var(--ease-out) both;
 }
 .welcomeLogo {
   width: 40px;
@@ -623,7 +627,7 @@
   transition:
     color 0.15s ease,
     background 0.15s ease;
-  animation: fadeUp 0.5s 0.1s ease both;
+  animation: fadeUp 0.5s 0.1s var(--ease-out) both;
 }
 .onboardPlayBtn:hover {
   color: #fff;
@@ -643,7 +647,7 @@
   letter-spacing: -0.02em;
   max-width: 380px;
   text-wrap: balance;
-  animation: fadeUp 0.7s 0.1s ease both;
+  animation: fadeUp 0.7s 0.1s var(--ease-out) both;
 }
 
 .onboardHint {
@@ -655,7 +659,7 @@
   letter-spacing: -0.02em;
   max-width: 340px;
   text-wrap: pretty;
-  animation: fadeUp 0.7s 0.15s ease both;
+  animation: fadeUp 0.7s 0.15s var(--ease-out) both;
 }
 .calibratedLine {
   margin: 0;
@@ -665,7 +669,7 @@
   color: var(--wtw-fg-muted);
   font-size: 12.5px;
   letter-spacing: -0.005em;
-  animation: fadeUp 0.6s 0.1s ease both;
+  animation: fadeUp 0.6s 0.1s var(--ease-out) both;
   max-width: 320px;
   text-align: center;
   line-height: 1.45;
@@ -704,7 +708,7 @@
   cursor: pointer;
   transition: all 0.18s ease;
   opacity: 0;
-  animation: fadeUp 0.6s ease both;
+  animation: fadeUp 0.6s var(--ease-out) both;
 }
 .chip:hover {
   background: rgba(var(--wtw-rgb), 0.06);
@@ -735,7 +739,7 @@
     transform 0.15s ease,
     box-shadow 0.15s ease,
     opacity 0.15s ease;
-  animation: fadeUp 0.7s 0.25s ease both;
+  animation: fadeUp 0.7s 0.25s var(--ease-out) both;
 }
 .googleBtn:hover:not(:disabled) {
   transform: translateY(-1px);
@@ -751,7 +755,7 @@
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(var(--enter-y));
   }
   to {
     opacity: 1;
@@ -769,7 +773,7 @@
 .msgRow {
   display: flex;
   gap: 16px;
-  animation: fadeUp 0.35s ease both;
+  animation: fadeUp 0.35s var(--ease-out) both;
 }
 .msgRowRight {
   justify-content: flex-end;
@@ -911,7 +915,7 @@
   color: #fff;
   cursor: pointer;
   transition: transform 0.15s ease, filter 0.2s ease;
-  animation: fadeUp 0.3s ease-out both;
+  animation: fadeUp 0.3s var(--ease-out) both;
 }
 .circleBtn:hover {
   transform: translateY(-2px);
@@ -1262,7 +1266,7 @@
   display: inline-flex;
   align-items: center;
   gap: 16px;
-  animation: fadeUp 0.6s ease both;
+  animation: fadeUp 0.6s var(--ease-out) both;
 }
 /* logo_vector.svg's glyph is 318×283 inside a 600 square: at 64px the glyph
    is ~34×30 (Figma 72 → 30px tall). Negative margins trim the empty canvas
@@ -1288,7 +1292,7 @@
   font-weight: 400;
   line-height: 1.2;
   text-wrap: pretty;
-  animation: fadeUp 0.7s 0.15s ease both;
+  animation: fadeUp 0.7s 0.15s var(--ease-out) both;
 }
 
 /* Round close button inside the drawer (Figma: 24 padding + 40 icon → 36.5px). */
