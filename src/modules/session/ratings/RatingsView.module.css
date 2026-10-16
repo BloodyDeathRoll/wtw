@@ -113,6 +113,12 @@
 }
 
 /* ─── Reviewed total ─── */
+/* The summary block settles in once the ratings land. */
+.reviewed,
+.tabs,
+.sectionBar {
+  animation: rowIn 240ms var(--ease-out) both;
+}
 .reviewed {
   display: flex;
   flex-direction: column;
@@ -256,6 +262,22 @@
   padding: var(--rv-pad);
   border-radius: var(--rv-pad);
   background: var(--rv-dark-50-70);
+  /* Rows arrive one after another (40ms apart, first eight only — anything
+     further down is off screen anyway). Never blocks a tap. */
+  animation: rowIn 240ms var(--ease-out) both;
+}
+.row:nth-child(2) { animation-delay: 40ms; }
+.row:nth-child(3) { animation-delay: 80ms; }
+.row:nth-child(4) { animation-delay: 120ms; }
+.row:nth-child(5) { animation-delay: 160ms; }
+.row:nth-child(6) { animation-delay: 200ms; }
+.row:nth-child(7) { animation-delay: 240ms; }
+.row:nth-child(n + 8) { animation-delay: 280ms; }
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-y));
+  }
 }
 /* Whole title line is the click target (toggles the expanded picks). */
 .rowMain {

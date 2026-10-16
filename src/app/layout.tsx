@@ -28,6 +28,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
+  // Lets the page see the system bars as env(safe-area-inset-*) so it can pad
+  // itself clear of them. Without it, Android's edge-to-edge PWAs drew the
+  // bottom of the app under the navigation bar (reported 2026-10-16).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
+import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./dna.module.css";
 
 /** Same key WTWApp persists the Gemini Live voice under. */
@@ -21,6 +22,12 @@ const VOICE_KEY = "wtw:voice";
 export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string }) {
   const router = useRouter();
   const [voice, setVoice] = useState<Voice>(VOICES[0].id);
+
+  // Fetch the home page's loading state ahead of time, so "back" shows it the
+  // instant it's tapped instead of after a round trip.
+  useEffect(() => {
+    router.prefetch("/");
+  }, [router]);
 
   useEffect(() => {
     const v = window.localStorage.getItem(VOICE_KEY);
@@ -36,14 +43,29 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
     }
   }
 
-  const go = (stage: string) => () => router.push(`/?stage=${stage}`);
+  // Every way off this page lands on the home route, which renders on the
+  // server first; cover the screen the moment it's tapped so the tap visibly
+  // registers.
+  const [leaving, setLeaving] = useState(false);
+  const leave = (href: string) => {
+    setLeaving(true);
+    router.push(href);
+  };
+  const go = (stage: string) => () => leave(`/?stage=${stage}`);
+  // If the navigation never lands (offline, a server error), don't trap the
+  // user under the loader: give the screen back after a while.
+  useEffect(() => {
+    if (!leaving) return;
+    const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [leaving]);
 
   return (
     <header className={styles.header}>
       <button
         type="button"
         className={styles.backBtn}
-        onClick={() => router.push("/")}
+        onClick={() => leave("/")}
         aria-label="back"
       >
         {/* Figma icon/chevron-left, 72px design → 30px. */}
@@ -75,6 +97,7 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
         voice={voice}
         setVoice={chooseVoice}
       />
+      {leaving && <RouteLoading label="Loading" overlay />}
     </header>
   );
 }

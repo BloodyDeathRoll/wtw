@@ -1579,6 +1579,19 @@ function PosterTile({
   size: "md" | "lg";
 }) {
   const [imgFailed, setImgFailed] = useState(false);
+  // Fade the poster in once it has actually loaded, rather than letting it
+  // paint in top-down over the motif colour. Tracked per URL, so a tile reused
+  // for another title fades its new poster in too.
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const imgLoaded = loadedSrc === rec.poster_url;
+  // An image that finished loading before React attached onLoad (cache hit
+  // during hydration) never fires it; catch that here or it stays invisible.
+  const checkComplete = useCallback(
+    (img: HTMLImageElement | null) => {
+      if (img?.complete && img.naturalWidth > 0) setLoadedSrc(rec.poster_url);
+    },
+    [rec.poster_url],
+  );
   const showImg = rec.poster_url && !imgFailed;
   const [bg, fg] = rec.palette;
 
@@ -1593,7 +1606,9 @@ function PosterTile({
         <img
           src={rec.poster_url!}
           alt=""
-          className={styles.posterImg}
+          className={`${styles.posterImg} ${imgLoaded ? styles.posterImgLoaded : ""}`}
+          ref={checkComplete}
+          onLoad={() => setLoadedSrc(rec.poster_url)}
           onError={() => setImgFailed(true)}
         />
       ) : (
