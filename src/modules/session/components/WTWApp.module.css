@@ -216,7 +216,7 @@
 @keyframes panelDown {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(calc(-1 * var(--enter-y)));
   }
   to {
     opacity: 1;
