@@ -176,6 +176,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-16 — Find more loader is the fingerprint only (`fix/find-more-loader`)
+- The "Reading your taste / Updating your fingerprint…" captions under the rec list's Find more are gone; only `FingerprintLoader` shows. The first-page loader keeps its captions.
+
 ### 2026-10-16 — DNA page values audited (`fix/dna-page-values`, PR #126)
 - Every number on `/profile/dna` matches the stored DNA. The "mismatch" on Originality was the bar: it shows **confidence**, not the 61/100 value. Each dimension bar is now labelled "Confidence".
 - Creative Affinities ranked by `score`, which caps at one loved title (0.3), so 1-film crew outranked Tarantino (13 films). Now ranked by confidence; disliked crew are not listed.
