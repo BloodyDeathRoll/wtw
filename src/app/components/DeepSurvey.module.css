@@ -26,7 +26,9 @@
 .drawer {
   width: 100%;
   max-width: 420px;
-  max-height: 88vh;
+  /* % of the fixed, full-screen overlay — never a viewport unit (see
+     WTWApp.module.css .page). */
+  max-height: 88%;
   background: #0E0E10;
   border-radius: 24px 24px 0 0;
   border: 1px solid var(--wtw-border);
