@@ -175,6 +175,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-16 — Find more loader is the fingerprint only (`fix/find-more-loader`)
+- The "Reading your taste / Updating your fingerprint…" captions under the rec list's Find more are gone; only `FingerprintLoader` shows. The first-page loader keeps its captions.
+
 ### 2026-10-15 — Figma UI refresh (`feat/figma-ui-update`)
 
 - Source: Figma file `7rH793m9iGwE1QRRsYibfb`, page "screens" (current screenshots left, redesign right). Design px ÷ 2.4 = CSS px.

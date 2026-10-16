@@ -794,9 +794,9 @@ function CompactList({
       ))}
       <div ref={sentinelRef} className={styles.sentinel}>
         {refreshing && (
+          // Just the fingerprint: the user asked for more and knows why
+          // they're waiting, so the captions were noise.
           <div className={styles.findMoreLoading}>
-            <span className={styles.loadingEyebrow}>Reading your taste</span>
-            <span className={styles.loadingTitle}>Updating your fingerprint…</span>
             <FingerprintLoader size={66} />
           </div>
         )}
