@@ -135,6 +135,8 @@ export default async function DNAProfilePage() {
 
   const { metadata, strand_a_creative_affinity: sa, strand_b_narrative_dimensions: sb,
           strand_c_visceral_specs: sc, contextual_logic: cl, signals, learning_loop: ll } = dna
+  const crewGroups = (['directors', 'writers', 'actors'] as const)
+    .map(bucket => ({ bucket, crew: topCrew(sa[bucket]) }))
 
   const hasData = signals.length >= 3
   const appUser = {
@@ -167,8 +169,7 @@ export default async function DNAProfilePage() {
               ±score it used to show is an internal reaction-average, and the
               unit is named once per group instead of on every row. */}
           <Section title="Creative Affinities">
-            {(['directors', 'writers', 'actors'] as const).map(bucket => {
-              const crew = topCrew(sa[bucket])
+            {crewGroups.map(({ bucket, crew }) => {
               if (crew.length === 0) return null
               return (
                 <div key={bucket} className={styles.group}>
@@ -186,7 +187,7 @@ export default async function DNAProfilePage() {
                 </div>
               )
             })}
-            {Object.values(sa.directors).length === 0 && Object.values(sa.actors).length === 0 && (
+            {crewGroups.every(g => g.crew.length === 0) && (
               <p className={styles.note}>No crew affinities yet.</p>
             )}
           </Section>
