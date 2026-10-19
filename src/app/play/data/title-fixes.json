@@ -1,0 +1,20 @@
+{
+  "tv:80213": {
+    "never": [
+      "horror"
+    ],
+    "note": "The Purge (series): TMDB tags it Mystery/Crime/Drama with no horror keyword, so it reached a horror-hater in testing (2026-10-14). Block it for Never: Horror."
+  },
+  "tv:1396": {
+    "scales": {
+      "pace": -0.5
+    },
+    "note": "Breaking Bad: the model called it fast; it's a slow burn. Eran, 2026-10-17 title check (agreed with the catalogue's older description)."
+  },
+  "movie:374720": {
+    "scales": {
+      "complex": 0.6
+    },
+    "note": "Dunkirk: the model called it easy to follow; it interleaves three timelines. Eran, 2026-10-17 title check."
+  }
+}

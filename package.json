@@ -21,7 +21,8 @@
     "backfill-language-keywords": "node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-language-keywords.mts",
     "backfill-content-affinity": "node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-content-affinity.mts",
     "repair-title-keys": "node --env-file=.env.local --conditions=react-server --import tsx scripts/repair-title-keys.mts",
-    "generate-icons": "node scripts/generate-icons.mjs"
+    "generate-icons": "node scripts/generate-icons.mjs",
+    "build-play-titles": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-play-titles.mts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^4.0.58",

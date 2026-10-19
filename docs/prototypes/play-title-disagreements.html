@@ -1,0 +1,135 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Title Disagreements</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1d1b18;--muted:#6b665d;--line:#e3ded3;--accent:#b8862b;--on:#2f7d4f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121110;--card:#1c1a18;--ink:#f1ede5;--muted:#a39d92;--line:#33302b;--accent:#d9a648;--on:#5bb383}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header,main{max-width:760px;margin:0 auto;padding:20px 16px}main{display:grid;gap:12px;padding-bottom:110px}
+h1{margin:0 0 6px;font-size:22px}header p{color:var(--muted);margin:6px 0}
+.card{display:grid;grid-template-columns:80px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.card img{width:80px;border-radius:6px}h2{margin:0 0 6px;font-size:17px}h2 span{font-weight:400;font-size:13px;color:var(--muted)}
+.q{margin:4px 0;font-size:14px}.v{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.v button{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.v button.on{background:var(--on);border-color:var(--on);color:#fff}
+footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px}
+footer div{max-width:760px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
+footer button{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer}
+</style></head><body>
+<header><h1>Where the two AIs disagree</h1>
+<p>The catalogue already had an older AI description of every title. I compared it with the game's new one across all 500 titles. These <b>13</b> are the only clear disagreements.</p>
+<p>"Easy to follow?" means the story itself: can you follow it half-watching (Shrek), or does it jump around in time and make you piece it together (Memento)? It's not about how heavy or sad it is.</p>
+<p>For each one, which is closer to how most viewers would describe it? Haven't seen it? Just say so. Then press <b>Copy my answers</b> and paste them in the chat.</p></header>
+<main>
+<article class="card" data-id="tv:1396" data-title="Breaking Bad">
+  <img src="https://image.tmdb.org/t/p/w185/anFx9aTOOYqgS3v7x3R84Kz67ly.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Breaking Bad <span>2008 · Series</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>fast</b>, the older description says <b>a slow burn</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:424" data-title="Schindler's List">
+  <img src="https://image.tmdb.org/t/p/w185/sF1U4EUQS8YHUYjNl3pMGNIQyr0.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Schindler's List <span>1993 · Movie</span></h2>
+    <p class="q"><b>Easy to follow?:</b> the game says <b>easy to follow</b>, the older description says <b>hard to follow</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:374720" data-title="Dunkirk">
+  <img src="https://image.tmdb.org/t/p/w185/b4Oe15CGLL61Ped0RAS9JpqdmCt.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Dunkirk <span>2017 · Movie</span></h2>
+    <p class="q"><b>Easy to follow?:</b> the game says <b>easy to follow</b>, the older description says <b>hard to follow</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:49047" data-title="Gravity">
+  <img src="https://image.tmdb.org/t/p/w185/kZ2nZw8D681aphje8NJi8EfbL1U.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Gravity <span>2013 · Movie</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>a slow burn</b>, the older description says <b>fast</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:44214" data-title="Black Swan">
+  <img src="https://image.tmdb.org/t/p/w185/viWheBd44bouiLCHgNMvahLThqx.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Black Swan <span>2010 · Movie</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>a slow burn</b>, the older description says <b>fast</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:176" data-title="Saw">
+  <img src="https://image.tmdb.org/t/p/w185/rLNSOudrayDBo1uqXjrhxcjODIC.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Saw <span>2004 · Movie</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>a slow burn</b>, the older description says <b>fast</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:28" data-title="Apocalypse Now">
+  <img src="https://image.tmdb.org/t/p/w185/gQB8Y5RCMkv2zwzFHbUJX3kAhvA.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Apocalypse Now <span>1979 · Movie</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>fast</b>, the older description says <b>a slow burn</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="tv:43348" data-title="Pablo Escobar: The Drug Lord">
+  <img src="https://image.tmdb.org/t/p/w185/5u02bo70uzUFpEV9Pd0lFkLA9Es.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Pablo Escobar: The Drug Lord <span>2012 · Series</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>a slow burn</b>, the older description says <b>fast</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="tv:44953" data-title="El Señor de los Cielos">
+  <img src="https://image.tmdb.org/t/p/w185/Ag7VUdnrRz5Qpq3Yn3E5OCvFnu0.jpg" alt="" loading="lazy">
+  <div>
+    <h2>El Señor de los Cielos <span>2013 · Series</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>a slow burn</b>, the older description says <b>fast</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="tv:1409" data-title="Sons of Anarchy">
+  <img src="https://image.tmdb.org/t/p/w185/kiy8BHtIHAslh81rvFcZ4wbNGdY.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Sons of Anarchy <span>2008 · Series</span></h2>
+    <p class="q"><b>Easy to follow?:</b> the game says <b>easy to follow</b>, the older description says <b>hard to follow</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:10494" data-title="Perfect Blue">
+  <img src="https://image.tmdb.org/t/p/w185/6WTiOCfDPP8XV4jqfloiVWf7KHq.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Perfect Blue <span>1998 · Movie</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>fast</b>, the older description says <b>a slow burn</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="tv:113988" data-title="DAHMER - Monster: The Jeffrey Dahmer Story">
+  <img src="https://image.tmdb.org/t/p/w185/f2PVrphK0u81ES256lw3oAZuF3x.jpg" alt="" loading="lazy">
+  <div>
+    <h2>DAHMER - Monster: The Jeffrey Dahmer Story <span>2022 · Series</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>a slow burn</b>, the older description says <b>fast</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article>
+<article class="card" data-id="movie:515042" data-title="Free Solo">
+  <img src="https://image.tmdb.org/t/p/w185/v4QfYZMACODlWul9doN9RxE99ag.jpg" alt="" loading="lazy">
+  <div>
+    <h2>Free Solo <span>2018 · Movie</span></h2>
+    <p class="q"><b>Pace:</b> the game says <b>fast</b>, the older description says <b>a slow burn</b>.</p>
+    <div class="v"><button data-v="game">Game is right</button><button data-v="old">Older one is right</button><button data-v="unseen">Haven't seen it</button></div>
+  </div>
+</article></main>
+<footer><textarea id="out" hidden readonly rows="6" style="display:block;width:100%;max-width:760px;margin:0 auto 10px;font:13px/1.4 ui-monospace,monospace;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></textarea><div><span id="n">0 of 13 answered</span><button id="copy">Copy my answers</button></div></footer>
+<script>
+const cards=[...document.querySelectorAll('.card')];
+cards.forEach(c=>c.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{c.querySelectorAll('[data-v]').forEach(x=>x.classList.remove('on'));b.classList.add('on');c.dataset.answer=b.dataset.v;document.getElementById('n').textContent=cards.filter(x=>x.dataset.answer).length+' of '+cards.length+' answered'}));
+document.getElementById('copy').onclick=async()=>{const t='Title disagreements:\n'+cards.map(c=>c.dataset.id+' '+c.dataset.title+': '+(c.dataset.answer||'skipped')).join('\n');
+// Always show the answers on the page: some viewers (a sandboxed preview) block both the clipboard and pop-ups.
+const box=document.getElementById('out');box.hidden=false;box.value=t;box.focus();box.select();
+try{await navigator.clipboard.writeText(t);document.getElementById('copy').textContent='Copied ✓'}catch(e){document.getElementById('copy').textContent='Select the text below and copy it'}};
+</script></body></html>

@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap"><link rel="stylesheet" href="base.css"><style>
+.season{position:relative;z-index:2;margin:0 22px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.season .bar{flex:1;height:6px;border-radius:3px;background:var(--e3);overflow:hidden}
+.season .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.season b{color:var(--fg)}
+.fan{position:relative;z-index:2;height:150px;margin-top:12px}
+.fan div{position:absolute;left:50%;width:78px;aspect-ratio:2/3;border-radius:8px;background-size:cover;background-position:center;box-shadow:0 10px 22px rgba(0,0,0,.7);border:2px solid #000}
+.ctr{position:relative;z-index:2;text-align:center}
+.next{position:absolute;z-index:3;left:16px;right:16px;bottom:52px;border-radius:20px;padding:14px 16px;background:var(--e1);border:1px solid color-mix(in srgb,var(--na) 45%,transparent);display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:center}
+.next .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,var(--na) 16%,transparent)}
+.next .eyebrow{color:var(--na)}
+.next b{display:block;font-size:17px;margin-top:2px}
+.next p{font-size:12.5px;color:#aeb6bf;margin-top:1px}
+.next .btn{grid-column:1/-1;height:50px;font-size:15px;background:var(--na);margin-top:4px}
+.tint::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(130% 40% at 50% -5%,color-mix(in srgb,var(--acc) 26%,transparent),transparent 70%)}
+
+.head{padding:4px 24px 0}.head .eyebrow{color:#b46bff}
+.head h1{font-size:46px;line-height:.95;margin-top:4px}
+.score{position:relative;z-index:2;margin:12px auto 0;text-align:center}
+.score b{font-family:"Bebas Neue";font-size:78px;line-height:.9;color:#d9b8ff;text-shadow:0 0 40px rgba(180,107,255,.6)}
+.score span{display:block;font-size:13px;color:var(--muted)}
+.list{position:relative;z-index:2;margin:10px 22px 0;display:grid;gap:6px}
+.pr{display:grid;grid-template-columns:30px 18px 30px 1fr;align-items:center;gap:6px;padding:4px 10px;border-radius:10px;background:var(--e1);border:1px solid var(--line)}
+.pp{width:30px;aspect-ratio:2/3;border-radius:5px;background-size:cover;background-position:center;opacity:.45}
+.pp.me{opacity:1;box-shadow:0 0 0 2px #b46bff}
+.vs{font-size:11px;color:var(--dim);text-align:center}
+.res{text-align:right;font-weight:700;font-size:14px}.res.hit{color:var(--good)}.res.miss{color:#e8a35a}
+</style></head><body><div class="phone aurora tint" style="--acc:#b46bff;--na:#D49B3A"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div>
+<div class="season"><span><b>14</b> of 15 done</span><div class="bar"><i style="width:93%"></i></div><span></span></div>
+<div class="ctr head"><span class="eyebrow">Step 14 · Final round</span><h1 class="bebas">I called your picks</h1></div>
+<div class="score"><b>4/5</b><span>I sealed my guesses before you picked</span></div>
+<div class="list"><div class="pr"><div class="pp me" style="background-image:url(https://image.tmdb.org/t/p/w185/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg)"></div><span class="vs">vs</span><div class="pp" style="background-image:url(https://image.tmdb.org/t/p/w185/3bhkrj58Vtu7enYsRolD1fZdja1.jpg)"></div><span class="res hit">✓ Called it</span></div><div class="pr"><div class="pp" style="background-image:url(https://image.tmdb.org/t/p/w185/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg)"></div><span class="vs">vs</span><div class="pp me" style="background-image:url(https://image.tmdb.org/t/p/w185/aOIuZAjPaRIE6CMzbazvcHuHXDc.jpg)"></div><span class="res hit">✓ Called it</span></div><div class="pr"><div class="pp me" style="background-image:url(https://image.tmdb.org/t/p/w185/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg)"></div><span class="vs">vs</span><div class="pp" style="background-image:url(https://image.tmdb.org/t/p/w185/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg)"></div><span class="res hit">✓ Called it</span></div><div class="pr"><div class="pp" style="background-image:url(https://image.tmdb.org/t/p/w185/vuza0WqY239yBXOadKlGwJsZJFE.jpg)"></div><span class="vs">vs</span><div class="pp me" style="background-image:url(https://image.tmdb.org/t/p/w185/Cw4hIUIAmSYfK9QfaUW5igp9La.jpg)"></div><span class="res miss">✗ Missed</span></div><div class="pr"><div class="pp me" style="background-image:url(https://image.tmdb.org/t/p/w185/n0ybibhJtQ5icDqTp8eRytcIHJx.jpg)"></div><span class="vs">vs</span><div class="pp" style="background-image:url(https://image.tmdb.org/t/p/w185/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg)"></div><span class="res hit">✓ Called it</span></div></div>
+<div class="next"><div class="ic">★</div><div><span class="eyebrow">Last step · 15</span><b>Your taste, revealed</b><p>Your profile and all your picks.</p></div><div class="btn">Reveal</div></div><div class="label">Step 14 showdown · the honest answer to "do you know me?"</div></div></body></html>

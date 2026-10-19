@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1200px;background:#000;color:#F2F2F2;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:34px 36px 30px}
+h1{font-family:"Bebas Neue";font-weight:400;font-size:46px;letter-spacing:.03em;line-height:1}
+.sub{color:#8A8A8E;font-size:15px;margin:6px 0 22px;max-width:980px;line-height:1.45}
+.sub b{color:#F2F2F2}
+.head,.row{display:grid;grid-template-columns:118px 1fr 1fr 1fr;gap:14px}
+.row{padding:16px 0;border-top:1px solid rgba(255,255,255,.1)}
+.pt{display:flex;flex-direction:column;gap:4px}.pt b{font-size:13.5px;line-height:1.25}.pt span{font-size:12px;color:#8A8A8E}
+.poster{width:84px;aspect-ratio:2/3;border-radius:7px;background-size:cover;background-position:center;margin-bottom:4px}
+.c{border-radius:14px;padding:12px 14px;background:#0E0E10;border:1px solid rgba(255,255,255,.08)}
+.c small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8A8A8E;margin-bottom:6px}
+.c p{font-size:15.5px;line-height:1.45}
+.orig p{color:#b9b9be}
+.a{border-color:rgba(123,140,255,.35)}.a small{color:#9aa6ff}
+.b{border-color:rgba(61,220,151,.45)}.b small{color:#3ddc97}
+.c em{display:block;font-style:normal;font-size:12.5px;margin-top:8px;color:#e8a35a;font-weight:600}.c em.ok{color:#5BC88A}
+.foot{color:#5E5E62;font-size:12px;margin-top:14px}
+</style></head><body>
+<h1>Blind Taste Test · plot rewrites (2 of 2)</h1>
+<p class="sub">Same rules for both: <b>only what TMDB's plot says</b>, no names or title words, the giveaways blurred (no "soap", "disturbed" not "insomniac"), shorter than the original. <b>A</b> is the project's free AI model running automatically, with a second AI pass checking each one for added facts and thin disguises (it would do all 500 by itself). <b>B</b> is me writing them directly in a session.</p>
+<div class="row"><div class="pt"><div class="poster" style="background-image:url(https://image.tmdb.org/t/p/w185/63viWuPfYQjRYLSZSZNq7dglJP5.jpg)"></div><b>Jurassic Park</b><span>1993</span></div>
+<div class="c orig"><small>TMDB original · 15 words</small><p>A wealthy entrepreneur secretly creates a theme park featuring living dinosaurs drawn from prehistoric DNA.</p></div>
+<div class="c a"><small>A · free model, automatic · 19 words</small><p>A rich visionary covertly builds a private attraction that brings extinct giants back to life using ancient genetic material.</p><em class="ok">✓ no problems spotted</em></div>
+<div class="c b"><small>B · written by Claude · 19 words</small><p>A wealthy businessman secretly builds an attraction like no other, filled with creatures brought back from the distant past.</p></div></div><div class="row"><div class="pt"><div class="poster" style="background-image:url(https://image.tmdb.org/t/p/w185/sKCr78MXSLixwmZ8DyJLrpMsd15.jpg)"></div><b>The Lion King</b><span>1994</span></div>
+<div class="c orig"><small>TMDB original · 38 words</small><p>Young lion prince Simba, eager to one day become king of the Pride Lands, grows up under the watchful eye of his father Mufasa; all the while his villainous uncle Scar conspires to take the throne for himself.</p></div>
+<div class="c a"><small>A · free model, automatic · 28 words</small><p>A young heir, raised under his father's watchful guidance, hopes to inherit the rulership of their land, while a jealous relative schemes to claim the throne for himself.</p><em class="ok">✓ no problems spotted</em></div>
+<div class="c b"><small>B · written by Claude · 24 words</small><p>A young heir who can't wait to rule grows up under his father's watchful eye, while his uncle quietly plots to take the throne.</p></div></div><div class="row"><div class="pt"><div class="poster" style="background-image:url(https://image.tmdb.org/t/p/w185/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg)"></div><b>Joker</b><span>2019</span></div>
+<div class="c orig"><small>TMDB original · 29 words</small><p>During the 1980s, a failed stand-up comedian is driven insane and turns to a life of crime and chaos in Gotham City while becoming an infamous psychopathic crime figure.</p></div>
+<div class="c a"><small>A · free model, automatic · 23 words</small><p>In the city during the late 20th century, a struggling comic goes insane, turns to violent crime, and rises as a notorious figure.</p><em>⚠ "Late 20th century" is the 1980s, blurred a little</em></div>
+<div class="c b"><small>B · written by Claude · 21 words</small><p>A failed entertainer is pushed past breaking point and turns to crime and chaos, becoming an infamous name in his city.</p></div></div><div class="row"><div class="pt"><div class="poster" style="background-image:url(https://image.tmdb.org/t/p/w185/tWsNYbrqy1p1w6K9zRk0mSchztT.jpg)"></div><b>Now You See Me</b><span>2013</span></div>
+<div class="c orig"><small>TMDB original · 27 words</small><p>An FBI agent and an Interpol detective track a team of illusionists who pull off bank heists during their performances and reward their audiences with the money.</p></div>
+<div class="c a"><small>A · free model, automatic · 28 words</small><p>Two government investigators pursue a troupe of stage tricksters who secretly siphon cash from financial institutions during their shows and then hand the money back to the spectators.</p><em>⚠ Stiff ("siphon cash from financial institutions"); longer than the original</em></div>
+<div class="c b"><small>B · written by Claude · 23 words</small><p>Two detectives chase a group of performers who rob banks in the middle of their shows and hand the money to the crowd.</p></div></div>
+<p class="foot">docs/prototypes/blind-rewrites · ⚠ notes are my review of A</p></body></html>

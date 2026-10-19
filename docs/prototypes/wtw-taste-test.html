@@ -1,0 +1,1815 @@
+<title>WTW Taste Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap">
+<style>
+/* Layout: prototype bar on top; phone on the left; "Behind the curtain" engine panel on the right (stacks below on narrow screens).
+   Single dark theme on purpose, mirroring the live WTW app: black ground, gold accent, blue/gold aurora. */
+:root{
+  color-scheme: dark;
+  --bg:#050506; --phone:#000; --elev1:#0E0E10; --elev2:#161618; --elev3:#1E1E22;
+  --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
+  --fg:#F2F2F2; --muted:#8A8A8E; --dim:#5E5E62;
+  --gold:#D49B3A; --gold-soft:rgba(212,155,58,.16); --gold-glow:rgba(212,155,58,.45);
+  --blue:#4B5BFF; --blue-soft:rgba(75,91,255,.18); --good:#5BC88A; --bad:#E5675F; --bad-soft:rgba(229,103,95,.16);
+  --ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --poster:"Bebas Neue","Impact","Arial Narrow",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:14px;line-height:1.45;margin:0;padding-inline:16px;padding-block:20px 40px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.proto-bar{max-width:1080px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.proto-bar h1{font-size:15px;font-weight:600;margin:0}
+.proto-bar h1 span{color:var(--muted);font-weight:400}
+.proto-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.proto-btns .lbl{font-size:12px;color:var(--dim)}
+.proto-btn{background:var(--elev2);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--muted)}
+.proto-btn:hover{color:var(--fg)}
+.stage{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:minmax(0,390px) minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:minmax(0,1fr);justify-items:center;gap:24px}}
+
+/* ---------- behind the curtain ---------- */
+.curtain{min-width:0;width:100%;max-width:560px;display:grid;gap:14px}
+.panel{background:var(--elev1);border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
+.panel h3{margin:0 0 10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.phase{display:flex;gap:6px;flex-wrap:wrap}
+.phase span{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--dim)}
+.phase span.on{color:#140e02;background:var(--gold);border-color:var(--gold);font-weight:600}
+.phase span.done{color:var(--muted);border-color:var(--line-strong)}
+.testing{font-size:15px;font-weight:600;margin:12px 0 4px}
+.testing-why{color:#c4c4c8;font-size:13px;margin:0}
+.axes{display:grid;gap:9px}
+.axis{display:grid;grid-template-columns:76px minmax(0,1fr) 76px;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.axis .r{text-align:right}
+.axis.lean-l .l,.axis.lean-r .r{color:var(--fg);font-weight:600}
+.track{position:relative;height:6px;border-radius:3px;background:var(--elev3)}
+.track::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line-strong)}
+.dot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);transition:left .5s ease,opacity .5s ease;box-shadow:0 0 10px var(--gold-glow)}
+.conf-note{font-size:11px;color:var(--dim);margin-top:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;background:var(--gold-soft);border-radius:999px;padding:4px 10px}
+.chip.neg{background:var(--bad-soft);color:#f3b0ab;text-decoration:line-through}
+.chip.neu{background:var(--elev3);color:var(--muted)}
+.log{display:grid;gap:6px;font-size:12.5px;color:#c4c4c8;max-height:190px;overflow-y:auto}
+.log div{border-left:2px solid var(--line-strong);padding-left:9px}
+.log div:first-child{border-left-color:var(--gold);color:var(--fg)}
+.empty-note{color:var(--dim);font-size:12.5px}
+.calib{display:grid;gap:4px;font-size:12px;font-variant-numeric:tabular-nums}
+.calib div{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 60px;gap:6px;color:#c4c4c8}
+.calib div span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calib .h{color:var(--dim);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+
+/* ---------- phone ---------- */
+.phone{position:relative;width:100%;max-width:390px;height:780px;max-height:calc(100vh - 110px);min-height:640px;border-radius:44px;background:var(--phone);border:1px solid var(--line-strong);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.aurora{position:absolute;inset:0;pointer-events:none}
+.aurora::before,.aurora::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;filter:blur(70px);opacity:.5}
+.aurora::before{background:radial-gradient(circle,rgba(212,155,58,.55),transparent 65%);left:-200px;bottom:-230px}
+.aurora::after{background:radial-gradient(circle,rgba(75,91,255,.45),transparent 65%);right:-220px;bottom:-200px}
+.screen{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;animation:fadeIn .35s ease;overflow-y:auto;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.topbar{display:flex;align-items:center;justify-content:center;padding:20px 18px 6px;min-height:56px;position:relative;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px;letter-spacing:.06em}
+.brand i{width:16px;height:16px;border-radius:4px;background:linear-gradient(135deg,var(--blue),var(--gold));display:block}
+.topbar .done{position:absolute;right:16px;background:none;border:0;color:var(--muted);font-size:13px}
+.topbar .left{position:absolute;left:16px;background:none;border:0;color:var(--muted);font-size:13px}
+
+.meter{margin:6px 22px 0;display:grid;gap:5px;flex-shrink:0}
+.meter-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);gap:8px}
+.meter-row b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.meter-row .lvl{color:var(--gold);font-weight:600}
+.lv{display:inline-grid;place-items:center;min-width:34px;height:18px;border-radius:5px;background:var(--gold);color:#140e02;font-size:10.5px;font-weight:700;margin-right:6px;padding:0 5px}
+.bar{height:5px;border-radius:3px;background:var(--elev3);overflow:hidden;position:relative}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#f1c46d);border-radius:3px;transition:width .6s ease}
+.bar .tick{position:absolute;top:0;bottom:0;width:2px;background:var(--bg)}
+.next-unlock{font-size:11px;color:var(--dim)}
+.next-unlock b{color:var(--muted);font-weight:600}
+
+.prompt{padding:16px 22px 4px;text-align:center}
+.prompt h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.prompt p{margin:6px 0 0;color:var(--muted);font-size:13px;min-height:19px}
+.prompt p.learned{color:var(--gold)}
+.duel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px 22px 0}
+.side{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pick{border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:7px;border-radius:14px;transition:transform .15s ease, opacity .3s ease}
+.pick:hover .poster{transform:translateY(-3px);box-shadow:0 0 0 2px var(--line-strong),0 14px 30px rgba(0,0,0,.5)}
+.pick.chosen .poster{box-shadow:0 0 0 3px var(--gold),0 0 30px var(--gold-glow);transform:scale(1.03)}
+.pick.lost{opacity:.25;transform:scale(.96)}
+.pick .nm{font-weight:600;font-size:14px;line-height:1.2}
+.pick .yr{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.pick .pitch{color:#d2d2d5;font-size:12.5px;line-height:1.35}
+.unseen{border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:999px;padding:6px 8px;font-size:12px;color:var(--muted)}
+.unseen:hover{color:var(--fg);border-color:var(--line-strong)}
+.poster{position:relative;aspect-ratio:2/3;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:10px;max-width:100%;transition:transform .2s ease, box-shadow .2s ease}
+.poster .pt{font-family:var(--poster);font-size:24px;line-height:.92;letter-spacing:.02em;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.45);position:relative;z-index:1;word-break:break-word}
+.poster::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.55))}
+.poster .shape{position:absolute;border-radius:50%;opacity:.5}
+.poster.dim{filter:saturate(.4) brightness(.6)}
+.poster .qm{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--poster);font-size:64px;color:rgba(255,255,255,.18);z-index:1}
+.poster .tvb{position:absolute;top:8px;left:8px;z-index:2;font-size:9.5px;font-weight:700;letter-spacing:.08em;background:rgba(0,0,0,.6);border-radius:4px;padding:2px 5px;color:#fff}
+.swap-in{animation:swapIn .4s ease}
+@keyframes swapIn{from{opacity:0;transform:rotateY(80deg)}to{opacity:1;transform:none}}
+.actions{display:flex;justify-content:center;gap:8px;padding:14px 22px 8px;flex-wrap:wrap}
+.ghost{border:1px solid var(--line-strong);background:rgba(255,255,255,.03);border-radius:999px;padding:9px 14px;font-size:13px;color:#d8d8db}
+.ghost:hover{border-color:var(--gold)}
+.foot{margin-top:auto;padding:10px 22px 22px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim)}
+.foot button{background:none;border:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:12px}
+.foot button[disabled]{opacity:.35;cursor:default;text-decoration:none}
+
+/* intro */
+.intro{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 30px 40px;gap:14px}
+.intro h2{font-size:29px;line-height:1.12;margin:6px 0 0;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+.intro p{color:var(--muted);margin:0;font-size:15px;max-width:290px}
+.vs-art{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.vs-art .poster{width:96px;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+.vs-art .poster:first-child{transform:rotate(-6deg)}
+.vs-art .poster:last-child{transform:rotate(6deg)}
+.vs{font-family:var(--poster);font-size:28px;color:var(--gold)}
+.cta{width:100%;max-width:300px;border:0;border-radius:999px;padding:15px;font-weight:600;font-size:15px;background:var(--gold);color:#140e02}
+.cta[disabled]{background:var(--elev3);color:var(--muted);cursor:default}
+.fine{font-size:12px;color:var(--dim)}
+
+/* setup: format + genre grid */
+.setup{padding:4px 22px 8px;display:flex;flex-direction:column;gap:14px}
+.setup h2{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.setup .sub{margin:2px 0 0;color:var(--muted);font-size:13px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--elev2);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:9px 6px;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--elev3);color:var(--fg);font-weight:600}
+.ggrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.gtile{position:relative;border:0;border-radius:14px;aspect-ratio:1/1;padding:10px;display:flex;flex-direction:column;justify-content:flex-end;text-align:left;font-weight:600;font-size:13px;line-height:1.15;color:#fff;overflow:hidden;transition:transform .15s ease, box-shadow .15s ease, filter .15s ease}
+.gtile::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.5))}
+.gtile span{position:relative;z-index:1}
+.gtile .st{position:absolute;top:7px;right:7px;width:22px;height:22px;border-radius:50%;display:none;place-items:center;font-size:12px;font-weight:700;z-index:2}
+.gtile.love{box-shadow:0 0 0 2.5px var(--gold),0 0 20px var(--gold-glow)}
+.gtile.love .st{display:grid;background:var(--gold);color:#140e02}
+.gtile.never{filter:grayscale(1) brightness(.45)}
+.gtile.never .st{display:grid;background:var(--bad);color:#fff}
+.gtile.never span{text-decoration:line-through}
+.grows{display:grid;gap:6px}
+.grow{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,42px);gap:6px;align-items:center;padding:6px 8px;border-radius:12px;background:var(--elev1);border:1px solid var(--line)}
+.grow.rated{border-color:var(--line-strong)}
+.grow.ghead{background:none;border:0;padding:0 8px}
+.gh{font-size:10.5px;text-align:center;color:var(--muted);letter-spacing:.04em}
+.gname{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;min-width:0}
+.gname i{width:22px;height:22px;border-radius:6px;flex-shrink:0;display:block}
+.gbtn{width:42px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--elev2);display:grid;place-items:center;color:var(--dim);transition:all .12s ease}
+.gbtn svg{width:18px;height:18px}
+.gbtn:hover{color:var(--fg);border-color:var(--line-strong)}
+.gb-love[aria-pressed="true"]{color:#ff6b8a;border-color:#ff6b8a;background:rgba(255,107,138,.14)}
+.gb-like[aria-pressed="true"]{color:var(--good);border-color:var(--good);background:rgba(91,200,138,.14)}
+.gb-meh[aria-pressed="true"]{color:#e8c46a;border-color:#e8c46a;background:rgba(232,196,106,.12)}
+.gb-never[aria-pressed="true"]{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.cta-wrap{position:absolute;left:0;right:0;bottom:0;padding:16px 22px 24px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.92) 35%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:6px}
+.cta-wrap .fine{min-height:16px}
+.cta-wrap.sticky{position:sticky;bottom:0;margin-top:auto;padding-top:28px}
+
+/* interstitials (mirror / huh / level up) */
+.inter{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:10px 28px 40px;gap:16px;position:relative}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600}
+.inter h2{margin:0;font-size:27px;line-height:1.2;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+.inter .evidence{color:var(--muted);font-size:13px;max-width:300px}
+.inter .evidence em{color:#d8d8db;font-style:normal}
+.glow{position:absolute;inset:auto 0 25% 0;height:300px;background:radial-gradient(circle at 50% 50%,rgba(212,155,58,.2),transparent 60%);pointer-events:none;z-index:-1}
+.opts{display:flex;flex-direction:column;gap:9px;width:100%;max-width:280px;margin-top:6px}
+.opt{border:1px solid var(--line-strong);background:var(--elev2);border-radius:999px;padding:12px;font-weight:500}
+.opt.primary{background:var(--gold);color:#140e02;border-color:var(--gold);font-weight:600}
+.opt:hover{border-color:var(--gold)}
+.skip{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.lvl-badge{width:92px;height:92px;border-radius:26px;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,#f6cf7f,var(--gold) 60%,#8a5c14);color:#140e02;font-family:var(--poster);font-size:44px;box-shadow:0 0 50px var(--gold-glow);animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.4) rotate(-12deg);opacity:0}to{transform:none;opacity:1}}
+.unlock{border:1px solid rgba(212,155,58,.4);background:var(--gold-soft);border-radius:14px;padding:12px 14px;width:100%;max-width:300px;text-align:left}
+.unlock b{display:block;font-size:13px;color:var(--gold)}
+.unlock span{font-size:13px;color:#e2e2e5}
+.changed{font-size:13px;color:var(--muted);max-width:300px}
+.changed b{color:var(--fg)}
+.changed s{color:var(--dim)}
+
+/* hub / reveal */
+.reveal{padding:4px 20px 26px;display:flex;flex-direction:column;gap:14px}
+.id-card{border-radius:20px;padding:22px 20px;background:radial-gradient(circle at 15% 0%,rgba(212,155,58,.28),transparent 55%),radial-gradient(circle at 100% 100%,rgba(75,91,255,.3),transparent 55%),var(--elev1);border:1px solid var(--line-strong);display:grid;gap:12px}
+.id-card h2{margin:0;font-family:var(--poster);font-size:44px;line-height:.95;letter-spacing:.02em;font-weight:400;text-wrap:balance}
+.truths{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.truths li{display:flex;gap:8px;font-size:13.5px;color:#e2e2e5}
+.truths li::before{content:"✓";color:var(--good);font-weight:700}
+.id-card .axes .axis{grid-template-columns:70px minmax(0,1fr) 70px}
+.axis.edit input{width:100%;accent-color:var(--gold);margin:0}
+.edit-note{font-size:12.5px;color:var(--gold)}
+.sec-title{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:6px 2px 0}
+.ladder{display:grid;gap:6px}
+.rung{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:var(--elev1)}
+.rung .n{font-family:var(--poster);font-size:20px;color:var(--dim)}
+.rung b{display:block;font-size:13px}
+.rung span{font-size:12px;color:var(--muted)}
+.rung .s{font-size:11px;font-weight:600;color:var(--dim);font-variant-numeric:tabular-nums}
+.rung.got .n{color:var(--gold)}
+.rung.got .s{color:var(--good)}
+.rung.now{border-color:var(--gold);background:var(--gold-soft)}
+.rung.locked{opacity:.55}
+.recs{display:grid;gap:10px}
+.rec{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;align-items:center;background:var(--elev1);border:1px solid var(--line);border-radius:14px;padding:10px}
+.rec .poster{padding:5px;border-radius:8px}
+.rec .poster .pt{font-size:13px}
+.rec b{display:block;font-size:14px}
+.rec span{display:block;color:var(--muted);font-size:12px}
+.rec p{margin:4px 0 0;font-size:12.5px;color:#d2d2d5}
+.rec .m{color:var(--gold);font-weight:600}
+.row-btns{display:flex;gap:8px}
+.row-btns .opt{flex:1;padding:11px 8px;font-size:13px}
+.games{display:grid;gap:8px}
+.game{border:1px solid rgba(212,155,58,.4);background:var(--gold-soft);border-radius:16px;padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;width:100%}
+.game:hover{border-color:var(--gold)}
+.game b{display:block}
+.game span{color:var(--muted);font-size:12.5px}
+.game .go{font-size:11px;color:#140e02;background:var(--gold);border-radius:999px;padding:4px 10px;font-weight:600}
+.game.locked{background:transparent;border:1px dashed var(--line-strong);cursor:default}
+.game.locked .go{background:var(--elev3);color:var(--muted)}
+
+/* cup */
+.cup-head{text-align:center;padding:4px 22px 0;display:grid;gap:4px;justify-items:center}
+.cup-title{font-family:var(--poster);font-size:34px;line-height:1;color:var(--gold);letter-spacing:.04em}
+.cup-sub{font-size:12.5px;color:var(--muted)}
+.cup-prog{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap;justify-content:center}
+.cup-prog i{width:14px;height:4px;border-radius:2px;background:var(--elev3);display:block}
+.cup-prog i.on{background:var(--gold)}
+.survivors{display:grid;gap:8px;width:100%}
+.survivors .poster{padding:6px;border-radius:8px}
+.survivors .poster .pt{font-size:13px}
+.champ{text-align:center;display:grid;gap:8px;justify-items:center;padding:20px 18px;border-radius:20px;background:radial-gradient(circle at 50% 0%,rgba(212,155,58,.3),transparent 60%),var(--elev1);border:1px solid var(--line-strong)}
+.champ-poster{width:140px;max-width:100%}
+.champ h2{margin:0;font-family:var(--poster);font-size:38px;font-weight:400;line-height:1;text-wrap:balance}
+.champ .ru{color:var(--muted);font-size:13px}
+.bracket-cols{display:grid;grid-template-columns:repeat(4,minmax(96px,1fr));gap:8px;overflow-x:auto}
+.bcol{display:flex;flex-direction:column;justify-content:space-around;gap:6px;min-width:0}
+.bhead{font-size:10.5px;color:var(--dim);letter-spacing:.1em;font-weight:600}
+.bm{border:1px solid var(--line);border-radius:8px;padding:4px 6px;display:grid;gap:2px;font-size:10.5px;min-width:0}
+.bm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.bm .win{color:var(--gold);font-weight:600}
+.bm .lose{color:var(--dim);text-decoration:line-through}
+
+/* the bet */
+.board{margin:4px 22px 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#0a0f0b;font-variant-numeric:tabular-nums}
+.board-row{display:grid;grid-template-columns:70px repeat(4,1fr);align-items:center;padding:8px 12px;gap:6px}
+.board-row+.board-row{border-top:1px solid var(--line)}
+.board-row b{font-size:12px;letter-spacing:.1em}
+.board-row i{height:10px;border-radius:5px;background:var(--elev3);display:block}
+.board-row i.won{background:var(--gold);box-shadow:0 0 10px var(--gold-glow)}
+.board-row.you i.won{background:var(--blue);box-shadow:0 0 10px rgba(75,91,255,.6)}
+.bet-stage{flex:1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 26px 24px;text-align:center}
+.bet-poster{width:132px;max-width:100%}
+.bet-stage h2{margin:0;font-size:22px;font-weight:700;text-wrap:balance}
+.bet-stage .q{color:var(--muted);font-size:13.5px;margin:0}
+.envelope{border:1px dashed rgba(212,155,58,.6);background:var(--gold-soft);border-radius:12px;padding:10px 14px;font-size:13px;color:#f1d39b;display:flex;gap:8px;align-items:center}
+.stars{display:flex;gap:6px}
+.star{width:44px;height:44px;border-radius:12px;border:1px solid var(--line-strong);background:var(--elev2);display:grid;place-items:center;font-size:20px;color:var(--dim);transition:all .12s ease}
+.star.on{color:var(--gold);border-color:var(--gold);background:var(--gold-soft)}
+.star:hover{border-color:var(--gold)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:300px}
+.compare div{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--elev1)}
+.compare small{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.compare b{font-size:22px;color:var(--gold);letter-spacing:2px}
+.compare div.you b{color:#9fb0ff}
+.verdict{font-family:var(--poster);font-size:34px;letter-spacing:.04em;line-height:1}
+.verdict.wtw{color:var(--gold)}.verdict.you{color:#9fb0ff}.verdict.deuce{color:var(--fg)}
+.toast{position:absolute;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);background:#fff;color:#111;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:500;opacity:0;transition:all .25s ease;z-index:20;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- v5: menu, arcade mode, games ---------- */
+.hb{position:absolute;left:12px;width:38px;height:38px;border-radius:12px;border:0;background:transparent;display:grid;place-items:center;color:rgba(255,255,255,.8)}
+.hb:hover{background:rgba(255,255,255,.07)}
+.hb.r{left:auto;right:12px}
+.hb svg{width:20px;height:20px}
+.drawer-bg{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:40;animation:fadeIn .2s ease}
+.drawer{position:absolute;top:0;bottom:0;left:0;width:84%;max-width:320px;background:#0b0b0d;border-right:1px solid var(--line-strong);z-index:41;display:flex;flex-direction:column;padding:22px 14px;gap:6px;animation:slideIn .25s ease}
+@keyframes slideIn{from{transform:translateX(-100%)}to{transform:none}}
+.drawer .who{display:flex;gap:12px;align-items:center;padding:6px 8px 16px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.drawer .av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--gold));display:grid;place-items:center;font-weight:700;color:#140e02}
+.drawer .who b{display:block;font-size:14px}
+.drawer .who span{font-size:12px;color:var(--muted)}
+.mi{display:flex;align-items:center;gap:12px;border:0;background:none;border-radius:12px;padding:12px 10px;text-align:left;font-size:15px;color:#e2e2e5;width:100%}
+.mi:hover{background:rgba(255,255,255,.05)}
+.mi.on{background:var(--gold-soft);color:var(--fg)}
+.mi svg{width:20px;height:20px;color:var(--muted);flex-shrink:0}
+.mi.on svg{color:var(--gold)}
+.mi .tag{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.06em;border-radius:999px;padding:3px 8px;background:var(--elev3);color:var(--muted)}
+.mi .tag.hot{background:#8f7bff;color:#0b0820}
+.drawer .sep{height:1px;background:var(--line);margin:8px 4px}
+
+/* arcade mode: games look and feel clearly different from the main path */
+.phone.arcade{background:#07060f}
+.phone.arcade .aurora{display:none}
+.phone.arcade::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(circle at 50% -10%,color-mix(in srgb,var(--gacc) 35%,transparent),transparent 55%),
+    linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px) 0 0/100% 28px,
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px) 0 0/28px 100%;}
+.phone.arcade{--gold:var(--gacc);--gold-soft:color-mix(in srgb,var(--gacc) 16%,transparent);--gold-glow:color-mix(in srgb,var(--gacc) 45%,transparent)}
+.gtitle{font-family:var(--poster);font-size:26px;letter-spacing:.05em;color:var(--gold);line-height:1;text-align:center;padding:0 48px}
+.glevel{text-align:center;font-size:11.5px;color:var(--muted);letter-spacing:.06em;margin-top:-2px}
+.glevel b{color:var(--fg);font-weight:600}
+
+/* lobby */
+.lobby{padding:4px 18px 26px;display:grid;gap:10px}
+.lobby-hero{text-align:center;padding:4px 0 6px}
+.lobby-hero .big{font-family:var(--poster);font-size:44px;letter-spacing:.05em;color:var(--gold);line-height:1}
+.lobby-hero p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.lstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.lstats div{border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center;background:rgba(255,255,255,.02)}
+.lstats b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.lstats span{font-size:10.5px;color:var(--muted);letter-spacing:.04em}
+.gcard{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line-strong);border-radius:16px;padding:12px 14px 12px 12px;background:rgba(14,14,20,.85);text-align:left;width:100%;overflow:hidden}
+.gcard:hover{border-color:var(--ga)}
+.gcard .gi{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--ga) 20%,transparent);color:var(--ga);font-family:var(--poster);font-size:26px}
+.gcard b{display:block;font-size:14.5px}
+.gcard .d{font-size:12px;color:var(--muted);display:block;margin-top:1px}
+.pips{display:flex;gap:3px;margin-top:6px;align-items:center}
+.pips i{width:16px;height:4px;border-radius:2px;background:var(--elev3);display:block}
+.pips i.on{background:var(--ga)}
+.pips span{font-size:10.5px;color:var(--muted);margin-left:6px}
+.gcard .go{font-size:11px;font-weight:700;border-radius:999px;padding:5px 11px;background:var(--ga);color:#0b0820}
+.gcard.soon{opacity:.6;border-style:dashed}
+.gcard.soon .go,.gcard.lock .go{background:var(--elev3);color:var(--muted)}
+.proto-note{font-size:11.5px;color:var(--dim);text-align:center}
+.proto-note button{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:11.5px;padding:0}
+
+/* game intro / over */
+.gintro{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:10px 26px 26px}
+.gbadge{width:96px;height:96px;border-radius:28px;display:grid;place-items:center;background:color-mix(in srgb,var(--gold) 22%,transparent);border:1px solid color-mix(in srgb,var(--gold) 50%,transparent);color:var(--gold);font-family:var(--poster);font-size:48px;box-shadow:0 0 40px var(--gold-glow)}
+.gintro h2{margin:0;font-size:24px;font-weight:700;text-wrap:balance}
+.gintro .lead{margin:0;color:#cfcfd4;font-size:14px;max-width:300px}
+.rules{list-style:none;margin:0;padding:0;display:grid;gap:8px;text-align:left;width:100%;max-width:310px;counter-reset:r}
+.rules li{counter-increment:r;display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;font-size:13.5px;color:#e2e2e5;align-items:start}
+.rules li::before{content:counter(r);width:24px;height:24px;border-radius:50%;background:var(--gold-soft);color:var(--gold);display:grid;place-items:center;font-weight:700;font-size:12px}
+.lvl-list{display:grid;gap:4px;width:100%;max-width:310px;font-size:12px;color:var(--muted);text-align:left}
+.lvl-list div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:5px 2px}
+.lvl-list div.now{color:var(--fg);font-weight:600}
+.lvl-list div.now span:last-child{color:var(--gold)}
+.chooser{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chooser button{border:1px solid var(--line-strong);background:rgba(255,255,255,.03);border-radius:999px;padding:7px 12px;font-size:12.5px;color:#d8d8db}
+.chooser button[aria-pressed="true"]{background:var(--gold);color:#0b0820;border-color:var(--gold);font-weight:600}
+.gover{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:6px 22px 26px}
+.gover .bigscore{font-family:var(--poster);font-size:64px;line-height:1;color:var(--gold);letter-spacing:.03em}
+.gover h2{margin:0;font-size:22px;text-wrap:balance}
+.learned-box{width:100%;border:1px solid var(--line-strong);border-radius:16px;padding:14px;background:rgba(255,255,255,.03);text-align:left;display:grid;gap:8px}
+.learned-box h4{margin:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.learned-box ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.learned-box li{font-size:13px;color:#e2e2e5;display:flex;gap:8px}
+.learned-box li::before{content:"→";color:var(--gold)}
+.delta{font-size:13px;color:var(--muted)}
+.delta b{color:var(--good)}
+.newlvl{border:1px solid var(--gold);background:var(--gold-soft);border-radius:12px;padding:10px 14px;font-size:13px;width:100%}
+.newlvl b{color:var(--gold)}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:40}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#0e0d16;border-top:1px solid var(--line-strong);border-radius:24px 24px 0 0;z-index:41;padding:18px 22px 26px;display:grid;gap:14px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.sheet h3{margin:0;font-family:var(--poster);font-size:26px;letter-spacing:.04em;color:var(--gold)}
+
+/* the bet v2 */
+.score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:8px 22px 0;border:1px solid var(--line-strong);border-radius:16px;padding:10px 14px;background:rgba(0,0,0,.35)}
+.sc{display:flex;flex-direction:column;align-items:center;gap:3px}
+.sc small{font-size:10.5px;letter-spacing:.12em;color:var(--muted);font-weight:600}
+.sc b{font-family:var(--poster);font-size:40px;line-height:.9;font-variant-numeric:tabular-nums}
+.sc.wtw b{color:var(--gold)}
+.sc.you b{color:#9fe6c3}
+.sc .dots{display:flex;gap:3px}
+.sc .dots i{width:8px;height:8px;border-radius:50%;background:var(--elev3)}
+.sc.wtw .dots i.on{background:var(--gold)}
+.sc.you .dots i.on{background:#9fe6c3}
+.sc-mid{font-size:11px;color:var(--muted);text-align:center;line-height:1.3}
+.sc-mid b{display:block;color:var(--fg);font-size:12px}
+.st{color:rgba(255,255,255,.14)}
+.st.on{color:var(--gold)}
+.you-stars .st.on{color:#9fe6c3}
+.rate{display:flex;gap:6px}
+.rate button{width:48px;height:48px;border-radius:12px;border:1px solid var(--line-strong);background:rgba(255,255,255,.03);font-size:24px;color:rgba(255,255,255,.18);display:grid;place-items:center;transition:all .1s ease}
+.rate button.hov,.rate button:hover{color:var(--gold);border-color:var(--gold)}
+.point{font-family:var(--poster);font-size:34px;letter-spacing:.04em;line-height:1}
+.point.wtw{color:var(--gold)}.point.you{color:#9fe6c3}
+
+/* blind / other side / rank */
+.plot-card{width:100%;border:1px solid var(--line-strong);border-radius:20px;padding:22px 20px;background:rgba(255,255,255,.035);text-align:left;display:grid;gap:10px}
+.plot-card small{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600}
+.plot-card p{margin:0;font-size:18px;line-height:1.45;color:#f0f0f2}
+.clues{display:grid;gap:8px;width:100%}
+.clue{border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:rgba(255,255,255,.03);text-align:left;animation:fadeIn .3s ease}
+.clue small{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:600}
+.clue p{margin:3px 0 0;font-size:14px;color:#ececf0}
+.clue.locked{border-style:dashed;color:var(--dim);font-size:12.5px;text-align:center;padding:9px}
+.guess{display:flex;gap:8px;width:100%}
+.guess input{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--line-strong);border-radius:12px;padding:12px;color:var(--fg);font:inherit;outline:none}
+.guess input:focus{border-color:var(--gold)}
+.guess button{border:0;border-radius:12px;padding:0 16px;background:var(--gold);color:#0b0820;font-weight:700}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;width:100%;min-height:0}
+.sugg button{border:1px solid var(--line-strong);background:rgba(255,255,255,.03);border-radius:999px;padding:5px 10px;font-size:12px;color:#d8d8db}
+.ptsrow{display:flex;justify-content:space-between;width:100%;font-size:12px;color:var(--muted)}
+.ptsrow b{color:var(--gold)}
+.shake{animation:shake .35s ease}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.rank-badge{font-family:var(--poster);font-size:46px;line-height:1;color:var(--gold)}
+.rank-badge small{font-family:var(--ui);font-size:12px;color:var(--muted);display:block;letter-spacing:.02em}
+.votes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.votes button{border:1px solid var(--line-strong);background:rgba(255,255,255,.03);border-radius:14px;padding:12px 6px;font-size:13px;font-weight:600;display:grid;gap:3px;place-items:center}
+.votes button span{font-size:18px}
+.votes button:hover{border-color:var(--gold)}
+.crowd{width:100%;display:grid;gap:6px}
+.crowd div{display:grid;grid-template-columns:86px minmax(0,1fr) 38px;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.crowd i{height:8px;border-radius:4px;background:var(--elev3);display:block;position:relative;overflow:hidden}
+.crowd i em{position:absolute;inset:0 auto 0 0;background:var(--gold);border-radius:4px}
+.crowd div.me{color:var(--fg);font-weight:600}
+.mind .pick.guessed .poster{box-shadow:0 0 0 3px var(--gold),0 0 30px var(--gold-glow)}
+.guess-tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;background:var(--gold);color:#0b0820;border-radius:999px;padding:3px 8px;margin-top:4px}
+.locked-card{border:1px dashed var(--line-strong);border-radius:16px;padding:18px;text-align:center;display:grid;gap:8px;justify-items:center;color:var(--muted);font-size:13px}
+.locked-card b{color:var(--fg);font-size:15px}
+.home-head{padding:2px 22px 0}
+.home-head h2{margin:8px 0 2px;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.home-head p{margin:0;color:var(--muted);font-size:13px}
+.fact{width:100%;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:color-mix(in srgb,var(--gold) 10%,transparent);border-radius:14px;padding:12px 14px;text-align:left;display:grid;gap:4px}
+.fact small{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.fact p{margin:0;font-size:13.5px;color:#ececf0}
+.gkind{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.08em;border-radius:4px;padding:2px 5px;margin-left:6px;vertical-align:2px;border:1px solid var(--line-strong);color:var(--muted)}
+.bonus-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.12em;color:#0b0820;background:#7fd1ff;border-radius:999px;padding:5px 12px}
+.bbanner{margin:6px 22px 0;border:1px solid rgba(127,209,255,.45);background:rgba(127,209,255,.08);border-radius:14px;padding:10px 12px;display:grid;gap:6px}
+.bbanner .row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#cfe9ff}
+.bbanner b{color:#fff}
+.tbar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.tbar i{display:block;height:100%;background:#7fd1ff;transition:width .25s linear}
+.lvprog{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
+.lvprog .pp{display:flex;gap:3px}
+.lvprog .pp i{width:14px;height:4px;border-radius:2px;background:var(--elev3);display:block}
+.lvprog .pp i.on{background:var(--gold)}
+.lvprog .pp i.bonus{background:rgba(127,209,255,.35)}
+.btype{display:grid;gap:4px;width:100%;max-width:300px;font-size:12px;color:var(--muted);text-align:left}
+.btype div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:5px 2px}
+.btype div.now{color:#cfe9ff;font-weight:600}
+.stub{flex:1;display:grid;place-items:center;text-align:center;color:var(--muted);padding:30px}
+
+</style>
+
+<div class="proto-bar">
+  <h1>WTW · Taste Test prototype <span>(mockup, not the real app)</span></h1>
+  <div class="proto-btns"><button class="proto-btn" id="restart">Restart</button></div>
+</div>
+
+<div class="stage">
+  <div class="phone" id="phone"><div class="aurora"></div><div id="host"></div><div class="toast" id="toast" role="status" aria-live="polite"></div></div>
+  <aside class="curtain" id="curtain" aria-label="Behind the curtain"></aside>
+</div>
+
+<script>
+/* ============ taste axes ============ */
+// Every title sits somewhere on each axis (-1 … +1). Users never see these words; they only pick.
+const AX=["tone","energy","pace","dark","complex","fantastic","modern","indie"];
+const OPT=["humor","commit"]; // only some titles have these (comedies / series)
+const LBL={tone:["Serious","Funny"],energy:["Talk","Action"],pace:["Slow burn","Fast"],dark:["Light","Dark"],complex:["Easy watch","Puzzle"],fantastic:["Real world","Other worlds"],modern:["Classic","Recent"],indie:["Blockbuster","Off-beat"],humor:["Silly","Dry wit"],commit:["Mini-series","Long haul"]};
+const TEST={tone:"funny vs. serious",energy:"action vs. talk",pace:"fast vs. slow burn",dark:"light vs. dark",complex:"easy watch vs. puzzle",fantastic:"real world vs. other worlds",modern:"classic vs. recent",indie:"blockbuster vs. off-beat",humor:"silly vs. dry wit",commit:"mini-series vs. long haul"};
+
+const GENRES=[
+  {id:"comedy",n:"Comedy",c:["#f2b134","#e2572f"]},
+  {id:"drama",n:"Drama",c:["#6d5a8f","#251b3a"]},
+  {id:"action",n:"Action",c:["#e04f2f","#3a1010"]},
+  {id:"crime",n:"Crime",c:["#3e4a5c","#0d1117"]},
+  {id:"thriller",n:"Thriller & mystery",c:["#5a3e6b","#120a18"]},
+  {id:"scifi",n:"Sci-fi & fantasy",c:["#2f7fd6","#0d1a3a"]},
+  {id:"horror",n:"Horror",c:["#8c1c1c","#0a0a0a"]},
+  {id:"romance",n:"Romance",c:["#e07a9a","#5a1c35"]},
+  {id:"anim",n:"Animation",c:["#45c0a8","#1d3d6e"]},
+  {id:"anime",n:"Anime",c:["#e0567a","#2a1440"]},
+  {id:"doc",n:"Documentary",c:["#b9a36b","#2f2a1c"]},
+  {id:"war",n:"War & history",c:["#7d7a45","#1d1d10"]},
+];
+const GN=Object.fromEntries(GENRES.map(g=>[g.id,g.n]));
+
+/* ============ catalog ============ */
+// [title, year, kind m|tv, genres, [tone,energy,pace,dark,complex,fantastic,modern,indie], popularity, pitch, extras]
+const RAW=[
+["The Nice Guys",2016,"m","comedy,crime,action",[.8,.4,.5,.4,0,-.6,.6,-.2],.55,"Two mismatched private eyes bumble through 1977 L.A.",{crew:"Shane Black",humor:.4}],
+["Heat",1995,"m","crime,action,drama",[-.8,.6,0,.6,.3,-.8,-.4,-.4],.6,"A master thief and the cop who can't let him go."],
+["Superbad",2007,"m","comedy",[1,-.5,.6,-.2,-.6,-.7,.3,-.3],.8,"Two best friends, one party, one very long night.",{humor:-.7}],
+["The Godfather",1972,"m","crime,drama",[-.9,-.2,-.7,.8,.4,-.8,-1,-.3],.85,"A crime family's reluctant son becomes its future."],
+["Before Sunrise",1995,"m","romance,drama",[.1,-1,-.8,-.6,.1,-.7,-.4,.6],.35,"Two strangers walk and talk through Vienna for one night."],
+["Mission: Impossible – Fallout",2018,"m","action",[-.1,1,1,.1,.1,-.2,.7,-.9],.7,"Tom Cruise, a helicopter, and no stunt double."],
+["The Grand Budapest Hotel",2014,"m","comedy",[.7,-.1,.3,.1,.2,.3,.4,.5],.55,"A concierge, a stolen painting, and a perfect pastel world.",{crew:"Wes Anderson",humor:.9}],
+["Step Brothers",2008,"m","comedy",[1,-.4,.6,-.3,-.8,-.4,.3,-.6],.7,"Two 40-year-old man-children become brothers.",{humor:-.9}],
+["Inception",2010,"m","scifi,action",[-.4,.7,.5,.2,1,.7,.5,-.6],.85,"A heist that happens inside a dream inside a dream.",{crew:"Christopher Nolan"}],
+["Notting Hill",1999,"m","romance,comedy",[.6,-.8,-.2,-.8,-.6,-.6,-.2,-.5],.7,"A London bookseller falls for the world's biggest movie star.",{humor:.2}],
+["Se7en",1995,"m","thriller,crime",[-.9,.2,0,1,.4,-.7,-.3,-.3],.75,"Two detectives hunt a killer working through the seven sins.",{crew:"David Fincher"}],
+["Toy Story",1995,"m","anim,comedy",[.7,.2,.4,-.9,-.5,.9,-.3,-.8],.95,"A cowboy doll's world is upended by a space ranger.",{crew:"Pixar",humor:-.1}],
+["Mad Max: Fury Road",2015,"m","action,scifi",[-.3,1,1,.5,-.5,.7,.6,-.4],.7,"One long, glorious chase across a desert wasteland."],
+["Lost in Translation",2003,"m","drama,romance",[.2,-1,-.9,-.1,.2,-.6,0,.8],.45,"Two lonely Americans drift through Tokyo together."],
+["The Matrix",1999,"m","scifi,action",[-.4,.9,.7,.4,.6,.9,-.1,-.7],.9,"A hacker learns the world is a simulation."],
+["Hot Fuzz",2007,"m","comedy,action,crime",[.9,.6,.7,.2,0,-.4,.3,.1],.55,"A supercop gets sent to the sleepiest village in England.",{crew:"Edgar Wright",humor:.4}],
+["Knives Out",2019,"m","thriller,comedy",[.5,-.3,.3,.1,.7,-.5,.8,-.4],.7,"A famous detective and a family full of suspects.",{crew:"Rian Johnson",humor:.6}],
+["Gone Girl",2014,"m","thriller,drama",[-.6,-.4,0,.9,.7,-.8,.5,-.3],.65,"A wife vanishes, and her husband looks guiltier by the day.",{crew:"David Fincher"}],
+["La La Land",2016,"m","romance,drama",[.2,-.4,.1,-.4,0,.3,.6,-.2],.7,"A jazz pianist and an actress chase dreams in L.A."],
+["Interstellar",2014,"m","scifi,drama",[-.6,.3,-.2,.1,.8,.9,.6,-.6],.8,"Astronauts search for a new home for humanity.",{crew:"Christopher Nolan"}],
+["Pulp Fiction",1994,"m","crime",[.3,.4,.2,.8,.6,-.4,-.4,.2],.85,"Hitmen, a boxer, and a briefcase, told out of order.",{crew:"Quentin Tarantino"}],
+["Parasite",2019,"m","thriller,drama",[.1,-.2,.2,.8,.6,-.6,.8,.6],.55,"A poor family cons its way into a rich family's home."],
+["The Shawshank Redemption",1994,"m","drama",[-.6,-.6,-.6,.3,.1,-.9,-.5,-.4],.9,"Friendship and hope behind prison walls."],
+["Die Hard",1988,"m","action",[.3,1,.7,.2,-.4,-.6,-.6,-.7],.85,"One cop, one skyscraper, a lot of bad guys."],
+["Bridesmaids",2011,"m","comedy",[.9,-.5,.4,-.3,-.6,-.7,.3,-.4],.65,"A maid of honor's life falls apart before the wedding.",{humor:-.5}],
+["Arrival",2016,"m","scifi,drama",[-.6,-.5,-.7,0,.9,.8,.6,.2],.5,"A linguist tries to talk to aliens before it's too late."],
+["Drive",2011,"m","crime,action",[-.7,.4,-.4,.7,0,-.6,.5,.6],.5,"A quiet getaway driver gets pulled into a bad job."],
+["Paddington 2",2017,"m","comedy",[.9,.1,.3,-1,-.6,.5,.7,-.2],.45,"A polite bear goes to prison and wins everyone over.",{humor:.3}],
+["No Country for Old Men",2007,"m","crime,thriller",[-.6,.3,-.4,1,.5,-.7,.2,.3],.6,"A hunter takes drug money, and a killer comes for it.",{crew:"Coen brothers"}],
+["The Big Lebowski",1998,"m","comedy,crime",[.9,-.3,-.4,.2,.1,-.5,-.3,.4],.65,"A slacker gets mistaken for a millionaire. Over a rug.",{crew:"Coen brothers",humor:.8}],
+["John Wick",2014,"m","action",[-.4,1,.9,.6,-.6,.1,.6,-.6],.75,"A retired hitman. Someone killed his dog."],
+["Eternal Sunshine of the Spotless Mind",2004,"m","romance,scifi,drama",[.1,-.7,-.2,.1,.9,.6,0,.7],.5,"A man erases his ex from his memory, then regrets it."],
+["Groundhog Day",1993,"m","comedy,romance",[.9,-.4,.2,-.4,.4,.5,-.5,-.4],.75,"A grumpy weatherman relives the same day forever.",{humor:.6}],
+["Top Gun: Maverick",2022,"m","action",[0,1,.9,-.3,-.6,-.3,.9,-1],.8,"Maverick trains a new class of pilots for a near-impossible mission."],
+["Get Out",2017,"m","horror,thriller",[.1,-.1,.3,.8,.6,0,.8,.3],.7,"Meeting the girlfriend's parents goes very, very wrong."],
+["The Social Network",2010,"m","drama",[-.2,-.9,.6,.3,.5,-.9,.4,-.1],.7,"How Facebook was built, and the friendships it broke.",{crew:"David Fincher"}],
+["Shaun of the Dead",2004,"m","comedy,horror",[.8,.5,.6,.4,-.2,.5,0,.2],.55,"A slacker tries to save his mum during a zombie outbreak.",{crew:"Edgar Wright",humor:.5}],
+["Anchorman",2004,"m","comedy",[1,-.3,.5,-.3,-.9,-.3,0,-.5],.7,"A 1970s newsman is threatened by a woman co-anchor.",{humor:-1}],
+["Moonlight",2016,"m","drama",[-.7,-.9,-.8,.3,.3,-.9,.6,.9],.35,"Three chapters in the life of a young man in Miami."],
+["Jurassic Park",1993,"m","scifi,action",[-.1,.8,.6,.1,-.4,.9,-.5,-.9],.95,"A theme park with real dinosaurs. What could go wrong?"],
+["Kiss Kiss Bang Bang",2005,"m","comedy,crime",[.8,.4,.6,.4,.5,-.5,0,.3],.3,"A thief stumbles into a Hollywood murder mystery.",{crew:"Shane Black",humor:.5}],
+["Midsommar",2019,"m","horror",[-.5,-.3,-.7,1,.4,.3,.8,.7],.4,"A summer festival in Sweden, in broad daylight, gets horrifying."],
+["Ocean's Eleven",2001,"m","crime,comedy",[.6,.3,.5,-.3,.2,-.6,0,-.6],.8,"Eleven charming crooks rob three Vegas casinos at once.",{humor:.4}],
+["Whiplash",2014,"m","drama",[-.5,.2,.8,.4,0,-.9,.5,.4],.55,"A young drummer and a teacher who'll push him to breaking."],
+["The Princess Bride",1987,"m","comedy,romance",[.8,.4,.3,-.6,-.4,.9,-.7,-.3],.65,"Swordfights, true love, and a giant. As you wish.",{humor:.6}],
+["Hereditary",2018,"m","horror",[-.9,-.3,-.5,1,.5,.3,.8,.6],.5,"A family unravels after grandma dies. Then it gets worse."],
+["The Conjuring",2013,"m","horror",[-.7,.2,.3,.7,-.4,.6,.6,-.6],.7,"Real-life ghost hunters take on a farmhouse haunting."],
+["Alien",1979,"m","horror,scifi",[-.8,.4,-.2,.8,0,.9,-.8,-.3],.8,"In space, no one can hear you scream.",{crew:"Ridley Scott"}],
+["Scream",1996,"m","horror",[.3,.4,.6,.7,.3,-.4,-.4,-.5],.75,"A killer who knows all the horror-movie rules.",{humor:.4}],
+["The Shining",1980,"m","horror",[-.8,-.4,-.7,1,.5,.4,-.8,.1],.75,"A writer, a snowed-in hotel, and his slow unravelling."],
+["A Quiet Place",2018,"m","horror,scifi",[-.7,.5,.4,.6,-.2,.6,.8,-.6],.75,"If they hear you, they hunt you."],
+["It Follows",2014,"m","horror",[-.7,-.1,-.3,.8,.4,.3,.6,.7],.4,"A curse that just keeps walking toward you."],
+["Free Solo",2018,"m","doc",[-.4,.6,.2,0,-.5,-1,.8,.1],.55,"One man climbs El Capitan. No ropes."],
+["Senna",2010,"m","doc",[-.5,.6,.4,.3,-.2,-1,.4,.3],.4,"The life and rivalries of Formula 1's most gifted driver."],
+["Jiro Dreams of Sushi",2011,"m","doc",[-.2,-.9,-.8,-.6,-.3,-1,.3,.8],.35,"An 85-year-old sushi master still chasing perfection."],
+["Searching for Sugar Man",2012,"m","doc",[-.1,-.6,-.2,-.4,.3,-1,.3,.8],.3,"Two fans hunt for a lost singer who's a legend in South Africa."],
+["Won't You Be My Neighbor?",2018,"m","doc",[.1,-.9,-.5,-.9,-.5,-1,.6,.4],.35,"The gentle radical behind Mister Rogers."],
+["Spirited Away",2001,"m","anime",[.1,-.1,-.2,-.2,.3,1,0,.6],.7,"A girl gets trapped in a bathhouse for spirits.",{crew:"Studio Ghibli"}],
+["Princess Mononoke",1997,"m","anime,action",[-.5,.5,.1,.4,.4,1,-.3,.6],.5,"A prince caught in a war between forest gods and humans.",{crew:"Studio Ghibli"}],
+["Your Name",2016,"m","anime,romance",[.1,-.4,.1,-.3,.6,.9,.6,.6],.5,"Two teens mysteriously start swapping bodies."],
+["Akira",1988,"m","anime,scifi",[-.6,.8,.7,.8,.5,1,-.5,.5],.45,"Neo-Tokyo, biker gangs, and a boy with terrible power."],
+["Spider-Man: Into the Spider-Verse",2018,"m","anim,action",[.6,.9,.9,-.3,.2,1,.8,-.5],.8,"Miles Morales meets Spider-People from other dimensions."],
+["Up",2009,"m","anim,comedy",[.5,.3,.3,-.6,-.4,.7,.3,-.7],.9,"An old man ties balloons to his house and flies off.",{crew:"Pixar",humor:-.2}],
+["Love Actually",2003,"m","romance,comedy",[.5,-.8,.1,-.7,-.3,-.7,0,-.6],.75,"Ten London love stories, one Christmas.",{humor:-.1}],
+["Pride & Prejudice",2005,"m","romance,drama",[-.1,-.8,-.4,-.4,0,-.8,-.4,-.1],.6,"Elizabeth Bennet vs. Mr. Darcy, round one."],
+// ---- series ----
+["Breaking Bad",2008,"tv","crime,drama",[-.6,.3,.2,.9,.4,-.7,.4,-.3],.85,"A chemistry teacher becomes a drug kingpin.",{commit:.3}],
+["The Office",2005,"tv","comedy",[.9,-.8,.2,-.5,-.7,-.8,.2,-.6],.9,"The most awkward office in Pennsylvania.",{commit:.9,humor:.2}],
+["Succession",2018,"tv","drama,comedy",[.3,-.9,.1,.7,.6,-.9,.8,.2],.6,"A media dynasty fights over who gets the crown.",{commit:.1,humor:.9}],
+["Ted Lasso",2020,"tv","comedy",[.8,-.5,.2,-.8,-.5,-.6,.9,-.4],.7,"An American coach takes over an English soccer team.",{commit:-.2,humor:-.1}],
+["Severance",2022,"tv","scifi,drama",[-.3,-.4,-.4,.4,.9,.6,.9,.3],.6,"Workers surgically split their work and home memories.",{commit:-.4}],
+["Fleabag",2016,"tv","comedy,drama",[.7,-.9,.5,.3,.3,-.8,.7,.6],.55,"Twelve perfect episodes of chaos, grief and a hot priest.",{commit:-1,humor:.9}],
+["The Bear",2022,"tv","drama,comedy",[.1,-.3,.8,.4,.1,-.9,.9,.3],.6,"A fine-dining chef takes over his late brother's sandwich shop.",{commit:-.3,humor:.4}],
+["Game of Thrones",2011,"tv","scifi,drama,action",[-.6,.6,.1,.8,.6,.9,.3,-.8],.9,"Noble families fight for the Iron Throne.",{commit:.7}],
+["Stranger Things",2016,"tv","scifi,horror",[.2,.5,.5,.3,.2,.9,.6,-.7],.9,"Kids, bikes, and a monster from another dimension.",{commit:.4}],
+["The Wire",2002,"tv","crime,drama",[-.6,-.4,-.6,.8,.9,-1,-.2,.5],.55,"Baltimore, seen from the street corners to city hall.",{commit:.6}],
+["Friends",1994,"tv","comedy,romance",[.9,-.8,.3,-.8,-.8,-.8,-.4,-.9],.95,"Six friends, one couch, ten seasons.",{commit:1,humor:-.3}],
+["Black Mirror",2011,"tv","scifi,drama",[-.3,-.3,.2,.8,.7,.7,.6,.2],.75,"Standalone stories about technology gone wrong.",{commit:-.6}],
+["True Detective",2014,"tv","crime,thriller,drama",[-.8,-.3,-.7,.9,.7,-.6,.4,.3],.6,"Two detectives, one ritual murder, 17 years apart.",{commit:-.8}],
+["Chernobyl",2019,"tv","drama",[-.9,-.2,-.4,.8,.4,-1,.7,0],.65,"The disaster, and the lies around it.",{commit:-1}],
+["Brooklyn Nine-Nine",2013,"tv","comedy,crime",[.9,0,.6,-.7,-.6,-.6,.6,-.7],.8,"A goofy detective and his deadpan captain.",{commit:.8,humor:-.4}],
+["The Sopranos",1999,"tv","crime,drama",[-.2,-.3,-.4,.8,.6,-.9,-.5,.2],.7,"A mob boss starts seeing a therapist.",{commit:.6,humor:.6}],
+["Arrested Development",2003,"tv","comedy",[.9,-.6,.7,0,.6,-.6,0,.4],.55,"A rich family loses everything. Except their egos.",{commit:.3,humor:.9}],
+["Mindhunter",2017,"tv","crime,thriller",[-.8,-.8,-.6,.9,.6,-.9,.7,.3],.5,"FBI agents interview serial killers to understand them.",{commit:-.5,crew:"David Fincher"}],
+["The Haunting of Hill House",2018,"tv","horror,drama",[-.8,-.4,-.5,.9,.6,.5,.7,.1],.55,"A family haunted, then and now.",{commit:-.7}],
+["Squid Game",2021,"tv","drama,action,thriller",[-.4,.6,.6,.9,.1,.1,.9,.3],.85,"Broke players compete in deadly kids' games.",{commit:-.6}],
+["The Last Dance",2020,"tv","doc",[-.2,.4,.5,-.1,-.3,-1,.5,-.6],.65,"Michael Jordan's Bulls, from the inside.",{commit:-.6}],
+["Planet Earth II",2016,"tv","doc",[-.3,.3,.1,-.3,-.5,-1,.6,-.8],.8,"Nature at its most spectacular.",{commit:-.8}],
+["Making a Murderer",2015,"tv","doc,crime",[-.8,-.7,-.5,.7,.6,-1,.6,.3],.55,"A man exonerated, then accused all over again.",{commit:-.3}],
+["Attack on Titan",2013,"tv","anime,action",[-.7,.9,.6,.9,.6,1,.6,.1],.6,"Humanity hides behind walls from giant man-eaters.",{commit:.4}],
+["Cowboy Bebop",1998,"tv","anime,scifi",[.2,.6,.3,.4,.3,1,-.5,.6],.45,"Space bounty hunters, jazz, and regrets.",{commit:-.4}],
+["BoJack Horseman",2014,"tv","anim,comedy,drama",[.6,-.7,.3,.8,.5,.5,.6,.5],.55,"A washed-up sitcom horse faces himself.",{commit:.2,humor:.8}],
+["Arcane",2021,"tv","anim,action,scifi",[-.4,.8,.5,.6,.4,1,.9,-.2],.6,"Two sisters on opposite sides of a city at war.",{commit:-.6}],
+["Saving Private Ryan",1998,"m","war,drama,action",[-.9,.7,.3,.8,.1,-1,-.3,-.7],.85,"After D-Day, a squad is sent behind the lines to bring one soldier home."],
+["Dunkirk",2017,"m","war,action",[-.8,.6,.6,.5,.6,-.9,.7,-.4],.7,"The evacuation of Dunkirk, told by land, sea and air at the same time.",{crew:"Christopher Nolan"}],
+["1917",2019,"m","war,drama",[-.8,.5,.4,.6,0,-.9,.8,-.3],.65,"Two soldiers race across enemy land to deliver one message, in what feels like a single shot."],
+["Inglourious Basterds",2009,"m","war,crime,comedy",[.3,.5,.1,.8,.4,-.2,.3,.1],.75,"A squad of Jewish-American soldiers, a cinema owner, and a plan to end the war early.",{crew:"Quentin Tarantino",humor:.6}],
+["Apocalypse Now",1979,"m","war,drama",[-.8,.2,-.6,1,.6,-.5,-.9,.3],.6,"A captain travels upriver into the jungle to find a colonel who's gone rogue."],
+["Band of Brothers",2001,"tv","war,drama,action",[-.8,.6,0,.7,.2,-1,-.2,-.3],.7,"Ten episodes with one paratrooper company, from D-Day to the end of the war.",{commit:-.9}],
+["The Pacific",2010,"tv","war,drama",[-.9,.6,-.1,.9,.3,-1,0,-.1],.5,"Three marines and the brutal island war against Japan.",{commit:-.9}],
+["Rogue Heroes",2022,"tv","war,action,drama",[.1,.6,.5,.6,.1,-.6,.8,.3],.4,"The swaggering misfits who founded the SAS, set to modern rock.",{commit:-.5,humor:.6}],
+["Ghost in the Shell",1995,"m","anime,scifi,thriller",[-.5,.5,.1,.6,.9,1,-.4,.6],.45,"A cyborg cop hunts a hacker who can break into people's minds."],
+["Howl's Moving Castle",2004,"m","anime,romance",[.2,0,0,-.3,.3,1,0,.4],.55,"A young woman cursed into an old body joins a vain wizard's walking castle.",{crew:"Studio Ghibli"}],
+["Perfect Blue",1997,"m","anime,thriller",[-.8,-.2,.2,.9,.8,.4,-.4,.8],.3,"A pop idol turned actress can't tell what's real anymore, and someone is watching her."],
+["Death Note",2006,"tv","anime,thriller",[-.6,.1,.4,.8,.8,.7,.1,.2],.55,"A student finds a notebook that kills anyone whose name he writes in it.",{commit:-.2}],
+["Demon Slayer",2019,"tv","anime,action",[-.2,.9,.8,.5,-.2,1,.8,-.4],.6,"A boy becomes a demon hunter to save his sister, who was turned into one.",{commit:.3}],
+["Shrek",2001,"m","anim,comedy",[.9,.3,.5,-.5,-.5,.9,-.1,-.7],.9,"An ogre rescues a princess so he can get his swamp back.",{humor:-.3}],
+["Ratatouille",2007,"m","anim,comedy",[.6,.1,.3,-.6,-.2,.7,.3,-.5],.75,"A rat with a gift for cooking teams up with a hopeless kitchen boy in Paris.",{crew:"Pixar",humor:.2}],
+["Inside Out",2015,"m","anim,comedy",[.5,-.2,.3,-.3,.4,.8,.6,-.6],.8,"The emotions inside an 11-year-old's head try to steer her through a move.",{crew:"Pixar",humor:.1}],
+["Fantastic Mr. Fox",2009,"m","anim,comedy",[.8,.2,.4,-.2,.1,.6,.3,.4],.45,"A fox who promised to go straight plans one last raid on three farmers.",{crew:"Wes Anderson",humor:.9}],
+];
+// reveal-only picks: never used in the games, so final recommendations are fresh
+const RAW_REC=[
+["In Bruges",2008,"m","comedy,crime",[.6,-.1,-.1,.9,.3,-.7,.2,.6],"Two hitmen hide out in a fairy-tale Belgian town.",{humor:.8}],
+["The Holdovers",2023,"m","comedy,drama",[.5,-.8,-.5,-.2,-.1,-.9,.9,.4],"A grumpy teacher stuck at school over Christmas.",{humor:.7}],
+["Game Night",2018,"m","comedy,crime",[.9,.3,.6,0,.1,-.5,.8,-.5],"A couples' game night turns into a real kidnapping.",{humor:-.2}],
+["The Prestige",2006,"m","scifi,drama",[-.4,-.1,.2,.5,1,.3,.2,-.3],"Two rival magicians, one impossible trick.",{crew:"Christopher Nolan"}],
+["Lethal Weapon",1987,"m","action,crime,comedy",[.5,.9,.7,.4,-.3,-.6,-.6,-.6],"The buddy-cop movie that started it all.",{crew:"Shane Black"}],
+["Baby Driver",2017,"m","action,crime",[.4,.9,1,.2,-.2,-.3,.7,-.2],"A getaway driver who times every job to his playlist.",{crew:"Edgar Wright"}],
+["Prisoners",2013,"m","thriller,drama",[-.9,-.1,-.4,1,.7,-.8,.6,-.1],"A father takes the search for his daughter into his own hands."],
+["Palm Springs",2020,"m","comedy,romance",[.8,-.3,.4,0,.4,.6,.9,.2],"Stuck reliving the same wedding day, forever.",{humor:.5}],
+["Barbarian",2022,"m","horror",[.1,.2,.5,.8,.5,.2,.9,.4],"An Airbnb double-booking. Then the basement."],
+["Talk to Me",2023,"m","horror",[-.5,.2,.6,.9,.2,.6,.9,.5],"Teens get hooked on contacting the dead."],
+["My Octopus Teacher",2020,"m","doc",[-.2,-.6,-.6,-.6,-.3,-1,.9,.4],"A diver befriends an octopus for a year."],
+["The Wild Robot",2024,"m","anim",[.4,.4,.3,-.5,-.2,.9,.9,-.4],"A robot stranded on an island raises an orphaned gosling."],
+["Slow Horses",2022,"tv","thriller,comedy",[.2,.3,.4,.6,.5,-.8,.9,.2],"Spies who are bad at being spies. Gary Oldman is a gem.",{commit:.2,humor:.8}],
+["Only Murders in the Building",2021,"tv","comedy,thriller",[.8,-.4,.3,.1,.5,-.5,.9,-.3],"A cozy murder mystery in half-hour episodes.",{commit:.2,humor:.5}],
+["Shōgun",2024,"tv","drama,action",[-.8,.3,-.5,.7,.6,-.7,.9,-.1],"A shipwrecked sailor gets pulled into a war for Japan.",{commit:-.6}],
+["Midnight Mass",2021,"tv","horror,drama",[-.8,-.5,-.6,.9,.6,.6,.9,.3],"A charismatic priest arrives on a dying island.",{commit:-.9}],
+["Blue Eye Samurai",2023,"tv","anim,action",[-.6,.9,.6,.8,.4,.2,.9,.3],"A mixed-race swordmaster hunts the four men who made her an outcast.",{commit:-.6}],
+];
+let uid=0;
+const mk=(r,rec)=>{
+  const [t,y,k,g,v]=r;const pop=rec?0:r[5],pitch=rec?r[5]:r[6],ex=(rec?r[6]:r[7])||{};
+  return {id:"t"+(uid++),t,y,k,g:g.split(","),v,pop,pitch,...ex};
+};
+const TITLES=RAW.map(r=>mk(r,false));
+const REC=RAW_REC.map(r=>mk(r,true));
+const val=(t,a)=>OPT.includes(a)?t[a]:t.v[AX.indexOf(a)];
+
+/* ============ levels ============ */
+const LEVELS=[
+  {min:0,n:"Just met",u:"Popular picks",d:"What most people like."},
+  {min:.2,n:"Getting the gist",u:"Picks with reasons",d:"Every pick explains why it's for you."},
+  {min:.4,n:"Knows your vibe",u:"The bet",d:"I guess your rating before you give it."},
+  {min:.6,n:"Knows you well",u:"Stretch picks",d:"Picks outside your comfort zone that I think you'll love anyway."},
+  {min:.8,n:"Knows YOU",u:"Co-watch matching",d:"Find what you and a friend will both love."},
+];
+const levelIdx=k=>{let i=0;LEVELS.forEach((l,j)=>{if(k>=l.min)i=j});return i};
+
+/* ============ state ============ */
+let S;
+function fresh(){
+  S={screen:"intro",format:"both",gen:{},round:0,sw:{},sv:{},crew:{},used:new Set(),unseen:new Set(),pairsSeen:new Set(),pair:null,log:[],
+     asked:new Set(),truths:[],huhCount:0,pendingHuh:null,focus:null,learned:"",lastUpd:null,revealed:false,phase:"wide",editing:false,
+     level:0,pendingLevel:null,cup:null,bet:null,betBias:0,betHistory:[],betWins:0,returnTo:"hub",sel:null,widen:false,menu:false,game:null,gp:{},crowdTrust:0,crowdN:0,seenWith:{},gamePlays:0,afterLevel:null,stub:null,tl:1,lvPicks:0,bonus:null,bonusSummary:null,koTurn:0};
+  for(const g of GAMES)S.gp[g.id]={level:0,plays:0};
+  for(const a of [...AX,...OPT]){S.sw[a]=0;S.sv[a]=0}
+  for(const g of GENRES)S.gen[g.id]=0;
+}
+const est=a=>S.sw[a]?S.sv[a]/S.sw[a]:0;
+const conf=a=>1-Math.exp(-S.sw[a]/5.5);
+// the genres the user chose on the setup screen stay theirs; picks only fine-tune the weights
+const loves=()=>S.sel?[...S.sel]:GENRES.filter(g=>S.gen[g.id]>=1).map(g=>g.id); // love + like
+const nevers=()=>GENRES.filter(g=>S.gen[g.id]<=-5).map(g=>g.id);
+const knowledge=()=>{
+  const base=AX.reduce((s,a)=>s+conf(a),0)/AX.length;
+  const genreBonus=Object.values(S.gen).some(v=>v!==0)?.05:0;
+  const crewBonus=Math.min(.08,Object.values(S.crew).filter(v=>v>=1.5).length*.04);
+  const betBonus=Math.min(.08,S.betHistory.length*.01);
+  const gameBonus=Math.min(.1,S.gamePlays*.025);
+  return Math.min(.97,base*.8+genreBonus+crewBonus+betBonus+gameBonus+S.truths.length*.02);
+};
+
+/* ============ the brain ============ */
+function allowed(t,kind){
+  if(kind&&t.k!==kind)return false;
+  if(S.format==="movies"&&t.k!=="m")return false;
+  if(S.format==="series"&&t.k!=="tv")return false;
+  if(t.g.some(g=>S.gen[g]<=-5))return false;
+  if(!S.widen&&t.g.every(g=>S.gen[g]<0))return false;
+  const L=loves();
+  return !L.length||S.widen||t.g.some(g=>L.includes(g));
+}
+const avail=(t,kind)=>allowed(t,kind)&&!S.used.has(t.id)&&!S.unseen.has(t.id);
+function phaseNow(){
+  const broadDone=(AX.every(a=>conf(a)>=.4)&&S.round>=8)||S.round>=12;
+  if(!broadDone)return "wide";
+  if(narrowAxis())return "narrow";
+  return "deep";
+}
+function narrowAxis(){
+  const comedies=TITLES.filter(t=>t.humor!==undefined&&avail(t,kindFor("humor"))).length;
+  if(est("tone")>.25&&conf("humor")<.5&&comedies>=2)return "humor";
+  const shows=TITLES.filter(t=>t.commit!==undefined&&avail(t,"tv")).length;
+  if(S.format!=="movies"&&conf("commit")<.5&&shows>=2)return "commit";
+  return null;
+}
+function kindFor(axis){
+  if(axis==="commit")return "tv";
+  if(S.format==="movies")return "m";
+  if(S.format==="series")return "tv";
+  return S.round%3===2?"tv":"m";
+}
+function distToUser(t,skip){
+  let d=0,n=0;
+  for(const a of AX){if(a===skip||conf(a)<.4)continue;d+=Math.abs(val(t,a)-est(a));n++}
+  return n?d/n:0;
+}
+function pickAxis(phase){
+  if(S.focus){const f=S.focus;S.focus=null;return f}
+  if(phase==="narrow")return narrowAxis();
+  let best=null,bc=9;
+  for(const a of AX){const c=conf(a);if(c<bc-.001){bc=c;best=a}}
+  return best;
+}
+function genreAff(t){return t.g.reduce((s,g)=>s+Math.max(-1,Math.min(2,S.gen[g]||0)),0)/t.g.length}
+function scorePair(x,y,a,phase){
+  const dx=Math.abs(val(x,a)-val(y,a));
+  let others=0;for(const b of AX)if(b!==a)others+=Math.abs(val(x,b)-val(y,b));
+  const popW=phase==="wide"?1.3:.45, regW=phase==="wide"?0:.9;
+  return dx*2.2-others*.3+popW*(x.pop+y.pop)-regW*(distToUser(x,a)+distToUser(y,a))+.25*(genreAff(x)+genreAff(y))+Math.random()*.2;
+}
+const pk=(x,y)=>[x.id,y.id].sort().join("|");
+function crewPair(kind){
+  const near=arr=>arr.sort((p,q)=>distToUser(p)-distToUser(q));
+  for(const pool of [near(TITLES.filter(t=>t.crew&&avail(t,kind))),near(TITLES.filter(t=>t.crew&&allowed(t,kind)&&!S.unseen.has(t.id)))])
+    for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++)
+      if(pool[i].crew!==pool[j].crew&&!S.pairsSeen.has(pk(pool[i],pool[j])))return {a:pool[i],b:pool[j],axis:"crew"};
+  return null;
+}
+function nextPair(){
+  S.phase=phaseNow();
+  if(S.bonus?.type==="creators"){const cp=crewPair(S.bonus.kind||kindFor("crew"))||crewPair(S.format==="movies"?"m":"tv");if(cp)return finalize(cp)}
+  if(!S.bonus&&S.phase==="deep"&&S.round%3===0){const cp=crewPair(kindFor("crew"));if(cp)return finalize(cp)}
+  const axis=pickAxis(S.phase);
+  for(const kind of (S.bonus?.kind?[S.bonus.kind]:[kindFor(axis),kindFor(axis)==="m"?"tv":"m"])){
+    if(axis==="commit"&&kind!=="tv")continue;
+    let pool=TITLES.filter(t=>avail(t,kind));
+    const reuse=pool.length<8;
+    if(reuse)pool=TITLES.filter(t=>allowed(t,kind)&&!S.unseen.has(t.id));
+    if(OPT.includes(axis))pool=pool.filter(t=>t[axis]!==undefined);
+    if(S.bonus?.genre)pool=pool.filter(t=>t.g.includes(S.bonus.genre));
+    let best=null,bs=-1e9;
+    for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++){
+      if(S.pairsSeen.has(pk(pool[i],pool[j])))continue;
+      let s=scorePair(pool[i],pool[j],axis,S.phase);
+      if(reuse)s-=(S.used.has(pool[i].id)?.6:0)+(S.used.has(pool[j].id)?.6:0);
+      if(s>bs){bs=s;best={a:pool[i],b:pool[j],axis}}
+    }
+    if(best)return finalize(best);
+  }
+  if(!S.widen){
+    // very narrow taste: rather than stop, mix in neighbouring genres (never the "never" ones)
+    S.widen=true;S.log.unshift("Running low on titles in your genres. Mixing in a few neighbours");
+    return nextPair();
+  }
+  return null;
+}
+function finalize(p){
+  S.pairsSeen.add(pk(p.a,p.b));
+  if(Math.random()<.5)[p.a,p.b]=[p.b,p.a];
+  S.used.add(p.a.id);S.used.add(p.b.id);
+  p.unseenCount=0;p.pitch=false;
+  return p;
+}
+function whyThisPair(p){
+  const fmt=p.a.k==="tv"?" Series are only ever compared with series.":"";
+  if(p.axis==="crew")return `Zooming in on creators. Both are close to your taste so far. The question is whose style you trust: ${p.a.crew} or ${p.b.crew}.${fmt}`;
+  const shared=AX.filter(b=>b!==p.axis&&Math.abs(val(p.a,b)-val(p.b,b))<.45&&Math.abs((val(p.a,b)+val(p.b,b))/2)>.35)
+    .slice(0,2).map(b=>LBL[b][(val(p.a,b)+val(p.b,b))>0?1:0].toLowerCase());
+  const phaseTxt=S.phase==="wide"?"Casting a wide net with well-known titles from your genres.":S.phase==="narrow"?(p.axis==="humor"?"You lean funny, so now: what kind of funny?":"You watch series, so: how much commitment?"):"Refining inside your territory.";
+  return `${phaseTxt} I'm only ${Math.round(conf(p.axis)*100)}% sure about this one.${shared.length?` Both are ${shared.join(" and ")}, so the main difference is ${TEST[p.axis]}.`:""}${fmt}`;
+}
+function replaceSide(side){
+  const p=S.pair,o=p[side],other=side==="a"?p.b:p.a;
+  S.unseen.add(o.id);
+  if(o.pop<.55)nudge("indie",-.6,.35,`Hasn't seen ${o.t} (less known). Leans a little mainstream`);
+  else S.log.unshift(`Hasn't seen ${o.t}. Swapped it for something similar`);
+  p.unseenCount++;
+  if(p.unseenCount>=2){p.pitch=true;return}
+  let best=null,bs=-1e9;
+  for(const c of TITLES){
+    if(!allowed(c,o.k)||S.unseen.has(c.id)||c.id===other.id||c.id===o.id)continue;
+    if(OPT.includes(p.axis)&&c[p.axis]===undefined)continue;
+    if(p.axis==="crew"&&(!c.crew||c.crew===other.crew))continue;
+    const ax=p.axis==="crew"?null:p.axis;
+    let s=c.pop*1.4-(S.used.has(c.id)?1.2:0);
+    if(ax)s-=Math.abs(val(c,ax)-val(o,ax))*2.5;
+    for(const b of AX)if(b!==ax)s-=Math.abs(val(c,b)-val(o,b))*.15;
+    if(s>bs){bs=s;best=c}
+  }
+  if(!best){p.pitch=true;return}
+  S.used.add(best.id);p[side]=best;p.swapped=side;
+}
+function nudge(a,dir,w,msg){S.sv[a]+=dir*w;S.sw[a]+=Math.abs(dir)*w;if(msg)S.log.unshift(msg)}
+function genreSignal(win,lose){
+  for(const g of win.g)if(S.gen[g]>-5)S.gen[g]=+(S.gen[g]+.15).toFixed(2);
+  for(const g of lose.g)if(S.gen[g]>-5&&!win.g.includes(g))S.gen[g]=+(S.gen[g]-.08).toFixed(2);
+}
+function choose(side){
+  const p=S.pair,c=p[side],o=side==="a"?p.b:p.a,w=p.pitch?.6:1;
+  const before={};for(const a of [...AX,...OPT])before[a]=conf(a);
+  if(p.axis!=="crew"){
+    const a=p.axis,e=est(a),d=val(c,a)-val(o,a);
+    if(conf(a)>.5&&Math.abs(e)>.35&&Math.sign(d)!==Math.sign(e)&&Math.abs(d)>.7&&S.huhCount<2)S.pendingHuh={a,c,o};
+  }
+  const moved=[];
+  for(const a of [...AX,...OPT]){
+    const vc=val(c,a),vo=val(o,a);
+    if(vc===undefined||vo===undefined)continue;
+    const d=vc-vo;if(Math.abs(d)<.15)continue;
+    const f=(a===p.axis||p.axis==="crew")?1:.3;
+    S.sv[a]+=d*w*f;S.sw[a]+=Math.abs(d)*w*f;
+    if(Math.abs(d)>.8&&f===1)moved.push(LBL[a][d>0?1:0].toLowerCase());
+    if(a===p.axis)S.lastUpd={a,d:d*w*f};
+  }
+  if(c.crew)S.crew[c.crew]=(S.crew[c.crew]||0)+1;
+  if(o.crew)S.crew[o.crew]=(S.crew[o.crew]||0)-.3;
+  genreSignal(c,o);
+  S.log.unshift(`${p.pitch?"Would rather watch":"Picked"} ${c.t} over ${o.t}${moved.length?`: ${moved.slice(0,2).join(", ")}`:""}${p.pitch?" (half weight, hasn't seen either)":""}`);
+  S.learned="";
+  for(const a of [...AX,...OPT]){if(before[a]<.5&&conf(a)>=.5&&Math.abs(est(a))>.3){S.learned=`Noted: ${LBL[a][est(a)>0?1:0].toLowerCase()} wins for you.`;break}}
+  if(!S.learned&&c.crew&&S.crew[c.crew]>=2)S.learned=`${c.crew} again. Noted.`;
+  S.round++;
+}
+function sharedMove(sign,msg,learned){
+  const p=S.pair;
+  for(const a of AX){
+    const va=val(p.a,a),vb=val(p.b,a);
+    if(Math.sign(va)===Math.sign(vb)&&Math.abs(va)>.35&&Math.abs(vb)>.35){const m=(va+vb)/2;S.sv[a]+=sign*m*.6;S.sw[a]+=Math.abs(m)*.6}
+  }
+  for(const t of [p.a,p.b]){if(t.crew)S.crew[t.crew]=(S.crew[t.crew]||0)+(sign>0?.8:-.5);for(const g of t.g)if(S.gen[g]>-5)S.gen[g]=+(S.gen[g]+(sign>0?.1:-.1)).toFixed(2)}
+  S.log.unshift(msg);S.learned=learned;S.round++;
+}
+const loveBoth=()=>sharedMove(1,`Loves both ${S.pair.a.t} and ${S.pair.b.t}. Learning from what they share`,"Love both? Then I'll learn from what they have in common.");
+const neither=()=>sharedMove(-1,`Neither ${S.pair.a.t} nor ${S.pair.b.t}. Steering away from what they share`,"Neither? Then I'll steer away from what they have in common.");
+
+/* ============ mirror statements ============ */
+const SAY={
+  tone:["You take your stories seriously. Jokes can wait.","You want to laugh, even when the stakes are high."],
+  energy:["A great conversation beats a great explosion.","You'd rather watch it happen than hear about it."],
+  pace:["You'll give a slow burn the time it needs.","If it drags, you're out."],
+  dark:["You want to leave feeling better than you came in.","You're drawn to the darker side of people."],
+  complex:["After a long day, you want a story that just flows.","You like a story that makes you work a little."],
+  fantastic:["You like stories that could actually happen.","Give you another world over this one."],
+  modern:["You've got a soft spot for the classics.","You lean toward newer stuff."],
+  indie:["Big crowd-pleasers are your happy place.","You'll take an odd little gem over a blockbuster."],
+  humor:["Big, silly comedy? Absolutely.","Dry, witty humor beats slapstick."],
+  commit:["You like a show that knows when to end.","Give you a show you can live in for years."],
+};
+function mirrorCandidate(){
+  if(!S.asked.has("combo")&&est("tone")>.3&&est("dark")>.3&&conf("tone")>.35&&conf("dark")>.35)
+    return {key:"combo",text:"You like your darkness with a punchline.",axes:["tone","dark"],dir:[1,1]};
+  const topCrew=Object.entries(S.crew).sort((x,y)=>y[1]-x[1])[0];
+  if(topCrew&&topCrew[1]>=2&&!S.asked.has("crew:"+topCrew[0]))
+    return {key:"crew:"+topCrew[0],text:`You trust ${topCrew[0]}. Whatever they make, you're in.`,crew:topCrew[0]};
+  let best=null,bs=0;
+  for(const a of [...AX,...OPT]){
+    if(S.asked.has(a)||conf(a)<.35||Math.abs(est(a))<.3)continue;
+    const s=Math.abs(est(a))*conf(a);if(s>bs){bs=s;best=a}
+  }
+  if(!best)return null;
+  return {key:best,text:SAY[best][est(best)>0?1:0],axes:[best],dir:[est(best)>0?1:-1]};
+}
+function evidenceFor(m){
+  const picks=S.log.filter(l=>l.startsWith("Picked")).map(l=>l.replace(/^Picked /,"").split(" over ")[0]).map(n=>TITLES.find(t=>t.t===n)).filter(Boolean);
+  let ev;
+  if(m.crew)ev=picks.filter(t=>t.crew===m.crew);
+  else ev=picks.filter(t=>m.axes.every((a,i)=>(val(t,a)??0)*m.dir[i]>.3));
+  ev=[...new Set(ev)].slice(0,2);
+  return ev.length?`Because you picked <em>${ev.map(t=>esc(t.t)).join("</em> and <em>")}</em>.`:"Based on your picks so far.";
+}
+
+/* ============ recommendations (used by level-ups and the hub) ============ */
+function recScore(t){
+  let s=0;const parts=[];
+  for(const a of AX){const k=val(t,a)*est(a)*conf(a);s+=k;parts.push({a,k})}
+  for(const a of OPT)if(t[a]!==undefined&&S.sw[a]>0)s+=t[a]*est(a)*conf(a);
+  if(t.crew&&(S.crew[t.crew]||0)>=1.5)s+=.8;
+  s+=genreAff(t)*.25;
+  parts.sort((x,y)=>y.k-x.k);
+  return {t,s,parts};
+}
+function topRecs(n){
+  const base=[...REC,...TITLES.filter(t=>!S.used.has(t.id))];
+  const rank=arr=>arr.map(recScore).sort((x,y)=>y.s-x.s);
+  const strict=rank(base.filter(t=>allowed(t)));
+  if(strict.length>=n)return strict.slice(0,n);
+  // not enough in their genres: keep those first, top up from neighbours
+  const w=S.widen;S.widen=true;const extra=rank(base.filter(t=>allowed(t)&&!strict.some(x=>x.t===t)));S.widen=w;
+  return [...strict,...extra].slice(0,n);
+}
+
+/* ============ UI helpers ============ */
+const host=document.getElementById("host"),curtain=document.getElementById("curtain");
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function hashN(str,n){let h=7;for(const ch of str)h=(h*31+ch.charCodeAt(0))>>>0;return h%n}
+function posterHTML(t,opts={}){
+  const h=hashN(t.t,360),v=hashN(t.t+"x",3);
+  const a=`hsl(${h} 58% 44%)`,b=`hsl(${(h+50)%360} 62% 14%)`,c=`hsl(${(h+180)%360} 55% 40%)`;
+  const shape=v===0?`<span class="shape" style="width:70%;height:46%;left:-12%;top:8%;background:${c}"></span>`
+    :v===1?`<span class="shape" style="width:90%;height:60%;right:-40%;top:-10%;background:${c}"></span>`
+    :`<span class="shape" style="width:55%;height:36%;left:30%;top:20%;background:${c};border-radius:8px;transform:rotate(18deg)"></span>`;
+  return `<div class="poster ${opts.dim?'dim':''}" style="background:linear-gradient(160deg,${a},${b} 140%)">${shape}${t.k==="tv"?'<span class="tvb">SERIES</span>':''}${opts.qm?'<span class="qm">?</span>':''}<div class="pt">${esc(t.t)}</div></div>`;
+}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),1900)}
+function meterHTML(){
+  const k=knowledge(),li=levelIdx(k),next=LEVELS[li+1];
+  return `<div class="meter"><div class="meter-row"><span><span class="lv">CH ${li+1}</span><span class="lvl">${LEVELS[li].n}</span></span><b>${Math.round(k*100)}%</b></div>
+    <div class="bar"><i style="width:${Math.max(3,k*100)}%"></i>${LEVELS.slice(1).map(l=>`<span class="tick" style="left:${l.min*100}%"></span>`).join("")}</div>
+    <div class="next-unlock">${next?`Next chapter at ${Math.round(next.min*100)}%: unlocks <b>${next.u}</b>`:"Every chapter unlocked"}</div></div>`;
+}
+function axisRow(a){
+  const e=est(a),c=conf(a);
+  const lean=c>.35&&Math.abs(e)>.25?(e>0?"lean-r":"lean-l"):"";
+  return `<div class="axis ${lean}"><span class="l">${LBL[a][0]}</span><div class="track"><span class="dot" style="left:${50+e*46}%;opacity:${(.15+c*.85).toFixed(2)}"></span></div><span class="r">${LBL[a][1]}</span></div>`;
+}
+function checkLevel(){
+  const li=levelIdx(knowledge());
+  if(li>S.level){S.pendingLevel={from:S.level,to:li,before:S.topBefore};S.level=li}
+}
+
+/* ============ curtain ============ */
+function renderIntro(){
+  const a=TITLES.find(t=>t.t==="Superbad"),b=TITLES.find(t=>t.t==="The Godfather");
+  host.innerHTML=`<div class="screen"><div class="intro">
+    <div class="vs-art">${posterHTML(a)}<span class="vs">VS</span>${posterHTML(b)}</div>
+    <div class="brand"><i></i>WTW</div>
+    <h2>What kind of viewer are you?</h2>
+    <p>Tell me your genres, then just pick what you'd rather watch. No wrong answers. About 2 minutes.</p>
+    <button class="cta" id="start">Let's play</button>
+  </div></div>`;
+  $("#start").onclick=()=>{S.screen="setup";render()};
+}
+const GRATE=[
+  {k:"love",v:2,l:"Love",svg:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>'},
+  {k:"like",v:1,l:"Like",svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9h3zM7 11l4-8c1.7 0 2.8 1.3 2.5 3L13 9h5.5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 17.1 20H7"/></svg>'},
+  {k:"never",v:-9,l:"Never",svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>'},
+];
+const gState=id=>{const v=S.gen[id];return v>=2?"love":v>=1?"like":v<=-5?"never":v<0?"meh":""};
+function renderSetup(){
+  const L=loves().length,rated=GENRES.filter(g=>gState(g.id)).length;
+  host.innerHTML=`<div class="screen">${mainTop()}
+    <div class="setup">
+      <div><h2>How do you feel about…</h2><p class="sub">Tap the ones you have an opinion on. Skip the rest.</p></div>
+      <div class="seg" role="group" aria-label="Format">${[["movies","Movies"],["series","Series"],["both","Both"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${S.format===k}">${l}</button>`).join("")}</div>
+      <div class="grows">
+        <div class="grow ghead"><span></span>${GRATE.map(r=>`<span class="gh gh-${r.k}">${r.l}</span>`).join("")}</div>
+        ${GENRES.map(g=>{const st=gState(g.id);return `<div class="grow ${st?"rated":""}" role="group" aria-label="${g.n}">
+          <span class="gname"><i style="background:linear-gradient(150deg,${g.c[0]},${g.c[1]})"></i>${g.n}</span>
+          ${GRATE.map(r=>`<button class="gbtn gb-${r.k}" data-g="${g.id}" data-r="${r.k}" aria-pressed="${st===r.k}" aria-label="${r.l}: ${g.n}">${r.svg}</button>`).join("")}
+        </div>`}).join("")}
+      </div>
+    </div>
+    <div class="cta-wrap sticky"><button class="cta" id="go" ${L?"":"disabled"}>${L?`Start (${rated} rated)`:"Love or like at least one"}</button><div class="fine">${nevers().length?`I'll never show you ${nevers().map(g=>GN[g]).join(", ")}.`:"Anything you skip counts as meh. Love counts double."}</div></div>
+  </div>`;
+  host.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{S.format=b.dataset.f;render()});
+  host.querySelectorAll(".gbtn").forEach(b=>b.onclick=()=>{
+    const g=b.dataset.g,r=GRATE.find(x=>x.k===b.dataset.r);
+    S.gen[g]=gState(g)===r.k?0:r.v;
+    const sc=host.querySelector(".screen").scrollTop;render();host.querySelector(".screen").scrollTop=sc;
+  });
+  $("#go").onclick=()=>{
+    if(!loves().length)return;
+    S.sel=new Set(loves());
+    const by=k=>GENRES.filter(g=>gState(g.id)===k).map(g=>g.n);
+    S.log.unshift(`Watches ${S.format==="both"?"movies and series":S.format}. Love: ${by("love").join(", ")||"-"}. Like: ${by("like").join(", ")||"-"}${GENRES.filter(g=>!gState(g.id)).length?`. Meh (skipped): ${GENRES.filter(g=>!gState(g.id)).map(g=>g.n).join(", ")}`:""}${by("never").length?`. Never: ${by("never").join(", ")}`:""}`);
+    S.topBefore=topRecs(1)[0]?.t.t;
+    S.pair=nextPair();S.screen="duel";render();
+  };
+}
+function renderDuel(){
+  const p=S.pair;
+  const side=k=>{const t=p[k];return `<div class="side">
+    <button class="pick ${p.swapped===k?'swap-in':''}" data-s="${k}" aria-label="Pick ${esc(t.t)}">${posterHTML(t,{dim:p.pitch,qm:p.pitch})}
+      <div><div class="nm">${esc(t.t)}</div><div class="yr">${t.y}${t.crew&&p.axis==="crew"?` · ${esc(t.crew)}`:""}</div></div>
+      ${p.pitch?`<div class="pitch">${esc(t.pitch)}</div>`:""}
+    </button>
+    ${p.pitch?"":`<button class="unseen" data-u="${k}">Haven't seen</button>`}
+  </div>`};
+  const tv=p.a.k==="tv";
+  host.innerHTML=`<div class="screen">
+    ${mainTop()}
+    ${S.bonus?bonusBanner():meterHTML()}
+    <div class="prompt"><h2>${p.pitch?"Which sounds better tonight?":p.axis==="crew"?"Which one's more you?":tv?"Which would you rather binge?":"Which would you rather watch?"}</h2><p class="${S.learned?'learned':''}">${esc(S.learned||(p.pitch?"Neither seen? Go with your gut.":"Tap a poster."))}</p></div>
+    <div class="duel">${side("a")}${side("b")}</div>
+    <div class="actions"><button class="ghost" id="both">Love both</button><button class="ghost" id="neither">Neither</button><button class="ghost" id="skip">Skip</button></div>
+    <div class="foot">${S.bonus?`<span>Bonus round</span>`:`<span class="lvprog">Level ${S.tl}<span class="pp">${Array.from({length:PER_LEVEL},(_,i)=>`<i class="${i<S.lvPicks?"on":""}"></i>`).join("")}<i class="bonus"></i></span>bonus</span>`}</div>
+  </div>`;
+  p.swapped=null;
+  host.querySelectorAll(".pick").forEach(b=>b.onclick=()=>{
+    const s=b.dataset.s;b.classList.add("chosen");host.querySelector(`.pick[data-s="${s==="a"?"b":"a"}"]`).classList.add("lost");
+    choose(s);setTimeout(advance,380);
+  });
+  host.querySelectorAll(".unseen").forEach(b=>b.onclick=()=>{replaceSide(b.dataset.u);S.learned=S.pair.pitch?"":"Swapped in something similar.";render()});
+  $("#both").onclick=()=>{loveBoth();advance()};
+  $("#neither").onclick=()=>{neither();advance()};
+  $("#skip").onclick=()=>{S.log.unshift("Skipped a pair");S.learned="";S.pair=nextPair()||S.pair;render()};
+}
+function advance(){
+  if(S.bonus)return bonusAdvance();
+  S.lvPicks++;
+  checkLevel();
+  if(S.pendingLevel){S.screen="levelup";return render()}
+  if(S.pendingHuh){S.screen="huh";return render()}
+  if(S.lvPicks>=PER_LEVEL){S.screen="bonusIntro";return render()}
+  if(S.round>0&&S.round%4===0){const m=mirrorCandidate();if(m){S.mirror=m;S.screen="mirror";return render()}}
+  S.topBefore=topRecs(1)[0]?.t.t;
+  S.pair=nextPair();
+  if(!S.pair){S.screen="hub";return render()}
+  S.screen="duel";render();
+}
+function backToGame(){if(S.lvPicks>=PER_LEVEL&&!S.bonus){S.screen="bonusIntro";return render()}S.learned="";S.topBefore=topRecs(1)[0]?.t.t;S.pair=nextPair();S.screen=S.pair?"duel":"hub";render()}
+function renderMirror(){
+  const m=S.mirror;S.asked.add(m.key);
+  host.innerHTML=`<div class="screen">${mainTop()}${meterHTML()}
+    <div class="inter"><div class="glow"></div><div class="eyebrow">Here's what I'm picking up</div>
+    <h2>“${esc(m.text)}”</h2><div class="evidence">${evidenceFor(m)}</div>
+    <div class="opts"><button class="opt primary" data-v="yes">That's me</button><button class="opt" data-v="sort">Sort of</button><button class="opt" data-v="no">Not really</button></div></div></div>`;
+  host.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
+    const v=b.dataset.v;
+    if(v==="yes"){S.truths.push(m.text);(m.axes||[]).forEach(a=>{S.sw[a]+=2;S.sv[a]+=2*Math.sign(est(a))});if(m.crew)S.crew[m.crew]+=2;S.log.unshift(`Confirmed: “${m.text}”`);toast("Locked in")}
+    else if(v==="no"){(m.axes||[]).forEach(a=>{S.sv[a]*=.2;S.sw[a]*=.5});if(m.crew)S.crew[m.crew]=0;S.focus=m.axes?m.axes[0]:null;S.log.unshift(`Rejected: “${m.text}”. Will re-test`);toast("Good to know. I'll dig into that.")}
+    else{S.log.unshift(`Partly: “${m.text}”`);toast("Fair. I'll keep watching.")}
+    checkLevel();if(S.pendingLevel){S.screen="levelup";return render()}
+    backToGame();
+  });
+}
+function renderHuh(){
+  const {a,c}=S.pendingHuh;S.pendingHuh=null;S.huhCount++;
+  const lean=LBL[a][est(a)>0?1:0].toLowerCase();
+  const trait=AX.filter(b=>b!==a).sort((x,y)=>Math.abs(val(c,y))-Math.abs(val(c,x)))[0];
+  const traitTxt=LBL[trait][val(c,trait)>0?1:0].toLowerCase();
+  host.innerHTML=`<div class="screen">${mainTop()}${meterHTML()}
+    <div class="inter"><div class="eyebrow">Plot twist</div>
+    <h2>You usually go for ${esc(lean)}, but you picked ${esc(c.t)}.</h2><div class="evidence">What pulled you in?</div>
+    <div class="opts">
+      <button class="opt" data-v="trait">It's ${esc(traitTxt)}</button>
+      ${c.crew?`<button class="opt" data-v="crew">It's ${esc(c.crew)}</button>`:`<button class="opt" data-v="cast">The cast</button>`}
+      <button class="opt" data-v="mood">Just in the mood for it</button>
+      <button class="skip" data-v="skip">Skip</button>
+    </div></div></div>`;
+  host.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
+    const v=b.dataset.v;
+    if(v==="trait"){nudge(trait,Math.sign(val(c,trait)),1.2,`Explained: picked ${c.t} because it's ${traitTxt}`);if(S.lastUpd)S.sv[a]-=S.lastUpd.d*.6}
+    else if(v==="crew"){S.crew[c.crew]=(S.crew[c.crew]||0)+2;S.log.unshift(`Explained: picked ${c.t} for ${c.crew}`);if(S.lastUpd)S.sv[a]-=S.lastUpd.d*.6}
+    else if(v==="mood"){if(S.lastUpd)S.sv[a]-=S.lastUpd.d*.7;S.log.unshift(`Explained: ${c.t} was a mood pick. Not changing the profile much`)}
+    else if(v==="cast")S.log.unshift(`Explained: picked ${c.t} for the cast`);
+    backToGame();S.learned=v==="skip"?"":"Thanks, that helps a lot.";if(S.screen==="duel")render();
+  });
+}
+function renderLevelUp(){
+  const L=S.pendingLevel;S.pendingLevel=null;
+  const lv=LEVELS[L.to],now=topRecs(1)[0]?.t.t;
+  const changed=L.before&&now&&L.before!==now;
+  S.log.unshift(`Chapter ${L.to+1} reached: ${lv.n}. Unlocked ${lv.u}`);
+  host.innerHTML=`<div class="screen">${mainTop()}
+    <div class="inter"><div class="glow"></div><div class="lvl-badge">${L.to+1}</div><div class="fine">CHAPTER</div>
+    <div class="eyebrow">Chapter ${L.to+1} unlocked</div><h2>${esc(lv.n)}</h2>
+    <div class="unlock"><b>Unlocked: ${esc(lv.u)}</b><span>${esc(lv.d)}</span></div>
+    ${changed?`<div class="changed">Your top pick just changed: <b>${esc(now)}</b> <s>${esc(L.before)}</s></div>`:`<div class="changed">Your picks just got sharper.</div>`}
+    <div class="opts"><button class="opt primary" id="cont">Keep going</button>${lv.u==="The bet"?`<button class="opt" id="trybet">Play The Bet now</button>`:""}</div></div></div>`;
+  S.topBefore=now;
+  $("#cont").onclick=()=>{if(S.afterLevel==="games"){S.afterLevel=null;S.screen="games";return render()}if(S.pendingHuh){S.screen="huh";return render()}backToGame()};
+  if($("#trybet"))$("#trybet").onclick=()=>{S.afterLevel=null;startGame("bet")};
+}
+const ADJ={tone:["Serious","Wisecracking"],energy:["Talky","Adrenaline"],pace:["Patient","Restless"],dark:["Sunny","Shadow-Loving"],complex:["Easygoing","Puzzle-Hunting"],fantastic:["Grounded","Dreamy"],modern:["Old-School","Fresh"],indie:["Crowd-Pleasing","Off-Beat"]};
+const NOUN={tone:["Dramatist","Joker"],energy:["Listener","Thrill-Seeker"],pace:["Slow-Burner","Sprinter"],dark:["Optimist","Noir Fan"],complex:["Cruiser","Detective"],fantastic:["Realist","World-Hopper"],modern:["Classicist","Trendspotter"],indie:["Blockbuster Buff","Curator"]};
+function editAxesHTML(){
+  return `<div class="edit-note">Drag to fix anything I got wrong. Your word beats my guesses.</div><div class="axes">${[...AX,...OPT.filter(a=>S.sw[a]>0)].map(a=>`<label class="axis edit"><span class="l">${LBL[a][0]}</span><input type="range" min="-100" max="100" step="5" value="${Math.round(est(a)*100)}" data-a="${a}" id="sl-${a}" aria-label="${LBL[a][0]} to ${LBL[a][1]}"><span class="r">${LBL[a][1]}</span></label>`).join("")}</div>`;
+}
+function cupOptions(){
+  return GENRES.filter(g=>loves().includes(g.id)).map(g=>({g,n:TITLES.filter(t=>t.g.includes(g.id)&&!t.g.some(x=>S.gen[x]<=-5)).length})).filter(o=>o.n>=8);
+}
+
+/* ============ shell: top bars, menu ============ */
+const IC={
+  menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  q:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"/></svg>',
+  tonight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  train:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7" height="14" rx="2"/><rect x="14" y="5" width="7" height="14" rx="2"/></svg>',
+  games:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7.5 10.5v4M5.5 12.5h4M15.5 11.5h.01M18 13.5h.01"/></svg>',
+  me:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+};
+const mainTop=()=>`<div class="topbar"><button class="hb" data-menu aria-label="Open menu">${IC.menu}</button><div class="brand"><i></i>WTW</div></div>`;
+const MENU=[["tonight","Tonight's picks",IC.tonight],["duel","Train my taste",IC.train],["games","Games",IC.games],["hub","My taste",IC.me],null,["watchlist","Watchlist",IC.list],["settings","Settings",IC.gear]];
+function menuHTML(){
+  const k=knowledge(),li=levelIdx(k);
+  const cur=S.screen==="mirror"||S.screen==="huh"||S.screen==="setup"?"duel":S.screen;
+  return `<div class="drawer-bg" data-close></div><nav class="drawer" aria-label="Menu">
+    <div class="who"><div class="av">Y</div><div><b>You</b><span>Chapter ${li+1} · ${LEVELS[li].n} · Level ${S.tl}</span></div></div>
+    ${MENU.map(m=>m?`<button class="mi ${cur===m[0]?"on":""}" data-go="${m[0]}">${m[2]}${m[1]}${m[0]==="games"?`<span class="tag hot">${GAMES.filter(g=>!g.soon).length} games</span>`:m[0]==="watchlist"||m[0]==="settings"?`<span class="tag">Soon</span>`:m[0]==="tonight"&&k<.2?`<span class="tag">20%</span>`:""}</button>`:`<div class="sep"></div>`).join("")}
+  </nav>`;
+}
+function go(dest){
+  S.menu=false;
+  if(S.bonus&&dest!=="duel"){clearInterval(LT);S.log.unshift("Left the bonus round");S.bonus=null;S.cup=null;S.lvPicks=PER_LEVEL}
+  if(dest==="duel"){if(!S.sel){S.screen="setup";return render()}if(S.bonus)return render();return backToGame()}
+  if(dest==="watchlist"||dest==="settings"){S.stub=dest;S.screen="stub";return render()}
+  S.screen=dest;render();
+}
+
+/* ============ curtain ============ */
+function drawCurtain(){
+  const phases=[["wide","1 · Wide net"],["narrow","2 · Narrowing"],["deep","3 · Zooming in"]];
+  const idx=phases.findIndex(p=>p[0]===S.phase);
+  const p=S.pair,scr=S.screen,inGame=scr==="game";
+  let phaseHTML=phases.map((ph,i)=>`<span class="${i===idx?'on':i<idx?'done':''}">${ph[1]}</span>`).join(""),testing="";
+  const T=(h,b)=>`<div class="testing">${h}</div><p class="testing-why">${b}</p>`;
+  if(scr==="intro")testing=T("Waiting to start","First the cheapest question there is: which genres. Then the user only ever picks between two titles.");
+  else if(scr==="setup")testing=T("Genres and format","Love, like or never, and skipping counts as meh. Love and Like genres feed everything (Love weighs double). Never is blocked everywhere: training, games and picks.");
+  else if(scr==="duel"&&p)testing=T(`Testing: ${p.axis==="crew"?"whose style you trust":TEST[p.axis]}${p.pitch?" (by description)":""}`,p.pitch?"They haven't seen either, so I'm asking which <em>sounds</em> better. It counts for less.":whyThisPair(p));
+  else if(scr==="mirror")testing=T("Checking a hunch","I'm confident enough to say it out loud. A yes locks it in. A no means I read it wrong, and I'll test it again.");
+  else if(scr==="huh")testing=T("Surprise!","That pick went against a strong pattern. Asking now feels natural and is really useful.");
+  else if(scr==="levelup")testing=T("Level up","Make the payoff visible: a new feature unlocks, and the top pick often changes on the spot.");
+  else if(scr==="bonusIntro"||scr==="levelDone"||S.bonus){phaseHTML=`<span class="on">Level ${S.tl}</span><span>Bonus round</span>`;testing=T(S.bonus?BONUS[S.bonus.type].name:scr==="levelDone"?`Level ${S.tl} complete`:"Bonus round coming up",S.bonus?BONUS[S.bonus.type].teach:"Every level = 6 regular picks + 1 bonus round. The bonus format rotates, so training never feels like the same screen forever. Chapters (big unlocks) come from how well I know you, not from how many levels you play.")}
+  else if(scr==="games"){phaseHTML='<span class="on">Games</span>';testing=T("The arcade","A separate world with its own look. Every game feeds the same taste profile, each from a different angle. Every game has 5 levels, so there's always a next thing to play.")}
+  else if(inGame){const d=G(S.game.id);phaseHTML=`<span class="on">Game · ${esc(d.name)}</span>`;testing=T(`What ${esc(d.name)} teaches the brain`,d.teach)}
+  else if(scr==="tonight")testing=T("Tonight's picks",knowledge()<.2?"Locked until 20%. Showing picks with 5% knowledge would just be popular titles in disguise, and that breaks trust on day one.":"Ranked from the profile. Every reason line is backed by something the user did.");
+  else testing=T("Profile","Everything shown here is backed by things the user did. Nothing is guessed out of thin air.");
+  const crews=Object.entries(S.crew).filter(([,v])=>v>=.9).sort((x,y)=>y[1]-x[1]);
+  const gl=GENRES.filter(g=>S.gen[g.id]!==0).sort((x,y)=>S.gen[y.id]-S.gen[x.id]);
+  curtain.innerHTML=`
+  <div class="panel"><h3>Behind the curtain</h3><div class="phase">${phaseHTML}</div>${testing}</div>
+  ${S.screen==="bonus"&&S.cup?bracketPanel():""}
+  ${(inGame&&S.game.id==="bet")||S.betHistory.length?calibPanel():""}
+  <div class="panel"><h3>What WTW believes so far</h3>
+    <div class="axes">${[...AX,...OPT.filter(a=>S.sw[a]>0)].map(a=>axisRow(a)).join("")}</div>
+    <div class="conf-note">Dot position = which way they lean. Brighter dot = more confident.${S.crowdN?` · Trusts critics & crowd: ${S.crowdTrust>=0?"+":""}${S.crowdTrust.toFixed(1)}`:""}</div>
+  </div>
+  <div class="panel"><h3>Genres</h3>${gl.length?`<div class="chips">${gl.map(g=>`<span class="chip ${S.gen[g.id]<=-5?'neg':S.gen[g.id]<1?'neu':''}">${g.n}${S.gen[g.id]>-5?` · ${S.gen[g.id]>0?"+":""}${S.gen[g.id].toFixed(1)}`:""}</span>`).join("")}</div>`:`<div class="empty-note">Set on the genre screen, then fine-tuned by every pick.</div>`}</div>
+  <div class="panel"><h3>Creators they trust</h3>${crews.length?`<div class="chips">${crews.map(([n])=>`<span class="chip">${esc(n)}</span>`).join("")}</div>`:`<div class="empty-note">Shows up after a couple of picks from the same director, writer or studio.</div>`}</div>
+  ${Object.keys(S.seenWith).length?`<div class="panel"><h3>Watched with</h3><div class="chips">${Object.entries(S.seenWith).map(([t,w])=>`<span class="chip ${w==="kids"?"neu":""}">${esc(t)} · ${w==="kids"?"with the kids":w==="both"?"me + kids":w==="me"?"for me":"not seen"}</span>`).join("")}</div><div class="conf-note">"With the kids" titles count as seen, but not as personal taste.</div></div>`:""}
+  <div class="panel"><h3>Signal log</h3>${S.log.length?`<div class="log">${S.log.slice(0,14).map(l=>`<div>${esc(l)}</div>`).join("")}</div>`:`<div class="empty-note">Every tap is logged here as a taste signal.</div>`}</div>`;
+}
+function calibPanel(){
+  const h=S.betHistory.slice(-8).reverse(),hits=S.betHistory.filter(x=>x.pred===x.r).length;
+  return `<div class="panel"><h3>The Bet · calibration</h3>
+    <div class="calib"><div class="h"><span>Title</span><span>Bet</span><span>Real</span><span>Point</span></div>
+    ${h.length?h.map(x=>`<div><span>${esc(x.t)}</span><span>${x.pred}★</span><span>${x.r}★</span><span>${x.pred===x.r?"WTW":"You"}</span></div>`).join(""):`<div><span class="empty-note">No bets yet</span></div>`}</div>
+    <div class="conf-note">Exact calls: ${S.betHistory.length?Math.round(hits/S.betHistory.length*100):0}% · Rating habit learned: ${S.betBias>=0?"+":""}${S.betBias.toFixed(2)}★ ${Math.abs(S.betBias)>.3?(S.betBias>0?"(rates generously)":"(tough critic)"):""}</div></div>`;
+}
+
+/* ============ render ============ */
+const phone=document.getElementById("phone");
+function render(){
+  host.innerHTML="";
+  const arcade=S.screen==="games"||S.screen==="game";
+  phone.classList.toggle("arcade",arcade);
+  phone.style.setProperty("--gacc",S.screen==="game"?G(S.game.id).acc:"#8f7bff");
+  ({intro:renderIntro,setup:renderSetup,duel:renderDuel,mirror:renderMirror,huh:renderHuh,levelup:renderLevelUp,tonight:renderTonight,hub:renderHub,games:renderGames,game:renderGame,stub:renderStub,bonusIntro:renderBonusIntro,bonus:()=>koRender(bonusTop()),levelDone:renderLevelDone}[S.screen])();
+  // only animate when the screen actually changes, not on every tap
+  const key=S.screen+"|"+(S.game?S.game.phase:"")+"|"+(S.bonus?S.bonus.type:"");
+  if(key===render._k){const sc=host.querySelector(".screen");if(sc)sc.style.animation="none"}
+  render._k=key;
+  if(S.menu)host.insertAdjacentHTML("beforeend",menuHTML());
+  if(S.screen==="duel"&&S.bonus?.type==="lightning")lightningTick();else clearInterval(LT);
+  host.querySelectorAll("[data-menu]").forEach(b=>b.onclick=()=>{S.menu=true;render()});
+  host.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>{S.menu=false;render()});
+  host.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+  drawCurtain();
+}
+function renderStub(){
+  host.innerHTML=`<div class="screen">${mainTop()}<div class="stub"><div><b style="color:var(--fg);font-size:17px">${S.stub==="watchlist"?"Watchlist":"Settings"}</b><p>Not part of this prototype.</p></div></div></div>`;
+}
+function recRows(recs){
+  const crews=Object.entries(S.crew).filter(([,v])=>v>=1.5).map(([n])=>n);
+  const maxS=Math.max(.01,recs[0]?.s||.01);
+  const reason=r=>{
+    if(r.t.crew&&crews.includes(r.t.crew))return `It's ${r.t.crew}, and you trust them.`;
+    const [x,y]=r.parts.filter(p=>p.k>0);
+    if(x&&y)return `${LBL[x.a][val(r.t,x.a)>0?1:0]} and ${LBL[y.a][val(r.t,y.a)>0?1:0].toLowerCase()}, right in your zone.`;
+    return "Close to what you picked.";
+  };
+  return `<div class="recs">${recs.map(r=>`<div class="rec">${posterHTML(r.t)}<div style="min-width:0"><b>${esc(r.t.t)}</b><span>${r.t.y}${r.t.k==="tv"?" · Series":""} · <span class="m" style="display:inline">${Math.round(72+25*(r.s/maxS))}% match</span></span><p>${esc(reason(r))}</p></div></div>`).join("")}</div>`;
+}
+function lockedPicks(){
+  const k=knowledge();
+  return `<div class="locked-card"><b>Your picks unlock at 20%</b><span>You're at ${Math.round(k*100)}%. Before that, they'd just be popular titles in disguise.</span>
+    <div class="row-btns" style="width:100%"><button class="opt primary" data-go="duel">Train my taste</button><button class="opt" data-go="games">Play a game</button></div></div>`;
+}
+function renderTonight(){
+  const k=knowledge();
+  host.innerHTML=`<div class="screen">${mainTop()}${meterHTML()}
+    <div class="home-head"><h2>${k<.2?"Tonight's picks":headline()}</h2><p>${k<.2?"Almost there.":"Based on everything you've told me."}</p></div>
+    <div class="reveal">${k<.2?lockedPicks():recRows(topRecs(5))}</div></div>`;
+}
+function headline(){
+  const d=new Date(),h=d.getHours(),day=d.getDay();
+  if(day===5&&h>=16)return "Friday night. Here's what I've got.";
+  if(day===0||day===6)return "Weekend picks for you";
+  return h>=17||h<5?"Tonight's picks for you":"Picks for you";
+}
+function renderHub(){
+  S.revealed=true;
+  const k=knowledge(),li=levelIdx(k);
+  const ranked=AX.map(a=>({a,s:Math.abs(est(a))*conf(a)})).sort((x,y)=>y.s-x.s);
+  const [p1,p2]=ranked;
+  const early=k<.15;
+  const name=early?"Still getting to know you":`The ${ADJ[p1.a][est(p1.a)>0?1:0]} ${NOUN[p2.a][est(p2.a)>0?1:0]}`;
+  const auto=ranked.slice(0,3).filter(r=>r.s>.12).map(r=>SAY[r.a][est(r.a)>0?1:0]).filter(t=>!S.truths.includes(t));
+  const truths=[...S.truths,...auto].slice(0,4);
+  const crews=Object.entries(S.crew).filter(([,v])=>v>=1.5).sort((x,y)=>y[1]-x[1]).map(([n])=>n);
+  host.innerHTML=`<div class="screen">${mainTop()}${meterHTML()}
+    <div class="reveal">
+      <div class="id-card">
+        <div class="eyebrow">Your viewer profile</div>
+        <h2 ${early?'style="font-size:32px"':""}>${esc(name)}</h2>
+        ${truths.length?`<ul class="truths">${truths.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:`<p style="margin:0;color:var(--muted);font-size:13px">A few more picks and I'll have things to say about you.</p>`}
+        ${S.editing?editAxesHTML():`<div class="axes">${ranked.slice(0,4).map(r=>axisRow(r.a)).join("")}</div>`}
+        ${crews.length?`<div style="font-size:12.5px;color:var(--muted)">Creators you trust: <span style="color:var(--fg)">${crews.map(esc).join(", ")}</span></div>`:""}
+      </div>
+      <div class="row-btns"><button class="opt primary" id="share">Share my profile</button><button class="opt" id="fix">${S.editing?"Done":"Something's off"}</button></div>
+      <div class="sec-title">Tonight you might love</div>
+      ${k<.2?lockedPicks():recRows(topRecs(3))}
+      <div class="sec-title">Your chapters</div>
+      <div class="ladder">${LEVELS.map((l,i)=>`<div class="rung ${i<=li?'got':'locked'} ${i===li?'now':''}"><span class="n">${i+1}</span><div><b>${esc(l.n)}</b><span>${esc(l.u)}</span></div><span class="s">${i<=li?"Unlocked":Math.round(l.min*100)+"%"}</span></div>`).join("")}</div>
+    </div></div>`;
+  $("#share").onclick=()=>toast("In the real app: a shareable card");
+  $("#fix").onclick=()=>{S.editing=!S.editing;render()};
+  host.querySelectorAll('input[type="range"]').forEach(r=>r.onchange=()=>{
+    const a=r.dataset.a,v=r.value/100,sc=host.querySelector(".screen").scrollTop;
+    S.sw[a]=Math.max(S.sw[a],10);S.sv[a]=v*S.sw[a];
+    S.log.unshift(`You set ${LBL[a][0]} ↔ ${LBL[a][1]} yourself. Your word beats my guesses`);
+    toast("Updated. Your picks follow.");render();host.querySelector(".screen").scrollTop=sc;
+  });
+}
+
+/* ============ games: registry ============ */
+const GAMES=[
+  {id:"bet",name:"The Bet",kind:"test",icon:"B",acc:"#7b8cff",blurb:"I guess your rating before you give it.",need:2,
+   rules:["I secretly lock in how many stars I think you'd give a title.","You rate it. Haven't seen it? Skip, no points.","If I nail your exact rating, I score. If I miss, you score.","First to the target wins the match."],
+   levels:["First to 3","First to 4","Series join in","Deep cuts","First to 5, no mercy"],
+   teach:"Real ratings on titles they've seen, plus how this person uses stars (generous or tough). Misses teach the most: the profile shifts toward what they actually felt."},
+  {id:"blind",name:"Blind Taste Test",kind:"teach",icon:"?",acc:"#3ddc97",blurb:"Just the story. No title, no poster, no hype.",
+   rules:["I show you a fair, honest plot. No title, no poster.","Would you watch it? Yes or pass.","Then I reveal what it was, with a real fun fact.","From chapter 3, I start predicting your answers too."],
+   levels:["6 plots","8 plots","Series plots","Cult classics","Foreign gems"],
+   teach:"What they like about the story itself, without fame or branding. Works on titles they haven't seen, and shows whether reputation sways them."},
+  {id:"other",name:"The Other Side of the Story",kind:"teach",icon:"O",acc:"#ff5fa2",blurb:"Famous stories, told by a side character.",
+   rules:["Each clue is the same story told by a different character.","Guess the title any time. A wrong guess unlocks the next clue.","Clue 1 = 5 points, clue 5 = 1 point.","Then tell me if you watched it for you or with the kids."],
+   levels:["3 classics","Family favourites","Series edition","Villains only","Expert: extras and pets"],
+   teach:"Recognition = seen it, and recognising early = knows it well. Asking 'for you or with the kids' keeps family viewing from polluting personal taste."},
+  {id:"rank",name:"Overrated / Underrated",kind:"teach",icon:"#",acc:"#ffd23d",blurb:"The crowd ranked them. Do you agree?",
+   rules:["You see a title and where the crowd ranks it.","Overrated, spot on, or underrated?","Then see how other players voted.","Find out how much of a contrarian you are."],
+   levels:["All-time top list","Box-office hits","Critics' darlings","Cult favourites","Award winners"],
+   teach:"How much this person agrees with critics and crowds. The engine already blends critic scores into picks, so this tells it how much to trust them for this person."},
+  {id:"mind",name:"Mind Reader",kind:"test",need:2,icon:"M",acc:"#b46bff",blurb:"I pick for you. Tell me if I'm right.",
+   rules:["I show two titles and secretly pick the one I think you'd choose.","Then I reveal my guess.","Tell me: right or wrong.","How many can I read?"],
+   levels:["8 rounds","10 rounds","Series edition","Tough pairs","12 rounds, no hints"],
+   teach:"A live accuracy check. Right answers confirm the profile, wrong answers are pure gold: the profile corrects itself exactly where it was weakest."},
+  {id:"ending",name:"Choose the Ending",icon:"E",acc:"#5fd3ff",blurb:"Happy, bittersweet or dark? You're the writer.",soon:true},
+  {id:"night",name:"Movie Night Planner",icon:"N",acc:"#ff7a7a",blurb:"Friday, exhausted, partner picks snacks. Go.",soon:true},
+  {id:"upgrade",name:"Upgrade",icon:"U",acc:"#9be15d",blurb:"Pick one of four. I'll show you three you'll like more.",soon:true},
+  {id:"recast",name:"Recast",icon:"R",acc:"#f0a35e",blurb:"Who would you rather see in this role?",soon:true},
+];
+const G=id=>GAMES.find(g=>g.id===id);
+function gameLocked(d){return d.need!==undefined&&levelIdx(knowledge())<d.need}
+function renderGames(){
+  const plays=Object.values(S.gp).reduce((s,g)=>s+g.plays,0);
+  const lvls=Object.values(S.gp).reduce((s,g)=>s+g.level,0);
+  host.innerHTML=`<div class="screen">${mainTop()}
+    <div class="lobby">
+      <div class="lobby-hero"><div class="big">Games</div><p><b style="color:var(--fg)">Teach me</b> games are open from day one. <b style="color:var(--fg)">Test me</b> games open at chapter 3, once I know enough to guess.</p></div>
+      <div class="lstats"><div><b>${plays}</b><span>GAMES PLAYED</span></div><div><b>${lvls}</b><span>LEVELS CLEARED</span></div><div><b>+${Math.round(Math.min(.1,S.gamePlays*.025)*100)}%</b><span>TASTE BONUS</span></div></div>
+      ${GAMES.map(d=>{const gp=S.gp[d.id],lock=gameLocked(d);return `<button class="gcard ${d.soon?"soon":lock?"lock":""}" data-game="${d.id}" style="--ga:${d.acc}">
+        <span class="gi">${d.icon}</span>
+        <span style="min-width:0"><b>${esc(d.name)}${d.kind?`<span class="gkind">${d.kind==="test"?"TEST ME":"TEACH ME"}</span>`:""}</b><span class="d">${esc(d.blurb)}</span>
+          ${d.soon?"":`<span class="pips">${[0,1,2,3,4].map(i=>`<i class="${i<gp.level?"on":""}"></i>`).join("")}<span>Level ${Math.min(5,gp.level+1)} of 5</span></span>`}</span>
+        <span class="go">${d.soon?"Soon":lock?"Ch. 3":"Play"}</span></button>`}).join("")}
+      <div class="proto-note">Prototype shortcut: <button id="demo">fill in a demo profile</button> to unlock everything.</div>
+    </div></div>`;
+  host.querySelectorAll("[data-game]").forEach(b=>b.onclick=()=>startGame(b.dataset.game));
+  $("#demo").onclick=()=>{seedDemo();S.screen="games";render();toast("Demo profile loaded")};
+}
+function startGame(id){
+  const d=G(id);
+  if(d.soon){toast(`${d.name} is coming soon`);return}
+  if(gameLocked(d)){toast("Unlocks at chapter 3. Keep training your taste.");return}
+  S.menu=false;S.game={id,phase:"intro",k0:knowledge()};S.screen="game";render();
+}
+function gameTop(){
+  const d=G(S.game.id),lv=S.gp[d.id].level;
+  return `<div class="topbar"><button class="hb" id="gexit" aria-label="Exit game">${IC.x}</button><div class="gtitle">${esc(d.name)}</div><button class="hb r" id="grules" aria-label="How to play">${IC.q}</button></div>
+    <div class="glevel">LEVEL <b>${Math.min(5,lv+1)}</b> · ${esc(d.levels[Math.min(4,lv)])}</div>`;
+}
+function renderGame(){
+  const d=G(S.game.id),ph=S.game.phase;
+  if(ph==="intro")renderGameIntro(d);
+  else if(ph==="over")renderGameOver(d);
+  else ({bet:betRender,blind:blindRender,other:otherRender,rank:rankRender,mind:mindRender}[d.id])();
+  const ex=$("#gexit");if(ex)ex.onclick=()=>{S.game=null;S.cup=null;S.screen="games";render()};
+  const ru=$("#grules");if(ru)ru.onclick=()=>{
+    host.insertAdjacentHTML("beforeend",`<div class="sheet-bg" id="rbg"></div><div class="sheet" role="dialog" aria-label="How to play"><h3>How to play</h3><ol class="rules">${d.rules.map(r=>`<li>${esc(r)}</li>`).join("")}</ol><button class="cta" id="rok" style="max-width:none">Got it</button></div>`);
+    $("#rbg").onclick=$("#rok").onclick=()=>{$("#rbg").remove();host.querySelector(".sheet").remove()};
+  };
+}
+function renderGameIntro(d){
+  const lv=S.gp[d.id].level;
+  let extra="";
+  if(d.id==="knockout"){
+    const opts=koOptions();S.game.kg=S.game.kg||opts[0]?.id;
+    extra=`<div style="width:100%"><div class="sec-title" style="text-align:center;margin-bottom:8px">Pick a genre</div><div class="chooser">${opts.map(g=>`<button data-kg="${g.id}" aria-pressed="${S.game.kg===g.id}">${esc(g.n)}</button>`).join("")}</div></div>`;
+  }
+  host.innerHTML=`<div class="screen">${gameTop()}
+    <div class="gintro"><div class="gbadge">${d.icon}</div><h2>${esc(d.blurb)}</h2>
+      <ol class="rules">${d.rules.map(r=>`<li>${esc(r)}</li>`).join("")}</ol>
+      ${extra}
+      <div class="lvl-list">${d.levels.map((l,i)=>`<div class="${i===Math.min(4,lv)?"now":""}"><span>Level ${i+1}</span><span>${esc(l)}${i<lv?" ✓":i===Math.min(4,lv)?" · next":""}</span></div>`).join("")}</div>
+      <button class="cta" id="gstart">Start level ${Math.min(5,lv+1)}</button>
+    </div></div>`;
+  host.querySelectorAll("[data-kg]").forEach(b=>b.onclick=()=>{S.game.kg=b.dataset.kg;render()});
+  $("#gstart").onclick=()=>{S.game.phase="play";({bet:betInit,blind:blindInit,other:otherInit,rank:rankInit,mind:mindInit}[d.id])();render()};
+}
+function endGame(summary){
+  const d=G(S.game.id),gp=S.gp[d.id];
+  gp.plays++;S.gamePlays++;
+  const before=gp.level;gp.level=Math.min(5,gp.level+1);
+  S.game.summary=summary;S.game.newLevel=gp.level>before&&gp.level<5?d.levels[gp.level]:null;
+  S.log.unshift(`Finished ${d.name} (level ${before+1}). ${summary.logline||""}`);
+  S.game.phase="over";
+}
+function renderGameOver(d){
+  const sm=S.game.summary,delta=Math.round((knowledge()-S.game.k0)*100);
+  host.innerHTML=`<div class="screen">${gameTop()}
+    <div class="gover">
+      ${sm.top||""}
+      ${sm.big?`<div class="bigscore">${esc(sm.big)}</div>`:""}
+      <h2>${esc(sm.headline)}</h2>
+      <div class="learned-box"><h4>What I learned about you</h4><ul>${sm.lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>
+      <div class="delta">How well I know you: <b>+${Math.max(1,delta)}%</b> → ${Math.round(knowledge()*100)}%</div>
+      ${S.game.newLevel?`<div class="newlvl">Level ${S.gp[d.id].level+1} unlocked: <b>${esc(S.game.newLevel)}</b></div>`:""}
+      <div class="row-btns" style="width:100%"><button class="opt primary" id="again">${S.game.newLevel?"Next level":"Play again"}</button><button class="opt" id="lobby">Back to games</button></div>
+    </div></div>`;
+  $("#again").onclick=()=>startGame(d.id);
+  $("#lobby").onclick=()=>{checkLevel();S.game=null;S.cup=null;if(S.pendingLevel){S.afterLevel="games";S.screen="levelup"}else S.screen="games";render()};
+}
+const stars=(n,cls="")=>`<span class="${cls}">${[1,2,3,4,5].map(i=>`<span class="st ${i<=n?"on":""}">★</span>`).join("")}</span>`;
+const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+const byTitle=n=>TITLES.find(t=>t.t===n)||REC.find(t=>t.t===n);
+function learnFromRating(t,dev,w){
+  for(const a of AX){const v=val(t,a);if(Math.abs(v)>.3){S.sv[a]+=v*dev*w;S.sw[a]+=Math.abs(v*dev)*w}}
+  if(t.crew)S.crew[t.crew]=(S.crew[t.crew]||0)+dev*w;
+  for(const g of t.g)if(S.gen[g]>-5)S.gen[g]=+(S.gen[g]+dev*.15*w).toFixed(2);
+}
+
+/* ============ game: The Bet ============ */
+function predict(t){
+  let s=0,cs=0;
+  for(const a of AX){s+=val(t,a)*est(a)*conf(a);cs+=conf(a)}
+  for(const a of OPT)if(t[a]!==undefined&&S.sw[a]>0){s+=t[a]*est(a)*conf(a);cs+=conf(a)}
+  if(t.crew)s+=Math.max(-1,Math.min(1.5,(S.crew[t.crew]||0)*.4));
+  s+=genreAff(t)*.5;
+  const norm=s/Math.max(1.2,cs*.45);
+  const raw=3.2+norm*1.9+S.betBias;
+  return {pred:Math.max(1,Math.min(5,Math.round(raw))),raw,norm};
+}
+function betInit(){
+  const lv=S.gp.bet.level,target=lv===0?3:lv<4?4:5;
+  const picked=new Set(S.log.filter(l=>/^Picked|beat/.test(l)).flatMap(l=>TITLES.filter(t=>l.includes(t.t)).map(t=>t.id)));
+  const done=new Set(S.betHistory.map(x=>x.id));
+  const okKind=t=>lv>=2||t.k==="m"||S.format==="series";
+  let pool=TITLES.filter(t=>allowed(t)&&!done.has(t.id)&&!S.unseen.has(t.id)&&okKind(t));
+  pool=lv>=3?shuffle(pool.filter(t=>t.pop<.65)).concat(shuffle(pool.filter(t=>t.pop>=.65))):[...shuffle(pool.filter(t=>picked.has(t.id))),...pool.filter(t=>!picked.has(t.id)).sort((x,y)=>y.pop-x.pop)];
+  S.game.b={wtw:0,you:0,target,queue:pool,cur:null,step:"rate",played:0,hits:0,skips:0};
+  betNext();
+}
+function betNext(){
+  const b=S.game.b;
+  if(b.wtw>=b.target||b.you>=b.target||!b.queue.length){
+    const won=b.wtw>b.you;
+    endGame({big:`${b.wtw}–${b.you}`,headline:won?"WTW wins. I know you better than you think.":b.you>b.wtw?"You win. Every miss taught me something.":"A draw.",
+      lines:[`I called ${b.hits} of ${b.played} ratings exactly.`,Math.abs(S.betBias)>.3?(S.betBias>0?"You rate generously. My future bets will lean higher.":"You're a tough critic. My future bets will lean lower."):"Your star ratings are about where I'd expect.","Every rating pulled your profile toward what you actually felt."],
+      logline:`Bet match ${b.wtw}–${b.you}`});
+    return;
+  }
+  b.cur=b.queue.shift();b.P=predict(b.cur);b.step="rate";b.r=0;
+}
+function betRender(){
+  const b=S.game.b,t=b.cur;
+  const dots=n=>`<span class="dots">${Array.from({length:b.target},(_,i)=>`<i class="${i<n?"on":""}"></i>`).join("")}</span>`;
+  const board=`<div class="score"><div class="sc wtw"><small>WTW</small><b>${b.wtw}</b>${dots(b.wtw)}</div><div class="sc-mid"><b>First to ${b.target}</b>Exact rating = WTW<br>Anything else = you</div><div class="sc you"><small>YOU</small><b>${b.you}</b>${dots(b.you)}</div></div>`;
+  let body;
+  if(b.step==="rate"){
+    body=`<div class="bet-stage"><div class="bet-poster">${posterHTML(t)}</div><h2>${esc(t.t)}</h2><p class="q">${t.y}${t.k==="tv"?" · Series":""}</p>
+      <div class="envelope">\u{1F512} My bet is locked in. How many stars would you give it?</div>
+      <div class="rate" role="group" aria-label="Your rating">${[1,2,3,4,5].map(i=>`<button data-r="${i}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("")}</div>
+      <button class="ghost" id="nosee">Didn't see it</button></div>`;
+  } else {
+    const R=b.res;
+    body=`<div class="bet-stage"><div class="bet-poster" style="width:92px">${posterHTML(t)}</div><h2>${esc(t.t)}</h2>
+      <div class="compare"><div><small>My bet</small><b>${stars(R.pred)}</b></div><div class="you"><small>You said</small><b>${stars(R.r,"you-stars")}</b></div></div>
+      <div class="point ${R.kind}">${R.kind==="wtw"?"Point to WTW":"Point to you"}</div>
+      <p class="q">${R.kind==="wtw"?"Exact match. Called it.":`I said ${R.pred}, you said ${R.r}. ${Math.abs(R.pred-R.r)===1?"So close, but exact is the rule.":"Missed. Learning from this one."}`}${R.note?` ${esc(R.note)}`:""}</p>
+      <button class="cta" id="nextb">${b.wtw>=b.target||b.you>=b.target?"See the result":"Next title"}</button></div>`;
+  }
+  host.innerHTML=`<div class="screen">${gameTop()}${board}${body}</div>`;
+  host.querySelectorAll(".rate button").forEach(btn=>{
+    btn.onmouseenter=()=>host.querySelectorAll(".rate button").forEach(x=>x.classList.toggle("hov",+x.dataset.r<=+btn.dataset.r));
+    btn.onclick=()=>betSettle(+btn.dataset.r);
+  });
+  const rate=host.querySelector(".rate");if(rate)rate.onmouseleave=()=>host.querySelectorAll(".rate button").forEach(x=>x.classList.remove("hov"));
+  const ns=$("#nosee");if(ns)ns.onclick=()=>{S.unseen.add(t.id);b.skips++;S.log.unshift(`The Bet: hasn't seen ${t.t}. Skipped, no points`);betNext();render()};
+  const nb=$("#nextb");if(nb)nb.onclick=()=>{betNext();render()};
+}
+function betSettle(r){
+  const b=S.game.b,t=b.cur,{pred,raw}=b.P;
+  const kind=r===pred?"wtw":"you";
+  if(kind==="wtw"){b.wtw++;b.hits++}else b.you++;
+  b.played++;
+  const oldBias=S.betBias;
+  S.betBias=+(S.betBias+(r-raw)*.3).toFixed(2);
+  learnFromRating(t,(r-3)/2,.6);
+  S.betHistory.push({id:t.id,t:t.t,pred,r});
+  let note="";
+  if(Math.abs(S.betBias)>.3&&Math.abs(S.betBias)-Math.abs(oldBias)>.2)note=S.betBias>0?"You rate generously. Adjusting.":"Tough critic. Adjusting.";
+  b.res={pred,r,kind,note};b.step="result";
+  S.log.unshift(`The Bet: ${t.t}. Bet ${pred}★, rated ${r}★. Point to ${kind==="wtw"?"WTW":"you"}`);
+  render();
+}
+
+/* ============ game: Knockout ============ */
+const RNAME={32:["Round of 32","Round of 16","Quarter-finals","Semi-finals","Final"],16:["Round of 16","Quarter-finals","Semi-finals","Final"],8:["Quarter-finals","Semi-finals","Final"]};
+function koOptions(){
+  const pick=gs=>gs.map(g=>({...g,n:g.n,cnt:TITLES.filter(t=>t.g.includes(g.id)&&!t.g.some(x=>S.gen[x]<=-5)).length})).filter(o=>o.cnt>=8);
+  const mine=pick(GENRES.filter(g=>loves().includes(g.id)));
+  return mine.length?mine:pick(GENRES.filter(g=>S.gen[g.id]>-5));
+}
+function koInit(gid,lv){
+  const g=GENRES.find(x=>x.id===gid);
+  let pool=TITLES.filter(t=>t.g.includes(gid)&&!t.g.some(x=>S.gen[x]<=-5));
+  if(lv<2&&pool.filter(t=>t.k==="m").length>=8)pool=pool.filter(t=>t.k==="m");
+  pool.sort((x,y)=>y.pop-x.pop);
+  const size=lv>=1&&pool.length>=16?16:8;
+  let axis="humor";
+  if(gid!=="comedy"||pool.filter(t=>t.humor!==undefined).length<size){
+    let bv=-1;for(const a of AX){const vs=pool.slice(0,size).map(t=>val(t,a)),m=vs.reduce((s,x)=>s+x,0)/vs.length,v=vs.reduce((s,x)=>s+(x-m)**2,0);if(v>bv){bv=v;axis=a}}
+  }
+  const main=pool.filter(t=>val(t,axis)!==undefined).slice(0,size);
+  const reserves=pool.filter(t=>!main.includes(t)&&val(t,axis)!==undefined);
+  main.sort((x,y)=>val(x,axis)-val(y,axis));
+  const ms=[];for(let i=0;i<size/2;i++)ms.push({a:main[i],b:main[size-1-i],pitch:false});
+  shuffle(ms).forEach((m,i)=>{if(Math.random()<.5)[m.a,m.b]=[m.b,m.a];ms[i]=m});
+  S.cup={gid,name:`${g.n} Knockout`,axis,size,r:0,rounds:[shuffle(ms)],mi:0,reserves,wins:{hi:0,lo:0},crewWins:{},step:"match"};
+  S.log.unshift(`Started ${S.cup.name}. Round 1 pairs opposite ends of ${TEST[axis]}`);
+}
+function koRender(topHTML){
+  const C=S.cup,names=RNAME[C.size];
+  if(C.step==="round"){
+    const surv=C.rounds[C.r].flatMap(m=>[m.a,m.b]),n=surv.length;
+    const hiN=surv.filter(t=>val(t,C.axis)>.3).length,loN=surv.filter(t=>val(t,C.axis)<-.3).length;
+    const insight=hiN>loN?`${hiN} of ${n} lean ${LBL[C.axis][1].toLowerCase()}.`:loN>hiN?`${loN} of ${n} lean ${LBL[C.axis][0].toLowerCase()}.`:"An even mix so far.";
+    host.innerHTML=`<div class="screen">${topHTML}<div class="inter"><div class="eyebrow">${esc(C.name)}</div><h2>${names[C.r]}</h2><div class="evidence">${n} left standing. ${insight}</div>
+      <div class="survivors" style="grid-template-columns:repeat(${n>=8?4:n},minmax(0,1fr))">${surv.map(t=>posterHTML(t)).join("")}</div>
+      <button class="cta" id="cont">${C.r===names.length-1?"On to the final":"Continue"}</button></div></div>`;
+    $("#cont").onclick=()=>{C.step="match";render()};
+    return;
+  }
+  const m=C.rounds[C.r][C.mi],total=C.rounds[C.r].length,done=C.rounds.reduce((n,r)=>n+r.filter(x=>x.w).length,0);
+  const side=k=>{const t=m[k];return `<div class="side"><button class="pick" data-s="${k}" aria-label="${esc(t.t)} wins">${posterHTML(t,{dim:m.pitch,qm:m.pitch})}<div><div class="nm">${esc(t.t)}</div><div class="yr">${t.y}</div></div>${m.pitch?`<div class="pitch">${esc(t.pitch)}</div>`:""}</button>${m.pitch?"":`<button class="unseen" data-u="${k}">Haven't seen</button>`}</div>`};
+  host.innerHTML=`<div class="screen">${topHTML}
+    <div class="cup-head" style="padding-top:10px"><div class="cup-sub">${esc(C.name)} · ${names[C.r]}${total>1?` · Match ${C.mi+1} of ${total}`:""}</div>
+    <div class="cup-prog" aria-label="${done} of ${C.size-1} matches played">${Array.from({length:C.size-1},(_,i)=>`<i class="${i<done?'on':''}"></i>`).join("")}</div></div>
+    <div class="prompt" style="padding-top:10px"><h2>${m.pitch?"Which sounds better?":C.r===names.length-1?"Crown your champion":"Which one goes through?"}</h2><p class="${S.learned?'learned':''}">${esc(S.learned||"Winner goes through.")}</p></div>
+    <div class="duel">${side("a")}${side("b")}</div></div>`;
+  host.querySelectorAll(".pick").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.s;b.classList.add("chosen");host.querySelector(`.pick[data-s="${k==="a"?"b":"a"}"]`).classList.add("lost");
+    koPick(k);setTimeout(()=>{koNext();render()},380);
+  });
+  host.querySelectorAll(".unseen").forEach(b=>b.onclick=()=>{koUnseen(b.dataset.u);render()});
+}
+function koPick(k){
+  const C=S.cup,m=C.rounds[C.r][C.mi],w=m[k],l=k==="a"?m.b:m.a,wt=m.pitch?.6:1;
+  m.w=w;
+  const d=val(w,C.axis)-val(l,C.axis);
+  if(Math.abs(d)>.3){S.sv[C.axis]+=d*wt;S.sw[C.axis]+=Math.abs(d)*wt;C.wins[d>0?"hi":"lo"]++}
+  for(const a of AX){if(a===C.axis)continue;const dd=val(w,a)-val(l,a);if(Math.abs(dd)>.6){S.sv[a]+=dd*.2*wt;S.sw[a]+=Math.abs(dd)*.2*wt}}
+  if(w.crew){S.crew[w.crew]=(S.crew[w.crew]||0)+.7;C.crewWins[w.crew]=(C.crewWins[w.crew]||0)+1}
+  genreSignal(w,l);
+  S.log.unshift(`Knockout: ${w.t} beat ${l.t}${Math.abs(d)>.3?` (${LBL[C.axis][d>0?1:0].toLowerCase()} wins)`:""}`);
+  const {hi,lo}=C.wins;
+  S.learned=hi>=3&&hi>lo*2?`${LBL[C.axis][1]} keeps winning.`:lo>=3&&lo>hi*2?`${LBL[C.axis][0]} keeps winning.`:"";
+}
+function koUnseen(k){
+  const C=S.cup,m=C.rounds[C.r][C.mi],t=m[k];
+  if(C.r===0&&C.reserves.length){
+    C.reserves.sort((x,y)=>Math.abs(val(x,C.axis)-val(t,C.axis))-Math.abs(val(y,C.axis)-val(t,C.axis)));
+    const rep=C.reserves.shift();m[k]=rep;S.learned="Swapped in a similar title.";S.log.unshift(`Knockout: hasn't seen ${t.t}, swapped in ${rep.t}`);
+  } else {m.pitch=true;S.learned="";S.log.unshift(`Knockout: hasn't seen ${t.t}. Judging by description (half weight)`)}
+}
+function koNext(){
+  const C=S.cup,names=RNAME[C.size];C.mi++;
+  if(C.mi<C.rounds[C.r].length)return;
+  if(C.r===names.length-1){
+    const f=C.rounds[C.r][0],champ=f.w,ru=f.w===f.a?f.b:f.a,{hi,lo}=C.wins,H=LBL[C.axis][1],Lo=LBL[C.axis][0];
+    const lines=[hi>lo?`${H} beat ${Lo.toLowerCase()} ${hi}–${lo} in your bracket.`:lo>hi?`${Lo} beat ${H.toLowerCase()} ${lo}–${hi} in your bracket.`:`${H} and ${Lo.toLowerCase()} split evenly.`];
+    const f4=C.rounds[Math.max(0,C.rounds.length-2)].flatMap(m=>[m.a,m.b]);
+    if(f4.every(t=>t.y>=2000))lines.push("Your final four are all from 2000 or later.");else if(f4.every(t=>t.y<2000))lines.push("Your final four are all pre-2000 classics.");
+    const cw=Object.entries(C.crewWins).sort((x,y)=>y[1]-x[1])[0];if(cw&&cw[1]>=2)lines.push(`${cw[0]} won ${cw[1]} matches.`);
+    const line=hi>lo?SAY[C.axis][1]:lo>hi?SAY[C.axis][0]:null;if(line&&!S.truths.includes(line)){S.truths.push(line);lines.push(`Added to your profile: “${line}”`)}
+    finishBonus({top:`<div class="champ" style="width:100%"><div class="eyebrow">Your champion</div><div class="champ-poster">${posterHTML(champ)}</div><h2>${esc(champ.t)}</h2><div class="ru">beat ${esc(ru.t)} in the final</div></div>`,
+      headline:`${C.name}: done`,lines});
+    return;
+  }
+  const ws=C.rounds[C.r].map(x=>x.w),next=[];
+  for(let i=0;i<ws.length;i+=2)next.push({a:ws[i],b:ws[i+1],pitch:false});
+  C.rounds.push(next);C.r++;C.mi=0;C.step="round";
+}
+function bracketPanel(){
+  const C=S.cup,heads={16:["R16","QF","SF","FINAL"],8:["QF","SF","FINAL"]}[C.size];
+  return `<div class="panel"><h3>Bracket</h3><div class="bracket-cols" style="grid-template-columns:repeat(${heads.length},minmax(96px,1fr))">${C.rounds.map((r,ri)=>`<div class="bcol"><div class="bhead">${heads[ri]}</div>${r.map(m=>`<div class="bm"><span class="${m.w===m.a?'win':m.w?'lose':''}">${esc(m.a.t)}</span><span class="${m.w===m.b?'win':m.w?'lose':''}">${esc(m.b.t)}</span></div>`).join("")}</div>`).join("")}</div></div>`;
+}
+
+/* ============ game: Blind Taste Test ============ */
+// Fair, honest plots: someone who has seen the film should nod along. Only the title and the hype are hidden.
+const BLIND=[
+  ["Parasite","A broke family cons its way, one job at a time, into working for a rich family. Then they find out the house has a secret of its own.","It was the first film not in English to win the Oscar for Best Picture."],
+  ["The Social Network","A brilliant, socially awkward student builds a website that takes over the world, and loses his only real friend on the way. Told through two lawsuits.","Armie Hammer played both Winklevoss twins. Another actor stood in as the second twin, and Hammer's face was digitally put on him."],
+  ["Mad Max: Fury Road","In a desert wasteland, a drifter and a rebel truck driver help a tyrant's captive wives escape. The whole film is basically one long chase.","It won six Oscars, more than any other film that night, including Best Film Editing."],
+  ["Arrival","Giant alien ships appear around the world. A linguist is brought in to figure out how to talk to them before the world panics.","It's based on Ted Chiang's short story \u201cStory of Your Life\u201d."],
+  ["Knives Out","A rich crime novelist dies the night after his birthday party. A detective questions his greedy family, and the nurse who physically can't lie.","Rian Johnson's script was nominated for the Oscar for Best Original Screenplay."],
+  ["Whiplash","A young jazz drummer at an elite music school is pushed to breaking point by a teacher who believes cruelty creates greatness.","J.K. Simmons won the Oscar for Best Supporting Actor. The film started life as a short, made to convince investors."],
+  ["The Big Lebowski","A lazy, bowling-obsessed slacker gets mistaken for a millionaire with the same name and dragged into a kidnapping scheme. He mostly wants his rug back.","The Dude was partly inspired by Jeff Dowd, a real film producer and activist the Coen brothers knew."],
+  ["Groundhog Day","A cynical TV weatherman gets stuck reliving the same day in a small town, over and over, until he finally gets it right.","The town is Punxsutawney, Pennsylvania, but it was filmed in Woodstock, Illinois."],
+  ["Get Out","A young Black man visits his white girlfriend's parents for the weekend. They're very welcoming. Too welcoming.","Jordan Peele won the Oscar for Best Original Screenplay, the first Black screenwriter to win that award."],
+  ["Spirited Away","A sulky ten-year-old wanders into a world of spirits and has to work in a bathhouse for gods to save her parents, who've been turned into pigs.","It won the Oscar for Best Animated Feature, and was the first animated film to win the Golden Bear at the Berlin Film Festival."],
+];
+function blindInit(){
+  const n=S.gp.blind.level===0?6:8;
+  const pool=shuffle(BLIND.filter(([t])=>{const x=byTitle(t);return x&&!x.g.some(g=>S.gen[g]<=-5)})).slice(0,n);
+  S.game.bl={items:pool,i:0,step:"plot",watched:0,surprises:0,passedFamous:[]};
+}
+function blindRender(){
+  const B=S.game.bl,[name,plot,fact]=B.items[B.i],t=byTitle(name),predicting=levelIdx(knowledge())>=2;
+  const top=`<div class="ptsrow" style="padding:4px 22px 0"><span>Plot ${B.i+1} of ${B.items.length}</span><span>Would watch: <b>${B.watched}</b></span></div>`;
+  let body;
+  if(B.step==="plot"){
+    body=`<div class="bet-stage"><div class="plot-card"><small>The story</small><p>${esc(plot)}</p></div>
+      <p class="q">Would you watch this?</p>
+      <div class="row-btns" style="width:100%"><button class="opt primary" id="yes">I'd watch it</button><button class="opt" id="no">Pass</button></div></div>`;
+  } else {
+    const R=B.res;
+    body=`<div class="bet-stage"><div class="eyebrow">It was…</div><div class="bet-poster">${posterHTML(t)}</div><h2>${esc(t.t)}</h2><p class="q">${t.y}${t.k==="tv"?" · Series":""}</p>
+      <div class="plot-card" style="padding:14px 16px"><p style="font-size:14px">${R.watch?"You'd watch it.":"You passed."} ${!R.predicting?"Noted.":R.surprise?`That surprised me. I'd have bet you'd ${R.predWatch?"go for it":"pass"}.`:"Just as I predicted."}</p></div>
+      ${fact?`<div class="fact"><small>Did you know?</small><p>${esc(fact)}</p></div>`:""}
+      <button class="cta" id="nx">${B.i+1<B.items.length?"Next plot":"See results"}</button></div>`;
+  }
+  host.innerHTML=`<div class="screen">${gameTop()}${top}${body}</div>`;
+  const ans=watch=>{
+    const P=predict(t),predWatch=P.raw>=3.4,surprise=predicting&&predWatch!==watch;
+    if(watch)B.watched++;if(surprise)B.surprises++;if(!watch&&t.pop>=.7)B.passedFamous.push(t.t);
+    learnFromRating(t,watch?.6:-.6,.5);
+    B.res={watch,predWatch,surprise,predicting};B.step="reveal";if(predicting)B.predicted=(B.predicted||0)+1;
+    S.log.unshift(`Blind Taste Test: ${watch?"would watch":"passed on"} ${t.t} (title hidden)${surprise?". Surprised me":""}`);
+    render();
+  };
+  if($("#yes"))$("#yes").onclick=()=>ans(true);
+  if($("#no"))$("#no").onclick=()=>ans(false);
+  if($("#nx"))$("#nx").onclick=()=>{B.i++;B.step="plot";if(B.i>=B.items.length){
+    const n=B.items.length,right=n-B.surprises;
+    endGame({big:`${B.watched}/${n}`,headline:B.predicted?`You'd watch ${B.watched} of ${n} stories. I predicted ${B.predicted-B.surprises} of your answers.`:`You'd watch ${B.watched} of ${n} stories.`,
+      lines:[!B.predicted?"I'm not guessing your answers yet. From chapter 3 I'll start predicting them.":B.surprises?`${B.surprises} answer${B.surprises>1?"s":""} surprised me. That's where your profile just got sharper.`:"No surprises. Your profile is on the money.",
+        B.passedFamous.length?`You passed on ${B.passedFamous.join(" and ")} without the name attached. Reputation doesn't sway you much.`:"You judge stories on their own merits.",
+        "Story preferences now count for more in your picks."],logline:`would watch ${B.watched}/${n}`});
+  }render()};
+}
+
+/* ============ game: The Other Side of the Story ============ */
+const OTHER=[
+  {a:"Home Alone",y:1990,c:[["The neighbour","Everyone on my street thinks I'm a murderer. This Christmas, a little boy finally said hello to me at church."],["The dad","We overslept, barely made the flight, landed in Paris. Something felt off the whole way."],["The mom","I spent days trying to get home for the holidays and ended up crossing the Midwest with a polka band."],["One of the burglars","Simple holiday job: empty houses on a quiet street. One house fought back. Hard."],["The kid","My family forgot me for Christmas. Best. Week. Ever."]]},
+  {a:"Die Hard",y:1988,c:[["The limo driver","I drove a guy from the airport to an office party and waited in the garage all night. Missed everything, apparently."],["A cop on the night shift","Quiet Christmas Eve. Then one call about a tower, and I spent the night talking to a stranger on a radio."],["The wife","My office Christmas party was ruined, and my estranged husband would not stop showing off."],["The man with the plan","A flawless, carefully planned job in an office tower. One barefoot guest ruined everything."],["The hero","Flew in for Christmas to fix my marriage. Had to fix a building instead."]]},
+  {a:"Jurassic Park",y:1993,c:[["The IT guy","Underpaid, overworked, so I took a side gig. Then the weather turned."],["The lawyer","I was sent to check a client's island project for the investors. I spent the most important moment of my career in a bathroom."],["The grandkids","Visiting grandpa's new park was the best weekend ever, until the tour cars stopped."],["The owner","I spared no expense on my new family attraction. The reviews were mixed."],["The scientist","A paleontologist who can't stand kids gets invited to approve a theme park. He ends up babysitting two of them."]]},
+];
+const ALLNAMES=[...new Set([...TITLES,...REC].map(t=>t.t).concat(OTHER.map(o=>o.a),["Home Alone 2","Jaws","Jumanji","Die Hard 2","Lethal Weapon","Speed","The Lost World"]))];
+const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,"");
+function otherInit(){S.game.ot={items:shuffle(OTHER),i:0,clue:1,step:"guess",total:0,results:[]}}
+function otherRender(){
+  const O=S.game.ot,P=O.items[O.i],pts=6-O.clue;
+  const top=`<div class="ptsrow" style="padding:4px 22px 0"><span>Story ${O.i+1} of ${O.items.length}</span><span>Points: <b>${O.total}</b></span></div>`;
+  let body;
+  if(O.step==="guess"){
+    body=`<div class="bet-stage" style="gap:10px"><div class="clues">${P.c.slice(0,O.clue).map(([who,txt],i)=>`<div class="clue"><small>Clue ${i+1} · ${esc(who)}</small><p>${esc(txt)}</p></div>`).join("")}
+      ${O.clue<5?`<div class="clue locked">${5-O.clue} more clue${5-O.clue>1?"s":""} hidden</div>`:""}</div>
+      <p class="q">Guess now for <b style="color:var(--gold)">${pts} point${pts>1?"s":""}</b></p>
+      <form class="guess" id="gf"><input id="gin" placeholder="Type a title" autocomplete="off" aria-label="Your guess"><button type="submit">Guess</button></form>
+      <div class="sugg" id="sugg"></div>
+      ${O.clue<5?`<button class="ghost" id="more">Next clue (worth ${pts-1})</button>`:`<button class="ghost" id="give">I give up</button>`}</div>`;
+  } else {
+    const ok=O.step==="seen";
+    body=`<div class="bet-stage"><div class="eyebrow">${ok?`Correct! +${O.last} point${O.last>1?"s":""}`:"It was…"}</div>
+      <div class="bet-poster">${posterHTML({t:P.a,y:P.y,k:"m"})}</div><h2>${esc(P.a)}</h2><p class="q">${ok?`You got it on clue ${O.clue}.`:"No points this time."} One quick thing:</p>
+      <div class="opts"><button class="opt" data-w="me">I watched it for me</button><button class="opt" data-w="kids">With the kids</button><button class="opt" data-w="both">Both</button><button class="skip" data-w="never">Never seen it</button></div></div>`;
+  }
+  host.innerHTML=`<div class="screen">${gameTop()}${top}${body}</div>`;
+  const gin=$("#gin");
+  const sugg=()=>{const q=norm(gin.value);$("#sugg").innerHTML=q.length<2?"":ALLNAMES.filter(n=>norm(n).includes(q)).slice(0,4).map(n=>`<button type="button" data-n="${esc(n)}">${esc(n)}</button>`).join("");
+    host.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{gin.value=b.dataset.n;submit()})};
+  const submit=()=>{
+    const g=gin.value.trim();if(!g)return;
+    if(norm(g)===norm(P.a)){O.last=6-O.clue;O.total+=O.last;O.results.push({a:P.a,clue:O.clue});O.step="seen";S.log.unshift(`Other Side: recognised ${P.a} on clue ${O.clue}`);render()}
+    else{toast("Not quite");if(O.clue<5){O.clue++;render()}else{const f=$("#gf");f.classList.remove("shake");void f.offsetWidth;f.classList.add("shake");gin.value=""}}
+  };
+  if(gin){gin.oninput=sugg;$("#gf").onsubmit=e=>{e.preventDefault();submit()}}
+  if($("#more"))$("#more").onclick=()=>{O.clue++;render()};
+  if($("#give"))$("#give").onclick=()=>{O.results.push({a:P.a,clue:0});O.step="missed";S.log.unshift(`Other Side: didn't recognise ${P.a}`);render()};
+  host.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
+    const w=b.dataset.w;S.seenWith[P.a]=w;
+    S.log.unshift(w==="kids"?`${P.a}: seen with the kids. Counts as seen, not as personal taste`:w==="never"?`${P.a}: never seen`:`${P.a}: seen ${w==="both"?"for me and with the kids":"for me"}`);
+    O.i++;O.clue=1;O.step="guess";
+    if(O.i>=O.items.length){
+      const best=O.results.filter(r=>r.clue).sort((x,y)=>x.clue-y.clue)[0];
+      const kids=Object.values(S.seenWith).filter(v=>v==="kids"||v==="both").length;
+      endGame({big:`${O.total}/15`,headline:O.total>=11?"Movie detective.":O.total>=6?"Solid instincts.":"Tough round.",
+        lines:[best?`You knew ${best.a} on clue ${best.clue}. That's a rewatch.`:"These weren't your movies, and that's useful to know too.",
+          kids?`${kids} of these you watched with the kids. They count as seen, not as your personal taste.`:"Everything you recognised counts toward your own taste.",
+          "Anything you recognised won't be recommended to you as new."],logline:`${O.total}/15 points`});
+    }
+    render();
+  });
+}
+
+/* ============ game: Overrated / Underrated ============ */
+// Crowd ranks here are mock numbers, roughly in the spirit of an all-time top 250 list.
+const RANKS=[["The Shawshank Redemption",1],["The Godfather",2],["Pulp Fiction",8],["Inception",13],["The Matrix",16],["Se7en",19],["Interstellar",24],["Spirited Away",31],["Parasite",33],["Whiplash",46],["Alien",54],["The Shining",61],["Toy Story",83],["Up",121],["Mad Max: Fury Road",140],["Jurassic Park",158],["Groundhog Day",205],["Die Hard",62]];
+function rankInit(){
+  const pool=shuffle(RANKS.filter(([n])=>{const t=byTitle(n);return t&&!t.g.some(g=>S.gen[g]<=-5)})).slice(0,8);
+  S.game.rk={items:pool,i:0,step:"vote",votes:{over:0,spot:0,under:0},agree:0,skipped:0};
+}
+function crowdSplit(n){const h=hashN(n,1000);const spot=40+h%30,over=Math.round((100-spot)*(.3+(h%40)/100));return {over,spot,under:100-spot-over}}
+function rankRender(){
+  const R=S.game.rk,[name,rank]=R.items[R.i],t=byTitle(name);
+  const top=`<div class="ptsrow" style="padding:4px 22px 0"><span>Title ${R.i+1} of ${R.items.length}</span><span>Agreed with the crowd: <b>${R.agree}</b></span></div>`;
+  let body;
+  if(R.step==="vote"){
+    body=`<div class="bet-stage"><div class="rank-badge">#${rank}<small>on the all-time crowd list (mock)</small></div><div class="bet-poster" style="width:116px">${posterHTML(t)}</div><h2>${esc(t.t)}</h2>
+      <div class="votes"><button data-v="over"><span>↓</span>Overrated</button><button data-v="spot"><span>=</span>Spot on</button><button data-v="under"><span>↑</span>Underrated</button></div>
+      <button class="ghost" id="nosee">Haven't seen it</button></div>`;
+  } else {
+    const c=crowdSplit(name),me=R.last,top3=Object.entries(c).sort((x,y)=>y[1]-x[1])[0][0];
+    const L={over:"Overrated",spot:"Spot on",under:"Underrated"};
+    body=`<div class="bet-stage"><div class="rank-badge">#${rank}</div><h2>${esc(t.t)}</h2><p class="q">How players voted</p>
+      <div class="crowd">${["over","spot","under"].map(k=>`<div class="${k===me?"me":""}"><span>${L[k]}${k===me?" (you)":""}</span><i><em style="width:${c[k]}%"></em></i><span>${c[k]}%</span></div>`).join("")}</div>
+      <p class="q">${me===top3?"You're with the majority.":`Only ${c[me]}% agree with you. Bold.`}</p>
+      <button class="cta" id="nx">${R.i+1<R.items.length?"Next title":"See results"}</button></div>`;
+  }
+  host.innerHTML=`<div class="screen">${gameTop()}${top}${body}</div>`;
+  host.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
+    const v=b.dataset.v;R.votes[v]++;R.last=v;
+    const c=crowdSplit(name),maj=Object.entries(c).sort((x,y)=>y[1]-x[1])[0][0];if(v===maj)R.agree++;
+    S.crowdTrust=+(S.crowdTrust+(v==="spot"?.15:-.15)).toFixed(2);S.crowdN++;
+    learnFromRating(t,v==="over"?-.4:v==="under"?.5:.3,.4);
+    S.log.unshift(`Overrated/Underrated: ${t.t} (#${rank}) is ${v==="over"?"overrated":v==="under"?"underrated":"spot on"}`);
+    R.step="reveal";render();
+  });
+  const next=()=>{R.i++;R.step="vote";if(R.i>=R.items.length){
+    const n=R.items.length-R.skipped,contra=n?Math.round((R.votes.over+R.votes.under)/n*100):0;
+    endGame({big:`${contra}%`,headline:contra>=60?"Certified contrarian.":contra>=35?"You think for yourself.":"Crowd-pleaser, and proud of it.",
+      lines:[`You disagreed with the crowd's ranking ${contra}% of the time.`,R.votes.over>R.votes.under?"You find acclaimed titles overrated more than underrated.":R.votes.under>R.votes.over?"You think the crowd undersells things more often than not.":"Your disagreements go both ways.",
+        contra>=50?"I'll lean less on critic and crowd scores when I pick for you.":"Critic and crowd scores are a good guide for you, so I'll keep using them."],logline:`contrarian ${contra}%`});
+  }render()};
+  if($("#nx"))$("#nx").onclick=next;
+  if($("#nosee"))$("#nosee").onclick=()=>{R.skipped++;S.unseen.add(t.id);S.log.unshift(`Overrated/Underrated: hasn't seen ${t.t}`);next()};
+}
+
+/* ============ game: Mind Reader ============ */
+function mindInit(){S.game.md={n:8+Math.min(4,S.gp.mind.level*2),i:0,right:0,step:"guess",pair:null};mindNext()}
+function mindNext(){
+  const M=S.game.md;M.pair=nextPair();M.step="guess";
+  if(!M.pair){M.i=M.n;return}
+  const pa=predict(M.pair.a).raw,pb=predict(M.pair.b).raw;M.guess=pa>=pb?"a":"b";M.sure=Math.abs(pa-pb)>.6;
+}
+function mindRender(){
+  const M=S.game.md;
+  if(M.i>=M.n){
+    const pct=Math.round(M.right/Math.max(1,M.n)*100);
+    endGame({big:`${M.right}/${M.n}`,headline:pct>=75?"I read your mind.":pct>=50?"Getting warmer.":"You're hard to read. Good, that's how I learn.",
+      lines:[`I guessed ${M.right} of ${M.n} picks right (${pct}%).`,M.n-M.right?`The ${M.n-M.right} I got wrong corrected your profile exactly where I was weakest.`:"Not one miss. Your profile is in great shape.","Every pick here counts just like in Train my taste."],logline:`${M.right}/${M.n} read`});
+    return render();
+  }
+  const p=M.pair,shown=M.step!=="guess";
+  const side=k=>`<div class="side"><div class="pick ${shown&&k===M.guess?"guessed":""}">${posterHTML(p[k])}<div><div class="nm">${esc(p[k].t)}</div><div class="yr">${p[k].y}</div>${shown&&k===M.guess?'<span class="guess-tag">MY GUESS</span>':""}</div></div></div>`;
+  host.innerHTML=`<div class="screen">${gameTop()}
+    <div class="ptsrow" style="padding:4px 22px 0"><span>Round ${M.i+1} of ${M.n}</span><span>Read right: <b>${M.right}</b></span></div>
+    <div class="prompt"><h2>${shown?(M.sure?"I'm pretty sure it's this one.":"My gut says this one."):"I've picked the one you'd choose."}</h2><p>${shown?"Am I right?":"Ready to see my guess?"}</p></div>
+    <div class="duel mind">${side("a")}${side("b")}</div>
+    <div class="actions">${shown?`<button class="opt primary" id="right" style="flex:1">Right</button><button class="opt" id="wrong" style="flex:1">Wrong</button>`:`<button class="cta" id="reveal" style="max-width:none">Reveal my guess</button>`}</div>
+    ${shown?"":`<div class="actions" style="padding-top:0"><button class="ghost" id="skipm">Haven't seen one, skip</button></div>`}
+  </div>`;
+  if($("#reveal"))$("#reveal").onclick=()=>{M.step="shown";render()};
+  if($("#skipm"))$("#skipm").onclick=()=>{S.log.unshift("Mind Reader: skipped a pair");mindNext();render()};
+  const ans=right=>{
+    const side=right?M.guess:(M.guess==="a"?"b":"a");
+    S.pair=p;choose(side);S.pendingHuh=null;
+    if(right)M.right++;
+    S.log[0]=`Mind Reader: ${right?"read right":"misread"}. `+S.log[0];
+    toast(right?"Called it":"Noted. Adjusting.");M.i++;mindNext();render();
+  };
+  if($("#right"))$("#right").onclick=()=>ans(true);
+  if($("#wrong"))$("#wrong").onclick=()=>ans(false);
+}
+
+/* ============ training levels: bonus rounds ============ */
+const PER_LEVEL=6;
+const BONUS={
+  knockout:{name:"Knockout",icon:"K",desc:"8 titles from one of your genres. Head to head until one champion is left.",teach:"A quick bracket inside one genre. Round 1 pairs opposites on the scale I'm least sure about, so every match is a clean test."},
+  lightning:{name:"Lightning round",icon:"⚡",desc:"10 picks, 30 seconds. Don't think, just tap.",teach:"Gut reactions with no time to overthink. Fast answers are often the most honest ones."},
+  deepdive:{name:"Deep dive",icon:"D",desc:"6 picks, all from one genre you love.",teach:"Fine detail inside one genre: what kind of comedy, what kind of crime. That's where the best picks come from."},
+  creators:{name:"Creators round",icon:"C",desc:"5 picks between directors, writers and studios.",teach:"Zooming in on the people behind the titles. Trust in a creator is one of the strongest signals there is."},
+  series:{name:"Series round",icon:"S",desc:"5 picks, series only.",teach:"Series taste is different from movie taste: commitment, episode length, how much you binge."},
+};
+function bonusType(tl){
+  const order=["knockout","lightning","deepdive","creators","series"];
+  for(let i=0;i<order.length;i++){
+    const t=order[(tl-1+i)%order.length];
+    if(t==="series"&&S.format==="movies")continue;
+    if(t==="knockout"&&!koOptions().length)continue;
+    if(t==="creators"&&TITLES.filter(x=>x.crew&&allowed(x)).length<4)continue;
+    return t;
+  }
+  return "lightning";
+}
+function bonusTop(){return `<div class="topbar"><button class="hb" data-menu aria-label="Open menu">${IC.menu}</button><div class="brand"><i></i>WTW</div></div><div style="text-align:center"><span class="bonus-badge">LEVEL ${S.tl} · BONUS ROUND</span></div>`}
+function renderBonusIntro(){
+  const type=bonusType(S.tl),B=BONUS[type];
+  let extra="";
+  if(type==="knockout"){const o=koOptions();S.koGenre=o[S.koTurn%o.length].id;extra=` Today: <b style="color:var(--fg)">${esc(GN[S.koGenre])}</b>.`}
+  if(type==="deepdive"){const L=loves().filter(g=>TITLES.filter(t=>t.g.includes(g)&&allowed(t)).length>=6);S.ddGenre=L.length?L[(S.tl)%L.length]:null;if(S.ddGenre)extra=` Today: <b style="color:var(--fg)">${esc(GN[S.ddGenre])}</b>.`}
+  const order=["knockout","lightning","deepdive","creators","series"];
+  host.innerHTML=`<div class="screen">${mainTop()}
+    <div class="inter"><span class="bonus-badge">LEVEL ${S.tl} · BONUS ROUND</span>
+      <div class="lvl-badge" style="background:radial-gradient(circle at 30% 20%,#bfe8ff,#7fd1ff 60%,#2d7fb0);box-shadow:0 0 50px rgba(127,209,255,.45)">${B.icon}</div>
+      <h2>${esc(B.name)}</h2><div class="evidence">${esc(B.desc)}${extra}</div>
+      <div class="btype">${order.map((t,i)=>`<div class="${t===type?"now":""}"><span>${BONUS[t].name}</span><span>${t===type?"this level":"rotates in"}</span></div>`).join("")}</div>
+      <div class="opts"><button class="opt primary" id="bgo" style="background:#7fd1ff;border-color:#7fd1ff;color:#0b0820">Start</button><button class="skip" id="bskip">Skip the bonus</button></div>
+    </div></div>`;
+  $("#bgo").onclick=()=>startBonus(type);
+  $("#bskip").onclick=()=>{S.log.unshift(`Skipped the level ${S.tl} bonus round`);finishBonus({headline:"Bonus skipped",lines:["No problem. The next level has a different bonus format."]})};
+}
+function startBonus(type){
+  S.log.unshift(`Level ${S.tl} bonus: ${BONUS[type].name}`);S.learned="";
+  if(type==="knockout"){S.bonus={type};S.koTurn++;koInit(S.koGenre,S.tl>6?1:0);S.cup.step="match";S.screen="bonus";return render()}
+  S.bonus={type,left:type==="lightning"?10:type==="deepdive"?6:5,picks:0,t0:Date.now(),limit:30000};
+  if(type==="series")S.bonus.kind="tv";
+  if(type==="deepdive"&&S.ddGenre)S.bonus.genre=S.ddGenre;
+  if(type==="creators"&&S.format==="series")S.bonus.kind="tv";
+  S.pair=nextPair();
+  if(!S.pair){return finishBonus({headline:"Ran out of titles for this one",lines:["Skipping ahead to the next level."]})}
+  S.screen="duel";render();
+}
+function bonusBanner(){
+  const b=S.bonus,B=BONUS[b.type];
+  const lt=b.type==="lightning";
+  const rem=lt?Math.max(0,Math.ceil((b.limit-(Date.now()-b.t0))/1000)):0;
+  return `<div class="bbanner"><div class="row"><span><b>${esc(B.name)}</b>${b.genre?` · ${esc(GN[b.genre])}`:""}</span><span>${b.left} left${lt?` · <b id="ltime">${rem}s</b>`:""}</span></div>${lt?`<div class="tbar"><i id="lbar" style="width:${rem/30*100}%"></i></div>`:""}</div>`;
+}
+let LT=null;
+function lightningTick(){
+  clearInterval(LT);
+  LT=setInterval(()=>{
+    const b=S.bonus;if(!b||b.type!=="lightning"){clearInterval(LT);return}
+    const rem=Math.max(0,b.limit-(Date.now()-b.t0));
+    const t=document.getElementById("ltime"),bar=document.getElementById("lbar");
+    if(t)t.textContent=Math.ceil(rem/1000)+"s";if(bar)bar.style.width=(rem/b.limit*100)+"%";
+    if(rem<=0){clearInterval(LT);endBonus(true)}
+  },250);
+}
+function bonusAdvance(){
+  const b=S.bonus;S.pendingHuh=null;b.left--;b.picks++;
+  if(b.left<=0)return endBonus(false);
+  if(b.type==="lightning"&&Date.now()-b.t0>=b.limit)return endBonus(true);
+  S.pair=nextPair();if(!S.pair)return endBonus(false);
+  S.screen="duel";render();
+}
+function endBonus(timeout){
+  clearInterval(LT);
+  const b=S.bonus,B=BONUS[b.type],secs=Math.round((Date.now()-b.t0)/1000);
+  const lines=[];
+  if(b.type==="lightning")lines.push(timeout?`Time's up: ${b.picks} gut picks in 30 seconds.`:`${b.picks} gut picks in ${secs} seconds.`);
+  else lines.push(`${b.picks} picks${b.genre?` inside ${GN[b.genre]}`:b.type==="series"?" between series":b.type==="creators"?" between creators":""}.`);
+  const top=Object.entries(S.crew).sort((x,y)=>y[1]-x[1])[0];
+  if(b.type==="creators"&&top&&top[1]>=1.5)lines.push(`${top[0]} is now one of your trusted creators.`);
+  if(b.type==="series"&&conf("commit")>.35)lines.push(SAY.commit[est("commit")>0?1:0]);
+  const strongest=[...AX,...OPT].filter(a=>conf(a)>.4).sort((x,y)=>Math.abs(est(y))*conf(y)-Math.abs(est(x))*conf(x))[0];
+  if(strongest)lines.push(`Clearest thing so far: ${SAY[strongest][est(strongest)>0?1:0].toLowerCase()}`);
+  finishBonus({headline:`${B.name}: done`,lines});
+}
+function finishBonus(sm){
+  clearInterval(LT);
+  S.bonusSummary=sm;S.bonus=null;S.screen="levelDone";render();
+}
+function renderLevelDone(){
+  const sm=S.bonusSummary||{headline:"",lines:[]},next=BONUS[bonusType(S.tl+1)];
+  host.innerHTML=`<div class="screen">${mainTop()}${meterHTML()}
+    <div class="gover"><span class="bonus-badge">LEVEL ${S.tl} COMPLETE</span>
+      ${sm.top||""}<h2>${esc(sm.headline)}</h2>
+      ${sm.lines.length?`<div class="learned-box"><h4>What I learned</h4><ul>${sm.lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`:""}
+      <div class="delta">Next: <b style="color:var(--fg)">Level ${S.tl+1}</b> · 6 picks, then a <b style="color:#7fd1ff">${esc(next.name)}</b></div>
+      <button class="cta" id="nextlv">Start level ${S.tl+1}</button>
+    </div></div>`;
+  $("#nextlv").onclick=()=>{
+    S.tl++;S.lvPicks=0;S.cup=null;S.log.unshift(`Level ${S.tl} started`);
+    if(S.tl===5&&!S.revealed){S.screen="hub";return render()}
+    S.learned="";S.topBefore=topRecs(1)[0]?.t.t;S.pair=nextPair();S.screen=S.pair?"duel":"hub";render();
+  };
+}
+
+/* ============ demo + boot ============ */
+function seedDemo(){
+  fresh();
+  S.format="both";Object.assign(S.gen,{comedy:2,crime:2,horror:1,scifi:1,war:1,drama:-.5,romance:-9});S.sel=new Set(["comedy","crime","horror","scifi","war"]);
+  S.log.unshift("Demo profile: watches both. Love: Comedy, Crime. Like: Horror, Sci-fi, War. Never: Romance");
+  const me={tone:.7,dark:.6,energy:.3,pace:.3,complex:.3,fantastic:0,modern:.2,indie:.2};
+  const util=t=>AX.reduce((s,a)=>s+me[a]*val(t,a),0)+(t.crew==="Edgar Wright"?1:0);
+  for(let i=0;i<16;i++){S.pair=nextPair();if(!S.pair)break;choose(util(S.pair.a)>=util(S.pair.b)?"a":"b")}
+  S.pendingHuh=null;S.learned="";S.level=levelIdx(knowledge());S.revealed=true;
+}
+function start(){fresh();render()}
+$("#restart").onclick=start;
+start();
+
+</script>

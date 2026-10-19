@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap"><link rel="stylesheet" href="../block-done/base.css"><style>
+html,body{width:1300px;height:1010px;background:#000}
+.row{display:flex;gap:28px;padding:24px 26px 0}
+.col p.cap{font:700 15px Inter;color:#f1c46d;text-align:center;margin-top:10px}.col p.sub{font:500 12.5px Inter;color:#9a9aa0;text-align:center;margin-top:3px;max-width:390px}
+.phone{transform:scale(.97);transform-origin:top left;border-radius:30px;border:1px solid var(--line2);background:#000}
+.sb{position:relative;z-index:2;margin:0 22px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.sb .bar{flex:1;height:5px;border-radius:3px;background:var(--e3);overflow:hidden}.sb .bar i{display:block;height:100%;width:7%;background:var(--gold)}.sb b{color:var(--fg)}.sb em{font-style:normal;color:var(--gold);font-weight:600}
+.step{margin:12px 22px 0;font-size:12px;color:var(--muted)}.step b{color:var(--fg)}
+.q{text-align:center;margin-top:14px}.q h2{font-size:21px;font-weight:700}.q p{font-size:12.5px;color:var(--muted);margin-top:4px}
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 16px 0}
+.side .pst{position:relative;aspect-ratio:2/3;border-radius:14px;background-size:cover;background-position:center;box-shadow:0 14px 30px rgba(0,0,0,.6)}
+.side b{display:block;font-size:15px;margin-top:8px}.side small{font-size:12px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;justify-content:center;height:34px;border-radius:999px;border:1px solid var(--line2);font-size:12.5px;color:#cfd2d8;padding:0 12px}
+.under{display:flex;gap:6px;margin-top:8px}.under .pill{flex:1}
+.under .pill.save{color:#f1c46d;border-color:rgba(212,155,58,.5)}
+.under .pill.saved{background:var(--gold);color:#0b0820;border-color:var(--gold);font-weight:700}
+.opts{display:flex;justify-content:center;gap:8px;margin-top:16px}
+/* A: corner circle */
+.plus{position:absolute;top:8px;right:8px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:22px;font-weight:500;line-height:1}
+.plus.on{background:var(--gold);border-color:var(--gold);color:#0b0820;font-size:17px;font-weight:800}
+/* B: ribbon */
+.rib{position:absolute;top:-2px;left:10px;width:34px;height:46px;display:flex;justify-content:center;padding-top:7px;color:#fff;font-size:21px;font-weight:600;line-height:1;
+  background:rgba(10,10,14,.72);clip-path:polygon(0 0,100% 0,100% 100%,50% 80%,0 100%);filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.rib.on{background:var(--gold);color:#0b0820;font-size:16px;font-weight:800;padding-top:9px}
+.toast{position:absolute;left:16px;right:16px;bottom:44px;z-index:5;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:#1E1E22;border:1px solid var(--line2);font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.toast b{color:#f1c46d;font-weight:700}
+.cap-band{position:absolute;left:0;right:0;bottom:0;padding:10px;font:600 14px Inter;color:#0b0820;background:#f1c46d;text-align:center}
+
+.ko{margin:10px 16px 0}.ko .hdr{font-family:"Bebas Neue";font-size:26px;color:#ff7a59;text-align:center;letter-spacing:.04em}
+.ko .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}.ko .tabs span{height:40px;border-radius:12px;border:1px solid var(--line);display:grid;place-items:center;font-size:12.5px;color:var(--muted)}.ko .tabs span.on{border-color:#ff7a59;color:#fff}
+.vs{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:#ff7a59;display:grid;place-items:center;font-family:"Bebas Neue";font-size:22px;color:#0b0820;z-index:3}
+.rv{margin:26px 22px 0;text-align:center}.rv .tag{display:inline-block;background:#5BC88A;color:#06140d;border-radius:999px;padding:6px 14px;font-weight:700;font-size:13.5px}
+.rv .pst{position:relative;width:170px;margin:16px auto 0;aspect-ratio:2/3;border-radius:12px;background-size:cover;box-shadow:0 14px 30px rgba(0,0,0,.6)}
+.rv h3{font-size:24px;font-weight:600;margin-top:14px}.rv p{font-size:13.5px;color:#cfd2d8;margin-top:4px}
+.rv .btn{background:#5BC88A;height:52px;font-size:16px;margin:18px 0 0}
+.pk{margin:14px 16px 0;border-radius:18px;background:var(--e1);border:1px solid var(--line);overflow:hidden}
+.pk .art{position:relative;aspect-ratio:16/10;background-size:cover;background-position:center 25%}
+.pk .in{padding:12px 14px}.pk b{font-size:19px}.pk small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.pk .why{font-size:13px;color:#cfd2d8;margin-top:8px}
+.pk .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.pk .acts span{height:44px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:14px;border:1px solid var(--line2);color:#e6e6ea}
+.pk .acts span.wl{background:var(--gold);color:#0b0820;border-color:var(--gold)}
+.react{display:flex;justify-content:space-between;margin-top:12px;font-size:20px}
+.react span{flex:1;text-align:center;height:40px;display:grid;place-items:center;border-radius:12px;background:rgba(255,255,255,.04)}
+</style></head><body><div class="row"><div class="col"><div class="phone"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div><div class="sb"><span><b>2</b> of 15 done</span><div class="bar"><i style="width:14%"></i></div><em>Path ›</em></div>
+<div class="ko"><div class="hdr">🏆 Crime Knockout</div><div class="tabs"><span class="on">Quarters</span><span>Semis</span><span>🏆 Final</span></div></div>
+<div class="q"><h2>Who goes through?</h2><p>Quarter-finals · match 3 of 4</p></div>
+<div class="duel" style="position:relative"><div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/3bhkrj58Vtu7enYsRolD1fZdja1.jpg)"><span class="rib on">✓</span></div><b>The Godfather</b><small>1972</small></div><div class="vs">VS</div>
+<div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg)"><span class="rib">+</span></div><b>The Shawshank Redemption</b><small>1994</small></div></div></div><p class="cap">Knockout match</p><p class="sub">Same ribbon on both contenders. The Godfather is already saved.</p></div><div class="col"><div class="phone"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div>
+<div style="text-align:center;margin-top:4px;font-family:'Bebas Neue';font-size:24px;color:#3ddc97;letter-spacing:.04em">Blind Taste Test</div><div style="display:flex;justify-content:space-between;margin:10px 22px 0;font-size:12.5px;color:var(--muted)"><span>Story 3 of 6</span><span>Named: <b style="color:#3ddc97">2</b></span></div>
+<div class="rv"><span class="tag">✓ You named it</span><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/vuza0WqY239yBXOadKlGwJsZJFE.jpg)"><span class="rib">+</span></div><h3>The Truman Show</h3><p>1998 · Directed by Peter Weir</p><div class="btn">Next story</div></div></div><p class="cap">Game reveal</p><p class="sub">Every game’s reveal gets the ribbon: Blind Taste Test, The Other Side, Higher or Lower.</p></div><div class="col"><div class="phone"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div>
+<div style="margin:6px 20px 0"><div style="font-size:22px;font-weight:700">Picks for you</div><div style="font-size:12.5px;color:var(--muted);margin-top:2px">From titles the training hasn’t shown you yet.</div></div>
+<div class="pk"><div class="art" style="background-image:url(https://image.tmdb.org/t/p/w342/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg)"><span class="rib on" style="left:14px">✓</span></div><div class="in"><b>Arrival</b><small>2016 · ★ 7.6 · Paramount+</small><p class="why">Twisty and otherworldly, right in your zone.</p>
+<div class="acts"><span>▶ Trailer</span><span class="wl">✓ On my watchlist</span></div><div class="react"><span>❤️</span><span>👍</span><span>👎</span><span>✕</span></div></div></div></div><p class="cap">My picks</p><p class="sub">The card’s watchlist button goes live (no more “soon”), plus the ribbon on the art.</p></div></div><div class="cap-band">The same save button everywhere a title shows up (shown with style B, the ribbon)</div></body></html>
