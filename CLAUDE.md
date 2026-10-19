@@ -49,7 +49,7 @@ These decisions are made. Do not refactor, rename, or redesign without team agre
 - TMDB as the primary content metadata source
 
 ## Key product decisions (do not re-debate these)
-- **No forms, no surveys** — onboarding and sessions are conversational
+- **No forms, no surveys** — onboarding and sessions are conversational or played (the taste games at `/play`); never a questionnaire
 - **Dual rating track** — quick 1–5 flip (high volume) AND deep 12-dimension survey (opt-in, low volume)
 - **Stretch picks** — 1 in every 20 recommendations is intentionally outside the fingerprint. Suppressed until 15 signals exist.
 - **Anti-recommendation** — stretch pick accept/reject is itself a fingerprint signal

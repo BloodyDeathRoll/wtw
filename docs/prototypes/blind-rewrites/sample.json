@@ -1,0 +1,101 @@
+{
+ "movie:550": {
+  "src": "A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy.",
+  "text": "A sleepless man and a slick salesman direct their raw rage into a disturbing new method of coping.",
+  "blurred": [
+   "insomniac",
+   "soap salesman",
+   "primal male aggression",
+   "shocking new form of therapy"
+  ],
+  "problems": [
+   "ADDED: the rewrite describes a “charismatic vendor,” which is not mentioned in the original (which specifies a “slippery soap salesman”).",
+   "ADDED: the rewrite calls the result an “underground practice,” adding the notion of it being underground, which the original does not include."
+  ]
+ },
+ "movie:278": {
+  "src": "Imprisoned in the 1940s for the double murder of his wife and her lover, upstanding banker Andy Dufresne begins a new life at the Shawshank prison, where he puts his accounting skills to work for an amoral warden.",
+  "text": "In the mid‑1940s, a convicted man accused of killing his spouse and her lover starts a new existence inside a bleak prison, where he applies his financial expertise for a corrupt overseer.",
+  "blurred": [
+   "1940s",
+   "double murder of spouse and lover",
+   "banker profession",
+   "Shawshank prison",
+   "amoral warden"
+  ],
+  "problems": [
+   "ADDED: describes the prison as a “remote penitentiary,” which is not mentioned in the original."
+  ]
+ },
+ "movie:118340": {
+  "src": "Light years from Earth, 26 years after being abducted, Peter Quill finds himself the prime target of a manhunt after discovering an orb wanted by Ronan the Accuser.",
+  "text": "Decades after being taken, a roguish scavenger far out in space becomes the most wanted when he uncovers a coveted sphere that a powerful warlord is desperate to claim.",
+  "blurred": [
+   "light‑years from Earth",
+   "26 years after being abducted",
+   "orb",
+   "Ronan the Accuser"
+  ]
+ },
+ "movie:475557": {
+  "src": "During the 1980s, a failed stand-up comedian is driven insane and turns to a life of crime and chaos in Gotham City while becoming an infamous psychopathic crime figure.",
+  "text": "In the city during the late 20th century, a struggling comic goes insane, turns to violent crime, and rises as a notorious figure.",
+  "blurred": [
+   "failed stand‑up comedian",
+   "1980s",
+   "Gotham City",
+   "psychopathic crime figure"
+  ],
+  "problems": [
+   "ADDED: the rewrite says the comic's life collapses, which is not mentioned in the original.",
+   "ADDED: the rewrite describes the city as a “bleak” urban metropolis, a description not present in the original."
+  ]
+ },
+ "movie:8587": {
+  "src": "Young lion prince Simba, eager to one day become king of the Pride Lands, grows up under the watchful eye of his father Mufasa; all the while his villainous uncle Scar conspires to take the throne for himself.",
+  "text": "A young heir, raised under his father's watchful guidance, hopes to inherit the rulership of their land, while a jealous relative schemes to claim the throne for himself.",
+  "blurred": [
+   "lion",
+   "Pride Lands",
+   "prince",
+   "king",
+   "father Mufasa",
+   "uncle Scar"
+  ],
+  "problems": [
+   "ADDED: The rewrite adds the detail that the setting is a “sprawling wilderness,” which does not appear in the original summary."
+  ]
+ },
+ "tv:1396": {
+  "src": "Walter White, a New Mexico chemistry teacher, is diagnosed with Stage III cancer and given a prognosis of only two years left to live.",
+  "text": "A teacher living in a southwestern state learns he has an aggressive illness and only a few years left to live.",
+  "blurred": [
+   "chemistry teacher",
+   "New Mexico",
+   "Stage III cancer",
+   "two‑year prognosis"
+  ]
+ },
+ "movie:329": {
+  "src": "A wealthy entrepreneur secretly creates a theme park featuring living dinosaurs drawn from prehistoric DNA.",
+  "text": "A rich visionary covertly builds a private attraction that brings extinct giants back to life using ancient genetic material.",
+  "blurred": [
+   "living dinosaurs",
+   "prehistoric DNA",
+   "theme park",
+   "wealthy entrepreneur"
+  ]
+ },
+ "movie:75656": {
+  "src": "An FBI agent and an Interpol detective track a team of illusionists who pull off bank heists during their performances and reward their audiences with the money.",
+  "text": "Two government investigators pursue a troupe of stage tricksters who secretly siphon cash from financial institutions during their shows and then hand the money back to the spectators.",
+  "blurred": [
+   "FBI agent",
+   "Interpol detective",
+   "illusionists",
+   "bank heists",
+   "performances",
+   "giving the stolen cash to the audience"
+  ]
+ }
+}

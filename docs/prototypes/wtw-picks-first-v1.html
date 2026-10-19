@@ -1,0 +1,584 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>WTW Picks-First Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap">
+<style>
+/* Layout: prototype controls on top, phone frame centre-left, "what changed" notes on the right (stacks under the phone on narrow screens).
+   Single dark theme on purpose: it mirrors the live WTW app (black ground, gold accent, blue/gold aurora). */
+:root{
+  color-scheme: dark;
+  --bg:#050506;
+  --phone:#000;
+  --elev1:#0E0E10;
+  --elev2:#161618;
+  --elev3:#1E1E22;
+  --line:rgba(255,255,255,.08);
+  --line-strong:rgba(255,255,255,.14);
+  --fg:#F2F2F2;
+  --muted:#8A8A8E;
+  --dim:#5E5E62;
+  --gold:#D49B3A;
+  --gold-soft:rgba(212,155,58,.16);
+  --gold-glow:rgba(212,155,58,.45);
+  --blue:#4B5BFF;
+  --good:#5BC88A;
+  --bad:#E5675F;
+  --ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --poster:"Bebas Neue","Impact","Arial Narrow",sans-serif;
+  --r-card:18px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:14px;line-height:1.45;margin:0;padding-inline:16px;padding-block:20px 40px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- prototype chrome ---------- */
+.proto-bar{max-width:1040px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.proto-bar h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.01em}
+.proto-bar h1 span{color:var(--muted);font-weight:400}
+.proto-btns{display:flex;flex-wrap:wrap;gap:8px}
+.proto-btn{background:var(--elev2);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--muted)}
+.proto-btn[aria-pressed="true"]{color:var(--fg);border-color:var(--gold);background:var(--gold-soft)}
+.stage{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,390px) minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr);justify-items:center;gap:24px}}
+
+/* ---------- notes ---------- */
+.notes{min-width:0;max-width:520px;padding-top:8px}
+.notes .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600}
+.notes h2{font-size:24px;line-height:1.2;margin:8px 0 18px;text-wrap:balance;font-weight:600}
+.compare{display:grid;gap:12px}
+.cmp{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--elev1)}
+.cmp b{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.cmp.before b{color:var(--bad)}
+.cmp.after b{color:var(--good)}
+.cmp p{margin:0;color:#cfcfd2}
+.notes .why{margin-top:18px;color:var(--muted);font-size:13.5px}
+.notes .why strong{color:var(--fg);font-weight:600}
+.steps{display:flex;gap:6px;margin-top:22px;flex-wrap:wrap}
+.step-dot{font-size:12px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.step-dot.on{color:var(--fg);border-color:var(--line-strong);background:var(--elev2)}
+
+/* ---------- phone ---------- */
+.phone{position:relative;width:100%;max-width:390px;height:780px;max-height:calc(100vh - 110px);min-height:620px;border-radius:44px;background:var(--phone);border:1px solid var(--line-strong);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.aurora{position:absolute;inset:0;pointer-events:none;z-index:0}
+.aurora::before,.aurora::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;filter:blur(70px);opacity:.55}
+.aurora::before{background:radial-gradient(circle,rgba(212,155,58,.55),transparent 65%);left:-200px;bottom:-230px}
+.aurora::after{background:radial-gradient(circle,rgba(75,91,255,.45),transparent 65%);right:-220px;bottom:-200px}
+.screen{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:.0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.topbar{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;padding:18px 18px 6px;min-height:58px}
+.icon-btn{width:36px;height:36px;border-radius:12px;border:0;background:transparent;display:grid;place-items:center;color:rgba(255,255,255,.75)}
+.icon-btn:hover{background:rgba(255,255,255,.06)}
+.brand{display:flex;align-items:center;gap:7px;justify-content:center;font-weight:600;font-size:13px;letter-spacing:.06em}
+.brand i{width:16px;height:16px;border-radius:4px;background:linear-gradient(135deg,var(--blue),var(--gold));display:block}
+
+/* sign in */
+.signin{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 34px 40px;gap:14px}
+.signin h2{font-size:30px;line-height:1.12;margin:10px 0 0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.signin p{color:var(--muted);margin:0;font-size:15px;max-width:260px}
+.poster-fan{display:flex;justify-content:center;margin-bottom:8px;height:150px;align-items:flex-end}
+.poster-fan .poster{width:84px;margin:0 -14px;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+.poster-fan .poster:nth-child(1){transform:rotate(-10deg) translateY(10px)}
+.poster-fan .poster:nth-child(2){transform:translateY(-6px);z-index:2;width:96px}
+.poster-fan .poster:nth-child(3){transform:rotate(10deg) translateY(10px)}
+.google{margin-top:14px;display:flex;align-items:center;gap:10px;background:#fff;color:#111;border:0;border-radius:999px;padding:12px 22px;font-weight:600;font-size:14px}
+.fine{font-size:12px;color:var(--dim)}
+
+/* posters (generated: no external images) */
+.poster{position:relative;aspect-ratio:2/3;border-radius:10px;overflow:hidden;background:var(--elev3);display:flex;flex-direction:column;justify-content:flex-end;padding:8px;max-width:100%}
+.poster .pt{font-family:var(--poster);font-size:19px;line-height:.92;letter-spacing:.02em;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.45);position:relative;z-index:1;word-break:break-word}
+.poster .py{font-size:9.5px;color:rgba(255,255,255,.75);letter-spacing:.08em;margin-top:3px;position:relative;z-index:1}
+.poster::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.55))}
+.poster .shape{position:absolute;border-radius:50%;opacity:.55;filter:blur(1px)}
+
+/* picker */
+.head{padding:4px 22px 10px}
+.head h2{font-size:24px;margin:0;font-weight:700;letter-spacing:-.01em}
+.head p{margin:4px 0 0;color:var(--muted)}
+.search{margin:4px 22px 12px;display:flex;align-items:center;gap:8px;background:var(--elev2);border:1px solid var(--line);border-radius:12px;padding:0 12px}
+.search input{flex:1;min-width:0;background:transparent;border:0;color:var(--fg);font:inherit;padding:11px 0;outline:none}
+.search:focus-within{border-color:var(--line-strong)}
+.scroll{flex:1;overflow-y:auto;padding:0 22px 120px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tile{border:0;padding:0;background:none;text-align:left;position:relative;border-radius:12px}
+.tile .poster{transition:transform .15s ease,box-shadow .15s ease}
+.tile:hover .poster{transform:translateY(-2px)}
+.tile.sel .poster{box-shadow:0 0 0 2.5px var(--gold),0 0 22px var(--gold-glow)}
+.tile .check{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#000;display:none;place-items:center;z-index:2;font-weight:700;font-size:13px}
+.tile.sel .check{display:grid}
+.addrow{margin-bottom:12px;width:100%;border:1px dashed var(--line-strong);background:transparent;border-radius:12px;padding:12px;color:var(--fg);text-align:left}
+.addrow span{color:var(--gold)}
+.cta-wrap{position:absolute;left:0;right:0;bottom:0;padding:16px 22px 26px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.92) 35%);z-index:3;display:flex;flex-direction:column;gap:10px;align-items:center}
+.cta{width:100%;border:0;border-radius:999px;padding:15px;font-weight:600;font-size:15px;background:var(--gold);color:#140e02;transition:opacity .2s, transform .1s}
+.cta:active{transform:scale(.98)}
+.cta[disabled]{background:var(--elev3);color:var(--muted);cursor:default}
+.link{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.chips-sel{display:flex;gap:6px;flex-wrap:wrap;margin:0 22px 10px;min-height:0}
+.chip-mini{font-size:12px;background:var(--gold-soft);color:var(--fg);border-radius:999px;padding:4px 10px;border:0}
+
+/* loading */
+.loading{flex:1;display:flex;flex-direction:column;padding:10px 22px 30px;gap:18px}
+.loading h2{font-size:22px;margin:30px 0 0;font-weight:700}
+.loading .status{color:var(--muted);min-height:42px}
+.loading .status em{color:var(--fg);font-style:normal}
+.skel{border-radius:var(--r-card);background:var(--elev1);border:1px solid var(--line);overflow:hidden;flex:1;display:flex;flex-direction:column}
+.skel .art{height:52%;background:linear-gradient(100deg,var(--elev2) 30%,var(--elev3) 50%,var(--elev2) 70%);background-size:300% 100%;animation:shimmer 1.3s linear infinite}
+.skel .ln{height:12px;border-radius:6px;margin:14px 16px 0;background:linear-gradient(100deg,var(--elev2) 30%,var(--elev3) 50%,var(--elev2) 70%);background-size:300% 100%;animation:shimmer 1.3s linear infinite}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
+
+/* picks deck */
+.home-head{padding:2px 22px 10px}
+.home-head h2{font-size:22px;margin:0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.home-head p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.moods{display:flex;gap:8px;overflow-x:auto;padding:4px 22px 12px;scrollbar-width:none;flex-shrink:0}
+.moods::-webkit-scrollbar{display:none}
+.mood{flex-shrink:0;border:1px solid var(--line-strong);background:rgba(255,255,255,.03);border-radius:999px;padding:7px 13px;font-size:13px;color:#d8d8db}
+.mood[aria-pressed="true"]{background:var(--fg);color:#000;border-color:var(--fg);font-weight:600}
+.seg{display:inline-flex;background:var(--elev2);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:5px 11px;font-size:12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--elev3);color:var(--fg)}
+.deck{position:relative;flex:1;margin:0 18px;min-height:0}
+.card{position:absolute;inset:0 0 0 0;border-radius:var(--r-card);background:var(--elev1);border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;transition:transform .35s ease,opacity .35s ease;touch-action:pan-y;user-select:none}
+.card.back{transform:translateY(10px) scale(.96);opacity:.5;pointer-events:none}
+.card.out-right{transform:translateX(120%) rotate(12deg);opacity:0}
+.card.out-left{transform:translateX(-120%) rotate(-12deg);opacity:0}
+.card.out-up{transform:translateY(-30%);opacity:0}
+.art{position:relative;flex:0 0 46%;overflow:hidden;display:flex;align-items:flex-end;padding:14px 16px}
+.art .shape{position:absolute;border-radius:50%;opacity:.6}
+.art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(14,14,16,1))}
+.art .poster{width:86px;flex-shrink:0;position:relative;z-index:1;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+.art .badge{position:absolute;top:12px;left:12px;z-index:2;font-size:11px;font-weight:600;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:999px;padding:5px 10px;letter-spacing:.02em}
+.art .badge.stretch{background:rgba(75,91,255,.35)}
+.art .count{position:absolute;top:12px;right:12px;z-index:2;font-size:11px;color:rgba(255,255,255,.7)}
+.body{flex:1;display:flex;flex-direction:column;gap:9px;padding:4px 16px 14px;min-height:0}
+.title-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.title-row h3{margin:0;font-size:21px;line-height:1.15;font-weight:700;letter-spacing:-.01em}
+.meta{color:var(--muted);font-size:12.5px;margin-top:2px;font-variant-numeric:tabular-nums}
+.match{flex-shrink:0;color:var(--gold);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums;margin-top:3px}
+.where{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#cfcfd2}
+.where i{width:14px;height:14px;border-radius:3px;display:inline-block}
+.why{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;color:#d2d2d5}
+.why b{color:var(--gold);font-weight:600;display:block;font-size:12px;margin-bottom:2px}
+.spacer{flex:1}
+.watch{border:0;border-radius:999px;padding:12px;font-weight:600;background:var(--gold);color:#140e02;font-size:14px}
+.reacts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.react{border:1px solid var(--line);background:var(--elev2);border-radius:12px;padding:8px 2px 7px;font-size:11.5px;color:#cfcfd2;display:flex;flex-direction:column;align-items:center;gap:3px}
+.react:hover{border-color:var(--line-strong)}
+.react svg{width:18px;height:18px}
+.react.love svg{color:#ff6b8a}.react.like svg{color:var(--good)}.react.nope svg{color:var(--bad)}.react.seen svg{color:#9fb0ff}
+.seen-overlay{position:absolute;inset:0;background:rgba(8,8,10,.94);backdrop-filter:blur(6px);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:24px;text-align:center;z-index:5;animation:fadeIn .25s ease}
+.seen-overlay h4{margin:0;font-size:20px}
+.seen-overlay p{margin:0;color:var(--muted)}
+.opt-col{display:flex;flex-direction:column;gap:8px;width:100%;max-width:240px}
+.opt{border:1px solid var(--line-strong);background:var(--elev2);border-radius:999px;padding:11px;font-weight:500}
+.opt:hover{border-color:var(--gold)}
+.q-card{justify-content:center;align-items:center;text-align:center;padding:28px;gap:14px;background:radial-gradient(circle at 50% 0%,rgba(212,155,58,.14),transparent 60%),var(--elev1)}
+.q-card .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600}
+.q-card h3{margin:0;font-size:22px;line-height:1.2;text-wrap:balance}
+.q-card p{margin:0;color:var(--muted);font-size:13px}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:10px;color:var(--muted);padding:20px}
+.below{padding:12px 22px 22px;display:flex;justify-content:center}
+.askbar{width:100%;display:flex;align-items:center;gap:10px;background:rgba(22,22,24,.9);border:1px solid var(--line);border-radius:999px;padding:11px 16px;color:var(--muted);font-size:13.5px;text-align:left}
+.askbar .mic{margin-left:auto;width:28px;height:28px;border-radius:50%;background:var(--gold);display:grid;place-items:center;color:#140e02}
+.toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%) translateY(20px);background:#fff;color:#111;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:500;opacity:0;transition:all .25s ease;z-index:20;white-space:nowrap;pointer-events:none;max-width:90%;overflow:hidden;text-overflow:ellipsis}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* chat sheet */
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:30;animation:fadeIn .2s ease}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:78%;background:var(--elev1);border-top:1px solid var(--line-strong);border-radius:24px 24px 0 0;z-index:31;display:flex;flex-direction:column;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--line-strong);margin:10px auto 4px}
+.msgs{flex:1;overflow-y:auto;padding:10px 18px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:85%;padding:10px 13px;border-radius:16px;font-size:13.5px}
+.msg.me{align-self:flex-end;background:var(--elev3)}
+.msg.ai{align-self:flex-start;background:rgba(212,155,58,.1);border:1px solid rgba(212,155,58,.2)}
+.msg.ai b{color:var(--gold)}
+.sheet form{display:flex;gap:8px;padding:10px 14px 20px;border-top:1px solid var(--line)}
+.sheet input{flex:1;min-width:0;background:var(--elev2);border:1px solid var(--line);border-radius:999px;padding:11px 14px;color:var(--fg);font:inherit;outline:none}
+.sheet form button{border:0;background:var(--gold);color:#140e02;border-radius:999px;padding:0 16px;font-weight:600}
+.suggest{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 6px}
+</style>
+
+<div class="proto-bar">
+  <h1>WTW · Picks-first prototype <span>(mockup, not the real app)</span></h1>
+  <div class="proto-btns" role="group" aria-label="Choose flow">
+    <button class="proto-btn" id="btn-new" aria-pressed="true">New user</button>
+    <button class="proto-btn" id="btn-ret" aria-pressed="false">Returning user</button>
+    <button class="proto-btn" id="btn-restart">Restart</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="aurora"></div>
+    <div id="screen-host"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+  <aside class="notes" id="notes" aria-live="polite"></aside>
+</div>
+
+<script>
+/* ---------------- data ---------------- */
+const P = {
+  // seed titles for the "tap what you love" grid
+  seeds: [
+    {id:"niceguys",t:"The Nice Guys",y:2016,k:"movie",tags:["shane-black","buddy","crime-comedy","gosling"],c:["#e2712f","#2b1a6e"]},
+    {id:"kkbb",t:"Kiss Kiss Bang Bang",y:2005,k:"movie",tags:["shane-black","crime-comedy","rdj"],c:["#c42a4b","#101030"]},
+    {id:"csl",t:"Crazy, Stupid, Love",y:2011,k:"movie",tags:["romcom","gosling","ensemble"],c:["#f2b5a7","#7a2f4c"]},
+    {id:"harry",t:"When Harry Met Sally",y:1989,k:"movie",tags:["romcom","dialogue"],c:["#d9a441","#5a3a1b"]},
+    {id:"casino",t:"Casino Royale",y:2006,k:"movie",tags:["action","spy"],c:["#1b4d3e","#0b0b0b"]},
+    {id:"inception",t:"Inception",y:2010,k:"movie",tags:["nolan","mind-bender","action"],c:["#3d5a80","#0d1b2a"]},
+    {id:"superbad",t:"Superbad",y:2007,k:"movie",tags:["rogen","buddy","comedy"],c:["#f5d63d","#e23b2e"]},
+    {id:"bb",t:"Breaking Bad",y:2008,k:"tv",tags:["crime","cranston","slow-burn"],c:["#3c7a3a","#d6b44a"]},
+    {id:"lasso",t:"Ted Lasso",y:2020,k:"tv",tags:["feel-good","comedy","ensemble"],c:["#2f6fd6","#f3c623"]},
+    {id:"knives",t:"Knives Out",y:2019,k:"movie",tags:["whodunit","crime-comedy","ensemble"],c:["#7b2d26","#1e1410"]},
+    {id:"madmax",t:"Mad Max: Fury Road",y:2015,k:"movie",tags:["action","high-octane"],c:["#ef8a24","#1d6f86"]},
+    {id:"office",t:"The Office",y:2005,k:"tv",tags:["comedy","ensemble","feel-good"],c:["#e8e3d3","#4a4a4a"]},
+    {id:"succession",t:"Succession",y:2018,k:"tv",tags:["drama","dialogue","dark-comedy"],c:["#1f1f1f","#a68a52"]},
+    {id:"lalaland",t:"La La Land",y:2016,k:"movie",tags:["romance","gosling","music"],c:["#5b3fa8","#f2a541"]},
+    {id:"darkknight",t:"The Dark Knight",y:2008,k:"movie",tags:["nolan","action","crime"],c:["#22313f","#0a0a0a"]},
+    {id:"parasite",t:"Parasite",y:2019,k:"movie",tags:["thriller","dark-comedy","subtitles"],c:["#58705b","#1a1a1a"]},
+    {id:"severance",t:"Severance",y:2022,k:"tv",tags:["mind-bender","slow-burn","workplace"],c:["#2e6d8e","#e8eef2"]},
+    {id:"topgun",t:"Top Gun: Maverick",y:2022,k:"movie",tags:["action","cruise","crowd-pleaser"],c:["#e07b39","#2a4b7c"]},
+  ],
+  // recommendation pool
+  recs: [
+    {id:"lw",t:"Lethal Weapon",y:1987,rt:"1h 50m",min:110,k:"movie",r:"7.6",w:["Max","#5c2bd9"],tags:["shane-black","buddy","action","crime-comedy"],why:{"shane-black":"Shane Black wrote this one too. It's where his buddy-cop formula started.","buddy":"The original mismatched-partners movie.","crime-comedy":"Same mix of jokes and gunfire."},c:["#b5651d","#1a1a2e"]},
+    {id:"longkiss",t:"The Long Kiss Goodnight",y:1996,rt:"2h 1m",min:121,k:"movie",r:"6.8",w:["Prime Video","#1f9fff"],tags:["shane-black","action","crime-comedy"],why:{"shane-black":"Another Shane Black script: wisecracks, explosions, Christmas setting."},c:["#9b1d20","#e8d5b7"]},
+    {id:"gamenight",t:"Game Night",y:2018,rt:"1h 40m",min:100,k:"movie",r:"6.9",w:["Max","#5c2bd9"],tags:["crime-comedy","comedy","ensemble","crowd-pleaser"],why:{"crime-comedy":"A crime-comedy that's light on its feet. Easy, fast, funny.","comedy":"Silly in the best way, and it's actually well made.","ensemble":"A great ensemble bouncing off each other."},c:["#1a8c6e","#0d0d0d"]},
+    {id:"glass",t:"Glass Onion",y:2022,rt:"2h 19m",min:139,k:"movie",r:"7.1",w:["Netflix","#e50914"],tags:["whodunit","crime-comedy","ensemble"],why:{"whodunit":"Rian Johnson's follow-up to Knives Out.","crime-comedy":"A mystery that never takes itself too seriously."},c:["#f2c14e","#1b998b"]},
+    {id:"drive",t:"Drive",y:2011,rt:"1h 40m",min:100,k:"movie",r:"7.8",w:["Netflix","#e50914"],tags:["gosling","crime","slow-burn"],why:{"gosling":"Gosling at his coolest. Quieter and moodier than you'd expect."},c:["#ff2d95","#16001e"]},
+    {id:"br2049",t:"Blade Runner 2049",y:2017,rt:"2h 44m",min:164,k:"movie",r:"8.0",w:["Netflix","#e50914"],tags:["gosling","mind-bender","slow-burn"],why:{"gosling":"Gosling again, in a huge, slow, beautiful sci-fi.","mind-bender":"Big ideas, stunning to look at."},c:["#f27d0c","#2b0f54"]},
+    {id:"prestige",t:"The Prestige",y:2006,rt:"2h 10m",min:130,k:"movie",r:"8.5",w:["Prime Video","#1f9fff"],tags:["nolan","mind-bender"],why:{"nolan":"Nolan before he went huge. The twist actually earns it.","mind-bender":"Keeps you guessing to the last minute."},c:["#5a3e2b","#0b0b0b"]},
+    {id:"pineapple",t:"Pineapple Express",y:2008,rt:"1h 51m",min:111,k:"movie",r:"6.9",w:["Netflix","#e50914"],tags:["rogen","buddy","comedy","crime-comedy"],why:{"rogen":"Seth Rogen and the same crew as Superbad, now with guns.","buddy":"A buddy comedy that goes off the rails."},c:["#6ab04c","#f9ca24"]},
+    {id:"hotfuzz",t:"Hot Fuzz",y:2007,rt:"2h 1m",min:121,k:"movie",r:"7.8",w:["Peacock","#000"],tags:["buddy","crime-comedy","comedy","crowd-pleaser"],why:{"buddy":"The funniest buddy-cop movie of the 2000s.","crime-comedy":"A cop parody that's also a really good cop movie."},c:["#2d6cdf","#f5f5f5"]},
+    {id:"palm",t:"Palm Springs",y:2020,rt:"1h 30m",min:90,k:"movie",r:"7.4",w:["Hulu","#1ce783"],tags:["romcom","comedy","mind-bender"],why:{"romcom":"A rom-com with a clever twist, and only 90 minutes.","comedy":"Short, sharp and very funny."},c:["#ff9f68","#3dc1d3"]},
+    {id:"edge",t:"Edge of Tomorrow",y:2014,rt:"1h 53m",min:113,k:"movie",r:"7.9",w:["Max","#5c2bd9"],tags:["cruise","action","mind-bender"],why:{"cruise":"Tom Cruise playing a coward for once. It's a blast.","action":"Big action, a smart loop, and surprisingly funny."},c:["#4a5d6a","#c9a227"]},
+    {id:"wick",t:"John Wick",y:2014,rt:"1h 41m",min:101,k:"movie",r:"7.4",w:["Peacock","#000"],tags:["action","high-octane"],why:{"action":"Pure, clean action. No filler."},c:["#1c2b4a","#c23b22"]},
+    {id:"mif",t:"Mission: Impossible – Fallout",y:2018,rt:"2h 27m",min:147,k:"movie",r:"7.7",w:["Paramount+","#0064ff"],tags:["cruise","action","spy"],why:{"spy":"The best spy action of the last decade.","cruise":"Tom Cruise doing his own stunts at full tilt."},c:["#8b1e1e","#101820"]},
+    {id:"holdovers",t:"The Holdovers",y:2023,rt:"2h 13m",min:133,k:"movie",r:"7.9",w:["Peacock","#000"],tags:["feel-good","dialogue","drama"],why:{"dialogue":"Sharp, funny dialogue and a big warm heart.","feel-good":"A cozy, funny, slightly sad winter movie."},c:["#7a1f2b","#e9dcc9"]},
+    {id:"saul",t:"Better Call Saul",y:2015,rt:"6 seasons",min:45,k:"tv",r:"9.0",w:["Netflix","#e50914"],tags:["crime","slow-burn","cranston","dark-comedy"],why:{"cranston":"Same world and same creators as Breaking Bad.","crime":"A slow-burn crime story that pays off big."},c:["#e8b923","#2a2a2a"]},
+    {id:"omitb",t:"Only Murders in the Building",y:2021,rt:"4 seasons",min:30,k:"tv",r:"8.1",w:["Hulu","#1ce783"],tags:["whodunit","crime-comedy","feel-good","comedy"],why:{"whodunit":"A cozy murder mystery in half-hour episodes.","crime-comedy":"Funny crime-solving with Steve Martin and Martin Short."},c:["#d1495b","#edae49"]},
+    {id:"bear",t:"The Bear",y:2022,rt:"3 seasons",min:30,k:"tv",r:"8.5",w:["Hulu","#1ce783"],tags:["drama","dialogue","high-octane"],why:{"dialogue":"Fast, overlapping dialogue. Stressful in a good way."},c:["#1d3557","#e63946"]},
+    {id:"fleabag",t:"Fleabag",y:2016,rt:"2 seasons",min:25,k:"tv",r:"8.7",w:["Prime Video","#1f9fff"],tags:["comedy","dialogue","romcom","dark-comedy"],why:{"dialogue":"Twelve perfect episodes. Very funny, then it hits hard.","romcom":"The best love story on TV, in season 2."},c:["#111","#c0392b"]},
+    {id:"slowhorses",t:"Slow Horses",y:2022,rt:"4 seasons",min:45,k:"tv",r:"8.2",w:["Apple TV+","#555"],tags:["spy","dark-comedy","crime"],why:{"spy":"Spies who are bad at being spies. Gary Oldman is a gem.","dark-comedy":"Grubby, funny and tense."},c:["#3b4a3f","#d9c7a7"]},
+    {id:"grand",t:"The Grand Budapest Hotel",y:2014,rt:"1h 40m",min:100,k:"movie",r:"8.1",w:["Disney+","#113ccf"],tags:["comedy","ensemble","whodunit"],why:{"ensemble":"A huge ensemble in a perfectly built little caper."},stretch:true,c:["#e8a0b4","#6c3b5e"]},
+    {id:"rrr",t:"RRR",y:2022,rt:"3h 7m",min:187,k:"movie",r:"7.8",w:["Netflix","#e50914"],tags:["action","high-octane","subtitles","crowd-pleaser"],why:{"action":"The most fun action movie in years, if you're OK with subtitles."},stretch:true,c:["#d35400","#2c3e50"]},
+  ],
+  moods:[
+    {id:"fun",l:"Light & fun",tags:["comedy","crime-comedy","feel-good","romcom","buddy"]},
+    {id:"intense",l:"Intense",tags:["action","high-octane","thriller","crime","spy"]},
+    {id:"short",l:"Under 2 hours",short:true},
+    {id:"brain",l:"Mind-bender",tags:["mind-bender","whodunit"]},
+    {id:"date",l:"Date night",tags:["romcom","romance","crowd-pleaser","comedy"]},
+    {id:"surprise",l:"Surprise me",surprise:true},
+  ],
+  // people tags weigh more: "you loved X because of who made it" is the strongest reason
+  people:["shane-black","gosling","nolan","rogen","cranston","cruise","rdj"],
+};
+
+const NOTES = {
+  signin:{eyebrow:"Step 1 · Sign in",title:"Promise the payoff, not the work",before:"“Sign in to calibrate your taste.” Sounds like homework before you've started.",after:"“What should I watch tonight?” plus how much effort it takes: 3 taps, picks in under a minute.",why:"People decide whether to invest in the first five seconds. <strong>Lead with what they get.</strong>"},
+  picker:{eyebrow:"Step 2 · Taste in 3 taps",title:"Tap what you love instead of being interviewed",before:"An empty text box (“name your favourites”), then about 20 questions about pacing, moral ambiguity and subtitles.",after:"A grid of posters. Tap 3 or more, or search for your own. Done in about 15 seconds.",why:"Recognising is much easier than remembering. Each tap also tells the fingerprint which <strong>directors, writers and actors</strong> you like, which is exactly what the interview was trying to dig out."},
+  loading:{eyebrow:"Step 3 · The wait",title:"Show the thinking, using their own picks",before:"A black screen saying “Loading more…” for about 15 seconds. It feels broken.",after:"A placeholder card in the shape of what's coming, and a line that names their picks while it works.",why:"A wait that shows progress feels shorter, and <strong>mentioning their picks proves the app was listening</strong>."},
+  picks:{eyebrow:"Step 4 · Picks first",title:"Give first, then learn from reactions",before:"Picks were hidden behind a small button, after the interview. The chat suggested things you'd already seen.",after:"Picks are the first thing you see, each with a plain-language reason. Love it, Looks good, Not for me and Seen it all teach the fingerprint.",why:"Each tap is a taste signal collected without effort. <strong>“Seen it”</strong> fixes the “I've seen all 8 Mission Impossibles” problem. At most one quick question appears <strong>between</strong> picks, never in a row. Try swiping the card, too."},
+  home:{eyebrow:"Returning user · Home",title:"Open on tonight's pick, not a question",before:"A random AI question every visit (“solo half-hour comedy or longer binge?”), even when the toggle said Movies.",after:"A one-line headline, mood buttons that reshuffle with one tap, and tonight's pick right there. A Movies / Series / Both switch the picks follow.",why:"Returning users come back for one thing. <strong>No typing needed.</strong> Chat is still there at the bottom for people who want it."},
+  chat:{eyebrow:"Chat · Optional",title:"Chat answers first, then asks at most one thing",before:"The AI asked one more question every turn and only gave picks when begged.",after:"It answers with a pick and a reason straight away, then maybe one short follow-up. It never re-suggests titles you named or marked as seen.",why:"Chat becomes a <strong>shortcut</strong> for specific moods (“something like Hot Fuzz but shorter”), not a gate."},
+};
+
+/* ---------------- state ---------------- */
+const S = {flow:"new",screen:"signin",selected:[],custom:[],tw:{},removed:new Set(),seen:new Set(),deck:[],idx:0,reacts:0,qShown:0,mood:null,kind:"both",query:""};
+const host = document.getElementById("screen-host");
+const notesEl = document.getElementById("notes");
+const $ = (s,el=document)=>el.querySelector(s);
+const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------------- helpers ---------------- */
+function hashN(str,n){let h=0;for(const ch of str)h=(h*31+ch.charCodeAt(0))>>>0;return h%n}
+function posterHTML(it,big){
+  const [a,b]=it.c; const v=hashN(it.id,3);
+  const shapes = v===0?`<span class="shape" style="width:70%;height:46%;left:-12%;top:8%;background:${b}"></span>`
+    : v===1?`<span class="shape" style="width:90%;height:60%;right:-40%;top:-10%;background:${b}"></span>`
+    : `<span class="shape" style="width:60%;height:40%;left:30%;top:22%;background:${b};border-radius:8px;transform:rotate(18deg)"></span>`;
+  return `<div class="poster" style="background:linear-gradient(160deg,${a},${b} 140%)">${shapes}<div class="pt" style="${big?'font-size:22px':''}">${esc(it.t)}</div><div class="py">${it.y||""}</div></div>`;
+}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),1900)}
+function setNotes(key){
+  const n=NOTES[key]; const order=S.flow==="new"?["signin","picker","loading","picks","chat"]:["home","chat"];
+  notesEl.innerHTML=`<div class="eyebrow">${n.eyebrow}</div><h2>${n.title}</h2>
+  <div class="compare"><div class="cmp before"><b>Today</b><p>${n.before}</p></div><div class="cmp after"><b>Proposed</b><p>${n.after}</p></div></div>
+  <p class="why">${n.why}</p>
+  <div class="steps">${order.map(k=>`<span class="step-dot ${k===key?'on':''}">${NOTES[k].eyebrow.split(" · ")[1]}</span>`).join("")}</div>`;
+}
+const ICON = {
+  love:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>',
+  like:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9h3zM7 11l4-8c1.7 0 2.8 1.3 2.5 3L13 9h5.5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 17.1 20H7"/></svg>',
+  nope:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  seen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  back:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>',
+  menu:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  search:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  mic:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v12M8 7v6M16 7v6M4 10v2M20 10v2"/></svg>',
+};
+
+/* ---------------- scoring ---------------- */
+function seedTags(){
+  const w={};
+  for(const id of S.selected){const s=P.seeds.find(x=>x.id===id);if(!s)continue;for(const t of s.tags)w[t]=(w[t]||0)+(P.people.includes(t)?3:2)}
+  for(const [t,v] of Object.entries(S.tw))w[t]=(w[t]||0)+v;
+  return w;
+}
+function reasonFor(rec){
+  // strongest shared tag with a seed the user picked, people first
+  const picked=S.selected.map(id=>P.seeds.find(x=>x.id===id)).filter(Boolean);
+  const ordered=[...rec.tags].sort((a,b)=>(P.people.includes(b)?1:0)-(P.people.includes(a)?1:0));
+  for(const t of ordered){const seed=picked.find(s=>s.tags.includes(t));if(seed&&rec.why[t])return {lead:`Because you loved ${seed.t}`,text:rec.why[t]}}
+  const any=Object.values(rec.why)[0];
+  return {lead:"Popular with people like you",text:any};
+}
+function buildDeck(){
+  const w=seedTags(); const mood=P.moods.find(m=>m.id===S.mood);
+  let pool=P.recs.filter(r=>!S.removed.has(r.id)&&!S.seen.has(r.id));
+  if(S.kind!=="both")pool=pool.filter(r=>r.k===(S.kind==="movies"?"movie":"tv"));
+  if(mood?.short)pool=pool.filter(r=>r.min<120);
+  const scored=pool.map(r=>{
+    let s=r.tags.reduce((a,t)=>a+(w[t]||0),0);
+    if(mood?.tags)s+=r.tags.filter(t=>mood.tags.includes(t)).length*4;
+    if(mood?.surprise)s=r.stretch?50:s*.3;
+    if(r.stretch&&!mood?.surprise)s-=6;
+    return {r,s};
+  }).sort((a,b)=>b.s-a.s);
+  const max=Math.max(1,scored[0]?.s||1);
+  S.deck=scored.map(({r,s})=>({...r,match:Math.max(62,Math.min(97,Math.round(70+27*(s/max))))}));
+  S.idx=0;
+}
+
+/* ---------------- screens ---------------- */
+function render(){
+  host.innerHTML="";
+  ({signin:renderSignin,picker:renderPicker,loading:renderLoading,picks:renderPicks,home:renderPicks}[S.screen])();
+}
+
+function renderSignin(){
+  setNotes("signin");
+  const fan=["niceguys","lasso","inception"].map(id=>posterHTML(P.seeds.find(s=>s.id===id))).join("");
+  host.innerHTML=`<div class="screen"><div class="signin">
+    <div class="poster-fan">${fan}</div>
+    <div class="brand"><i></i>WTW</div>
+    <h2>What should I watch tonight?</h2>
+    <p>Tap 3 things you love. Get picks in under a minute.</p>
+    <button class="google" id="go"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continue with Google</button>
+    <div class="fine">Free. No questionnaire.</div>
+  </div></div>`;
+  $("#go").onclick=()=>go("picker");
+}
+
+function renderPicker(){
+  setNotes("picker");
+  host.innerHTML=`<div class="screen">
+    <div class="topbar"><span></span><div class="brand"><i></i>WTW</div><span></span></div>
+    <div class="head"><h2>Tap a few you love</h2><p>Movies or series. Pick at least 3.</p></div>
+    <label class="search"><span aria-hidden="true">${ICON.search}</span><input id="q" placeholder="Search any title" autocomplete="off" value="${esc(S.query)}" aria-label="Search any title"></label>
+    <div class="scroll" id="grid-scroll"><div id="add"></div><div class="grid" id="grid"></div></div>
+    <div class="cta-wrap"><button class="cta" id="cta"></button><button class="link" id="skip">Skip, just show me what's popular</button></div>
+  </div>`;
+  const q=$("#q"); q.oninput=()=>{S.query=q.value;drawGrid()};
+  $("#cta").onclick=()=>{if(count()>=3)go("loading")};
+  $("#skip").onclick=()=>{S.selected=[];go("loading")};
+  drawGrid();
+}
+function count(){return S.selected.length+S.custom.length}
+function drawGrid(){
+  const q=S.query.trim().toLowerCase();
+  const items=P.seeds.filter(s=>!q||s.t.toLowerCase().includes(q));
+  const grid=$("#grid");
+  grid.innerHTML=[...S.custom.map(c=>({id:"c:"+c,t:c,y:"",c:["#3a3a40","#16161a"],custom:true})),...items].map(s=>{
+    const sel=s.custom||S.selected.includes(s.id);
+    return `<button class="tile ${sel?'sel':''}" data-id="${esc(s.id)}" aria-pressed="${sel}" aria-label="${esc(s.t)}"><span class="check">✓</span>${posterHTML(s)}</button>`}).join("");
+  grid.querySelectorAll(".tile").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.id;
+    if(id.startsWith("c:")){S.custom=S.custom.filter(c=>"c:"+c!==id)}
+    else{const i=S.selected.indexOf(id);i>=0?S.selected.splice(i,1):S.selected.push(id)}
+    drawGrid();
+  });
+  const add=$("#add");
+  const exact=P.seeds.some(s=>s.t.toLowerCase()===q);
+  add.innerHTML=q&&!exact?`<button class="addrow" id="addbtn">Add <span>“${esc(S.query.trim())}”</span> to things you love</button>`:"";
+  if($("#addbtn"))$("#addbtn").onclick=()=>{S.custom.push(S.query.trim());S.query="";$("#q").value="";drawGrid()};
+  const n=count(); const cta=$("#cta");
+  cta.disabled=n<3;
+  cta.textContent=n===0?"Pick 3 to start":n<3?`${3-n} more to go`:`Show me picks (${n})`;
+}
+
+function renderLoading(){
+  setNotes("loading");
+  const names=[...S.selected.map(id=>P.seeds.find(s=>s.id===id).t),...S.custom];
+  const lines=names.length?[
+    `Looking at who made <em>${esc(names[0])}</em>…`,
+    names[1]?`Finding things with the feel of <em>${esc(names[1])}</em>…`:"Checking what's streaming near you…",
+    "Leaving out anything you'll likely have seen…"]
+    :["Finding tonight's most-loved picks…","Checking what's streaming near you…"];
+  host.innerHTML=`<div class="screen"><div class="topbar"><span></span><div class="brand"><i></i>WTW</div><span></span></div>
+    <div class="loading"><h2>Finding your picks</h2><div class="status" id="st">${lines[0]}</div>
+    <div class="skel"><div class="art"></div><div class="ln" style="width:60%"></div><div class="ln" style="width:35%"></div><div class="ln" style="width:85%;height:46px;border-radius:12px"></div></div></div></div>`;
+  let i=0; const iv=setInterval(()=>{i++;if(i<lines.length)$("#st")&&($("#st").innerHTML=lines[i])},800);
+  setTimeout(()=>{clearInterval(iv);if(S.screen==="loading"){buildDeck();go("picks")}},2500);
+}
+
+function headline(){
+  const d=new Date(),h=d.getHours(),day=d.getDay();
+  const part=h<5?"Late night":h<12?"Morning":h<17?"Afternoon":h<21?"Evening":"Tonight";
+  if(day===5&&h>=16)return "Friday night. Something fun?";
+  if((day===0||day===6))return `${part} on the weekend. Here's your pick.`;
+  return h>=17||h<5?"Tonight's pick for you":`${part} pick for you`;
+}
+
+function renderPicks(){
+  const returning=S.screen==="home";
+  setNotes(returning?"home":"picks");
+  host.innerHTML=`<div class="screen">
+    <div class="topbar">${returning?`<span></span>`:`<button class="icon-btn" id="back" aria-label="Back to picker">${ICON.back}</button>`}
+      <div class="brand"><i></i>WTW</div><button class="icon-btn" aria-label="Menu">${ICON.menu}</button></div>
+    <div class="home-head" style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px">
+      <div style="min-width:0"><h2>${returning?headline():"Your first picks"}</h2><p>${returning?"Tap a mood to reshuffle":"React to teach WTW your taste"}</p></div>
+      <div class="seg" role="group" aria-label="Movies or series">${["both","movies","series"].map(k=>`<button data-k="${k}" aria-pressed="${S.kind===k}">${k==="both"?"All":k[0].toUpperCase()+k.slice(1)}</button>`).join("")}</div>
+    </div>
+    ${returning?`<div class="moods" role="group" aria-label="Mood">${P.moods.map(m=>`<button class="mood" data-m="${m.id}" aria-pressed="${S.mood===m.id}">${m.l}</button>`).join("")}</div>`:""}
+    <div class="deck" id="deck"></div>
+    <div class="below"><button class="askbar" id="ask">Or tell me what you're in the mood for<span class="mic">${ICON.mic}</span></button></div>
+  </div>`;
+  if($("#back"))$("#back").onclick=()=>go("picker");
+  host.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{S.kind=b.dataset.k;buildDeck();renderPicks()});
+  host.querySelectorAll(".mood").forEach(b=>b.onclick=()=>{S.mood=S.mood===b.dataset.m?null:b.dataset.m;buildDeck();renderPicks();toast(S.mood?`Reshuffled: ${P.moods.find(m=>m.id===S.mood).l}`:"Back to your usual picks")});
+  $("#ask").onclick=openChat;
+  drawDeck();
+}
+
+function drawDeck(){
+  const deck=$("#deck"); if(!deck)return;
+  deck.innerHTML="";
+  const showQ = S.reacts>=3 && S.qShown===0;
+  const cur=S.deck[S.idx], nxt=S.deck[S.idx+1];
+  if(!cur&&!showQ){deck.innerHTML=`<div class="empty"><h3 style="margin:0;color:var(--fg)">That's the lot for now</h3><p>Try another mood, or tell WTW what you're after.</p></div>`;return}
+  if(nxt||showQ&&cur){const b=document.createElement("div");b.className="card back";deck.appendChild(b)}
+  const el=document.createElement("div"); el.className="card"; deck.appendChild(el);
+  if(showQ){drawQuestion(el);return}
+  const why=reasonFor(cur);
+  el.innerHTML=`<div class="art" style="background:linear-gradient(150deg,${cur.c[0]},${cur.c[1]})">
+      <span class="shape" style="width:260px;height:260px;right:-80px;top:-90px;background:${cur.c[1]}"></span>
+      <span class="badge ${cur.stretch?'stretch':''}">${cur.stretch?"Stretch pick · outside your usual":"Top pick for you"}</span>
+      <span class="count">${S.idx+1} of ${S.deck.length}</span>
+      ${posterHTML(cur,true)}
+    </div>
+    <div class="body">
+      <div class="title-row"><div style="min-width:0"><h3>${esc(cur.t)}</h3><div class="meta">${cur.y} · ${cur.rt} · ★ ${cur.r}</div></div><div class="match">${cur.match}% match</div></div>
+      <span class="where"><i style="background:${cur.w[1]};border:1px solid rgba(255,255,255,.25)"></i>On ${cur.w[0]}</span>
+      <div class="why"><b>${esc(why.lead)}</b>${esc(why.text)}</div>
+      <div class="spacer"></div>
+      <button class="watch" id="watch">I'll watch this</button>
+      <div class="reacts">
+        <button class="react love" data-r="love">${ICON.love}Love it</button>
+        <button class="react like" data-r="like">${ICON.like}Looks good</button>
+        <button class="react nope" data-r="nope">${ICON.nope}Not for me</button>
+        <button class="react seen" data-r="seen">${ICON.seen}Seen it</button>
+      </div>
+    </div>`;
+  el.querySelectorAll(".react").forEach(b=>b.onclick=()=>react(b.dataset.r,el,cur));
+  $("#watch").onclick=()=>{toast(`Enjoy ${cur.t}. We'll ask tomorrow if it was worth it.`);advance(el,"out-up",cur,{tagBoost:1})};
+  swipe(el,cur);
+}
+
+function drawQuestion(el){
+  S.qShown=1;
+  el.classList.add("q-card");
+  el.innerHTML=`<div class="eyebrow">Quick one</div><h3>Are subtitles OK for you?</h3><p>Just this once. It opens up a lot of great picks.</p>
+    <div class="opt-col"><button class="opt" data-a="yes">Sure, no problem</button><button class="opt" data-a="no">English only</button><button class="link" data-a="skip">Skip</button></div>`;
+  el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
+    const a=b.dataset.a;
+    if(a==="no"){S.tw["subtitles"]=-20;P.recs.filter(r=>r.tags.includes("subtitles")).forEach(r=>S.removed.add(r.id))}
+    if(a==="yes"){S.tw["subtitles"]=3}
+    toast(a==="skip"?"No problem":"Got it. Won't ask again.");
+    el.classList.add("out-up");
+    setTimeout(()=>{const cur=S.deck[S.idx]?.id;buildDeckKeep(cur);drawDeck()},300);
+  });
+}
+// rebuild while keeping the user's position on the current card
+function buildDeckKeep(curId){const done=S.deck.slice(0,S.idx).map(r=>r.id);done.forEach(id=>S.removed.add(id));buildDeck();}
+
+function react(r,el,cur){
+  if(r==="seen"){
+    const ov=document.createElement("div");ov.className="seen-overlay";
+    ov.innerHTML=`<h4>Seen it. How was it?</h4><p>We'll never suggest it again.</p><div class="opt-col">
+      <button class="opt" data-v="love">Loved it</button><button class="opt" data-v="ok">It was OK</button><button class="opt" data-v="bad">Didn't like it</button></div>`;
+    el.appendChild(ov);
+    ov.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
+      S.seen.add(cur.id);const v=b.dataset.v;
+      toast(v==="love"?"Noted. More like this.":v==="bad"?"Noted. Fewer like this.":"Noted.");
+      advance(el,v==="bad"?"out-left":"out-right",cur,{tagBoost:v==="love"?2:v==="bad"?-2:0});
+    });
+    return;
+  }
+  const map={love:["out-right","Loved. More like this.",2],like:["out-right","Saved to your list.",1],nope:["out-left","Got it. Fewer like this.",-2]};
+  const [dir,msg,boost]=map[r]; toast(msg); advance(el,dir,cur,{tagBoost:boost});
+}
+function advance(el,dir,cur,{tagBoost=0}={}){
+  if(tagBoost)for(const t of cur.tags)S.tw[t]=(S.tw[t]||0)+tagBoost*.5;
+  S.reacts++; el.classList.add(dir);
+  setTimeout(()=>{S.idx++;drawDeck()},280);
+}
+function swipe(el,cur){
+  let x0=null,dx=0;
+  el.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;x0=e.clientX;el.style.transition="none";el.setPointerCapture(e.pointerId)});
+  el.addEventListener("pointermove",e=>{if(x0===null)return;dx=e.clientX-x0;el.style.transform=`translateX(${dx}px) rotate(${dx/20}deg)`});
+  const end=()=>{if(x0===null)return;el.style.transition="";el.style.transform="";x0=null;
+    if(dx>90)react("like",el,cur);else if(dx<-90)react("nope",el,cur);dx=0};
+  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
+}
+
+/* ---------------- chat sheet ---------------- */
+function openChat(){
+  setNotes("chat");
+  const phone=$("#phone");
+  const bg=document.createElement("div");bg.className="sheet-bg";
+  const sh=document.createElement("div");sh.className="sheet";sh.setAttribute("role","dialog");sh.setAttribute("aria-label","Chat");
+  sh.innerHTML=`<div class="grab"></div><div class="msgs" id="msgs"><div class="msg ai">What are you in the mood for? Describe it any way you like.</div></div>
+    <div class="suggest">${["Something like Hot Fuzz, but shorter","Funny, with my partner","I've got 90 minutes"].map(s=>`<button class="chip-mini" data-s="${esc(s)}">${esc(s)}</button>`).join("")}</div>
+    <form id="cf"><input id="ci" placeholder="Type or speak" autocomplete="off" aria-label="Message"><button type="submit">Send</button></form>`;
+  phone.append(bg,sh);
+  const close=()=>{bg.remove();sh.remove();setNotes(S.screen==="home"?"home":"picks")};
+  bg.onclick=close;
+  const send=txt=>{
+    if(!txt.trim())return;
+    const m=$("#msgs");m.insertAdjacentHTML("beforeend",`<div class="msg me">${esc(txt)}</div>`);
+    const t=txt.toLowerCase();
+    const pick=t.includes("short")||t.includes("90")?P.recs.find(r=>r.id==="palm"):t.includes("partner")||t.includes("date")?P.recs.find(r=>r.id==="gamenight"):P.recs.find(r=>r.id==="hotfuzz"&&!S.seen.has("hotfuzz"))||P.recs.find(r=>r.id==="gamenight");
+    setTimeout(()=>{m.insertAdjacentHTML("beforeend",`<div class="msg ai">Try <b>${esc(pick.t)}</b> (${pick.y}, ${pick.rt}, on ${pick.w[0]}). ${esc(Object.values(pick.why)[0])}<br><br>Want it a bit sillier or a bit smarter?</div>`);m.scrollTop=m.scrollHeight},500);
+    m.scrollTop=m.scrollHeight;
+  };
+  sh.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>send(b.dataset.s));
+  $("#cf").onsubmit=e=>{e.preventDefault();const i=$("#ci");send(i.value);i.value=""};
+}
+
+/* ---------------- flow control ---------------- */
+function go(screen){S.screen=screen;render()}
+function reset(flow){
+  Object.assign(S,{flow,selected:[],custom:[],tw:{},removed:new Set(),seen:new Set(),deck:[],idx:0,reacts:0,qShown:0,mood:null,kind:"both",query:""});
+  document.querySelectorAll(".sheet,.sheet-bg").forEach(n=>n.remove());
+  $("#btn-new").setAttribute("aria-pressed",flow==="new");$("#btn-ret").setAttribute("aria-pressed",flow==="returning");
+  if(flow==="returning"){
+    S.selected=["niceguys","kkbb","csl","casino","inception","superbad"];
+    S.seen.add("mif"); S.qShown=1;
+    buildDeck(); go("home");
+  } else go("signin");
+}
+$("#btn-new").onclick=()=>reset("new");
+$("#btn-ret").onclick=()=>reset("returning");
+$("#btn-restart").onclick=()=>reset(S.flow);
+reset("new");
+</script>
+
+</body></html>

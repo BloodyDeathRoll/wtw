@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap"><link rel="stylesheet" href="../block-done/base.css"><style>
+html,body{width:1300px;height:1010px;background:#000}
+.row{display:flex;gap:28px;padding:24px 26px 0}
+.col p.cap{font:700 15px Inter;color:#f1c46d;text-align:center;margin-top:10px}.col p.sub{font:500 12.5px Inter;color:#9a9aa0;text-align:center;margin-top:3px;max-width:390px}
+.phone{transform:scale(.97);transform-origin:top left;border-radius:30px;border:1px solid var(--line2);background:#000}
+.sb{position:relative;z-index:2;margin:0 22px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.sb .bar{flex:1;height:5px;border-radius:3px;background:var(--e3);overflow:hidden}.sb .bar i{display:block;height:100%;width:7%;background:var(--gold)}.sb b{color:var(--fg)}.sb em{font-style:normal;color:var(--gold);font-weight:600}
+.step{margin:12px 22px 0;font-size:12px;color:var(--muted)}.step b{color:var(--fg)}
+.q{text-align:center;margin-top:14px}.q h2{font-size:21px;font-weight:700}.q p{font-size:12.5px;color:var(--muted);margin-top:4px}
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 16px 0}
+.side .pst{position:relative;aspect-ratio:2/3;border-radius:14px;background-size:cover;background-position:center;box-shadow:0 14px 30px rgba(0,0,0,.6)}
+.side b{display:block;font-size:15px;margin-top:8px}.side small{font-size:12px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;justify-content:center;height:34px;border-radius:999px;border:1px solid var(--line2);font-size:12.5px;color:#cfd2d8;padding:0 12px}
+.under{display:flex;gap:6px;margin-top:8px}.under .pill{flex:1}
+.under .pill.save{color:#f1c46d;border-color:rgba(212,155,58,.5)}
+.under .pill.saved{background:var(--gold);color:#0b0820;border-color:var(--gold);font-weight:700}
+.opts{display:flex;justify-content:center;gap:8px;margin-top:16px}
+/* A: corner circle */
+.plus{position:absolute;top:8px;right:8px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:22px;font-weight:500;line-height:1}
+.plus.on{background:var(--gold);border-color:var(--gold);color:#0b0820;font-size:17px;font-weight:800}
+/* B: ribbon */
+.rib{position:absolute;top:-2px;left:10px;width:34px;height:46px;display:flex;justify-content:center;padding-top:7px;color:#fff;font-size:21px;font-weight:600;line-height:1;
+  background:rgba(10,10,14,.72);clip-path:polygon(0 0,100% 0,100% 100%,50% 80%,0 100%);filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.rib.on{background:var(--gold);color:#0b0820;font-size:16px;font-weight:800;padding-top:9px}
+.toast{position:absolute;left:16px;right:16px;bottom:44px;z-index:5;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:#1E1E22;border:1px solid var(--line2);font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.toast b{color:#f1c46d;font-weight:700}
+.cap-band{position:absolute;left:0;right:0;bottom:0;padding:10px;font:600 14px Inter;color:#0b0820;background:#f1c46d;text-align:center}
+</style></head><body><div class="row"><div class="col"><div class="phone"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div><div class="sb"><span><b>1</b> of 15 done</span><div class="bar"><i></i></div><em>Path ›</em></div><div class="step">Step 2 · This or that</div><div class="q"><h2>Which would you rather watch?</h2><p>Tap a poster.</p></div>
+<div class="duel"><div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg)"><span class="plus">+</span></div><b>Pulp Fiction</b><small>1994</small><div class="under"><span class="pill">Haven't seen</span></div></div>
+<div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/191nKfP0ehp3uIvWqgPbFmI4lv9.jpg)"><span class="plus on">✓</span></div><b>Se7en</b><small>1995</small><div class="under"><span class="pill">Haven't seen</span></div></div></div>
+<div class="opts"><span class="pill">Love both</span><span class="pill">Neither</span><span class="pill">Skip</span></div>
+<div class="toast"><span>Se7en is on your watchlist</span><b>Undo</b></div></div><p class="cap">A · Corner “+” (Netflix style)</p><p class="sub">Small circle on the poster. Turns gold with a tick once saved.</p></div><div class="col"><div class="phone"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div><div class="sb"><span><b>1</b> of 15 done</span><div class="bar"><i></i></div><em>Path ›</em></div><div class="step">Step 2 · This or that</div><div class="q"><h2>Which would you rather watch?</h2><p>Tap a poster.</p></div>
+<div class="duel"><div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg)"><span class="rib">+</span></div><b>Pulp Fiction</b><small>1994</small><div class="under"><span class="pill">Haven't seen</span></div></div>
+<div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/191nKfP0ehp3uIvWqgPbFmI4lv9.jpg)"><span class="rib on">✓</span></div><b>Se7en</b><small>1995</small><div class="under"><span class="pill">Haven't seen</span></div></div></div>
+<div class="opts"><span class="pill">Love both</span><span class="pill">Neither</span><span class="pill">Skip</span></div>
+<div class="toast"><span>Se7en is on your watchlist</span><b>Undo</b></div></div><p class="cap">B · Bookmark ribbon (IMDb style)</p><p class="sub">A ribbon hanging off the poster’s corner. Reads as “watchlist”, away from the tap that picks.</p></div><div class="col"><div class="phone"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div><div class="sb"><span><b>1</b> of 15 done</span><div class="bar"><i></i></div><em>Path ›</em></div><div class="step">Step 2 · This or that</div><div class="q"><h2>Which would you rather watch?</h2><p>Tap a poster.</p></div>
+<div class="duel"><div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg)"></div><b>Pulp Fiction</b><small>1994</small><div class="under"><span class="pill">Haven't seen</span><span class="pill save">+ Save</span></div></div>
+<div class="side"><div class="pst" style="background-image:url(https://image.tmdb.org/t/p/w342/191nKfP0ehp3uIvWqgPbFmI4lv9.jpg)"></div><b>Se7en</b><small>1995</small><div class="under"><span class="pill">Haven't seen</span><span class="pill saved">✓ Saved</span></div></div></div>
+<div class="opts"><span class="pill">Love both</span><span class="pill">Neither</span><span class="pill">Skip</span></div>
+<div class="toast"><span>Se7en is on your watchlist</span><b>Undo</b></div></div><p class="cap">C · “+ Save” under the poster</p><p class="sub">Next to “Haven’t seen”. No risk of picking by mistake, but quieter.</p></div></div><div class="cap-band">The save button on a training pair · left poster not saved, right poster saved, with the confirmation at the bottom</div></body></html>

@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap"><link rel="stylesheet" href="base.css">
+<style>
+.hero{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;text-align:center;padding:26px 28px 0}
+.ring{position:relative;width:176px;height:176px}
+.ring svg{position:absolute;inset:0}
+.ring .num{position:absolute;inset:0;display:grid;place-items:center}
+.ring .num b{font-size:92px;line-height:1;color:#fff;margin-top:8px}
+.ring .tick{position:absolute;right:6px;bottom:10px;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,#f6cf7f,var(--gold) 60%,#8a5c14);color:#140e02;font-weight:800;font-size:22px;box-shadow:0 0 30px rgba(212,155,58,.6)}
+.hero h1{margin-top:14px;font-size:30px;font-weight:800;letter-spacing:-.01em}
+.hero .sub{margin-top:6px;font-size:13px;color:var(--muted)}
+.insight{margin-top:22px;width:100%;border-radius:18px;padding:16px 18px;background:var(--e1);border:1px solid var(--line);text-align:left;display:grid;gap:6px}
+.insight .eyebrow{color:var(--gold)}
+.insight p{font-size:16px;line-height:1.4;color:#ececf0}
+.insight p em{font-style:normal;color:#fff;font-weight:600}
+.sheet{position:absolute;z-index:3;left:0;right:0;bottom:0;padding:22px 22px 58px;border-radius:30px 30px 0 0;
+  background:radial-gradient(120% 90% at 100% 0%,rgba(127,209,255,.30),transparent 60%),repeating-linear-gradient(115deg,transparent 0 22px,rgba(127,209,255,.05) 22px 24px),#0b1016;border-top:1px solid rgba(127,209,255,.45);box-shadow:0 -20px 50px rgba(0,0,0,.6)}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin:-8px auto 14px}
+.sheet .eyebrow{color:var(--lt)}
+.sheet .row{display:grid;grid-template-columns:64px 1fr;gap:14px;align-items:center;margin:12px 0 18px}
+.sheet .ic{width:64px;height:64px;border-radius:18px;display:grid;place-items:center;font-size:30px;background:rgba(127,209,255,.16);border:1px solid rgba(127,209,255,.5);box-shadow:0 0 30px rgba(127,209,255,.25)}
+.sheet h2{font-size:24px;font-weight:800}
+.sheet p{font-size:14px;color:#c9d6e2;margin-top:3px;line-height:1.35}
+.sheet .btn{background:var(--lt)}
+</style></head><body><div class="phone aurora">
+<div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div>
+<div class="hero">
+  <div class="ring">
+    <svg viewBox="0 0 176 176"><g fill="none" stroke-width="10" stroke-linecap="round">
+      <circle cx="88" cy="88" r="76" stroke="#1E1E22"/>
+      <circle cx="88" cy="88" r="76" stroke="url(#g)" stroke-dasharray="477" stroke-dashoffset="0" transform="rotate(-90 88 88)"/></g>
+      <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#f1c46d"/><stop offset="1" stop-color="#D49B3A"/></linearGradient></defs></svg>
+    <div class="num"><b class="bebas">3</b></div>
+    <div class="tick">✓</div>
+  </div>
+  <h1>Block 3 done</h1>
+  <div class="sub">6 picks · 3 blocks finished</div>
+  <div class="insight"><span class="eyebrow">What I noticed</span><p>You kept picking the <em>talkier</em>, <em>bigger, better-known</em> one.</p></div>
+</div>
+<div class="sheet">
+  <div class="grab"></div>
+  <span class="eyebrow">Up next · Block 4</span>
+  <div class="row"><div class="ic">⚡</div><div><h2>Lightning</h2><p>Ten pairs in 30 seconds. Don't think, just tap.</p></div></div>
+  <div class="btn">Start block 4</div>
+</div>
+<div class="label">A · Celebrate up top, next block in a sheet at your thumb</div>
+</div></body></html>

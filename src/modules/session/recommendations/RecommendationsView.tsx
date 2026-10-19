@@ -893,6 +893,9 @@ function MetaRow({ rec }: { rec: Recommendation }) {
  * old "97% match" text; the % is kept in the accessible name.
  */
 function MatchRing({ match, className }: { match: number; className?: string }) {
+  // No score, no figure: titles saved from the taste games (/play) carry none,
+  // and must never read "0%" (Eran, 2026-10-19).
+  if (!(match > 0)) return null;
   const pct = Math.round(match * 100);
   return (
     <div

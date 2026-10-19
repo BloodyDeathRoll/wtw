@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap"><link rel="stylesheet" href="base.css"><style>
+.season{position:relative;z-index:2;margin:0 22px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.season .bar{flex:1;height:6px;border-radius:3px;background:var(--e3);overflow:hidden}
+.season .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.season b{color:var(--fg)}
+.fan{position:relative;z-index:2;height:150px;margin-top:12px}
+.fan div{position:absolute;left:50%;width:78px;aspect-ratio:2/3;border-radius:8px;background-size:cover;background-position:center;box-shadow:0 10px 22px rgba(0,0,0,.7);border:2px solid #000}
+.ctr{position:relative;z-index:2;text-align:center}
+.next{position:absolute;z-index:3;left:16px;right:16px;bottom:52px;border-radius:20px;padding:14px 16px;background:var(--e1);border:1px solid color-mix(in srgb,var(--na) 45%,transparent);display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:center}
+.next .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,var(--na) 16%,transparent)}
+.next .eyebrow{color:var(--na)}
+.next b{display:block;font-size:17px;margin-top:2px}
+.next p{font-size:12.5px;color:#aeb6bf;margin-top:1px}
+.next .btn{grid-column:1/-1;height:50px;font-size:15px;background:var(--na);margin-top:4px}
+.tint::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(130% 40% at 50% -5%,color-mix(in srgb,var(--acc) 26%,transparent),transparent 70%)}
+
+.head{padding:6px 24px 0}.head .eyebrow{color:var(--gold)}
+.head h1{font-size:50px;line-height:.95;margin-top:4px}
+.head p{font-size:13.5px;color:#c9c9ce;margin-top:6px}
+.gift{position:relative;z-index:2;margin:14px auto 0;width:140px}
+.gift .poster{aspect-ratio:2/3;border-radius:14px;background:url(https://image.tmdb.org/t/p/w342/vuza0WqY239yBXOadKlGwJsZJFE.jpg) center/cover;box-shadow:0 0 0 3px var(--gold),0 0 70px rgba(212,155,58,.55);transform:rotate(-2deg)}
+.gift .ribbon{position:absolute;left:-14px;top:14px;background:var(--gold);color:#140e02;font-weight:800;font-size:11px;letter-spacing:.12em;padding:5px 10px;border-radius:6px;transform:rotate(-8deg)}
+.what{margin:12px 26px 0}
+.what b{display:block;font-size:20px}
+.what span{font-size:13px;color:var(--muted)}
+.what p{font-size:14px;color:#d6d6da;margin-top:8px}
+.react{position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 22px 0}
+.react div{border:1px solid var(--line2);border-radius:12px;padding:7px 0;text-align:center;font-size:11px;color:#c9c9ce;background:var(--e1)}
+.react div i{display:block;font-style:normal;font-size:16px;margin-bottom:2px}
+</style></head><body><div class="phone aurora" style="--na:#3ddc97"><div class="top"><div class="hb"><i></i><i></i><i></i></div><div class="brand"><i></i>WTW</div></div>
+<div class="season"><span><b>8</b> of 15 done</span><div class="bar"><i style="width:53%"></i></div><span></span></div>
+<div class="ctr head"><span class="eyebrow">Halfway there</span><h1 class="bebas">Your first pick</h1><p>8 steps in, I'm confident enough for one.</p></div>
+<div class="gift"><div class="ribbon">FOR YOU</div><div class="poster"></div></div>
+<div class="ctr what"><b>The Truman Show</b><span>1998 · 1h 43m · ★ 8.2</span><p>Funny on the surface, unsettling underneath, and you keep picking those.</p></div>
+<div class="react"><div><i>❤️</i>Loved</div><div><i>👍</i>Liked</div><div><i>👎</i>Dislike</div><div><i>🔖</i>Save</div></div>
+<div class="next"><div class="ic">◎</div><div><span class="eyebrow">Up next · Step 9</span><b>Deep dive: Crime</b><p>7 more steps and all your picks unlock.</p></div><div class="btn">Start step 9</div></div><div class="label">Step 8 teaser · one pick as a gift, then back on the path</div></div></body></html>
