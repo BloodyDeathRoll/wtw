@@ -1,12 +1,11 @@
 /**
  * The taste games (/play) as the app's onboarding (decided 2026-10-20).
  *
- * Off while the games are being finished. Turning it on makes every user, new
- * or old, open the app on the games until they finish the season or choose
- * Skip — and rate genres before anything else.
+ * On since 2026-10-21: every user, new or old, opens the app on the games
+ * until they finish the season or choose Skip — and rates genres before
+ * anything else. Off: the app opens on home as before.
  *
- * Works either way: the menu's "Play" and the home screen's Games button (both
- * open the games since 2026-10-21), the Skip button and the feed's
- * calibration nudge.
+ * Not affected by it: the menu's "Play" and the home screen's Games button
+ * (both open the games), the Skip button and the feed's calibration nudge.
  */
-export const PLAY_ONBOARDING_LIVE = false;
+export const PLAY_ONBOARDING_LIVE = true;
