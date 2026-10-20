@@ -24,10 +24,9 @@ const GENRE_COLOURS: Record<string, [string, string]> = {
 
 export default function Screens({ ctl }: { ctl: Ctl }) {
   const { ui } = ctl
-  const top = <TopBar onMenu={() => ctl.setMenu(true)} />
+  const top = <TopBar ctl={ctl} />
   let screen: React.ReactNode
   switch (ui.screen) {
-    case 'intro': screen = <Intro ctl={ctl} />; break
     case 'setup': screen = <Setup ctl={ctl} top={top} />; break
     case 'duel': screen = <Duel ctl={ctl} top={top} />; break
     case 'hunch': screen = <HunchScreen ctl={ctl} top={top} />; break
@@ -50,65 +49,10 @@ export default function Screens({ ctl }: { ctl: Ctl }) {
       </div>
     ); break
   }
-  return (
-    <>
-      {screen}
-      {ui.menu && <Menu ctl={ctl} />}
-    </>
-  )
+  return screen
 }
 
-// ── menu ──────────────────────────────────────────────────────────
-
-const MENU = [
-  ['tonight', 'My picks', Icon.tonight], ['duel', 'Train my taste', Icon.train], ['games', 'Games', Icon.games],
-  ['hub', 'My taste', Icon.me], null, ['watchlist', 'Watchlist', Icon.list], ['settings', 'Settings', Icon.gear],
-] as const
-
-function Menu({ ctl }: { ctl: Ctl }) {
-  const { S, ui } = ctl
-  const cur = ['hunch', 'huh', 'setup', 'blockIntro', 'knockout', 'champion', 'blockDone', 'path', 'showdown', 'finale'].includes(ui.screen) ? 'duel' : ui.screen === 'game' ? 'games' : ui.screen
-  const openGames = GAMES.filter(g => !g.soon && (g.kind === 'season' || isUnlocked(S, g.id as 'bet' | 'mind'))).length
-  return (
-    <>
-      <div className="drawer-bg" onClick={() => ctl.setMenu(false)} />
-      <nav className="drawer" aria-label="Menu">
-        <div className="who">
-          <div className="av">{(ctl.firstName ?? 'Y')[0]}</div>
-          <div><b>{ctl.firstName ?? 'You'}</b><span>{!S.sel ? 'Just getting started' : seasonDone(S) ? 'Season 1 complete' : `Season 1 · step ${S.block} of ${SEASON_LENGTH}`}</span></div>
-        </div>
-        {MENU.map((m, i) => m ? (
-          <button key={m[0]} className={`mi${cur === m[0] ? ' on' : ''}`} onClick={() => ctl.go(m[0])}>
-            {m[2]}{m[1]}
-            {m[0] === 'games' ? <span className="tag hot">{openGames} open</span>
-              : m[0] === 'settings' ? <span className="tag">Soon</span>
-              : m[0] === 'tonight' && !isUnlocked(S, 'picks') ? <span className="tag">End of season</span> : null}
-          </button>
-        ) : <div key={i} className="sep" />)}
-      </nav>
-    </>
-  )
-}
-
-// ── intro + setup ────────────────────────────────────────────────
-
-function Intro({ ctl }: { ctl: Ctl }) {
-  // Two famous, very different titles for the opening art.
-  const byVotes = [...ctl.T].sort((a, b) => b.votes - a.votes)
-  const a = byVotes.find(t => t.genres.includes('comedy') && t.type === 'movie') ?? byVotes[0]
-  const b = byVotes.find(t => t.genres.includes('crime') && t.type === 'movie' && t !== a) ?? byVotes[1]
-  return (
-    <div className="screen">
-      <div className="intro">
-        <div className="vs-art"><Poster t={a} size="w185" /><span className="vs">VS</span><Poster t={b} size="w185" /></div>
-        <div className="brand"><i />WTW</div>
-        <h2>What kind of viewer are you?</h2>
-        <p>Tell me which genres you like. Then just pick between two titles. Every pick teaches me your taste.</p>
-        <button className="cta" onClick={ctl.startSetup}>Let&apos;s play</button>
-      </div>
-    </div>
-  )
-}
+// ── setup ────────────────────────────────────────────────────────
 
 const GRATE = [
   { k: 'love', v: 2, l: 'Love', icon: Icon.love },
@@ -308,8 +252,9 @@ function BlockIntro({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
   const genre = ui.blockGenre ? genreName(ui.blockGenre) : undefined
   return (
     <div className="screen">{top}
+      <SeasonBar ctl={ctl} />
       <div className="inter">
-        <span className="sbadge">STEP {S.block}{seasonDone(S) ? '' : ` OF ${SEASON_LENGTH}`}</span>
+        <span className="sbadge">STEP {S.block}</span>
         <div className="sicon-big">{B.icon}</div>
         <h2>{B.name}{genre && ui.blockType !== 'plain' ? `: ${genre}` : ''}</h2>
         <div className="evidence">{B.desc(genre)}</div>

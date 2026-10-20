@@ -89,6 +89,15 @@ export function usePersistence(userId: string, initialMode: SaveMode, initialVer
     timer.current = setTimeout(() => { firstPending.current = null; void flush() }, wait)
   }, [flush])
 
+  /** Write what's pending now, e.g. before navigating to another page of the app (no pagehide there). */
+  const flushNow = useCallback(async () => {
+    if (!timer.current) return
+    clearTimeout(timer.current)
+    timer.current = null
+    firstPending.current = null
+    await flush()
+  }, [flush])
+
   // Leaving the page: write what's pending. keepalive lets it outlive the tab.
   useEffect(() => {
     const onHide = () => {
@@ -113,5 +122,5 @@ export function usePersistence(userId: string, initialMode: SaveMode, initialVer
     }
   }, [userId])
 
-  return { save, status }
+  return { save, flushNow, status }
 }

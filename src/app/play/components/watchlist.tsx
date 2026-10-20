@@ -28,7 +28,7 @@ export function WatchlistScreen({ ctl }: { ctl: Ctl }) {
   const list = all.filter((e: WatchlistEntry) => kind === 'all' || e.rec.type === kind)
   return (
     <div className="screen wl">
-      <TopBar onMenu={() => ctl.setMenu(true)} />
+      <TopBar ctl={ctl} />
       <div className="wl-hd"><h1>My watchlist</h1><span>{all.length} {all.length === 1 ? 'title' : 'titles'}</span></div>
       <div className="wl-chips" role="group" aria-label="Show">
         {(['all', 'movie', 'tv'] as const).map(k => (

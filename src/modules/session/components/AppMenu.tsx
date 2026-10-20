@@ -54,6 +54,9 @@ const I = {
 export { VOICES };
 export type { Voice };
 
+/** Menu entries a screen can leave out (sign out is always there). */
+export type MenuItem = "recommend" | "watchlist" | "play" | "ratings" | "profile" | "voice";
+
 // ─────────────────────────────────────────────────────────────
 // AppMenu — the hamburger and its drawer.
 //
@@ -77,6 +80,7 @@ export function AppMenu({
   onSignOut,
   voice,
   setVoice,
+  hide = [],
 }: {
   onRecommend: () => void;
   onWatchlist: () => void;
@@ -87,7 +91,10 @@ export function AppMenu({
   onSignOut: () => void;
   voice: Voice;
   setVoice: (v: Voice) => void;
+  /** Entries to leave out, e.g. the taste games keep a short menu for new users. */
+  hide?: readonly MenuItem[];
 }) {
+  const shown = (item: MenuItem) => !hide.includes(item);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<"root" | "voice">("root");
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
@@ -229,78 +236,90 @@ export function AppMenu({
                 </div>
                 {closeBtn}
               </div>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.userMenuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onRecommend();
-                }}
-              >
-                <span>Recommendations</span>
-                <span className={styles.userMenuTrail}>{I.chevRight}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.userMenuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onWatchlist();
-                }}
-              >
-                <span>Watchlist</span>
-                <span className={styles.userMenuTrail}>{I.chevRight}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.userMenuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onFastLearning();
-                }}
-              >
-                <span>Play</span>
-                <span className={styles.userMenuTrail}>{I.chevRight}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.userMenuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onRatings();
-                }}
-              >
-                <span>My Ratings</span>
-                <span className={styles.userMenuTrail}>{I.chevRight}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.userMenuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onProfile();
-                }}
-              >
-                <span>My Taste DNA</span>
-                <span className={styles.userMenuTrail}>{I.chevRight}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.userMenuItem}
-                onClick={() => setMenuView("voice")}
-              >
-                <span>Set Voice</span>
-                <span className={styles.userMenuTrail}>
-                  {voice}
-                  {I.chevRight}
-                </span>
-              </button>
+              {shown("recommend") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onRecommend();
+                  }}
+                >
+                  <span>Recommendations</span>
+                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
+                </button>
+              )}
+              {shown("watchlist") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onWatchlist();
+                  }}
+                >
+                  <span>Watchlist</span>
+                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
+                </button>
+              )}
+              {shown("play") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onFastLearning();
+                  }}
+                >
+                  <span>Play</span>
+                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
+                </button>
+              )}
+              {shown("ratings") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onRatings();
+                  }}
+                >
+                  <span>My Ratings</span>
+                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
+                </button>
+              )}
+              {shown("profile") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onProfile();
+                  }}
+                >
+                  <span>My Taste DNA</span>
+                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
+                </button>
+              )}
+              {shown("voice") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => setMenuView("voice")}
+                >
+                  <span>Set Voice</span>
+                  <span className={styles.userMenuTrail}>
+                    {voice}
+                    {I.chevRight}
+                  </span>
+                </button>
+              )}
               <button
                 type="button"
                 role="menuitem"

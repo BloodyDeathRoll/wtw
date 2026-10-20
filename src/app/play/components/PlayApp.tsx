@@ -11,6 +11,10 @@
  * a React state updater, which React may run twice in development.
  */
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import AppShell from '@/modules/session/components/AppShell'
+import type { AppUser } from '@/modules/session/types'
+import { LEAVE_TIMEOUT_MS, RouteLoading } from '@/app/components/RouteLoading'
 import type { GameTitle } from '../lib/scales'
 import type { GameGenre } from '../lib/genres'
 import {
@@ -32,12 +36,12 @@ import { SAVED_FROM, loadAccountWatchlist, saveTitle, savedIds, unsaveTitle, typ
 import type { Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
 import { GAMES } from './games'
 import Screens from './Screens'
-import Curtain from './Curtain'
 
+// No intro screen (2026-10-20): the first thing a player sees is the genre setup.
 const INITIAL_UI: UI = {
-  screen: 'intro', pair: null, pairN: 0, learned: '', hunch: null, huh: null,
+  screen: 'setup', pair: null, pairN: 0, learned: '', hunch: null, huh: null,
   blockType: 'plain', blockGenre: null, special: null, cup: null, champion: null, done: null, resume: null, showdown: null, game: null,
-  menu: false, toast: '', toastUndo: false, stub: null, editing: false, curtain: true,
+  menu: false, toast: '', toastUndo: false, stub: null, editing: false, curtain: false, confirm: null,
 }
 
 function shuffle<T>(a: T[]): T[] {
@@ -54,6 +58,9 @@ const duelEvent = (kind: string, p: Pair, extra: Record<string, unknown> = {}): 
 /** Screens that belong to Train my taste; leaving one remembers it, to return to. */
 const TRAINING: UI['screen'][] = ['duel', 'hunch', 'huh', 'blockIntro', 'knockout', 'champion', 'blockDone', 'showdown', 'finale', 'path']
 
+/** Skip shows from step 3, once the player has played one step after their genres. */
+const SKIP_FROM_BLOCK = 3
+
 const specialFilter = (b: SpecialRun | null): PairFilter =>
   b ? { kind: b.kind, genre: b.genre, creators: b.type === 'creators' } : {}
 
@@ -66,20 +73,39 @@ function allowedForGames(S: PlayState, t: Title): boolean {
   return !L.length || t.genres.some(g => L.includes(g))
 }
 
-export default function PlayApp({ userId, firstName, titles, saved, jumpTo }: {
-  userId: string
-  firstName: string | null
+export default function PlayApp({ user, existingUser, titles, saved, jumpTo, tab }: {
+  user: AppUser
+  /** Has used the app before (chat or ratings): gets the full menu from the start. */
+  existingUser: boolean
   titles: GameTitle[]
   saved: SavedPlay
   /** Local demo only: start a ready-made player at this step (lib/demo.ts). */
   jumpTo?: number
+  /** 'games': opened from the home screen's Games button. */
+  tab?: 'games'
 }) {
+  const userId = user.id
+  const firstName = (user.name ?? '').trim().split(' ')[0] || null
+  const router = useRouter()
   const T = useMemo(() => prepareTitles(titles), [titles])
   const SRef = useRef<PlayState>(saved.state ?? freshState())
   const [ready, setReady] = useState(saved.mode === 'server')
   const [ui, setUI] = useState<UI>(INITIAL_UI)
   const [, rerender] = useReducer((n: number) => n + 1, 0)
-  const { save, status } = usePersistence(userId, saved.mode, saved.version)
+  const { save, flushNow, status } = usePersistence(userId, saved.mode, saved.version)
+  // Leaving for another page of the app: save first (a client-side navigation
+  // fires no pagehide), and cover the screen so the tap visibly registers.
+  const [leaving, setLeaving] = useState(false)
+  useEffect(() => {
+    if (!leaving) return
+    const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS)
+    return () => clearTimeout(t)
+  }, [leaving])
+  async function leave(href: string) {
+    setLeaving(true)
+    await flushNow()
+    router.push(href)
+  }
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const undoRef = useRef<(() => void) | null>(null)
   const [savedSet, setSaved] = useState<Set<string>>(() => new Set())
@@ -218,18 +244,19 @@ export default function PlayApp({ userId, firstName, titles, saved, jumpTo }: {
       setReady(true)
     }
     const S = SRef.current
-    if (!S.sel) return
+    if (!S.sel) return   // genres first, whatever was asked for
+    if (tab === 'games') { setUI(prev => ({ ...prev, screen: 'games' })); return }
     if (seasonDone(S)) { setUI(prev => ({ ...prev, screen: 'tonight' })); return }
     const type = blockTypeFor(S, T, S.block)
-    if (S.blockPicks === 0) { setUI(prev => ({ ...prev, screen: 'path' })); return }   // between steps: show the path
     if (S.blockPicks > 0) {
       // Part-way through a regular block: carry on with a fresh pair.
       const pair = nextPair(S, T)
       setUI(prev => ({ ...prev, pair, pairN: 1, blockType: 'plain', screen: pair ? 'duel' : 'hub' }))
     } else {
+      // Between steps: straight into the next step's intro (no path map up front, 2026-10-20).
       setUI(prev => ({ ...prev, blockType: type, blockGenre: blockGenre(S, T, type, S.block), screen: 'blockIntro' }))
     }
-  }, [saved.mode, userId, T, jumpTo, save])
+  }, [saved.mode, userId, T, jumpTo, save, tab])
 
   // ── games ─────────────────────────────────────────────────────────
 
@@ -343,8 +370,29 @@ export default function PlayApp({ userId, firstName, titles, saved, jumpTo }: {
 
   // ── controller ──────────────────────────────────────────────────
 
+  const inSeasonTraining = !!S.sel && !seasonDone(S) && (TRAINING.includes(ui.screen) || (ui.screen === 'game' && !!ui.game?.inPath))
   const ctl: Ctl = {
-    S, T, ui, firstName,
+    S, T, ui, firstName, user,
+    existingUser,
+    canSkip: inSeasonTraining && S.block >= SKIP_FROM_BLOCK,
+    leave(href) { void leave(href) },
+    ask: confirm => set({ confirm, menu: false }),
+    closeConfirm: () => set({ confirm: null }),
+    confirmSkip() {
+      S.skipped = true
+      note(S, `Skipped the season at step ${S.block}`)
+      commit([{ kind: 'skip_season', payload: { block: S.block } }])
+      set({ confirm: null })
+      void leave('/?from=play')
+    },
+    confirmRestart() {
+      // A clean slate: back to the genres. The watchlist is the app's, so it stays.
+      const from = S.block
+      SRef.current = freshState()
+      note(SRef.current, `Restarted the calibration (was on step ${from})`)
+      set({ ...INITIAL_UI })
+      commit([{ kind: 'restart', payload: { from } }])
+    },
     saveNote: status === 'local' ? 'Progress is saved in this browser for now.'
       : status === 'conflict' ? 'You\'re playing in another tab. Reload this page to continue here.'
       : status === 'error' ? 'Couldn\'t save just now. Will retry on your next answer.' : '',
@@ -378,7 +426,7 @@ export default function PlayApp({ userId, firstName, titles, saved, jumpTo }: {
         else if (TRAINING.includes(ui.screen)) set({ menu: false })
         else if (ui.resume) set({ ...leaving, screen: ui.resume })
         else if (S.blockPicks > 0) set(duelPatch({ ...leaving, blockType: 'plain' }))
-        else set(seasonDone(S) ? startBlockPatch(leaving) : { ...leaving, screen: 'path' })
+        else set(startBlockPatch(leaving))
       } else if (dest === 'watchlist') {
         setSaved(savedIds())   // the live app may have changed it since
         set({ ...leaving, screen: 'watchlist' })
@@ -404,7 +452,7 @@ export default function PlayApp({ userId, firstName, titles, saved, jumpTo }: {
       const names = (gs: GameGenre[]) => gs.map(genreName).join(', ')
       note(S, `Watches ${S.format === 'both' ? 'movies and series' : S.format}. Love: ${names(pick(2, 99)) || '-'}. Like: ${names(pick(1, 1)) || '-'}${pick(-99, -5).length ? `. Never: ${names(pick(-99, -5))}` : ''}`)
       S.block = Math.max(S.block, 2)   // step 1 of the season is this genre setup
-      set({ screen: 'path' })
+      set(startBlockPatch())
       commit([{ kind: 'genres', payload: { format: S.format, gen: { ...S.gen } } }])
     },
 
@@ -747,7 +795,7 @@ export default function PlayApp({ userId, firstName, titles, saved, jumpTo }: {
     backToLobby: () => set({ game: null, screen: 'games' }),
   }
 
-  if (!ready) return <div className="phone"><div className="aurora" /><div className="screen"><div className="loading">Loading…</div></div></div>
+  if (!ready) return <AppShell><div className="phone"><div className="screen"><div className="loading">Loading…</div></div></div></AppShell>
 
   // Each bucket looks like itself: the arcade for games, an accent per special block.
   const arcade = ui.screen === 'games' || ui.screen === 'game'
@@ -755,16 +803,38 @@ export default function PlayApp({ userId, firstName, titles, saved, jumpTo }: {
   const accent = arcade
     ? (ui.screen === 'game' && ui.game ? GAMES.find(g => g.id === ui.game!.id)!.acc : '#8f7bff')
     : BLOCKS[ui.blockType].accent
+  // The app's own frame: gradient and particles (2026-10-20). "Behind the
+  // curtain" (Curtain.tsx) waits for a desktop layout; it isn't part of the phone app.
   return (
-    <>
+    <AppShell>
       <div className={`phone${arcade ? ' arcade' : ''}${specialOn ? ` special special-${ui.blockType}` : ''}`} style={{ ['--gacc' as string]: accent }}>
-        <div className="aurora" />
         <Screens ctl={ctl} />
+        {ui.confirm && <Confirm ctl={ctl} />}
         <div className={`toast${ui.toast ? ' show' : ''}${ui.toastUndo ? ' has-undo' : ''}`} role="status" aria-live="polite">
           <span>{ui.toast}</span>{ui.toastUndo && <button type="button" onClick={ctl.undoToast}>Undo</button>}
         </div>
       </div>
-      <Curtain ctl={ctl} />
+      {leaving && <RouteLoading label="Loading" overlay />}
+    </AppShell>
+  )
+}
+
+/** "Are you sure?" for leaving the season early and for starting over. */
+function Confirm({ ctl }: { ctl: Ctl }) {
+  const skip = ctl.ui.confirm === 'skip'
+  return (
+    <>
+      <div className="sheet-bg" onClick={ctl.closeConfirm} />
+      <div className="sheet confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-h">
+        <h3 id="confirm-h">{skip ? 'Skip for now?' : 'Start over?'}</h3>
+        {skip ? (
+          <p>I don&apos;t know you well enough yet, so your recommendations might not be spot on. You can always come back and play from the menu.</p>
+        ) : (
+          <p>This clears your taste calibration and takes you back to choosing genres. Your watchlist stays.</p>
+        )}
+        <button className="cta" onClick={ctl.closeConfirm}>{skip ? 'Keep playing' : 'Cancel'}</button>
+        <button className="opt" onClick={skip ? ctl.confirmSkip : ctl.confirmRestart}>{skip ? 'Skip' : 'Start over'}</button>
+      </div>
     </>
   )
 }

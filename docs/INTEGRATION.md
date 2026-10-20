@@ -176,6 +176,16 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-20 — Taste games inside the app (`feat/play-in-app`)
+- Migration 0024 was run live on 2026-10-19 and verified (play_state, play_events, RLS). #129 merged + deployed.
+- Home: input bar gone; chat is the top-left icon. Bottom: Picks · Watchlist · Games (blue / yellow / orange). Games opens `/play?tab=games`.
+- `/play` now renders in AppShell (gradient + particles) with AppMenu. Curtain (behind the curtain) not rendered on mobile. No intro screen; season bar is fill-only; steps open straight to their intro (no path map up front).
+- Skip (from step 3) with a confirm sheet → `PlayState.skipped`; skipped + unfinished players get a "Finish calibration" card every 15 recs (list view only, not the full-screen swiper).
+- Restart calibration (confirm sheet) in Games: fresh `PlayState`, back to genres. Does NOT touch the DNA (games don't write it yet).
+- Duels prefer familiar titles (`familiar()` in brain.ts: pop ≥ 0.35 when the pool has 60+).
+- Font sizes in play.css raised (+2px up to 16px, +3px up to 24px).
+- **Not live yet:** `PLAY_ONBOARDING_LIVE` in `src/lib/play-rollout.ts` (false). On: menu "Play" → games, and `/` redirects to `/play` until genres are rated, then until the season is finished or skipped (links out of /play carry `?from=play`/`?stage=` so they aren't bounced).
+
 ### 2026-10-14 — Taste games, Slice 1 in progress (`feat/taste-games`, not pushed)
 
 Plan and rules: `docs/taste-games-handoff.md`. A hidden `/play` route beside the live app; it does **not** write `users.dna` (that is Slice 2).

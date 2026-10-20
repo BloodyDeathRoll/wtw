@@ -1,12 +1,19 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateActiveConversation } from "@/lib/conversations";
 import { buildWelcomeData } from "@/lib/welcome";
+import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
+import { loadPlay, progressOf } from "./play/lib/server";
 import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
 import LoginScreen from "./login/LoginScreen";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ stage?: string; from?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,6 +24,16 @@ export default async function Home() {
   // must receive a 200 with the verification meta tag, not a 307 to /login.
   if (!user) {
     return <LoginScreen />;
+  }
+
+  // The taste games are the way in (src/lib/play-rollout.ts): genres before
+  // anything, then the season until it's finished or skipped. A link back out
+  // of the games (?from=play, ?stage=…) is never bounced back to them.
+  const play = progressOf((await loadPlay(supabase, user.id)).state);
+  if (PLAY_ONBOARDING_LIVE) {
+    const params = await searchParams;
+    const fromApp = params.from === "play" || !!params.stage;
+    if (!play.genresDone || (!play.done && !play.skipped && !fromApp)) redirect("/play");
   }
 
   // Browser-style UTC offset written by the inline script in layout.tsx.
@@ -47,6 +64,11 @@ export default async function Home() {
   ]);
 
   return (
-    <WTWApp user={appUser} conversation={conversation} welcome={welcome} />
+    <WTWApp
+      user={appUser}
+      conversation={conversation}
+      welcome={welcome}
+      calibrationNudge={play.skipped}
+    />
   );
 }

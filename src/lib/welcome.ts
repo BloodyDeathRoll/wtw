@@ -36,7 +36,8 @@ export async function buildWelcomeData(
   return { greeting };
 }
 
-async function countUserSignals(
+/** Chat turns + feedback rows. Also tells an existing user from a brand-new one. */
+export async function countUserSignals(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<number> {

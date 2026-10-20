@@ -9,17 +9,18 @@ import { factHeadline, revealOf } from '../lib/reveal'
 import type { Ctl } from './types'
 import { Poster, SaveRibbon, TopBar } from './ui'
 
-/** "8 of 15 done" — on every training screen. Tap: the path map. */
+/**
+ * The season's progress on every training screen: a bar that fills, no words
+ * (2026-10-20: "15 steps to go" up front put people off before they were hooked).
+ */
 export function SeasonBar({ ctl }: { ctl: Ctl }) {
   const { S } = ctl
   if (!S.sel || seasonDone(S)) return null
   const done = Math.min(S.block - 1, SEASON_LENGTH)
   return (
-    <button className="seasonbar" onClick={ctl.openPath} aria-label={`${done} of ${SEASON_LENGTH} steps done. Open the path`}>
-      <span><b>{done}</b> of {SEASON_LENGTH} done</span>
+    <div className="seasonbar quiet" role="progressbar" aria-label="Taste calibration" aria-valuemin={0} aria-valuemax={SEASON_LENGTH} aria-valuenow={done}>
       <span className="sb-bar"><i style={{ width: `${(done / SEASON_LENGTH) * 100}%` }} /></span>
-      <span className="sb-map">Path ›</span>
-    </button>
+    </div>
   )
 }
 
@@ -31,7 +32,7 @@ export function PathScreen({ ctl }: { ctl: Ctl }) {
   const genre = blockGenre(S, T, nextType, cur)
   return (
     <div className="screen">
-      <TopBar onMenu={() => ctl.setMenu(true)} />
+      <TopBar ctl={ctl} />
       <div className="path-head">
         <span className="eyebrow">Season 1 · Your taste</span>
         <h1>Step {Math.min(cur, SEASON_LENGTH)} of {SEASON_LENGTH}</h1>
@@ -63,7 +64,7 @@ export function PathScreen({ ctl }: { ctl: Ctl }) {
 
 export function ShowdownScreen({ ctl }: { ctl: Ctl }) {
   const sd = ctl.ui.showdown!
-  const top = <TopBar onMenu={() => ctl.setMenu(true)} />
+  const top = <TopBar ctl={ctl} />
   if (sd.step === 'summary') {
     const hits = sd.results.filter(r => r.chose === r.call).length
     const fin = BLOCKS.finale
@@ -159,7 +160,7 @@ export function FinaleScreen({ ctl }: { ctl: Ctl }) {
   const r = revealOf(ctl.S)
   return (
     <div className={`screen finale fin fin-${r.tier}`}>
-      <TopBar onMenu={() => ctl.setMenu(true)} />
+      <TopBar ctl={ctl} />
       <div className="seasonbar sb-complete"><span><b>Season 1 complete</b></span><span className="sb-bar"><i style={{ width: '100%' }} /></span><span>15/15</span></div>
       <div className="fin-glow" aria-hidden="true" />
       <div className="fin-body">
