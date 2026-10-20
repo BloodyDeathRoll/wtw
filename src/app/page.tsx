@@ -29,8 +29,10 @@ export default async function Home({
   // The taste games are the way in (src/lib/play-rollout.ts): genres before
   // anything, then the season until it's finished or skipped. A link back out
   // of the games (?from=play, ?stage=…) is never bounced back to them.
-  const play = progressOf((await loadPlay(supabase, user.id)).state);
+  // Started now, awaited with the other reads below (only the redirect needs it first).
+  const playLoad = loadPlay(supabase, user.id).then((p) => progressOf(p.state));
   if (PLAY_ONBOARDING_LIVE) {
+    const play = await playLoad;
     const params = await searchParams;
     const fromApp = params.from === "play" || !!params.stage;
     if (!play.genresDone || (!play.done && !play.skipped && !fromApp)) redirect("/play");
@@ -58,9 +60,10 @@ export default async function Home({
 
   // Independent — fan out to shave the Groq round-trip off `buildWelcomeData`
   // when it lands during the conversation fetch.
-  const [conversation, welcome] = await Promise.all([
+  const [conversation, welcome, play] = await Promise.all([
     getOrCreateActiveConversation(supabase, user.id),
     buildWelcomeData(supabase, user.id, appUser.name, utcOffsetMinutes),
+    playLoad,
   ]);
 
   return (

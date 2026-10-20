@@ -822,6 +822,12 @@ export default function PlayApp({ user, existingUser, titles, saved, jumpTo, tab
 /** "Are you sure?" for leaving the season early and for starting over. */
 function Confirm({ ctl }: { ctl: Ctl }) {
   const skip = ctl.ui.confirm === 'skip'
+  const close = ctl.closeConfirm
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [close])
   return (
     <>
       <div className="sheet-bg" onClick={ctl.closeConfirm} />
@@ -832,7 +838,7 @@ function Confirm({ ctl }: { ctl: Ctl }) {
         ) : (
           <p>This clears your taste calibration and takes you back to choosing genres. Your watchlist stays.</p>
         )}
-        <button className="cta" onClick={ctl.closeConfirm}>{skip ? 'Keep playing' : 'Cancel'}</button>
+        <button className="cta" autoFocus onClick={ctl.closeConfirm}>{skip ? 'Keep playing' : 'Cancel'}</button>
         <button className="opt" onClick={skip ? ctl.confirmSkip : ctl.confirmRestart}>{skip ? 'Skip' : 'Start over'}</button>
       </div>
     </>

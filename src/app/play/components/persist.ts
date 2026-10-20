@@ -30,6 +30,8 @@ export function usePersistence(userId: string, initialMode: SaveMode, initialVer
   const queue = useRef<PlayEvent[]>([])
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latest = useRef<PlayState | null>(null)
+  /** The save in progress, if any (flushNow waits for it). */
+  const inFlight = useRef<Promise<void>>(Promise.resolve())
   const [status, setStatus] = useState<SaveStatus>(initialMode === 'local' ? 'local' : 'idle')
 
   const goLocal = useCallback(() => {
@@ -86,16 +88,21 @@ export function usePersistence(userId: string, initialMode: SaveMode, initialVer
     const now = Date.now()
     firstPending.current ??= now
     const wait = Math.max(0, Math.min(900, firstPending.current + MAX_WAIT_MS - now))
-    timer.current = setTimeout(() => { firstPending.current = null; void flush() }, wait)
+    timer.current = setTimeout(() => { firstPending.current = null; inFlight.current = flush() }, wait)
   }, [flush])
 
-  /** Write what's pending now, e.g. before navigating to another page of the app (no pagehide there). */
+  /**
+   * Write what's pending now, e.g. before navigating to another page of the
+   * app (no pagehide there). Also waits out a save already on the wire.
+   */
   const flushNow = useCallback(async () => {
-    if (!timer.current) return
-    clearTimeout(timer.current)
-    timer.current = null
-    firstPending.current = null
-    await flush()
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+      firstPending.current = null
+      inFlight.current = flush()
+    }
+    await inFlight.current
   }, [flush])
 
   // Leaving the page: write what's pending. keepalive lets it outlive the tab.
