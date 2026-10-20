@@ -915,3 +915,17 @@
 .wtw-play .gstage .row-btns{width:100%}
 .wtw-play .gstage .row-btns .ghost,.wtw-play .gstage .row-btns .opt{white-space:nowrap;padding:0 12px;font-size:18px}
 .wtw-play .inter:has(> .glow) > .eyebrow{margin-top:auto}
+/* The Other Side: the screen never scrolls; the clue list does (newest at the bottom, in view) */
+.wtw-play .gstage.other-play{flex:1 1 0;min-height:0}
+.wtw-play .other-play > .clues{flex:0 1 auto;min-height:72px;overflow-y:auto;scrollbar-width:none}
+.wtw-play .other-play > .clues::-webkit-scrollbar{display:none}
+.wtw-play .other-play > :not(.clues){flex-shrink:0}
+.wtw-play .other-play > .clues{position:relative}
+@media (max-height:720px){
+  .wtw-play .gstage.other-play{gap:10px;padding-top:8px}
+  .wtw-play .other-play .clue{padding:14px 16px}
+  .wtw-play .other-play .clue p{font-size:17px}
+  .wtw-play .other-play .gq span{margin-top:2px}
+  .wtw-play .other-play .choices.two .choice{padding:8px 12px;font-size:15px}
+  .wtw-play .other-play .row-btns .ghost{height:48px}
+}

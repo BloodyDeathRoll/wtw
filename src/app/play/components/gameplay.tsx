@@ -1,6 +1,6 @@
 'use client'
 /* The three season games' play screens. Logic and content: lib/games.ts; actions: PlayApp. */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LEVELS, OTHER_OPTIONS_FROM, blindPlot, hiloValue, otherPoints, sideClues, titleSearch } from '../lib/games'
 import type { Ctl } from './types'
 import { Poster, SaveRibbon } from './ui'
@@ -76,12 +76,21 @@ export function OtherPlay({ ctl }: { ctl: Ctl }) {
   const o = ctl.ui.game!.other!
   const t = o.deck[o.i]
   const cl = sideClues(t)
+  // Clues pile up: the list scrolls on its own to the newest one, so the
+  // question and the buttons below never get pushed off screen (2026-10-20).
+  const cluesRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = cluesRef.current
+    const now = el?.lastElementChild as HTMLElement | null
+    // The newest clue's top at the top of the list: its words show first on a short screen.
+    if (el && now) el.scrollTo({ top: now.offsetTop, behavior: 'smooth' })
+  }, [o.clue, o.i])
   return (
-    <div className="gstage">
+    <div className={`gstage${o.step === 'guess' ? ' other-play' : ''}`}>
       <div className="ptsrow"><span>Story {o.i + 1} of {o.deck.length}</span><span>Points <b>{o.points}</b></span></div>
       {o.step === 'guess' ? (
         <>
-          <div className="clues">
+          <div className="clues" ref={cluesRef}>
             {cl.slice(0, o.clue).map((c, i) => {
               const now = i === o.clue - 1
               return (
