@@ -22,6 +22,7 @@
     "backfill-content-affinity": "node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-content-affinity.mts",
     "repair-title-keys": "node --env-file=.env.local --conditions=react-server --import tsx scripts/repair-title-keys.mts",
     "generate-icons": "node scripts/generate-icons.mjs",
+    "record-intro": "node --env-file=.env.local --import tsx scripts/record-intro.mts",
     "build-play-titles": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-play-titles.mts"
   },
   "dependencies": {

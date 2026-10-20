@@ -422,3 +422,26 @@
   width: auto;
   height: 35.5px;
 }
+
+/* ─── Games intro: one CTA into the taste games (2026-10-20) ─── */
+.introPlayRow {
+  /* Pinned above the waveform, where the typing row sits in the chat intro. */
+  position: absolute;
+  bottom: 92px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  padding: 0 16px;
+}
+.introPlayBtn {
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffa900 0%, #ff7700 50%, #ff4400 100%);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgba(255, 119, 0, 0.45);
+}

@@ -44,6 +44,7 @@ import RecommendationsView from "../recommendations/RecommendationsView";
 import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
 import IntroVoice from "../voice/IntroVoice";
+import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from "../voice/intro-copy";
 import { FingerprintLoader } from "./FingerprintLoader";
 import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
@@ -57,12 +58,9 @@ import styles from "./WTWApp.module.css";
 // Modality-agnostic — every assistant message counts (voice OR text).
 const RECOMMEND_AFTER_TURNS = 2;
 
-// Brand-new users skip the onboard shell and land on the intro surface with
-// this already on screen, spoken by IntroVoice. Kept in sync by hand with the
-// recording in public/intro.mp3 — if you edit the words here, re-record it.
-const INTRO_MESSAGE = `Hey there, welcome to What To Watch!
-Let's chat a little. The more I know you, the better the recommendations get. Once you get recommendations, you can rate them and improve my algorithm even more!
-Shall we begin?`;
+// Brand-new users skip the onboard shell and land on the voice intro, which
+// leads into the taste games (2026-10-20; the words live with the recording
+// in voice/intro-copy.ts).
 
 type ContentType = "movies" | "series";
 const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
@@ -920,19 +918,11 @@ export default function WTWApp({
         </div>
       ) : stage === "intro" ? (
         <IntroVoice
-          text={INTRO_MESSAGE}
-          // Answering out loud continues in voice: the live session opens and
-          // the conversation carries on where the recording left off.
-          onSpeak={() => {
-            setStage("conversation");
-            setVoicePrimer(null);
-            setVoiceOpen(true);
-          }}
-          // Anything else means they'd rather type, so put them in the chat
-          // with the keyboard ready.
-          onSkip={() => setStage("conversation")}
-          // Typing is itself the answer — send it and stay in text from here.
-          onType={(text) => handleSubmit(text)}
+          text={GAMES_INTRO_MESSAGE}
+          src={GAMES_INTRO_AUDIO_SRC}
+          // The first thing a new user does is play (2026-10-20), not chat.
+          // ?heard=1: the games don't play the intro a second time.
+          onPlay={() => leaveTo("/play?heard=1")}
         />
       ) : voiceOpen ? (
         <VoiceMode

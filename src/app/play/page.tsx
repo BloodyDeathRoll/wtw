@@ -24,12 +24,14 @@ const titles = withSideClues(withBlindPlots(rawTitles as GameTitle[], plotRewrit
 
 const DEMO_USER: AppUser = { id: 'dev-demo', email: null, name: null, avatarUrl: null }
 
-export default async function PlayPage({ searchParams }: { searchParams: Promise<{ demo?: string; jump?: string; tab?: string; new?: string }> }) {
+export default async function PlayPage({ searchParams }: { searchParams: Promise<{ demo?: string; jump?: string; tab?: string; new?: string; heard?: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const params = await searchParams
   // ?tab=games: the home screen's Games button opens the arcade, not the training.
   const tab = params.tab === 'games' ? 'games' : undefined
+  // Brand-new users hear the voice intro first, unless the home screen just played it.
+  const heard = params.heard === '1'
 
   // Local dev only: /play?demo=1 runs signed out, saving in the browser, so
   // the games can be clicked through without a Google sign-in. Dead code in
@@ -37,7 +39,7 @@ export default async function PlayPage({ searchParams }: { searchParams: Promise
   if (!user && process.env.NODE_ENV === 'development' && params.demo === '1') {
     // &jump=14 starts a ready-made player at that step (lib/demo.ts), replacing the browser save.
     const jumpTo = Number(params.jump) || undefined
-    return <PlayApp user={DEMO_USER} existingUser={params.new !== '1'} titles={titles} saved={{ mode: 'local', state: null, version: 0 }} jumpTo={jumpTo} tab={tab} />
+    return <PlayApp user={DEMO_USER} existingUser={params.new !== '1'} voiceIntro={params.new === '1' && !heard} titles={titles} saved={{ mode: 'local', state: null, version: 0 }} jumpTo={jumpTo} tab={tab} />
   }
 
   if (!user) {
@@ -68,5 +70,5 @@ export default async function PlayPage({ searchParams }: { searchParams: Promise
   // Brand-new users get a short menu: the feed, ratings and DNA have nothing to show yet.
   const [saved, signals] = await Promise.all([loadPlay(supabase, user.id), countUserSignals(supabase, user.id)])
 
-  return <PlayApp user={appUser} existingUser={signals > 0} titles={titles} saved={saved} tab={tab} />
+  return <PlayApp user={appUser} existingUser={signals > 0} voiceIntro={signals === 0 && !heard} titles={titles} saved={saved} tab={tab} />
 }

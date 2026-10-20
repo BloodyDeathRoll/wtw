@@ -10,7 +10,8 @@
 //
 // It is a fork in the road, not a destination — whichever way the user answers
 // decides the mode: the mic sends them to VoiceMode, typing sends them to the
-// text chat.
+// text chat. With `onPlay` (the taste games intro, 2026-10-20) there is one way
+// on instead: "Let's play" — and skipping goes there too.
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./VoiceMode.module.css";
@@ -19,23 +20,36 @@ import styles from "./VoiceMode.module.css";
  *  the words in the file and the words on screen have to match. */
 export const INTRO_AUDIO_SRC = "/intro.mp3";
 
-interface IntroVoiceProps {
-  /** The line being spoken. Must be the transcript of INTRO_AUDIO_SRC. */
-  text: string;
-  /** User chose to answer out loud — hand off to the live voice session. */
-  onSpeak: () => void;
-  /** User dismissed the intro without answering — drop into the text chat. */
-  onSkip: () => void;
-  /** User answered by typing — carry the text into the chat and send it. */
-  onType: (text: string) => void;
-}
+/** One WebAudio graph per audio element, kept across remounts (see the audio effect). */
+const GRAPHS = new WeakMap<HTMLMediaElement, { ctx: AudioContext; analyser: AnalyserNode }>();
 
-export default function IntroVoice({
-  text,
-  onSpeak,
-  onSkip,
-  onType,
-}: IntroVoiceProps) {
+type IntroVoiceProps = {
+  /** The line being spoken. Must be the transcript of `src`. */
+  text: string;
+  /** The recording; defaults to INTRO_AUDIO_SRC. */
+  src?: string;
+} & (
+  | {
+      /** User chose to answer out loud — hand off to the live voice session. */
+      onSpeak: () => void;
+      /** User dismissed the intro without answering — drop into the text chat. */
+      onSkip: () => void;
+      /** User answered by typing — carry the text into the chat and send it. */
+      onType: (text: string) => void;
+      onPlay?: undefined;
+    }
+  | {
+      /** The games intro: the only way on is into the games. */
+      onPlay: () => void;
+      onSpeak?: undefined;
+      onSkip?: undefined;
+      onType?: undefined;
+    }
+);
+
+export default function IntroVoice(props: IntroVoiceProps) {
+  const { text, src = INTRO_AUDIO_SRC, onPlay } = props;
+  const onSkip = props.onPlay ?? props.onSkip;
   const [typed, setTyped] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -54,18 +68,27 @@ export default function IntroVoice({
     const audio = audioRef.current;
     if (!audio) return;
 
-    let ctx: AudioContext | null = null;
-    try {
-      ctx = new AudioContext();
-      const source = ctx.createMediaElementSource(audio);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 1024;
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
-      analyserRef.current = analyser;
-    } catch {
-      // No WebAudio — the audio element still plays, the wave just idles.
+    // An element can be wired into WebAudio only once, so a remount (React
+    // runs effects twice in development) reuses the first graph. Closing it on
+    // cleanup left the element routed into a dead context: it "played" with
+    // the clock stuck at 0 — no sound, no caption.
+    let graph = GRAPHS.get(audio);
+    if (!graph) {
+      try {
+        const c = new AudioContext();
+        const source = c.createMediaElementSource(audio);
+        const analyser = c.createAnalyser();
+        analyser.fftSize = 1024;
+        source.connect(analyser);
+        analyser.connect(c.destination);
+        graph = { ctx: c, analyser };
+        GRAPHS.set(audio, graph);
+      } catch {
+        // No WebAudio — the audio element still plays, the wave just idles.
+      }
     }
+    const ctx = graph?.ctx ?? null;
+    analyserRef.current = graph?.analyser ?? null;
 
     // Autoplay is blocked without a gesture in every current browser, which is
     // why the screen needs a visible "Click to begin" rather than sitting
@@ -85,7 +108,7 @@ export default function IntroVoice({
 
     return () => {
       audio.pause();
-      void ctx?.close();
+      void ctx?.suspend();
       analyserRef.current = null;
     };
   }, []);
@@ -196,13 +219,21 @@ export default function IntroVoice({
         {shown}
       </div>
 
-      <audio ref={audioRef} src={INTRO_AUDIO_SRC} preload="auto" />
+      <audio ref={audioRef} src={src} preload="auto" />
 
+      {onPlay ? (
+        <div className={styles.controls}>
+          <div className={styles.wave}>
+            <canvas ref={canvasRef} className={styles.waveCanvas} aria-hidden="true" />
+          </div>
+        </div>
+      ) : (
+      <>
       <div className={styles.controls}>
         <button
           type="button"
           className={`${styles.controlBtn} ${styles.controlBtnPrimary}`}
-          onClick={onSpeak}
+          onClick={props.onSpeak}
           aria-label="answer out loud"
         >
           {IconMic}
@@ -231,11 +262,21 @@ export default function IntroVoice({
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
             const v = typed.trim();
-            if (v) onType(v);
+            if (v) props.onType?.(v);
           }}
           aria-label="answer by typing"
         />
       </div>
+      </>
+      )}
+
+      {onPlay && (
+        <div className={styles.introPlayRow}>
+          <button type="button" className={styles.introPlayBtn} onClick={onPlay}>
+            Let&rsquo;s play
+          </button>
+        </div>
+      )}
     </div>
   );
 }

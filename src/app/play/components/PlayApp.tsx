@@ -15,6 +15,8 @@ import { useRouter } from 'next/navigation'
 import AppShell from '@/modules/session/components/AppShell'
 import type { AppUser } from '@/modules/session/types'
 import { LEAVE_TIMEOUT_MS, RouteLoading } from '@/app/components/RouteLoading'
+import IntroVoice from '@/modules/session/voice/IntroVoice'
+import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from '@/modules/session/voice/intro-copy'
 import type { GameTitle } from '../lib/scales'
 import type { GameGenre } from '../lib/genres'
 import {
@@ -73,10 +75,12 @@ function allowedForGames(S: PlayState, t: Title): boolean {
   return !L.length || t.genres.some(g => L.includes(g))
 }
 
-export default function PlayApp({ user, existingUser, titles, saved, jumpTo, tab }: {
+export default function PlayApp({ user, existingUser, voiceIntro = false, titles, saved, jumpTo, tab }: {
   user: AppUser
   /** Has used the app before (chat or ratings): gets the full menu from the start. */
   existingUser: boolean
+  /** A brand-new user who hasn't heard the voice intro: it opens the games (before the genres). */
+  voiceIntro?: boolean
   titles: GameTitle[]
   saved: SavedPlay
   /** Local demo only: start a ready-made player at this step (lib/demo.ts). */
@@ -91,6 +95,8 @@ export default function PlayApp({ user, existingUser, titles, saved, jumpTo, tab
   const SRef = useRef<PlayState>(saved.state ?? freshState())
   const [ready, setReady] = useState(saved.mode === 'server')
   const [ui, setUI] = useState<UI>(INITIAL_UI)
+  // Shown once per visit, before the genres, only to a player who hasn't rated them yet.
+  const [introOn, setIntroOn] = useState(voiceIntro && !saved.state?.sel)
   const [, rerender] = useReducer((n: number) => n + 1, 0)
   const { save, flushNow, status } = usePersistence(userId, saved.mode, saved.version)
   // Leaving for another page of the app: save first (a client-side navigation
@@ -803,6 +809,14 @@ export default function PlayApp({ user, existingUser, titles, saved, jumpTo, tab
   const accent = arcade
     ? (ui.screen === 'game' && ui.game ? GAMES.find(g => g.id === ui.game!.id)!.acc : '#8f7bff')
     : BLOCKS[ui.blockType].accent
+  if (introOn && !S.sel) {
+    return (
+      <AppShell>
+        <IntroVoice text={GAMES_INTRO_MESSAGE} src={GAMES_INTRO_AUDIO_SRC} onPlay={() => setIntroOn(false)} />
+      </AppShell>
+    )
+  }
+
   // The app's own frame: gradient and particles (2026-10-20). "Behind the
   // curtain" (Curtain.tsx) waits for a desktop layout; it isn't part of the phone app.
   return (
