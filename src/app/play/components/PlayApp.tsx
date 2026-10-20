@@ -250,7 +250,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     const S = SRef.current
     if (!S.sel) return   // genres first, whatever was asked for
     if (tab === 'games') { setUI(prev => ({ ...prev, screen: 'games' })); return }
-    if (seasonDone(S)) { setUI(prev => ({ ...prev, screen: 'tonight' })); return }
+    if (seasonDone(S)) { setUI(prev => ({ ...prev, screen: 'games' })); return }   // the picks live in the app now
     const type = blockTypeFor(S, T, S.block)
     if (S.blockPicks > 0) {
       // Part-way through a regular block: carry on with a fresh pair.
@@ -607,8 +607,9 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     finishSeason() {
       if (S.block <= SEASON_LENGTH) S.block = SEASON_LENGTH + 1
       note(S, 'Season 1 complete')
-      set({ screen: 'tonight', resume: null })
       commit([{ kind: 'season_done', payload: { showdown: S.showdownScore ?? null } }])
+      // The app's own recommendations, in the app's own cards (2026-10-20).
+      void leave('/?stage=recommendations')
     },
 
     blindWatch(yes) {
@@ -710,7 +711,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       }, [])
     },
     openUnlock(id) {
-      if (id === 'picks') set({ screen: 'tonight', resume: 'blockDone' })
+      if (id === 'picks') void leave('/?stage=recommendations')
       else startGame(id)
     },
 

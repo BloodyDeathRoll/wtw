@@ -186,6 +186,7 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - Font sizes in play.css raised (+2px up to 16px, +3px up to 24px).
 - Voice intro now leads into the games, not the chat: new copy in `voice/intro-copy.ts`, recorded to `public/intro-games.mp3` with `npm run record-intro` (Gemini TTS, Aoede; transcript checked). Brand-new users hear it on home (→ `/play?heard=1`) or first thing in `/play`. `public/intro.mp3` (old chat intro) is no longer used. Also fixed: in dev the intro's audio stalled at 0s (StrictMode remount closed its WebAudio graph).
 - Design pass to the Figma "games" frame: genres, step intros, duel, Skip sheet; orange gradient for every primary button. No step numbers anywhere; the path screen is gone. Signed-out `/play` → sign-in. Skip → `/?stage=recommendations`.
+- Figma pass 2: knockout round, in-block questions, Blind / Other Side play + reveal. Finishing the season now opens the app's real recommendations (`/?stage=recommendations`) instead of the games' own test picks (`Picks.tsx`, now unreachable). Note: the games still don't write the DNA (Slice 2), so those recs don't reflect the season yet.
 - **Not live yet:** `PLAY_ONBOARDING_LIVE` in `src/lib/play-rollout.ts` (false). On: menu "Play" → games, and `/` redirects to `/play` until genres are rated, then until the season is finished or skipped (links out of /play carry `?from=play`/`?stage=` so they aren't bounced).
 
 ### 2026-10-14 — Taste games, Slice 1 in progress (`feat/taste-games`, not pushed)
