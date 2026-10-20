@@ -7,7 +7,7 @@ import {
   UNLOCKS, canHunch, est, hunchEvidence, huhTrait, isUnlocked, loves, nevers, rankedScales,
   SAY, mixedPicks, trustedCreators, unlockOf, viewerName, type Title,
 } from '../lib/brain'
-import { BLOCKS, PICKS_PER_BLOCK, ROUND_NAMES, SEASON_LENGTH, genreName, isGameStep, seasonDone, type Cup } from '../lib/blocks'
+import { BLOCKS, PICKS_PER_BLOCK, ROUND_NAMES, genreName, isGameStep, seasonDone, type Cup } from '../lib/blocks'
 import type { Ctl } from './types'
 import { AxisRow, Icon, Poster, SaveRibbon, TopBar } from './ui'
 import { GAMES, GameScreen, GamesLobby } from './games'
@@ -499,12 +499,11 @@ function BlockDoneScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
 // ── picks + profile ──────────────────────────────────────────────
 
 function LockedPicks({ ctl }: { ctl: Ctl }) {
-  const need = unlockOf('picks').after
   return (
     <div className="locked-card">
       <b>Your picks arrive at the end of the season</b>
-      <span>You&apos;re on step {Math.min(ctl.S.block, need)} of {need}. Before that, they&apos;d just be popular titles in disguise.</span>
-      <button className="opt primary" style={{ width: '100%' }} onClick={ctl.openPath}>See the path</button>
+      <span>Finish your taste calibration first. Before that, they&apos;d just be popular titles in disguise.</span>
+      <button className="opt primary" style={{ width: '100%' }} onClick={() => ctl.go('duel')}>Keep calibrating</button>
     </div>
   )
 }

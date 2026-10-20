@@ -161,7 +161,7 @@ export function FinaleScreen({ ctl }: { ctl: Ctl }) {
   return (
     <div className={`screen finale fin fin-${r.tier}`}>
       <TopBar ctl={ctl} />
-      <div className="seasonbar sb-complete"><span><b>Season 1 complete</b></span><span className="sb-bar"><i style={{ width: '100%' }} /></span><span>15/15</span></div>
+      <div className="seasonbar sb-complete"><span><b>Season 1 complete</b></span><span className="sb-bar"><i style={{ width: '100%' }} /></span></div>
       <div className="fin-glow" aria-hidden="true" />
       <div className="fin-body">
         <div className="fin-yay">{r.yay}</div>
