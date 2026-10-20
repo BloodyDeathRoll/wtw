@@ -60,8 +60,6 @@ const duelEvent = (kind: string, p: Pair, extra: Record<string, unknown> = {}): 
 /** Screens that belong to Train my taste; leaving one remembers it, to return to. */
 const TRAINING: UI['screen'][] = ['duel', 'hunch', 'huh', 'blockIntro', 'knockout', 'champion', 'blockDone', 'showdown', 'finale']
 
-/** Skip shows from step 3, once the player has played one step after their genres. */
-const SKIP_FROM_BLOCK = 3
 
 const specialFilter = (b: SpecialRun | null): PairFilter =>
   b ? { kind: b.kind, genre: b.genre, creators: b.type === 'creators' } : {}
@@ -381,7 +379,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     S, T, ui, firstName, user,
     existingUser,
     inTraining: inSeasonTraining,
-    canSkip: inSeasonTraining && S.block >= SKIP_FROM_BLOCK,
+    canSkip: inSeasonTraining,   // from the first screen after the genres (2026-10-20)
     leave(href) { void leave(href) },
     ask: confirm => set({ confirm, menu: false }),
     closeConfirm: () => set({ confirm: null }),

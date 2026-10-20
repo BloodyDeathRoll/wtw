@@ -180,7 +180,7 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - Migration 0024 was run live on 2026-10-19 and verified (play_state, play_events, RLS). #129 merged + deployed.
 - Home: input bar gone; chat is the top-left icon. Bottom: Picks · Watchlist · Games (blue / yellow / orange). Games opens `/play?tab=games`.
 - `/play` now renders in AppShell (gradient + particles) with AppMenu. Curtain (behind the curtain) not rendered on mobile. No intro screen; season bar is fill-only; steps open straight to their intro (no path map up front).
-- Skip (from step 3) with a confirm sheet → `PlayState.skipped`; skipped + unfinished players get a "Finish calibration" card every 15 recs (list view only, not the full-screen swiper).
+- Skip (from the first screen after the genres) with a confirm sheet → `PlayState.skipped`; skipped + unfinished players get a "Finish calibration" card every 15 recs (list view only, not the full-screen swiper).
 - Restart calibration (confirm sheet) in Games: fresh `PlayState`, back to genres. Does NOT touch the DNA (games don't write it yet).
 - Duels prefer familiar titles (`familiar()` in brain.ts: pop ≥ 0.35 when the pool has 60+).
 - Font sizes in play.css raised (+2px up to 16px, +3px up to 24px).

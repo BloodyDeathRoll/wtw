@@ -161,7 +161,7 @@ export interface Ctl {
   existingUser: boolean
   /** On a screen of the season (the way out is Skip, not back). */
   inTraining: boolean
-  /** The season's Skip button is on offer (a training screen, step 3 on). */
+  /** The season's Skip button is on offer (any training screen once the genres are rated). */
   canSkip: boolean
   saveNote: string
   /** Go to another page of the app, saving first. */
