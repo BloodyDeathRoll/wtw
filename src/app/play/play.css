@@ -851,3 +851,67 @@
 .wtw-play .sheet.confirm h3{color:#ffa900;font-size:34px}
 .wtw-play .sheet.confirm p{font-size:18px}
 .wtw-play .sheet.confirm .cta,.wtw-play .sheet.confirm .opt{height:60px;font-size:20px;font-weight:700}
+
+/* ---------- design pass 2 (Figma, 2026-10-20): knockout, hunch, season games ---------- */
+.wtw-play{--card:#1c1c1e;--pill-dark:rgba(255,255,255,.1);--good2:#00c48c}
+/* Knockout: amber title, "through to the" in grey, the bracket stacked round by round in one card */
+.wtw-play .ko-head{color:#ffa900;font-size:34px;padding-top:12px;gap:8px}
+.wtw-play .inter.ko-round{padding-top:20px;gap:10px}
+.wtw-play .ko-through{color:#c8c8cc;font-size:16px;letter-spacing:.18em;font-weight:500}
+.wtw-play .ko-round > h2{font-size:40px;margin-top:-6px}
+.wtw-play .ko-round > .evidence{color:#c8c8cc;max-width:none}
+.wtw-play .inter .bracket{display:flex;flex-direction:column;gap:18px;margin:14px 0 0;padding:16px;border:0;border-radius:16px;background:var(--card)}
+.wtw-play .inter .bracket .bcol{display:block}
+.wtw-play .inter .bracket .bhead{font-size:15px;letter-spacing:.12em;color:#c8c8cc;font-weight:600;margin-bottom:10px}
+.wtw-play .inter .bracket .bms{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wtw-play .inter .bracket .bcol:last-child .bms{grid-template-columns:1fr}
+.wtw-play .inter .bracket .bm{background:#2e2e30;border:1px solid #3d3d40;border-radius:4px;padding:8px 10px;font-size:17px;gap:2px;text-align:left}
+.wtw-play .inter .bracket .bcol:last-child .bm{text-align:center}
+.wtw-play .inter .bracket .bm span{color:#d0d0d4}
+.wtw-play .inter .bracket .bm .win{color:#fff;font-weight:700}
+.wtw-play .inter .bracket .bm .lose{color:#ffa900;font-weight:500;text-decoration:line-through}
+.wtw-play .inter .bracket .bm .tbd{color:#c8c8cc}
+
+/* "Here's what I'm picking up" and the other questions inside a block */
+.wtw-play .inter > .eyebrow{color:#ffa900;font-size:16px;letter-spacing:.04em}
+.wtw-play .inter > h2{font-size:36px;line-height:1.15}
+.wtw-play .inter > .evidence{color:#c8c8cc;font-size:18px}
+.wtw-play .inter .evidence em{color:#fff;font-weight:700}
+.wtw-play .inter > .opts{gap:12px}
+.wtw-play .inter > .opts .opt{height:56px;font-size:20px;background:var(--pill-dark);font-weight:500}
+.wtw-play .inter > .opts .opt.primary{font-weight:700}
+.wtw-play .inter.ko-round > .eyebrow{color:#c8c8cc}
+
+/* Season games: the game's name and level, the score row, cards on a flat dark ground */
+.wtw-play .glevel{font-size:17px;letter-spacing:0;margin-top:6px !important;color:#a8a8ad}
+.wtw-play .glevel b{color:#fff;font-weight:700}
+.wtw-play .gstage{padding-top:14px;gap:16px}
+.wtw-play .gstage .ptsrow{font-size:17px;color:#a8a8ad}
+.wtw-play .ptsrow b{color:#3ddc97;font-weight:700;font-size:19px}
+.wtw-play .plot-card,.wtw-play .clue{border:0;background:var(--card);border-radius:16px;padding:22px 20px}
+.wtw-play .plot-card small,.wtw-play .clue small{font-size:16px;letter-spacing:.1em;font-weight:700}
+.wtw-play .plot-card p,.wtw-play .clue p{font-size:20px;line-height:1.5}
+.wtw-play .clue{display:grid;gap:10px}
+.wtw-play .clue.past{padding:12px 16px;gap:4px;opacity:.7}
+.wtw-play .clue.past p{font-size:16px}
+.wtw-play .clue-more{justify-self:end;font-size:16px;color:#a8a8ad}
+.wtw-play .gq{font-size:22px}
+.wtw-play .gq span{font-size:18px;font-weight:500;margin-top:8px}
+.wtw-play .tguess input{background:var(--card);border:0;border-radius:16px;padding:20px;font-size:20px}
+.wtw-play .gstage .row-btns{gap:12px}
+.wtw-play .gstage .row-btns .ghost,.wtw-play .gstage .row-btns .opt{flex:1;height:56px;font-size:19px;font-weight:600;border-radius:999px}
+.wtw-play .gstage .row-btns .opt:not(.primary){background:var(--pill-dark);font-weight:500}
+/* The reveal: green verdict pill, a bigger poster, the seen-it answers as pills at the bottom */
+.wtw-play .verdict-tag{font-size:18px;font-weight:700;padding:8px 18px}
+.wtw-play .verdict-tag.ok{background:var(--good2);color:#04140d}
+.wtw-play .reveal-card{gap:12px}
+.wtw-play .reveal-poster{width:190px;margin-top:4px}
+.wtw-play .reveal-card h2{font-size:30px;font-weight:500;margin-top:8px}
+.wtw-play .reveal-card .q{font-size:17px;color:#a8a8ad}
+.wtw-play .reveal-card > .seen-q{margin-top:auto;font-size:20px}
+.wtw-play .seen-btns{gap:12px}
+.wtw-play .seen-btns button{border:0;background:var(--pill-dark);border-radius:999px;height:56px;font-size:19px}
+.wtw-play .ko-head .sicon{background:none;border:0;width:auto;height:auto;font-family:var(--ui);font-size:28px}
+.wtw-play .gstage .row-btns{width:100%}
+.wtw-play .gstage .row-btns .ghost,.wtw-play .gstage .row-btns .opt{white-space:nowrap;padding:0 12px;font-size:18px}
+.wtw-play .inter:has(> .glow) > .eyebrow{margin-top:auto}

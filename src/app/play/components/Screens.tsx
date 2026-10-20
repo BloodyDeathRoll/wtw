@@ -276,6 +276,7 @@ function Bracket({ C }: { C: Cup }) {
       {cols.map(col => (
         <div key={col.name} className="bcol">
           <div className="bhead">{col.name === 'Final' ? '🏆 Final' : col.name.replace('Quarter-finals', 'Quarters').replace('Semi-finals', 'Semis').replace('Round of 16', 'Last 16')}</div>
+          <div className="bms">
           {col.matches.map((m, mi) => {
             const now = col.ri === C.r && mi === C.mi && C.step === 'match'
             return (
@@ -287,6 +288,7 @@ function Bracket({ C }: { C: Cup }) {
               </div>
             )
           })}
+          </div>
         </div>
       ))}
     </div>
@@ -325,9 +327,10 @@ function Knockout({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
     const insight = hiN > loN ? `${hiN} of ${n} lean ${SCALE_WORDS[C.axis][1]}.` : loN > hiN ? `${loN} of ${n} lean ${SCALE_WORDS[C.axis][0]}.` : 'An even mix so far.'
     return (
       <div className="screen">{top}
+        <SeasonBar ctl={ctl} />
         <div className="ko-head"><span className="sicon">🏆</span>{C.name}</div>
-        <div className="inter" style={{ justifyContent: 'flex-start', paddingTop: 8 }}>
-          <div className="eyebrow">Through to the</div>
+        <div className="inter ko-round">
+          <div className="eyebrow ko-through">Through to the</div>
           <h2>{names[C.r]}</h2>
           <div className="evidence">{n} left standing. {insight}</div>
           <Bracket C={C} />

@@ -53,7 +53,7 @@ function TitleGuess({ ctl, exclude }: { ctl: Ctl; exclude: string[] }) {
   const hits = titleSearch(ctl.T, q, exclude)
   return (
     <div className="tguess">
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Type the title…" aria-label="Type the title" autoComplete="off" autoCorrect="off" spellCheck={false} />
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Type the Title…" aria-label="Type the title" autoComplete="off" autoCorrect="off" spellCheck={false} />
       {hits.length > 0 && (
         <div className="tguess-list" role="listbox">
           {hits.map(x => (
@@ -78,16 +78,22 @@ export function OtherPlay({ ctl }: { ctl: Ctl }) {
   const cl = sideClues(t)
   return (
     <div className="gstage">
-      <div className="ptsrow"><span>Story {o.i + 1} of {o.deck.length}</span><span>Points: <b>{o.points}</b></span></div>
+      <div className="ptsrow"><span>Story {o.i + 1} of {o.deck.length}</span><span>Points <b>{o.points}</b></span></div>
       {o.step === 'guess' ? (
         <>
           <div className="clues">
-            {cl.slice(0, o.clue).map((c, i) => (
-              <div key={i} className={`clue${i < o.clue - 1 ? ' past' : ''}`}><small>Clue {i + 1} · {c.who}</small><p>“{c.text}”</p></div>
-            ))}
-            {o.clue < cl.length && (
-              <div className="clue locked">{cl.length - o.clue} more {cl.length - o.clue > 1 ? 'clues' : 'clue'} · the next is worth {otherPoints(o.clue + 1)}</div>
-            )}
+            {cl.slice(0, o.clue).map((c, i) => {
+              const now = i === o.clue - 1
+              return (
+                <div key={i} className={`clue${now ? '' : ' past'}`}>
+                  <small>Clue {i + 1} - {c.who}</small><p>“{c.text}”</p>
+                  {/* What's left sits inside the current clue (Figma, 2026-10-20). */}
+                  {now && o.clue < cl.length && (
+                    <span className="clue-more">{cl.length - o.clue} more {cl.length - o.clue > 1 ? 'clues' : 'clue'} · the next is worth {otherPoints(o.clue + 1)}</span>
+                  )}
+                </div>
+              )
+            })}
           </div>
           <h2 className="gq">Which story is it? <span>Worth {otherPoints(o.clue)} now</span></h2>
           {o.clue < OTHER_OPTIONS_FROM && <TitleGuess key={`${o.i}-${o.clue}`} ctl={ctl} exclude={o.wrong} />}
@@ -97,9 +103,7 @@ export function OtherPlay({ ctl }: { ctl: Ctl }) {
                 <button key={x.id} className="choice" disabled={o.wrong.includes(x.id)} onClick={() => ctl.otherGuess(x)}>{x.title}<span>{x.year}</span></button>
               ))}
             </div>
-          ) : (
-            <p className="opts-later">Four options show up at clue {OTHER_OPTIONS_FROM}.</p>
-          )}
+          ) : null}
           <div className="row-btns">
             <button className="ghost" onClick={ctl.otherClue}>{o.clue >= Math.min(5, cl.length) ? 'I give up' : 'Next clue'}</button>
             <button className="ghost" onClick={() => ctl.otherSeen('no')}>Haven&apos;t seen it</button>
