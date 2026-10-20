@@ -11,6 +11,7 @@
 // fingerprint signal source for the DNA Writer (Assignment 3) when it lands.
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -94,7 +95,15 @@ interface Props {
    * (decided 2026-08-29).
    */
   headerRight?: ReactNode;
+  /**
+   * The player skipped the taste games part-way: every NUDGE_EVERY cards the
+   * list shows a card asking them to finish (2026-10-20). Tapping it opens the games.
+   */
+  onCalibrate?: () => void;
 }
+
+/** One calibration nudge per this many recommendations (list view). */
+const NUDGE_EVERY = 15;
 
 type ViewMode = "compact" | "full";
 
@@ -243,6 +252,7 @@ export default function RecommendationsView({
   onFindMore,
   onBrowse,
   headerRight,
+  onCalibrate,
 }: Props) {
   const [view, setView] = useState<ViewMode>("compact");
   const [recs, setRecs] = useState<Recommendation[]>([]);
@@ -641,6 +651,7 @@ export default function RecommendationsView({
               : undefined
           }
           onBrowse={mode === "watchlist" ? onBrowse : undefined}
+          onCalibrate={mode === "recommendations" ? onCalibrate : undefined}
         />
       ) : (
         <FullSwiper
@@ -699,6 +710,7 @@ function CompactList({
   onToggleWatchlist,
   emptyMessage,
   onBrowse,
+  onCalibrate,
 }: {
   recs: Recommendation[];
   loading: boolean;
@@ -716,6 +728,7 @@ function CompactList({
   /** Shown instead of the list when there's nothing to render (watchlist). */
   emptyMessage?: string;
   onBrowse?: () => void;
+  onCalibrate?: () => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -780,17 +793,19 @@ function CompactList({
 
   return (
     <div ref={listRef} className={styles.list}>
-      {recs.map((rec) => (
-        <CompactCard
-          key={rec.id}
-          rec={rec}
-          rated={feedbackGiven[rec.id]}
-          onFeedback={onFeedback}
-          onRemove={onRemove}
-          onWhy={onWhy}
-          saved={saved.has(rec.id)}
-          onToggleWatchlist={onToggleWatchlist}
-        />
+      {recs.map((rec, i) => (
+        <Fragment key={rec.id}>
+          <CompactCard
+            rec={rec}
+            rated={feedbackGiven[rec.id]}
+            onFeedback={onFeedback}
+            onRemove={onRemove}
+            onWhy={onWhy}
+            saved={saved.has(rec.id)}
+            onToggleWatchlist={onToggleWatchlist}
+          />
+          {onCalibrate && (i + 1) % NUDGE_EVERY === 0 && <CalibrateNudge onClick={onCalibrate} />}
+        </Fragment>
       ))}
       <div ref={sentinelRef} className={styles.sentinel}>
         {refreshing && (
@@ -814,6 +829,22 @@ function CompactList({
         )}
         {error && <span className={styles.error}>{error}</span>}
       </div>
+    </div>
+  );
+}
+
+// Shown to players who skipped the taste games: the picks get better once
+// the calibration is done.
+function CalibrateNudge({ onClick }: { onClick: () => void }) {
+  return (
+    <div className={`${styles.card} ${styles.nudge}`}>
+      <span className={styles.nudgeEyebrow}>Sharper picks</span>
+      <p className={styles.nudgeText}>
+        Finish your taste calibration so I get to know you better. Your recommendations get more accurate with every game.
+      </p>
+      <button type="button" className={styles.browseBtn} onClick={onClick}>
+        Finish calibration
+      </button>
     </div>
   );
 }

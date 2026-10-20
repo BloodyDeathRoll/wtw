@@ -6,6 +6,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PlayState } from './brain'
+import { seasonDone } from './blocks'
 
 /**
  * True when the table doesn't exist yet (migration 0024 not run). PostgREST
@@ -36,4 +37,19 @@ export async function loadPlay(supabase: SupabaseClient, userId: string): Promis
   }
   const state = data?.state && (data.state as Partial<PlayState>).v === 3 ? data.state : null
   return { mode: 'server', state, version: data?.version ?? 0 }
+}
+
+/** Where a player is in the taste calibration, for the rest of the app. */
+export interface PlayProgress {
+  /** Rated their genres (step 1). Nothing else opens before this. */
+  genresDone: boolean
+  /** Finished the 15-step season. */
+  done: boolean
+  /** Chose Skip part-way (and hasn't finished since). */
+  skipped: boolean
+}
+
+export function progressOf(state: PlayState | null): PlayProgress {
+  const done = !!state && seasonDone(state)
+  return { genresDone: !!state?.sel, done, skipped: !done && !!state?.skipped }
 }

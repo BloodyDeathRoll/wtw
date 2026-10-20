@@ -982,3 +982,24 @@
   background: rgba(22, 22, 20, 0.7);
   text-align: center;
 }
+
+/* ─── Calibration nudge (players who skipped the taste games) ─── */
+.nudge {
+  align-items: flex-start;
+  padding: 20px 16px;
+  background: linear-gradient(135deg, rgba(255, 119, 0, 0.18), rgba(39, 24, 255, 0.14));
+  border: 1px solid rgba(255, 169, 0, 0.35);
+}
+.nudgeEyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffa900;
+}
+.nudgeText {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #fff;
+}

@@ -176,6 +176,20 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-20 — Taste games inside the app (`feat/play-in-app`)
+- Migration 0024 was run live on 2026-10-19 and verified (play_state, play_events, RLS). #129 merged + deployed.
+- Home: input bar gone; chat is the top-left icon. Bottom: Picks · Watchlist · Games (blue / yellow / orange). Games opens `/play?tab=games`.
+- `/play` now renders in AppShell (gradient + particles) with AppMenu. Curtain (behind the curtain) not rendered on mobile. No intro screen; season bar is fill-only; steps open straight to their intro (no path map up front).
+- Skip (from the first screen after the genres) with a confirm sheet → `PlayState.skipped`; skipped + unfinished players get a "Finish calibration" card every 15 recs (list view only, not the full-screen swiper).
+- Restart calibration (confirm sheet) in Games: fresh `PlayState`, back to genres. Does NOT touch the DNA (games don't write it yet).
+- Duels prefer familiar titles (`familiar()` in brain.ts: pop ≥ 0.35 when the pool has 60+).
+- Font sizes in play.css raised (+2px up to 16px, +3px up to 24px).
+- Voice intro now leads into the games, not the chat: new copy in `voice/intro-copy.ts`, recorded to `public/intro-games.mp3` with `npm run record-intro` (Gemini TTS, Aoede; transcript checked). Brand-new users hear it on home (→ `/play?heard=1`) or first thing in `/play`. `public/intro.mp3` (old chat intro) is no longer used. Also fixed: in dev the intro's audio stalled at 0s (StrictMode remount closed its WebAudio graph).
+- Design pass to the Figma "games" frame: genres, step intros, duel, Skip sheet; orange gradient for every primary button. No step numbers anywhere; the path screen is gone. Signed-out `/play` → sign-in. Skip → `/?stage=recommendations`.
+- Figma pass 2: knockout round, in-block questions, Blind / Other Side play + reveal. Finishing the season now opens the app's real recommendations (`/?stage=recommendations`) instead of the games' own test picks (`Picks.tsx`, now unreachable). Note: the games still don't write the DNA (Slice 2), so those recs don't reflect the season yet.
+- Menu "Play" → games (`/play?tab=games`), live (2026-10-21), also from the DNA page.
+- **Live:** `PLAY_ONBOARDING_LIVE` in `src/lib/play-rollout.ts` is `true` (2026-10-21): `/` redirects to `/play` until genres are rated, then until the season is finished or skipped (links out of /play carry `?from=play`/`?stage=` so they aren't bounced).
+
 ### 2026-10-14 — Taste games, Slice 1 in progress (`feat/taste-games`, not pushed)
 
 Plan and rules: `docs/taste-games-handoff.md`. A hidden `/play` route beside the live app; it does **not** write `users.dna` (that is Slice 2).

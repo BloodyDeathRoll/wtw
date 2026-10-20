@@ -29,6 +29,10 @@
 export const GROQ_TEXT_OPTIONS = { groq: { reasoningFormat: 'hidden' } } as const
 
 export const MODELS = {
+  /** Gemini TTS — offline only: records the pre-recorded intros
+   *  (scripts/record-intro.mts). Free tier is a handful of requests a day. */
+  tts: 'gemini-2.5-flash-preview-tts',
+
   /** Groq — free-form TEXT generation only: `generateText` / `streamText`
    *  (chat, welcome greeting, DNA summary, dimension notes). Do NOT use
    *  this for structured output (see `structured` below). Was

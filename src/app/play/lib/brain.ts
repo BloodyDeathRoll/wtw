@@ -91,6 +91,11 @@ export interface PlayState {
    * time one loses or gets "Neither". At −2 or below the group is avoided.
    */
   groupLean?: Record<string, number>
+  /**
+   * The player chose "Skip" before finishing the season (2026-10-20). They land
+   * on the app instead of the games, and the feed nudges them to come back.
+   */
+  skipped?: boolean
   betBias: number
   betHistory: BetRecord[]
   gamePlays: number
@@ -376,6 +381,20 @@ function groupSignal(S: PlayState, t: GameTitle, d: number) {
 // relevant slice first. The prototype had 100 titles; the real set has 500.
 const POOL_CAP = 140
 
+/**
+ * Duels ask about titles most viewers have seen, so "Haven't seen" stays rare
+ * (2026-10-20). `pop` is a percentile within movies or series; below this the
+ * set is mostly documentaries and anime. A pool under FAMILIAR_MIN keeps its
+ * best-known titles instead, so narrow tastes don't run dry or lose the
+ * contrast the brain learns from.
+ */
+const FAMILIAR_POP = 0.35
+const FAMILIAR_MIN = 60
+function familiar(pool: Title[]): Title[] {
+  const known = pool.filter(t => t.pop >= FAMILIAR_POP)
+  return known.length >= FAMILIAR_MIN ? known : [...pool].sort((p, q) => q.pop - p.pop).slice(0, FAMILIAR_MIN)
+}
+
 export function nextPair(S: PlayState, T: Title[], f: PairFilter = {}, rand = Math.random): Pair | null {
   const phase = phaseNow(S, T)
   if (f.creators) {
@@ -397,6 +416,7 @@ export function nextPair(S: PlayState, T: Title[], f: PairFilter = {}, rand = Ma
     const recent = S.used.slice(-RECENT).map(id => byId.get(id)).filter((t): t is Title => !!t)
     if (axis === 'humor' || axis === 'commit') pool = pool.filter(t => t.scales[axis] !== undefined)
     if (f.genre) pool = pool.filter(t => t.genres.includes(f.genre!))
+    pool = familiar(pool)
     if (pool.length > POOL_CAP) {
       pool = [...pool].sort((p, q) => (q.pop + 0.25 * genreAff(S, q)) - (p.pop + 0.25 * genreAff(S, p))).slice(0, POOL_CAP)
     }

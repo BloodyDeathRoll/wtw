@@ -18,6 +18,7 @@ import {
   Bookmark,
   ChevronDown,
   ChevronLeft,
+  Gamepad2,
   MessageSquare,
   Share2,
   Sparkles,
@@ -43,6 +44,7 @@ import RecommendationsView from "../recommendations/RecommendationsView";
 import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
 import IntroVoice from "../voice/IntroVoice";
+import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from "../voice/intro-copy";
 import { FingerprintLoader } from "./FingerprintLoader";
 import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
@@ -55,12 +57,9 @@ import styles from "./WTWApp.module.css";
 // Modality-agnostic — every assistant message counts (voice OR text).
 const RECOMMEND_AFTER_TURNS = 2;
 
-// Brand-new users skip the onboard shell and land on the intro surface with
-// this already on screen, spoken by IntroVoice. Kept in sync by hand with the
-// recording in public/intro.mp3 — if you edit the words here, re-record it.
-const INTRO_MESSAGE = `Hey there, welcome to What To Watch!
-Let's chat a little. The more I know you, the better the recommendations get. Once you get recommendations, you can rate them and improve my algorithm even more!
-Shall we begin?`;
+// Brand-new users skip the onboard shell and land on the voice intro, which
+// leads into the taste games (2026-10-20; the words live with the recording
+// in voice/intro-copy.ts).
 
 type ContentType = "movies" | "series";
 const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
@@ -100,6 +99,7 @@ const I = {
   // the "Add to watchlist" CTA on the cards.
   sparkle: <Sparkles size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   bookmark: <Bookmark size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
+  games: <Gamepad2 size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   // The input's live/send button ("speak" in the design).
   speak: <AudioLines size={25} strokeWidth={2} aria-hidden="true" />,
   replay: <Volume2 size={20} strokeWidth={ICON_STROKE} aria-hidden="true" />,
@@ -110,7 +110,6 @@ const I = {
 // ─────────────────────────────────────────────────────────────
 function TopBar({
   hasConversation,
-  hasMessages,
   onBack,
   onOpenChat,
   onRecommend,
@@ -126,7 +125,6 @@ function TopBar({
   setVoice,
 }: {
   hasConversation: boolean;
-  hasMessages: boolean;
   onBack: () => void;
   onOpenChat: () => void;
   onRecommend: () => void;
@@ -170,7 +168,9 @@ function TopBar({
           >
             {I.back}
           </button>
-        ) : hasMessages ? (
+        ) : (
+          // The chat (text and voice) lives behind this icon since the home
+          // screen dropped its input bar (2026-10-20).
           <button
             className={styles.iconbtn}
             onClick={onOpenChat}
@@ -179,7 +179,7 @@ function TopBar({
           >
             {I.message}
           </button>
-        ) : null}
+        )}
       </div>
 
       <div className={styles.brand} ref={brandRef}>
@@ -398,53 +398,56 @@ type Stage =
   | "learning"
   | "ratings";
 
-// The home screen's two primary destinations. In the chat log the recs circle
-// gives way to the wide "Recommendations Ready" pill (as in VoiceMode).
-function HomeCircles({
+// The home screen's destinations (2026-10-20): Picks, Watchlist and Games,
+// always on screen, each in its own gradient. The chat moved to the header.
+function HomeNav({
   onRecommend,
   onWatchlist,
-  showRecommend,
+  onGames,
   watchlistN,
-  contentLabel,
 }: {
   onRecommend: () => void;
   onWatchlist: () => void;
-  showRecommend: boolean;
+  onGames: () => void;
   watchlistN: number;
-  /** The current media type ("Movies" / "Series") — labels the recs circle. */
-  contentLabel: string;
 }) {
   return (
-    <div className={styles.circleRow}>
-      {showRecommend && (
-        <div className={styles.circleItem}>
-          <button
-            type="button"
-            className={`${styles.circleBtn} ${styles.circleBtnRecs}`}
-            onClick={onRecommend}
-            aria-label={`${contentLabel} recommendations`}
-          >
-            {I.sparkle}
-          </button>
-          <span className={styles.circleLabel}>{contentLabel}</span>
-        </div>
-      )}
-      {/* Only once something is saved — an empty watchlist has nothing to show. */}
-      {watchlistN > 0 && (
-        <div className={styles.circleItem}>
-          <button
-            type="button"
-            className={`${styles.circleBtn} ${styles.circleBtnWatchlist}`}
-            onClick={onWatchlist}
-            aria-label={`Watchlist, ${watchlistN} saved`}
-          >
-            {I.bookmark}
-            <span className={styles.circleBadge}>{watchlistN}</span>
-          </button>
-          <span className={styles.circleLabel}>Watchlist</span>
-        </div>
-      )}
-    </div>
+    <nav className={styles.circleRow} aria-label="Home">
+      <div className={styles.circleItem}>
+        <button
+          type="button"
+          className={`${styles.circleBtn} ${styles.circleBtnRecs}`}
+          onClick={onRecommend}
+          aria-label="Picks for you"
+        >
+          {I.sparkle}
+        </button>
+        <span className={styles.circleLabel}>Picks</span>
+      </div>
+      <div className={styles.circleItem}>
+        <button
+          type="button"
+          className={`${styles.circleBtn} ${styles.circleBtnWatchlist}`}
+          onClick={onWatchlist}
+          aria-label={watchlistN > 0 ? `Watchlist, ${watchlistN} saved` : "Watchlist"}
+        >
+          {I.bookmark}
+          {watchlistN > 0 && <span className={styles.circleBadge}>{watchlistN}</span>}
+        </button>
+        <span className={styles.circleLabel}>Watchlist</span>
+      </div>
+      <div className={styles.circleItem}>
+        <button
+          type="button"
+          className={`${styles.circleBtn} ${styles.circleBtnGames}`}
+          onClick={onGames}
+          aria-label="Games"
+        >
+          {I.games}
+        </button>
+        <span className={styles.circleLabel}>Games</span>
+      </div>
+    </nav>
   );
 }
 
@@ -501,10 +504,13 @@ export default function WTWApp({
   user,
   conversation,
   welcome,
+  calibrationNudge = false,
 }: {
   user: AppUser;
   conversation: Conversation;
   welcome: Welcome;
+  /** Skipped the taste games part-way: the feed nudges them back now and then. */
+  calibrationNudge?: boolean;
 }) {
   const router = useRouter();
   // Every login (and every reload) lands on the welcome/continue screen,
@@ -520,11 +526,11 @@ export default function WTWApp({
   // ?stage=… — the menu there can't call these handlers directly. Read it
   // once on mount and strip it so a refresh doesn't re-enter the stage.
   useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get("stage");
-    if (s && DEEP_LINK_STAGES.includes(s as Stage)) {
-      setStage(s as Stage);
-      window.history.replaceState(null, "", window.location.pathname);
-    }
+    const q = new URLSearchParams(window.location.search);
+    const s = q.get("stage");
+    if (s && DEEP_LINK_STAGES.includes(s as Stage)) setStage(s as Stage);
+    // ?from=play only tells the server not to send the player back to the games.
+    if (s || q.has("from")) window.history.replaceState(null, "", window.location.pathname);
   }, []);
   const [favorites, setFavorites] = useState(conversation.favorites);
   const [input, setInput] = useState("");
@@ -649,16 +655,19 @@ export default function WTWApp({
 
   // Taste DNA is its own route and renders on the server first; cover the
   // screen with a loader the moment it's tapped so the tap visibly registers.
-  const [leaving, setLeaving] = useState(false);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  function leaveTo(href: string, label = "Loading") {
+    setLeaving(label);
+    router.push(href);
+  }
   function openProfile() {
-    setLeaving(true);
-    router.push("/profile/dna");
+    leaveTo("/profile/dna", "Reading your Taste DNA");
   }
   // If the navigation never lands (offline, a server error), don't trap the
   // user under the loader: give the screen back after a while.
   useEffect(() => {
     if (!leaving) return;
-    const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
+    const t = setTimeout(() => setLeaving(null), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
 
@@ -798,10 +807,13 @@ export default function WTWApp({
     setStage("watchlist");
   }
 
-  function handleFastLearning() {
+  // The menu's "Play" and the home screen's Games button both open the games
+  // (2026-10-21). The old rating feed ("learning") stays reachable by ?stage=.
+  function openGames() {
     setVoiceOpen(false);
-    setStage("learning");
+    leaveTo("/play?tab=games");
   }
+  const handleFastLearning = openGames;
 
   function handleRatings() {
     setVoiceOpen(false);
@@ -902,26 +914,17 @@ export default function WTWApp({
         </div>
       ) : stage === "intro" ? (
         <IntroVoice
-          text={INTRO_MESSAGE}
-          // Answering out loud continues in voice: the live session opens and
-          // the conversation carries on where the recording left off.
-          onSpeak={() => {
-            setStage("conversation");
-            setVoicePrimer(null);
-            setVoiceOpen(true);
-          }}
-          // Anything else means they'd rather type, so put them in the chat
-          // with the keyboard ready.
-          onSkip={() => setStage("conversation")}
-          // Typing is itself the answer — send it and stay in text from here.
-          onType={(text) => handleSubmit(text)}
+          text={GAMES_INTRO_MESSAGE}
+          src={GAMES_INTRO_AUDIO_SRC}
+          // The first thing a new user does is play (2026-10-20), not chat.
+          // ?heard=1: the games don't play the intro a second time.
+          onPlay={() => leaveTo("/play?heard=1")}
         />
       ) : voiceOpen ? (
         <VoiceMode
           header={
             <TopBar
               hasConversation
-              hasMessages={messages.length > 0}
               onBack={leaveVoiceToHome}
               onOpenChat={() => {}}
               onRecommend={handleRecommend}
@@ -965,6 +968,7 @@ export default function WTWApp({
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
             headerRight={appMenu}
+            onCalibrate={calibrationNudge ? () => leaveTo("/play") : undefined}
           />
         </div>
       ) : stage === "watchlist" ? (
@@ -995,7 +999,6 @@ export default function WTWApp({
         <div className={styles.shell}>
           <TopBar
             hasConversation={stage === "conversation"}
-            hasMessages={messages.length > 0}
             onBack={backToOnboard}
             onOpenChat={() => setStage("conversation")}
             onRecommend={handleRecommend}
@@ -1080,36 +1083,37 @@ export default function WTWApp({
             </div>
           )}
 
-          {stage === "conversation"
-            ? showRecommend && (
+          {stage === "conversation" ? (
+            <>
+              {showRecommend && (
                 <div className={styles.recommendBar}>
                   <RecommendPill onClick={handleRecommend} />
                 </div>
-              )
-            : (showRecommend || watchlistN > 0) && (
-                <div className={styles.recommendBar}>
-                  <HomeCircles
-                    onRecommend={handleRecommend}
-                    onWatchlist={handleWatchlist}
-                    showRecommend={showRecommend}
-                    watchlistN={watchlistN}
-                    contentLabel={CONTENT_TYPE_LABEL[contentType]}
-                  />
-                </div>
               )}
-
-          <InputBar
-            value={input}
-            setValue={setInput}
-            onSend={handleSubmit}
-            onLive={() => {
-              setVoicePrimer(null);
-              setVoiceOpen(true);
-            }}
-          />
+              <InputBar
+                value={input}
+                setValue={setInput}
+                onSend={handleSubmit}
+                onLive={() => {
+                  setVoicePrimer(null);
+                  setVoiceOpen(true);
+                }}
+              />
+            </>
+          ) : (
+            // No input bar here any more: the chat is the header's icon.
+            <div className={styles.homeNavBar}>
+              <HomeNav
+                onRecommend={handleRecommend}
+                onWatchlist={handleWatchlist}
+                onGames={openGames}
+                watchlistN={watchlistN}
+              />
+            </div>
+          )}
         </div>
       )}
-      {leaving && <RouteLoading label="Reading your Taste DNA" overlay />}
+      {leaving && <RouteLoading label={leaving} overlay />}
     </AppShell>
   );
 }

@@ -1,3 +1,4 @@
+import type { AppUser } from '@/modules/session/types'
 import type { SaveSource } from '../lib/watchlist'
 import type { GameGenre } from '../lib/genres'
 import type { Scale } from '../lib/scales'
@@ -146,6 +147,8 @@ export interface UI {
   stub: 'settings' | null
   editing: boolean
   curtain: boolean
+  /** An open "are you sure?" sheet. */
+  confirm: 'skip' | 'restart' | null
 }
 
 export interface Ctl {
@@ -153,7 +156,20 @@ export interface Ctl {
   T: Title[]
   ui: UI
   firstName: string | null
+  user: AppUser
+  /** Used the app before the games: full menu from the start. */
+  existingUser: boolean
+  /** On a screen of the season (the way out is Skip, not back). */
+  inTraining: boolean
+  /** The season's Skip button is on offer (any training screen once the genres are rated). */
+  canSkip: boolean
   saveNote: string
+  /** Go to another page of the app, saving first. */
+  leave(href: string): void
+  ask(what: 'skip' | 'restart'): void
+  closeConfirm(): void
+  confirmSkip(): void
+  confirmRestart(): void
   // navigation
   go(dest: 'tonight' | 'duel' | 'games' | 'hub' | 'watchlist' | 'settings'): void
   setMenu(open: boolean): void
@@ -180,8 +196,6 @@ export interface Ctl {
   koContinue(): void
   championContinue(): void
   // season
-  openPath(): void
-  pathContinue(): void
   showdownPick(side: 'a' | 'b'): void
   finishSeason(): void
   // path games and the same games in Games

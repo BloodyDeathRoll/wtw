@@ -2,6 +2,7 @@
 /* The arcade: game registry, lobby, and the game screens (season games + The Bet, Mind Reader). */
 import { useState } from 'react'
 import { accuracy, isUnlocked } from '../lib/brain'
+import { SEASON_LENGTH, seasonDone } from '../lib/blocks'
 import { LEVELS } from '../lib/games'
 import type { Ctl, GameId } from './types'
 import { Icon, Poster, SaveRibbon, Stars, TopBar } from './ui'
@@ -51,8 +52,33 @@ export const GAMES: (GameDef & { id: GameId | string })[] = [
   { id: 'recast', name: 'Recast', icon: 'R', acc: '#f0a35e', blurb: 'Who would you rather see in this role?', levels: [], soon: true },
 ]
 
+/**
+ * Taste calibration (the season) in Games (2026-10-20): the first card until
+ * it's finished, the last one after. Starting over always asks first.
+ */
+function CalibrationCard({ ctl }: { ctl: Ctl }) {
+  const { S } = ctl
+  const done = seasonDone(S)
+  const step = Math.min(S.block, SEASON_LENGTH)
+  return (
+    <div className={`calcard${done ? ' is-done' : ''}`}>
+      <button className="gcard" style={{ ['--ga' as string]: '#D49B3A' }} onClick={() => (done ? ctl.ask('restart') : ctl.go('duel'))}>
+        <span className="gi">✦</span>
+        <span style={{ minWidth: 0 }}>
+          <b>{done ? 'Taste calibration' : 'Complete your taste calibration'}</b>
+          <span className="d">{done ? 'Done. Start over any time to recalibrate from scratch.' : 'A few quick rounds so I know what you like. The better I know you, the better your picks.'}</span>
+          {!done && <span className="pips cal"><span className="sb-bar"><i style={{ width: `${((step - 1) / SEASON_LENGTH) * 100}%` }} /></span></span>}
+        </span>
+        <span className="go">{done ? 'Restart' : 'Continue'}</span>
+      </button>
+      {!done && <button className="cal-restart" onClick={() => ctl.ask('restart')}>Restart calibration</button>}
+    </div>
+  )
+}
+
 export function GamesLobby({ ctl }: { ctl: Ctl }) {
   const { S } = ctl
+  const calibrated = seasonDone(S)
   const plays = Object.values(S.games).reduce((s, g) => s + g.plays, 0)
   const lvls = Object.values(S.games).reduce((s, g) => s + g.level, 0)
   return (
@@ -66,6 +92,7 @@ export function GamesLobby({ ctl }: { ctl: Ctl }) {
         <div><b>{lvls}</b><span>LEVELS CLEARED</span></div>
         <div><b>{Object.keys(S.gameBest ?? {}).length}</b><span>BEST SCORES</span></div>
       </div>
+      {!calibrated && <CalibrationCard ctl={ctl} />}
       {GAMES.map(d => {
         const gp = S.games[d.id] ?? { level: 0, plays: 0 }
         const lock = !d.soon && (d.id === 'bet' || d.id === 'mind') && !isUnlocked(S, d.id)
@@ -88,6 +115,7 @@ export function GamesLobby({ ctl }: { ctl: Ctl }) {
           </button>
         )
       })}
+      {calibrated && <CalibrationCard ctl={ctl} />}
     </div>
   )
 }
@@ -165,7 +193,7 @@ export function GameScreen({ ctl }: { ctl: Ctl }) {
   if (g.phase === 'play' && g.id === 'hilo' && g.hilo) body = <HiloPlay ctl={ctl} />
   // On the season path a game is a step: the training's top bar and progress, no exit button.
   const top = g.inPath
-    ? <><TopBar onMenu={() => ctl.setMenu(true)} /><SeasonBar ctl={ctl} /><div className="glevel" style={{ marginTop: 6 }}><b>{d.name}</b> · Level 1</div></>
+    ? <><TopBar ctl={ctl} /><SeasonBar ctl={ctl} /><div className="glevel" style={{ marginTop: 6 }}><b>{d.name}</b> · Level 1</div></>
     : <GameTop ctl={ctl} d={d} />
   return <div className="screen">{top}{body}</div>
 }

@@ -7,27 +7,27 @@ import {
   UNLOCKS, canHunch, est, hunchEvidence, huhTrait, isUnlocked, loves, nevers, rankedScales,
   SAY, mixedPicks, trustedCreators, unlockOf, viewerName, type Title,
 } from '../lib/brain'
-import { BLOCKS, PICKS_PER_BLOCK, ROUND_NAMES, SEASON_LENGTH, genreName, isGameStep, seasonDone, type Cup } from '../lib/blocks'
+import { BLOCKS, PICKS_PER_BLOCK, ROUND_NAMES, genreName, isGameStep, seasonDone, type Cup } from '../lib/blocks'
 import type { Ctl } from './types'
 import { AxisRow, Icon, Poster, SaveRibbon, TopBar } from './ui'
 import { GAMES, GameScreen, GamesLobby } from './games'
 import Picks from './Picks'
-import { FinaleCard, FinaleScreen, PathScreen, SeasonBar, ShowdownScreen } from './season'
+import { FinaleCard, FinaleScreen, SeasonBar, ShowdownScreen } from './season'
 import { WatchlistScreen } from './watchlist'
 
+// Swatch colours from the Figma genres frame (2026-10-20).
 const GENRE_COLOURS: Record<string, [string, string]> = {
-  comedy: ['#f2b134', '#e2572f'], drama: ['#6d5a8f', '#251b3a'], action: ['#e04f2f', '#3a1010'],
-  crime: ['#3e4a5c', '#0d1117'], thriller: ['#5a3e6b', '#120a18'], scifi: ['#2f7fd6', '#0d1a3a'],
-  horror: ['#8c1c1c', '#0a0a0a'], romance: ['#e07a9a', '#5a1c35'], anim: ['#45c0a8', '#1d3d6e'],
-  anime: ['#e0567a', '#2a1440'], doc: ['#b9a36b', '#2f2a1c'], war: ['#7d7a45', '#1d1d10'],
+  comedy: ['#ffad33', '#ff8a00'], drama: ['#a565d8', '#7d3fb5'], action: ['#e5533c', '#c0392b'],
+  crime: ['#5b6a7d', '#3d4857'], thriller: ['#8e44ad', '#6c2e8a'], scifi: ['#3a8fd9', '#1f6fb8'],
+  horror: ['#c0392b', '#962d22'], romance: ['#ee2d8f', '#c2186b'], anim: ['#1fbf9c', '#13957a'],
+  anime: ['#d42fb0', '#a01488'], doc: ['#b9a24a', '#8e7b30'], war: ['#8b7d62', '#6b5e47'],
 }
 
 export default function Screens({ ctl }: { ctl: Ctl }) {
   const { ui } = ctl
-  const top = <TopBar onMenu={() => ctl.setMenu(true)} />
+  const top = <TopBar ctl={ctl} />
   let screen: React.ReactNode
   switch (ui.screen) {
-    case 'intro': screen = <Intro ctl={ctl} />; break
     case 'setup': screen = <Setup ctl={ctl} top={top} />; break
     case 'duel': screen = <Duel ctl={ctl} top={top} />; break
     case 'hunch': screen = <HunchScreen ctl={ctl} top={top} />; break
@@ -35,7 +35,6 @@ export default function Screens({ ctl }: { ctl: Ctl }) {
     case 'blockIntro': screen = <BlockIntro ctl={ctl} top={top} />; break
     case 'knockout': screen = <Knockout ctl={ctl} top={top} />; break
     case 'champion': screen = <ChampionScreen ctl={ctl} top={top} />; break
-    case 'path': screen = <PathScreen ctl={ctl} />; break
     case 'showdown': screen = <ShowdownScreen ctl={ctl} />; break
     case 'finale': screen = <FinaleScreen ctl={ctl} />; break
     case 'watchlist': screen = <WatchlistScreen ctl={ctl} />; break
@@ -50,65 +49,10 @@ export default function Screens({ ctl }: { ctl: Ctl }) {
       </div>
     ); break
   }
-  return (
-    <>
-      {screen}
-      {ui.menu && <Menu ctl={ctl} />}
-    </>
-  )
+  return screen
 }
 
-// ── menu ──────────────────────────────────────────────────────────
-
-const MENU = [
-  ['tonight', 'My picks', Icon.tonight], ['duel', 'Train my taste', Icon.train], ['games', 'Games', Icon.games],
-  ['hub', 'My taste', Icon.me], null, ['watchlist', 'Watchlist', Icon.list], ['settings', 'Settings', Icon.gear],
-] as const
-
-function Menu({ ctl }: { ctl: Ctl }) {
-  const { S, ui } = ctl
-  const cur = ['hunch', 'huh', 'setup', 'blockIntro', 'knockout', 'champion', 'blockDone', 'path', 'showdown', 'finale'].includes(ui.screen) ? 'duel' : ui.screen === 'game' ? 'games' : ui.screen
-  const openGames = GAMES.filter(g => !g.soon && (g.kind === 'season' || isUnlocked(S, g.id as 'bet' | 'mind'))).length
-  return (
-    <>
-      <div className="drawer-bg" onClick={() => ctl.setMenu(false)} />
-      <nav className="drawer" aria-label="Menu">
-        <div className="who">
-          <div className="av">{(ctl.firstName ?? 'Y')[0]}</div>
-          <div><b>{ctl.firstName ?? 'You'}</b><span>{!S.sel ? 'Just getting started' : seasonDone(S) ? 'Season 1 complete' : `Season 1 · step ${S.block} of ${SEASON_LENGTH}`}</span></div>
-        </div>
-        {MENU.map((m, i) => m ? (
-          <button key={m[0]} className={`mi${cur === m[0] ? ' on' : ''}`} onClick={() => ctl.go(m[0])}>
-            {m[2]}{m[1]}
-            {m[0] === 'games' ? <span className="tag hot">{openGames} open</span>
-              : m[0] === 'settings' ? <span className="tag">Soon</span>
-              : m[0] === 'tonight' && !isUnlocked(S, 'picks') ? <span className="tag">End of season</span> : null}
-          </button>
-        ) : <div key={i} className="sep" />)}
-      </nav>
-    </>
-  )
-}
-
-// ── intro + setup ────────────────────────────────────────────────
-
-function Intro({ ctl }: { ctl: Ctl }) {
-  // Two famous, very different titles for the opening art.
-  const byVotes = [...ctl.T].sort((a, b) => b.votes - a.votes)
-  const a = byVotes.find(t => t.genres.includes('comedy') && t.type === 'movie') ?? byVotes[0]
-  const b = byVotes.find(t => t.genres.includes('crime') && t.type === 'movie' && t !== a) ?? byVotes[1]
-  return (
-    <div className="screen">
-      <div className="intro">
-        <div className="vs-art"><Poster t={a} size="w185" /><span className="vs">VS</span><Poster t={b} size="w185" /></div>
-        <div className="brand"><i />WTW</div>
-        <h2>What kind of viewer are you?</h2>
-        <p>Tell me which genres you like. Then just pick between two titles. Every pick teaches me your taste.</p>
-        <button className="cta" onClick={ctl.startSetup}>Let&apos;s play</button>
-      </div>
-    </div>
-  )
-}
+// ── setup ────────────────────────────────────────────────────────
 
 const GRATE = [
   { k: 'love', v: 2, l: 'Love', icon: Icon.love },
@@ -161,7 +105,7 @@ function BlockBar({ ctl }: { ctl: Ctl }) {
   const { S } = ctl
   return (
     <div className="blockbar">
-      <span>Step <b>{S.block}</b> · {BLOCKS.plain.name}</span>
+      <span>{BLOCKS.plain.name}</span>
       <span className="pp" aria-label={`${S.blockPicks} of ${PICKS_PER_BLOCK} picks`}>
         {Array.from({ length: PICKS_PER_BLOCK }, (_, i) => <i key={i} className={i < S.blockPicks ? 'on' : ''} />)}
       </span>
@@ -303,19 +247,17 @@ function HuhScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
 // ── special blocks ───────────────────────────────────────────────
 
 function BlockIntro({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
-  const { S, ui } = ctl
+  const { ui } = ctl
   const B = BLOCKS[ui.blockType]
   const genre = ui.blockGenre ? genreName(ui.blockGenre) : undefined
   return (
     <div className="screen">{top}
+      <SeasonBar ctl={ctl} />
       <div className="inter">
-        <span className="sbadge">STEP {S.block}{seasonDone(S) ? '' : ` OF ${SEASON_LENGTH}`}</span>
         <div className="sicon-big">{B.icon}</div>
         <h2>{B.name}{genre && ui.blockType !== 'plain' ? `: ${genre}` : ''}</h2>
         <div className="evidence">{B.desc(genre)}</div>
-        <div className="opts">
-          <button className="opt primary special-cta" onClick={ctl.startBlock}>Start step {S.block}</button>
-        </div>
+        <button className="cta" onClick={ctl.startBlock}>Play</button>
       </div>
     </div>
   )
@@ -334,6 +276,7 @@ function Bracket({ C }: { C: Cup }) {
       {cols.map(col => (
         <div key={col.name} className="bcol">
           <div className="bhead">{col.name === 'Final' ? '🏆 Final' : col.name.replace('Quarter-finals', 'Quarters').replace('Semi-finals', 'Semis').replace('Round of 16', 'Last 16')}</div>
+          <div className="bms">
           {col.matches.map((m, mi) => {
             const now = col.ri === C.r && mi === C.mi && C.step === 'match'
             return (
@@ -345,6 +288,7 @@ function Bracket({ C }: { C: Cup }) {
               </div>
             )
           })}
+          </div>
         </div>
       ))}
     </div>
@@ -383,9 +327,10 @@ function Knockout({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
     const insight = hiN > loN ? `${hiN} of ${n} lean ${SCALE_WORDS[C.axis][1]}.` : loN > hiN ? `${loN} of ${n} lean ${SCALE_WORDS[C.axis][0]}.` : 'An even mix so far.'
     return (
       <div className="screen">{top}
+        <SeasonBar ctl={ctl} />
         <div className="ko-head"><span className="sicon">🏆</span>{C.name}</div>
-        <div className="inter" style={{ justifyContent: 'flex-start', paddingTop: 8 }}>
-          <div className="eyebrow">Through to the</div>
+        <div className="inter ko-round">
+          <div className="eyebrow ko-through">Through to the</div>
           <h2>{names[C.r]}</h2>
           <div className="evidence">{n} left standing. {insight}</div>
           <Bracket C={C} />
@@ -504,7 +449,7 @@ function BlockDoneScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
       <SeasonBar ctl={ctl} />
       <header className="closing-head">
         <span className="eyebrow">{d.label}</span>
-        <h1>Step {d.block} done</h1>
+        <h1>Well played</h1>
         {d.stat && <p className="closing-stat">{d.stat}</p>}
       </header>
 
@@ -540,11 +485,11 @@ function BlockDoneScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
         <section className="next-card" style={{ ['--na' as string]: next.accent }}>
           <span className="ic">{next.icon}</span>
           <div>
-            <span className="eyebrow">Up next · Step {d.block + 1}</span>
+            <span className="eyebrow">Up next</span>
             <b>{next.name}{nextGenre && d.next !== 'plain' ? `: ${nextGenre}` : ''}</b>
             <p>{next.desc(nextGenre)}</p>
           </div>
-          <button onClick={ctl.startBlock}>Start step {d.block + 1}</button>
+          <button onClick={ctl.startBlock}>Play</button>
         </section>
       </div>
     </div>
@@ -554,12 +499,11 @@ function BlockDoneScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
 // ── picks + profile ──────────────────────────────────────────────
 
 function LockedPicks({ ctl }: { ctl: Ctl }) {
-  const need = unlockOf('picks').after
   return (
     <div className="locked-card">
       <b>Your picks arrive at the end of the season</b>
-      <span>You&apos;re on step {Math.min(ctl.S.block, need)} of {need}. Before that, they&apos;d just be popular titles in disguise.</span>
-      <button className="opt primary" style={{ width: '100%' }} onClick={ctl.openPath}>See the path</button>
+      <span>Finish your taste calibration first. Before that, they&apos;d just be popular titles in disguise.</span>
+      <button className="opt primary" style={{ width: '100%' }} onClick={() => ctl.go('duel')}>Keep calibrating</button>
     </div>
   )
 }

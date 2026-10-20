@@ -1,5 +1,12 @@
 'use client'
-/* Shared pieces of the taste-games screens: poster, meter, scale row, icons. */
+/* Shared pieces of the taste-games screens: poster, meter, scale row, icons, the header. */
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { ChevronLeft } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { AppMenu, VOICES, type MenuItem, type Voice } from '@/modules/session/components/AppMenu'
+import { seasonDone } from '../lib/blocks'
 import { SCALE_LABELS, type Scale } from '../lib/scales'
 import { conf, est, type PlayState, type Title } from '../lib/brain'
 import type { SaveSource } from '../lib/watchlist'
@@ -69,11 +76,63 @@ export const Icon = {
   never: svg(<><circle cx="12" cy="12" r="9" /><path d="M5.6 5.6l12.8 12.8" /></>),
 }
 
-export function TopBar({ onMenu }: { onMenu: () => void }) {
+/** Same key WTWApp keeps the Gemini Live voice under. */
+const VOICE_KEY = 'wtw:voice'
+const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'ratings', 'profile', 'voice']
+const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile']
+
+/**
+ * The app's header on every games screen (2026-10-20): Skip or back on the
+ * left, the app's own menu on the right. Before the genres are rated the menu
+ * offers only Sign out; a brand-new user's menu stays short (no feed, ratings
+ * or DNA to show yet) until they finish or skip the season.
+ */
+export function TopBar({ ctl }: { ctl: Ctl }) {
+  const { S } = ctl
+  const router = useRouter()
+  // Read once on the client; the voice only shows inside the open menu, so
+  // the server's default never reaches the screen.
+  const [voice, setVoice] = useState<Voice>(() => {
+    try {
+      const v = typeof window === 'undefined' ? null : localStorage.getItem(VOICE_KEY)
+      if (v && VOICES.some(o => o.id === v)) return v as Voice
+    } catch { /* storage off */ }
+    return VOICES[0].id
+  })
+  const chooseVoice = (v: Voice) => {
+    setVoice(v)
+    try { localStorage.setItem(VOICE_KEY, v) } catch { /* the choice just won't outlive the page */ }
+  }
+  const settled = seasonDone(S) || !!S.skipped
+  const hide = !S.sel ? NOTHING_YET : !ctl.existingUser && !settled ? NEW_USER : []
+  const go = (stage: string) => () => ctl.leave(`/?stage=${stage}`)
+  const left = ctl.canSkip
+    ? <button className="tb-skip" onClick={() => ctl.ask('skip')}>Skip</button>
+    : S.sel && !ctl.inTraining && !hide.includes('recommend')
+      ? <button className="tb-back" onClick={() => ctl.leave('/?from=play')} aria-label="Back to home"><ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" /></button>
+      : null
   return (
-    <div className="topbar">
-      <button className="hb" onClick={onMenu} aria-label="Open menu">{Icon.menu}</button>
-      <div className="brand"><i />WTW</div>
+    <div className="apptop">
+      <div className="tb-l">{left}</div>
+      <div className="brand app-brand"><Image src="/logo_vector.svg" alt="" width={56} height={56} />WTW</div>
+      <div className="tb-r">
+        <AppMenu
+          onRecommend={go('recommendations')}
+          onWatchlist={go('watchlist')}
+          onFastLearning={() => ctl.go('games')}
+          onRatings={go('ratings')}
+          onProfile={() => ctl.leave('/profile/dna')}
+          user={ctl.user}
+          onSignOut={async () => {
+            await createClient().auth.signOut()
+            router.replace('/login')
+            router.refresh()
+          }}
+          voice={voice}
+          setVoice={chooseVoice}
+          hide={hide}
+        />
+      </div>
     </div>
   )
 }

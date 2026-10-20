@@ -1,7 +1,8 @@
 /**
  * Train my taste is a season of 15 steps (decided with Eran 2026-10-18): a
  * fixed path mixing regular picks, special blocks, three games, a final round
- * and a finale — with "N of 15 done" always visible. After the season, extra
+ * and a finale. Players see only a filling bar, never step numbers
+ * (2026-10-20). After the season, extra
  * "sharpen" steps keep the old rotation (odd = plain, even = a special kind).
  * `S.block` is the step number; step 1 is the genre setup.
  *
