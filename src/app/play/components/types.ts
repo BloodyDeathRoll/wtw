@@ -159,6 +159,8 @@ export interface Ctl {
   user: AppUser
   /** Used the app before the games: full menu from the start. */
   existingUser: boolean
+  /** On a screen of the season (the way out is Skip, not back). */
+  inTraining: boolean
   /** The season's Skip button is on offer (a training screen, step 3 on). */
   canSkip: boolean
   saveNote: string
@@ -194,8 +196,6 @@ export interface Ctl {
   koContinue(): void
   championContinue(): void
   // season
-  openPath(): void
-  pathContinue(): void
   showdownPick(side: 'a' | 'b'): void
   finishSeason(): void
   // path games and the same games in Games

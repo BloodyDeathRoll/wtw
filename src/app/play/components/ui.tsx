@@ -2,6 +2,7 @@
 /* Shared pieces of the taste-games screens: poster, meter, scale row, icons, the header. */
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AppMenu, VOICES, type MenuItem, type Voice } from '@/modules/session/components/AppMenu'
@@ -107,13 +108,13 @@ export function TopBar({ ctl }: { ctl: Ctl }) {
   const go = (stage: string) => () => ctl.leave(`/?stage=${stage}`)
   const left = ctl.canSkip
     ? <button className="tb-skip" onClick={() => ctl.ask('skip')}>Skip</button>
-    : S.sel && !hide.includes('recommend')
+    : S.sel && !ctl.inTraining && !hide.includes('recommend')
       ? <button className="tb-back" onClick={() => ctl.leave('/?from=play')} aria-label="Back to home"><ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" /></button>
       : null
   return (
     <div className="apptop">
       <div className="tb-l">{left}</div>
-      <div className="brand"><i />WTW</div>
+      <div className="brand app-brand"><Image src="/logo_vector.svg" alt="" width={56} height={56} />WTW</div>
       <div className="tb-r">
         <AppMenu
           onRecommend={go('recommendations')}

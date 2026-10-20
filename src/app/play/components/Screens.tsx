@@ -12,14 +12,15 @@ import type { Ctl } from './types'
 import { AxisRow, Icon, Poster, SaveRibbon, TopBar } from './ui'
 import { GAMES, GameScreen, GamesLobby } from './games'
 import Picks from './Picks'
-import { FinaleCard, FinaleScreen, PathScreen, SeasonBar, ShowdownScreen } from './season'
+import { FinaleCard, FinaleScreen, SeasonBar, ShowdownScreen } from './season'
 import { WatchlistScreen } from './watchlist'
 
+// Swatch colours from the Figma genres frame (2026-10-20).
 const GENRE_COLOURS: Record<string, [string, string]> = {
-  comedy: ['#f2b134', '#e2572f'], drama: ['#6d5a8f', '#251b3a'], action: ['#e04f2f', '#3a1010'],
-  crime: ['#3e4a5c', '#0d1117'], thriller: ['#5a3e6b', '#120a18'], scifi: ['#2f7fd6', '#0d1a3a'],
-  horror: ['#8c1c1c', '#0a0a0a'], romance: ['#e07a9a', '#5a1c35'], anim: ['#45c0a8', '#1d3d6e'],
-  anime: ['#e0567a', '#2a1440'], doc: ['#b9a36b', '#2f2a1c'], war: ['#7d7a45', '#1d1d10'],
+  comedy: ['#ffad33', '#ff8a00'], drama: ['#a565d8', '#7d3fb5'], action: ['#e5533c', '#c0392b'],
+  crime: ['#5b6a7d', '#3d4857'], thriller: ['#8e44ad', '#6c2e8a'], scifi: ['#3a8fd9', '#1f6fb8'],
+  horror: ['#c0392b', '#962d22'], romance: ['#ee2d8f', '#c2186b'], anim: ['#1fbf9c', '#13957a'],
+  anime: ['#d42fb0', '#a01488'], doc: ['#b9a24a', '#8e7b30'], war: ['#8b7d62', '#6b5e47'],
 }
 
 export default function Screens({ ctl }: { ctl: Ctl }) {
@@ -34,7 +35,6 @@ export default function Screens({ ctl }: { ctl: Ctl }) {
     case 'blockIntro': screen = <BlockIntro ctl={ctl} top={top} />; break
     case 'knockout': screen = <Knockout ctl={ctl} top={top} />; break
     case 'champion': screen = <ChampionScreen ctl={ctl} top={top} />; break
-    case 'path': screen = <PathScreen ctl={ctl} />; break
     case 'showdown': screen = <ShowdownScreen ctl={ctl} />; break
     case 'finale': screen = <FinaleScreen ctl={ctl} />; break
     case 'watchlist': screen = <WatchlistScreen ctl={ctl} />; break
@@ -105,7 +105,7 @@ function BlockBar({ ctl }: { ctl: Ctl }) {
   const { S } = ctl
   return (
     <div className="blockbar">
-      <span>Step <b>{S.block}</b> · {BLOCKS.plain.name}</span>
+      <span>{BLOCKS.plain.name}</span>
       <span className="pp" aria-label={`${S.blockPicks} of ${PICKS_PER_BLOCK} picks`}>
         {Array.from({ length: PICKS_PER_BLOCK }, (_, i) => <i key={i} className={i < S.blockPicks ? 'on' : ''} />)}
       </span>
@@ -247,20 +247,17 @@ function HuhScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
 // ── special blocks ───────────────────────────────────────────────
 
 function BlockIntro({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
-  const { S, ui } = ctl
+  const { ui } = ctl
   const B = BLOCKS[ui.blockType]
   const genre = ui.blockGenre ? genreName(ui.blockGenre) : undefined
   return (
     <div className="screen">{top}
       <SeasonBar ctl={ctl} />
       <div className="inter">
-        <span className="sbadge">STEP {S.block}</span>
         <div className="sicon-big">{B.icon}</div>
         <h2>{B.name}{genre && ui.blockType !== 'plain' ? `: ${genre}` : ''}</h2>
         <div className="evidence">{B.desc(genre)}</div>
-        <div className="opts">
-          <button className="opt primary special-cta" onClick={ctl.startBlock}>Start step {S.block}</button>
-        </div>
+        <button className="cta" onClick={ctl.startBlock}>Play</button>
       </div>
     </div>
   )
@@ -449,7 +446,7 @@ function BlockDoneScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
       <SeasonBar ctl={ctl} />
       <header className="closing-head">
         <span className="eyebrow">{d.label}</span>
-        <h1>Step {d.block} done</h1>
+        <h1>Well played</h1>
         {d.stat && <p className="closing-stat">{d.stat}</p>}
       </header>
 
@@ -485,11 +482,11 @@ function BlockDoneScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
         <section className="next-card" style={{ ['--na' as string]: next.accent }}>
           <span className="ic">{next.icon}</span>
           <div>
-            <span className="eyebrow">Up next · Step {d.block + 1}</span>
+            <span className="eyebrow">Up next</span>
             <b>{next.name}{nextGenre && d.next !== 'plain' ? `: ${nextGenre}` : ''}</b>
             <p>{next.desc(nextGenre)}</p>
           </div>
-          <button onClick={ctl.startBlock}>Start step {d.block + 1}</button>
+          <button onClick={ctl.startBlock}>Play</button>
         </section>
       </div>
     </div>

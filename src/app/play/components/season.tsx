@@ -4,7 +4,7 @@
  * and the finale (mock-ups approved 2026-10-18,
  * docs/prototypes/block-done/season-*.jpg).
  */
-import { BLOCKS, SEASON, SEASON_LENGTH, blockGenre, blockTypeFor, genreName, isGameStep, seasonDone } from '../lib/blocks'
+import { BLOCKS, SEASON_LENGTH, seasonDone } from '../lib/blocks'
 import { factHeadline, revealOf } from '../lib/reveal'
 import type { Ctl } from './types'
 import { Poster, SaveRibbon, TopBar } from './ui'
@@ -24,44 +24,6 @@ export function SeasonBar({ ctl }: { ctl: Ctl }) {
   )
 }
 
-export function PathScreen({ ctl }: { ctl: Ctl }) {
-  const { S, T } = ctl
-  const cur = S.block
-  const left = SEASON_LENGTH - cur + 1
-  const nextType = blockTypeFor(S, T, cur)
-  const genre = blockGenre(S, T, nextType, cur)
-  return (
-    <div className="screen">
-      <TopBar ctl={ctl} />
-      <div className="path-head">
-        <span className="eyebrow">Season 1 · Your taste</span>
-        <h1>Step {Math.min(cur, SEASON_LENGTH)} of {SEASON_LENGTH}</h1>
-        <p>{left > 1 ? `${left - 1} more step${left - 1 > 1 ? 's' : ''} to your picks.` : 'The reveal is next.'} The season&apos;s games are open in Games too.</p>
-      </div>
-      <ol className="path">
-        {SEASON.map((type, i) => {
-          const n = i + 1
-          const real = n === cur ? nextType : type
-          const state = n < cur ? 'done' : n === cur ? 'now' : 'later'
-          const g = n === cur && genre ? genreName(genre) : null
-          const name = real === 'setup' ? 'Your genres' : `${BLOCKS[real].name}${g && (real === 'knockout' || real === 'deepdive') ? ` · ${g}` : ''}`
-          return (
-            <li key={n} className={`prow is-${state} k-${real}${isGameStep(real) ? ' is-game' : ''}`} style={{ ['--c' as string]: BLOCKS[real].accent }}>
-              <span className="pnode">{state === 'done' ? '✓' : BLOCKS[real].icon}</span>
-              <span className="pname">{name}{isGameStep(real) && <span className="ptag">GAME</span>}{real === 'finale' && <span className="ptag fin">YOUR PICKS</span>}{state === 'now' && <span className="phere">← you are here</span>}</span>
-            </li>
-          )
-        })}
-      </ol>
-      <div className="path-cta">
-        <button className="cta" onClick={ctl.pathContinue}>
-          {ctl.ui.resume && ctl.ui.resume !== 'path' ? `Back to step ${cur}` : S.blockPicks > 0 ? `Continue step ${cur}` : `Start step ${cur} · ${BLOCKS[nextType].name}`}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export function ShowdownScreen({ ctl }: { ctl: Ctl }) {
   const sd = ctl.ui.showdown!
   const top = <TopBar ctl={ctl} />
@@ -73,7 +35,7 @@ export function ShowdownScreen({ ctl }: { ctl: Ctl }) {
         <div className="closing-tint" aria-hidden="true" />
         <SeasonBar ctl={ctl} />
         <header className="closing-head">
-          <span className="eyebrow">Step 14 · Final round</span>
+          <span className="eyebrow">Final round</span>
           <h1>I called your picks</h1>
         </header>
         <div className="sd-score"><b>{hits}/{sd.results.length}</b><span>I sealed my guesses before you picked</span></div>
@@ -90,7 +52,7 @@ export function ShowdownScreen({ ctl }: { ctl: Ctl }) {
         <div className="closing-bottom">
           <section className="next-card" style={{ ['--na' as string]: fin.accent }}>
             <span className="ic">{fin.icon}</span>
-            <div><span className="eyebrow">Last step · 15</span><b>{fin.name}</b><p>{fin.desc()}</p></div>
+            <div><span className="eyebrow">Last one</span><b>{fin.name}</b><p>{fin.desc()}</p></div>
             <button onClick={ctl.startBlock}>Reveal</button>
           </section>
         </div>

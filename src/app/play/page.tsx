@@ -5,10 +5,9 @@
  * Nothing here writes the taste DNA yet. Progress lives in play_state /
  * play_events (migration 0024), or in the browser until that migration runs.
  */
-import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { countUserSignals } from '@/lib/welcome'
-import AppShell from '@/modules/session/components/AppShell'
 import type { AppUser } from '@/modules/session/types'
 import { loadPlay } from './lib/server'
 import { withBlindPlots, withSideClues } from './lib/games'
@@ -42,24 +41,9 @@ export default async function PlayPage({ searchParams }: { searchParams: Promise
     return <PlayApp user={DEMO_USER} existingUser={params.new !== '1'} voiceIntro={params.new === '1' && !heard} titles={titles} saved={{ mode: 'local', state: null, version: 0 }} jumpTo={jumpTo} tab={tab} />
   }
 
-  if (!user) {
-    // Deliberately no new sign-in flow here: sign-in returns to the home page,
-    // and changing that is shared auth code the live app depends on.
-    return (
-      <AppShell>
-        <div className="phone">
-          <div className="screen">
-            <div className="intro">
-              <div className="brand"><i />WTW</div>
-              <h2>Sign in to play</h2>
-              <p>Sign in on the home page, then come back to this page.</p>
-              <Link className="cta" href="/" style={{ textAlign: 'center', textDecoration: 'none' }}>Go to sign in</Link>
-            </div>
-          </div>
-        </div>
-      </AppShell>
-    )
-  }
+  // Sign-in comes first (2026-10-20): the home page is the sign-in screen, and
+  // a new user lands back there on the voice intro, which leads here.
+  if (!user) redirect('/')
 
   const appUser: AppUser = {
     id: user.id,

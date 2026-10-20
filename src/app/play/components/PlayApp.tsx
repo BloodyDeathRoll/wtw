@@ -58,7 +58,7 @@ const duelEvent = (kind: string, p: Pair, extra: Record<string, unknown> = {}): 
 })
 
 /** Screens that belong to Train my taste; leaving one remembers it, to return to. */
-const TRAINING: UI['screen'][] = ['duel', 'hunch', 'huh', 'blockIntro', 'knockout', 'champion', 'blockDone', 'showdown', 'finale', 'path']
+const TRAINING: UI['screen'][] = ['duel', 'hunch', 'huh', 'blockIntro', 'knockout', 'champion', 'blockDone', 'showdown', 'finale']
 
 /** Skip shows from step 3, once the player has played one step after their genres. */
 const SKIP_FROM_BLOCK = 3
@@ -380,6 +380,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
   const ctl: Ctl = {
     S, T, ui, firstName, user,
     existingUser,
+    inTraining: inSeasonTraining,
     canSkip: inSeasonTraining && S.block >= SKIP_FROM_BLOCK,
     leave(href) { void leave(href) },
     ask: confirm => set({ confirm, menu: false }),
@@ -389,7 +390,8 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       note(S, `Skipped the season at step ${S.block}`)
       commit([{ kind: 'skip_season', payload: { block: S.block } }])
       set({ confirm: null })
-      void leave('/?from=play')
+      // Straight to the picks (2026-10-20).
+      void leave('/?stage=recommendations')
     },
     confirmRestart() {
       // A clean slate: back to the genres. The watchlist is the app's, so it stays.
@@ -583,12 +585,6 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     koContinue() { if (ui.cup) set({ cup: { ...ui.cup, step: 'match' } }) },
     championContinue: () => set({ champion: null, screen: 'blockDone' }),
 
-    openPath: () => set({ menu: false, screen: 'path', ...(TRAINING.includes(ui.screen) && ui.screen !== 'path' ? { resume: ui.screen } : {}) }),
-    pathContinue() {
-      if (ui.resume && ui.resume !== 'path') { set({ screen: ui.resume, resume: null }); return }
-      if (S.blockPicks > 0) { set(duelPatch({ blockType: 'plain' })); commit(); return }
-      ctl.startBlock()
-    },
     showdownPick(side) {
       const sd = ui.showdown
       if (!sd?.pair) return
@@ -852,7 +848,7 @@ function Confirm({ ctl }: { ctl: Ctl }) {
         ) : (
           <p>This clears your taste calibration and takes you back to choosing genres. Your watchlist stays.</p>
         )}
-        <button className="cta" autoFocus onClick={ctl.closeConfirm}>{skip ? 'Keep playing' : 'Cancel'}</button>
+        <button className="cta" autoFocus onClick={ctl.closeConfirm}>{skip ? 'Keep Playing' : 'Cancel'}</button>
         <button className="opt" onClick={skip ? ctl.confirmSkip : ctl.confirmRestart}>{skip ? 'Skip' : 'Start over'}</button>
       </div>
     </>
