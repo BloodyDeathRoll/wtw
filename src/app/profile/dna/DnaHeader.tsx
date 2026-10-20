@@ -82,7 +82,7 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
       <AppMenu
         onRecommend={go("recommendations")}
         onWatchlist={go("watchlist")}
-        onFastLearning={go("learning")}
+        onFastLearning={() => leave("/play?tab=games")}
         onRatings={go("ratings")}
         // Already on this page. AppMenu closes the drawer itself, so there is
         // nothing to do — a router.refresh() here would refetch the whole

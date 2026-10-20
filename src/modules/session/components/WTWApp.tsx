@@ -50,7 +50,6 @@ import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { shareApp } from "@/lib/share";
-import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./WTWApp.module.css";
 
@@ -808,16 +807,13 @@ export default function WTWApp({
     setStage("watchlist");
   }
 
-  function handleFastLearning() {
-    setVoiceOpen(false);
-    if (PLAY_ONBOARDING_LIVE) leaveTo("/play");
-    else setStage("learning");
-  }
-
+  // The menu's "Play" and the home screen's Games button both open the games
+  // (2026-10-21). The old rating feed ("learning") stays reachable by ?stage=.
   function openGames() {
     setVoiceOpen(false);
     leaveTo("/play?tab=games");
   }
+  const handleFastLearning = openGames;
 
   function handleRatings() {
     setVoiceOpen(false);
