@@ -119,6 +119,17 @@ describe('coldStartBatch', () => {
     expect(batch.every(b => Number(b.tmdb_id.slice(1)) >= 380)).toBe(true)
   })
 
+  it('does not refetch when the first fetch already returned everything eligible', async () => {
+    // A thin series pool: 120 rows exist, 100 of them served. Short on fresh
+    // titles, but a wider query could only return the same 120.
+    fixture.pool = Array.from({ length: 120 }, (_, i) => row(i))
+    fixture.served = Array.from({ length: 100 }, (_, i) => ({ tmdb_id: `t${i}`, media_type: 'movie' }))
+    const batch = await coldStartBatch(createBlankDNA('u1'), 'series')
+    expect(calls.limits).toEqual([400])
+    expect(batch).toHaveLength(50)
+    expect(batch.slice(0, 20).every(b => Number(b.tmdb_id.slice(1)) >= 100)).toBe(true)   // fresh first
+  })
+
   it('asks for crew when the user has exclusion rules', async () => {
     const dna = createBlankDNA('u1')
     dna.contextual_logic.exclusion_rules.push({ type: 'genre', id: 'r1', name: 'no horror', raw: 'no horror', reason: 'hates horror' })

@@ -133,7 +133,10 @@ export function coldStartScore(t: ColdStartTitle, maxVotes: number, play: PlayGe
  * Order the pool: "Never" genres out, then by score. `excluded` keys never
  * appear; `served` keys go to the back so a regenerated batch rotates
  * instead of re-opening with the same titles (the live pipeline's 80/20
- * fresh/seen split has the same intent). Pure.
+ * fresh/seen split has the same intent). Once everything eligible has been
+ * served the rotation quietly starts over from the top scores — by then the
+ * user has paged through ~1,000 titles without rating 15, which is its own
+ * signal. Pure.
  */
 export function rankColdStart(
   pool: ColdStartTitle[],
@@ -238,7 +241,10 @@ export async function coldStartBatch(dna: DNASchema, contentType?: ContentType):
   // 2026-10-21) and a cold-start user rarely has any.
   const rules = dna.contextual_logic.exclusion_rules
   const year = thisYear()
-  const fetchPool = async (limit: number): Promise<ColdStartTitle[]> => {
+  // Returns the rows after the rules filter, and whether the query hit its
+  // limit — if it didn't, the pool already holds every eligible title and a
+  // wider fetch would only return the same rows.
+  const fetchPool = async (limit: number): Promise<{ titles: ColdStartTitle[]; hitLimit: boolean }> => {
     let query = supabase
       .from('titles')
       .select(poolColumns(rules.length > 0))
@@ -250,7 +256,11 @@ export async function coldStartBatch(dna: DNASchema, contentType?: ContentType):
     if (titleType) query = query.eq('type', titleType)
     const { data, error } = await query
     if (error) throw new Error(`Cold start failed (titles): ${error.message}`)
-    return ((data ?? []) as unknown as ColdStartTitle[]).filter(t => rules.length === 0 || !isExcluded(t, rules))
+    const rows = (data ?? []) as unknown as ColdStartTitle[]
+    return {
+      titles: rows.filter(t => rules.length === 0 || !isExcluded(t, rules)),
+      hitLimit: rows.length >= limit,
+    }
   }
 
   const [pool, removedRes, servedRes, play] = await Promise.all([
@@ -264,14 +274,16 @@ export async function coldStartBatch(dna: DNASchema, contentType?: ContentType):
   for (const r of removedRes.data ?? []) excluded.add(titleKey(r.media_type as MediaType, r.tmdb_id))
   const served = new Set((servedRes.data ?? []).map(r => titleKey(r.media_type as MediaType, r.tmdb_id)))
 
-  let ranked = rankColdStart(pool, play, excluded, served, BATCH_SIZE, year)
+  let ranked = rankColdStart(pool.titles, play, excluded, served, BATCH_SIZE, year)
   // Strict rules, a wide "Never" or a long served history can eat most of
   // the top 400 — fetch wider once rather than serve a short batch or one
   // padded with repeats. Counted on FRESH titles: the ranking fills the tail
-  // with served ones, so the batch length alone is always "full".
+  // with served ones, so the batch length alone is always "full". Skipped
+  // when the first fetch already returned everything eligible.
   const freshCount = (list: ColdStartTitle[]) => list.filter(t => !served.has(titleKey(t.type, t.tmdb_id))).length
-  if (freshCount(ranked) < BATCH_SIZE) {
-    ranked = rankColdStart(await fetchPool(POOL_LIMIT_WIDE), play, excluded, served, BATCH_SIZE, year)
+  if (freshCount(ranked) < BATCH_SIZE && pool.hitLimit) {
+    const wide = await fetchPool(POOL_LIMIT_WIDE)
+    ranked = rankColdStart(wide.titles, play, excluded, served, BATCH_SIZE, year)
   }
 
   const now = new Date().toISOString()
