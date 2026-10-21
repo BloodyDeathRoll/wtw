@@ -8,10 +8,11 @@
  * nobody's taste are obscure by construction. Popularity was never scored.
  *
  * Until a user has COLD_START_SIGNALS rated titles (the same bar the stretch
- * pick waits for) the batch is instead what Netflix would open with: the most-voted, well-rated, recent titles of
- * the type they're browsing, tilted toward the genres they chose in the taste
- * games and never one they said "Never" to. No embedding, no LLM rerank, no
- * LLM explanations — nothing a blank profile could feed them. Cards carry
+ * pick waits for) the batch is instead what Netflix would open with: the
+ * most-voted, well-rated, recent titles of the type they're browsing, tilted
+ * toward the genres they chose in the taste games and never one they said
+ * "Never" to. No embedding, no LLM rerank, no LLM explanations — nothing a
+ * blank profile could feed them. Cards carry
  * composite_score 0, which the UI already reads as "no % claim" (the same
  * convention as titles saved from the games), and a plain "Why this?" line
  * that says so.
