@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const calls = vi.hoisted(() => ({ selects: [] as string[], limits: [] as number[] }))
 const fixture = vi.hoisted(() => ({
   pool: [] as Record<string, unknown>[],
+  served: [] as { tmdb_id: string; media_type: string }[],
   play: null as Record<string, unknown> | null,
 }))
 
@@ -20,7 +21,10 @@ vi.mock('@/lib/supabase/service', () => ({
         limit: (n: number) => { limit = n; calls.limits.push(n); return q },
         maybeSingle: async () => ({ data: fixture.play ? { state: fixture.play } : null, error: null }),
         then: (resolve: (v: unknown) => void) =>
-          resolve({ data: table === 'titles' ? fixture.pool.slice(0, limit) : [], error: null }),
+          resolve({
+            data: table === 'titles' ? fixture.pool.slice(0, limit) : table === 'served_titles' ? fixture.served : [],
+            error: null,
+          }),
       }
       return q
     },
@@ -41,6 +45,7 @@ beforeEach(() => {
   calls.selects.length = 0
   calls.limits.length = 0
   fixture.pool = Array.from({ length: 2000 }, (_, i) => row(i))
+  fixture.served = []
   fixture.play = null
 })
 
@@ -87,7 +92,7 @@ describe('coldStartBatch', () => {
     expect(calls.limits).toEqual([400])
     expect(calls.selects[0]).not.toMatch(/crew/)
     expect(batch[0].composite_score).toBe(0)
-    expect(batch[0].explanation).toMatch(/^Popular right now/)
+    expect(batch[0].explanation).toMatch(/^Popular and well rated/)
   })
 
   it('fetches wider once when "Never" empties the first 400', async () => {
@@ -98,9 +103,20 @@ describe('coldStartBatch', () => {
     ]
     fixture.play = { ...freshState(), gen: { ...freshState().gen, horror: -9 } }
     const batch = await coldStartBatch(createBlankDNA('u1'), 'movies')
-    expect(calls.limits).toEqual([400, 2000])
+    expect(calls.limits).toEqual([400, 1000])
     expect(batch).toHaveLength(50)
     expect(batch.every(b => b.tmdb_id.startsWith('t') && Number(b.tmdb_id.slice(1)) >= 400)).toBe(true)
+  })
+
+  it('fetches wider when the first 400 would only pad the batch with repeats', async () => {
+    // 380 of the top 400 have been served (not rated): the ranking would still
+    // return a "full" 50 by appending served titles, so the trigger has to
+    // count fresh ones. After the wide fetch the batch is 50 unseen titles.
+    fixture.served = Array.from({ length: 380 }, (_, i) => ({ tmdb_id: `t${i}`, media_type: 'movie' }))
+    const batch = await coldStartBatch(createBlankDNA('u1'), 'movies')
+    expect(calls.limits).toEqual([400, 1000])
+    expect(batch).toHaveLength(50)
+    expect(batch.every(b => Number(b.tmdb_id.slice(1)) >= 380)).toBe(true)
   })
 
   it('asks for crew when the user has exclusion rules', async () => {

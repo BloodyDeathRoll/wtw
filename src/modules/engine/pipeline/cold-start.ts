@@ -58,10 +58,13 @@ const RECENT_YEARS = 8
 const MIN_VOTES    = 1000
 const MIN_RATING   = 6.5
 const POOL_LIMIT   = 400
-// When "Never" genres, rules, ratings and removals eat into those 400 and the
-// batch comes up short, one wider fetch before settling for a short batch.
-const POOL_LIMIT_WIDE = 2000
-const CURRENT_YEAR = new Date().getFullYear()
+// When "Never" genres, rules, ratings and served history eat into those 400
+// and the batch comes up short of fresh titles, one wider fetch before
+// settling for a short or repetitive batch. 1,000 is the whole eligible set
+// (964 titles across both types, measured 2026-10-21; 765 movies, 199 series)
+// and also PostgREST's default max_rows, so a larger number would be a lie.
+const POOL_LIMIT_WIDE = 1000
+const thisYear = () => new Date().getFullYear()
 
 // Score weights and the genre tilt. Popularity leads: this is the "everyone
 // is watching it" row, not a quality ranking. Loved genres (chosen as such at
@@ -104,14 +107,15 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
  * 0..1 score for one title: popularity, rating, recency, then the genre tilt.
  * Popularity is log-scaled above the pool floor, so 1k votes reads 0 and the
  * pool's biggest hit 1 — on a plain log the two sat 0.17 apart and a genre
- * tilt could lift a 1,200-vote title over a 40,000-vote one.
+ * tilt could lift a 1,200-vote title over a 40,000-vote one. `year` is "now"
+ * for recency, passed in so a long-lived instance doesn't freeze it at boot.
  */
-export function coldStartScore(t: ColdStartTitle, maxVotes: number, play: PlayGenres): number {
+export function coldStartScore(t: ColdStartTitle, maxVotes: number, play: PlayGenres, year: number = thisYear()): number {
   const votes = Math.max(MIN_VOTES, t.tmdb_vote_count ?? MIN_VOTES)
   const span = Math.log(Math.max(maxVotes, MIN_VOTES + 1) / MIN_VOTES)
   const popularity = clamp01(Math.log(votes / MIN_VOTES) / span)
   const rating = clamp01(((t.tmdb_rating ?? MIN_RATING) - MIN_RATING) / (8.5 - MIN_RATING))
-  const recency = t.release_year ? clamp01(1 - (CURRENT_YEAR - t.release_year) / RECENT_YEARS) : 0
+  const recency = t.release_year ? clamp01(1 - (year - t.release_year) / RECENT_YEARS) : 0
   let score = W_POPULARITY * popularity + W_RATING * rating + W_RECENCY * recency
 
   const chosen = play.loved.size + play.liked.size
@@ -137,6 +141,7 @@ export function rankColdStart(
   excluded: Set<string>,
   served: Set<string>,
   size: number = BATCH_SIZE,
+  year: number = thisYear(),
 ): ColdStartTitle[] {
   const eligible = pool.filter(t => {
     if (excluded.has(titleKey(t.type, t.tmdb_id))) return false
@@ -145,7 +150,7 @@ export function rankColdStart(
   })
   const maxVotes = eligible.reduce((m, t) => Math.max(m, t.tmdb_vote_count ?? 0), 1)
   const scored = eligible
-    .map(t => ({ t, s: coldStartScore(t, maxVotes, play) }))
+    .map(t => ({ t, s: coldStartScore(t, maxVotes, play, year) }))
     .sort((a, b) => b.s - a.s || (a.t.tmdb_id < b.t.tmdb_id ? -1 : 1))
     .map(x => x.t)
   const fresh = scored.filter(t => !served.has(titleKey(t.type, t.tmdb_id)))
@@ -177,8 +182,10 @@ export function toColdStartResult(t: ColdStartTitle, tasteVersion: number, now: 
       groq_rationale: '',
       negative_signals: [],
     },
+    // "Popular and well rated", not "trending": the pool is the most-voted
+    // titles of the last RECENT_YEARS, not what is being watched this week.
     explanation:
-      `Popular right now${rating > 0 ? ` — ${rating.toFixed(1)} on TMDB from ${fmtVotes(votes)} ratings` : ''}. ` +
+      `Popular and well rated${rating > 0 ? ` — ${rating.toFixed(1)} on TMDB from ${fmtVotes(votes)} ratings` : ''}. ` +
       `WTW opens with crowd favourites until it knows your taste; rate a few and the picks start to follow you.`,
     is_stretch_pick: false,
     generated_at: now,
@@ -230,13 +237,14 @@ export async function coldStartBatch(dna: DNASchema, contentType?: ContentType):
   // doubles the payload (450 KB vs 210 KB for 400 movies, measured
   // 2026-10-21) and a cold-start user rarely has any.
   const rules = dna.contextual_logic.exclusion_rules
+  const year = thisYear()
   const fetchPool = async (limit: number): Promise<ColdStartTitle[]> => {
     let query = supabase
       .from('titles')
       .select(poolColumns(rules.length > 0))
       .gte('tmdb_vote_count', MIN_VOTES)
       .gte('tmdb_rating', MIN_RATING)
-      .gte('release_year', CURRENT_YEAR - RECENT_YEARS)
+      .gte('release_year', year - RECENT_YEARS)
       .order('tmdb_vote_count', { ascending: false })
       .limit(limit)
     if (titleType) query = query.eq('type', titleType)
@@ -256,11 +264,14 @@ export async function coldStartBatch(dna: DNASchema, contentType?: ContentType):
   for (const r of removedRes.data ?? []) excluded.add(titleKey(r.media_type as MediaType, r.tmdb_id))
   const served = new Set((servedRes.data ?? []).map(r => titleKey(r.media_type as MediaType, r.tmdb_id)))
 
-  let ranked = rankColdStart(pool, play, excluded, served)
-  // Strict rules, a wide "Never" or a long rating history can eat most of the
-  // top 400 — fetch wider once rather than serve a short or repetitive batch.
-  if (ranked.length < BATCH_SIZE) {
-    ranked = rankColdStart(await fetchPool(POOL_LIMIT_WIDE), play, excluded, served)
+  let ranked = rankColdStart(pool, play, excluded, served, BATCH_SIZE, year)
+  // Strict rules, a wide "Never" or a long served history can eat most of
+  // the top 400 — fetch wider once rather than serve a short batch or one
+  // padded with repeats. Counted on FRESH titles: the ranking fills the tail
+  // with served ones, so the batch length alone is always "full".
+  const freshCount = (list: ColdStartTitle[]) => list.filter(t => !served.has(titleKey(t.type, t.tmdb_id))).length
+  if (freshCount(ranked) < BATCH_SIZE) {
+    ranked = rankColdStart(await fetchPool(POOL_LIMIT_WIDE), play, excluded, served, BATCH_SIZE, year)
   }
 
   const now = new Date().toISOString()

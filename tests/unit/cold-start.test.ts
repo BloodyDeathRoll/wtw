@@ -132,7 +132,7 @@ describe('toColdStartResult', () => {
     expect(r.composite_score).toBe(0)
     expect(r.is_stretch_pick).toBe(false)
     expect(r.fingerprint_version).toBe(3)
-    expect(r.explanation).toMatch(/^Popular right now — 8\.1 on TMDB from 12k ratings\./)
+    expect(r.explanation).toMatch(/^Popular and well rated — 8\.1 on TMDB from 12k ratings\./)
     expect(r.reason_payload.external_ratings).toEqual([{ source: 'tmdb', score: 0.81 }])
     expect(r.reason_payload.crew_matches).toEqual([])
   })
