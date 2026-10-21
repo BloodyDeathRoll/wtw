@@ -39,6 +39,10 @@ Changing `dna.ts` requires all three assignment owners to approve.
 - **Writer:** A3, `src/modules/dna/lib/update-content-affinity.ts`, called from every place that folds a rating (`update-from-session`, `merge-feedback-signal`). **Reader:** A2, `src/modules/engine/scoring/content-affinity.ts`, weight 0.15 in the composite.
 - It is a **nudge, not a filter**. "No horror" is an `exclusion_rule` and cuts absolutely; this catches the taste the user never put into words. An avoided genre is reported through `negative_signals`, never through `dimension_matches` — everything downstream reads a dimension match as a reason to recommend.
 
+## The taste games as a writer (added 2026-10-21)
+
+`src/modules/dna/update-from-play.ts` folds the play state (`play_state.state`) into `strand_a`, `strand_b`, `strand_c` (weights, `genre_affinity`, `language_affinity`) and `contextual_logic.exclusion_rules`. The play state is a **belief**, not a stream of ratings, so the write is a SET done as retract-then-apply: a marker row (`play_events`, `kind: 'dna_sync'`) records what the last sync put into each field, and the next sync takes exactly that out before putting the current belief in. Running averages are reversed sample-for-sample (`score = (score·N − d·n) / (N − n)`), weight deltas subtracted before recentring, strand B values given back only if nothing surer has moved them since. Rules it owns carry ids `play:never:<genre>` — never hand-edit or reuse that prefix. Bumps `taste_version` like every writer. Runs at milestones only; see docs/INTEGRATION.md 2026-10-21.
+
 ## Title identity — `type:tmdb_id`, never a bare id (decided 2026-08-28)
 
 TMDB movie and TV ids are separate namespaces that collide (617 pairs in the catalog; id 105 is both *Back to the Future* and *Sex and the City*). Every lookup keyed on a bare `tmdb_id` therefore risks resolving the wrong title — which is exactly how rated movies kept being re-recommended: the rating was signaled against the same-id TV show, and the `${type}:${tmdb_id}` exclusions never matched.
