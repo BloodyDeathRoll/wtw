@@ -4,6 +4,9 @@
  * Threads all 8 steps together for a single user recommendation request.
  * Early-returns from Redis cache when the fingerprint hasn't changed.
  *
+ * Step 0 → under 15 rated titles the fingerprint isn't trusted: the batch is
+ *          popular recent crowd-pleasers instead (cold-start.ts), and steps
+ *          1–7 are skipped. Pagination, caching and providers work the same.
  * Step 1 → candidates: fresh pool (never served: most-voted ∪ nearest to the
  *          fingerprint) + seen pool (served before, never rated)
  * Step 2 → composite scores (crew 35%, narrative 30%, visceral 20%, external 10%, recency 5%)
@@ -27,8 +30,9 @@
 import { after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getRedis } from '@/lib/redis'
-import { startTimer } from '@/lib/timing'
+import { startTimer, type StepTimer } from '@/lib/timing'
 import { ensureWatchProviders }     from '../enrichment/ensure-watch-providers'
+import { isColdStart, coldStartBatch } from './cold-start'
 import { getCandidates }            from './step1-candidate-gen'
 import { scoreCandidates }          from './step2-composite-score'
 import { applySoftModifiers }       from './step3-soft-modifiers'
@@ -152,6 +156,67 @@ async function checkBatchProviders(results: RecommendationResult[]): Promise<voi
 }
 
 // ─────────────────────────────────────────────
+// The two ways to build a batch
+// ─────────────────────────────────────────────
+
+/**
+ * Under COLD_START_SIGNALS rated titles: popular, recent crowd-pleasers
+ * (cold-start.ts). No embedding, no rerank, no LLM explanations.
+ */
+async function runColdStart(
+  dna: DNASchema,
+  contentType: ContentType | undefined,
+  t: StepTimer,
+): Promise<RecommendationResult[]> {
+  const batch = await coldStartBatch(dna, contentType)
+  t.mark(`cold start (${batch.length}, ${dna.signals.length} signals)`)
+  return batch
+}
+
+/** Steps 1–6: the fingerprint-driven pipeline described at the top. */
+async function runPipeline(
+  dna: DNASchema,
+  sessionContext: SessionContext | undefined,
+  contentType: ContentType | undefined,
+  t: StepTimer,
+): Promise<RecommendationResult[]> {
+  // ── Step 1: candidate generation ─────────────────────────
+  const candidates = await getCandidates(dna, sessionContext, contentType)
+  t.mark(`step1 candidates (${candidates.length})`)
+  if (candidates.length === 0) return []
+
+  // ── Step 2: composite scoring ─────────────────────────────
+  const scored = await scoreCandidates(candidates, dna)
+  t.mark('step2 scoring')
+
+  // ── Step 3: soft modifiers ────────────────────────────────
+  const modified = applySoftModifiers(scored, dna, sessionContext)
+
+  // ── Step 3b: 80% fresh / 20% previously-served, by score ─
+  const batch = composeBatch(modified)
+
+  // ── Step 4: LLM re-ranking of the batch ──────────────────
+  const reranked = await llmRerank(batch, dna)
+  t.mark('step4 rerank')
+
+  // ── Step 5: stretch pick injection ───────────────────────
+  const withStretch = injectStretchPick(reranked, scored, dna)
+
+  // ── Step 6: reason payload assembly ──────────────────────
+  const withPayloads = buildReasonPayloads(withStretch)
+
+  // ── Results with template explanations ───────────────────
+  // Every card ships with a one-line "Why this?" built from its reason
+  // payload (positive signal + caveat). The LLM blurbs replace them in the
+  // cache below, after the response.
+  const version = dna.metadata.taste_version
+  return toResultsWithFallback(withPayloads).map(r => ({
+    ...r,
+    fingerprint_version: version,
+  }))
+}
+
+// ─────────────────────────────────────────────
 // Main pipeline
 // ─────────────────────────────────────────────
 
@@ -185,40 +250,12 @@ export async function generateRecommendations(
   }
   t.mark('load + cache check')
 
-  // ── Step 1: candidate generation ─────────────────────────
-  const candidates = await getCandidates(dna, sessionContext, opts.contentType)
-  t.mark(`step1 candidates (${candidates.length})`)
-  if (candidates.length === 0) return []
-
-  // ── Step 2: composite scoring ─────────────────────────────
-  const scored = await scoreCandidates(candidates, dna)
-  t.mark('step2 scoring')
-
-  // ── Step 3: soft modifiers ────────────────────────────────
-  const modified = applySoftModifiers(scored, dna, sessionContext)
-
-  // ── Step 3b: 80% fresh / 20% previously-served, by score ─
-  const batch = composeBatch(modified)
-
-  // ── Step 4: LLM re-ranking of the batch ──────────────────
-  const reranked = await llmRerank(batch, dna)
-  t.mark('step4 rerank')
-
-  // ── Step 5: stretch pick injection ───────────────────────
-  const withStretch = injectStretchPick(reranked, scored, dna)
-
-  // ── Step 6: reason payload assembly ──────────────────────
-  const withPayloads = buildReasonPayloads(withStretch)
-
-  // ── Results with template explanations ───────────────────
-  // Every card ships with a one-line "Why this?" built from its reason
-  // payload (positive signal + caveat). The LLM blurbs replace them in the
-  // cache below, after the response.
   const version = dna.metadata.taste_version
-  const versioned = toResultsWithFallback(withPayloads).map(r => ({
-    ...r,
-    fingerprint_version: version,
-  }))
+  const coldStart = isColdStart(dna)
+  const versioned = coldStart
+    ? await runColdStart(dna, opts.contentType, t)
+    : await runPipeline(dna, sessionContext, opts.contentType, t)
+  if (versioned.length === 0) return []
 
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─
   // precompute.ts parks it under its key together with the inputs hash.
@@ -239,8 +276,8 @@ export async function generateRecommendations(
   // Don't cache when session override is active (mood-specific results
   // shouldn't be served to future sessions without that mood context)
   if (!sessionContext?.session_override_active) {
-    // Best-effort: a failed cache write degrades to "GET serves mocks until
-    // the next successful run" — it must not throw away generated results.
+    // Best-effort: a failed cache write degrades to "GET regenerates on the
+    // next request" — it must not throw away generated results.
     await cacheRecommendations(userId, version, versioned, opts.contentType)
       .catch(err => {
         console.warn('[generate] cache write failed (non-fatal):', err instanceof Error ? err.message : err)
@@ -248,7 +285,9 @@ export async function generateRecommendations(
     t.mark('cache write')
 
     // ── Step 7 (background): LLM explanations, patched into the cache ──
-    scheduleExplanationPatch(userId, version, versioned, opts.contentType)
+    // Not for a cold-start batch: its "Why this?" is the popularity line,
+    // and there is no fingerprint for the model to explain against.
+    if (!coldStart) scheduleExplanationPatch(userId, version, versioned, opts.contentType)
 
     // ── Background: streaming availability for the whole batch ────────
     // The GET route also checks the few unchecked titles on each page it

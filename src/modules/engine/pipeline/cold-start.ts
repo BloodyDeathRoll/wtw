@@ -1,0 +1,233 @@
+/**
+ * Cold start — popular crowd-pleasers until the fingerprint is worth trusting.
+ *
+ * Decided 2026-10-21 after a new user (genres chosen, one game played, Skip)
+ * landed on a 125-vote Swedish film at "50% match". With no signals every
+ * taste component sits at its neutral 0.5, so the only thing that varied in
+ * the composite was the narrative percentile — and the nearest neighbours of
+ * nobody's taste are obscure by construction. Popularity was never scored.
+ *
+ * Until a user has COLD_START_SIGNALS rated titles (the same bar the stretch
+ * pick waits for), the batch is instead what Netflix would open with: the
+ * most-voted, well-rated, recent titles of the type they're browsing, tilted
+ * toward the genres they chose in the taste games and never one they said
+ * "Never" to. No embedding, no LLM rerank, no LLM explanations — nothing a
+ * blank profile could feed them. Cards carry composite_score 0, which the UI
+ * already reads as "no % claim" (the same convention as titles saved from the
+ * games), and a plain "Why this?" line that says so.
+ *
+ * The pure ranking is `rankColdStart`, unit-tested; `coldStartBatch` is the
+ * fetch around it.
+ */
+
+import { createServiceClient } from '@/lib/supabase/service'
+import { titleKey, recordKey, isSavedMarker, type MediaType } from '@/lib/title-key'
+import { titleTypeFor, type ContentType } from '@/lib/content-type'
+import { isExcluded } from '@/lib/exclusion-rules'
+import { candidateGenres, neverGenres, type GameGenre } from '@/app/play/lib/genres'
+import type { DNASchema, RecommendationResult } from '@/types/dna'
+import { BATCH_SIZE } from './step3b-compose-batch'
+
+/** Signals needed before the real pipeline runs — matches step5's stretch gate. */
+export const COLD_START_SIGNALS = 15
+
+export function isColdStart(dna: DNASchema): boolean {
+  return dna.signals.length < COLD_START_SIGNALS
+}
+
+// ── Pool shape ───────────────────────────────────────────────
+// "Current" is the last RECENT_YEARS; "popular" is at least MIN_VOTES on TMDB
+// (1,081 catalog titles clear 5,000 — measured 2026-10-21 on 34,002 rows);
+// "crowd pleaser" is at least MIN_RATING. POOL_LIMIT most-voted of those.
+const RECENT_YEARS = 8
+const MIN_VOTES    = 1000
+const MIN_RATING   = 6.5
+const POOL_LIMIT   = 400
+const CURRENT_YEAR = new Date().getFullYear()
+
+// Score weights and the genre tilt. Popularity leads: this is the "everyone
+// is watching it" row, not a quality ranking. Loved genres (chosen as such at
+// the games' setup) beat liked ones; a title in none of the chosen genres is
+// still allowed, just behind.
+const W_POPULARITY = 0.5
+const W_RATING     = 0.3
+const W_RECENCY    = 0.2
+const BOOST_LOVED  = 0.15
+const BOOST_LIKED  = 0.08
+const PENALTY_NONE = 0.10
+
+export interface ColdStartTitle {
+  tmdb_id: string
+  type: 'movie' | 'tv'
+  title: string
+  release_year: number | null
+  tmdb_rating: number | null
+  tmdb_vote_count: number | null
+  genres: { id?: number; name: string }[] | null
+  keywords: string[] | null
+  original_language: string | null
+  tone_tags: string[] | null
+  /** Only fetched when the user has exclusion rules (person rules need it). */
+  crew?: Parameters<typeof isExcluded>[0]['crew']
+}
+
+/** What the taste games said about genres, read from play_state. */
+export interface PlayGenres {
+  loved: Set<GameGenre>
+  liked: Set<GameGenre>
+  never: Set<GameGenre>
+}
+
+export const NO_PLAY_GENRES: PlayGenres = { loved: new Set(), liked: new Set(), never: new Set() }
+
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
+
+/**
+ * 0..1 score for one title: popularity, rating, recency, then the genre tilt.
+ * Popularity is log-scaled above the pool floor, so 1k votes reads 0 and the
+ * pool's biggest hit 1 — on a plain log the two sat 0.17 apart and a genre
+ * tilt could lift a 1,200-vote title over a 40,000-vote one.
+ */
+export function coldStartScore(t: ColdStartTitle, maxVotes: number, play: PlayGenres): number {
+  const votes = Math.max(MIN_VOTES, t.tmdb_vote_count ?? MIN_VOTES)
+  const span = Math.log(Math.max(maxVotes, MIN_VOTES + 1) / MIN_VOTES)
+  const popularity = clamp01(Math.log(votes / MIN_VOTES) / span)
+  const rating = clamp01(((t.tmdb_rating ?? MIN_RATING) - MIN_RATING) / (8.5 - MIN_RATING))
+  const recency = t.release_year ? clamp01(1 - (CURRENT_YEAR - t.release_year) / RECENT_YEARS) : 0
+  let score = W_POPULARITY * popularity + W_RATING * rating + W_RECENCY * recency
+
+  const chosen = play.loved.size + play.liked.size
+  if (chosen > 0) {
+    const { firm, hinted } = candidateGenres(t)
+    const own = new Set([...firm, ...hinted])
+    if ([...own].some(g => play.loved.has(g)))      score += BOOST_LOVED
+    else if ([...own].some(g => play.liked.has(g))) score += BOOST_LIKED
+    else                                            score -= PENALTY_NONE
+  }
+  return score
+}
+
+/**
+ * Order the pool: "Never" genres out, then by score. `excluded` keys never
+ * appear; `served` keys go to the back so a regenerated batch rotates
+ * instead of re-opening with the same titles (the live pipeline's 80/20
+ * fresh/seen split has the same intent). Pure.
+ */
+export function rankColdStart(
+  pool: ColdStartTitle[],
+  play: PlayGenres,
+  excluded: Set<string>,
+  served: Set<string>,
+  size: number = BATCH_SIZE,
+): ColdStartTitle[] {
+  const eligible = pool.filter(t => {
+    if (excluded.has(titleKey(t.type, t.tmdb_id))) return false
+    if (play.never.size > 0 && neverGenres(t, []).some(g => play.never.has(g))) return false
+    return true
+  })
+  const maxVotes = eligible.reduce((m, t) => Math.max(m, t.tmdb_vote_count ?? 0), 1)
+  const scored = eligible
+    .map(t => ({ t, s: coldStartScore(t, maxVotes, play) }))
+    .sort((a, b) => b.s - a.s || (a.t.tmdb_id < b.t.tmdb_id ? -1 : 1))
+    .map(x => x.t)
+  const fresh = scored.filter(t => !served.has(titleKey(t.type, t.tmdb_id)))
+  const seen  = scored.filter(t =>  served.has(titleKey(t.type, t.tmdb_id)))
+  return [...fresh, ...seen].slice(0, size)
+}
+
+const fmtVotes = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n))
+
+export function toColdStartResult(t: ColdStartTitle, tasteVersion: number, now: string): RecommendationResult {
+  const rating = t.tmdb_rating ?? 0
+  const votes = t.tmdb_vote_count ?? 0
+  return {
+    title: t.title,
+    tmdb_id: t.tmdb_id,
+    type: t.type,
+    // 0 = no match claim. The card hides the ring and the Why panel hides
+    // the score breakdown at 0 (RecommendationsView.MatchRing, RecCard.WhyPanel).
+    composite_score: 0,
+    reason_payload: {
+      crew_matches: [],
+      lineage_connections: [],
+      dimension_matches: [],
+      soft_preferences_applied: [],
+      external_ratings: rating > 0 ? [{ source: 'tmdb', score: Math.round(rating * 100) / 1000 }] : [],
+      is_stretch_pick: false,
+      stretch_rationale: null,
+      groq_rationale: '',
+      negative_signals: [],
+    },
+    explanation:
+      `Popular right now${rating > 0 ? ` — ${rating.toFixed(1)} on TMDB from ${fmtVotes(votes)} ratings` : ''}. ` +
+      `WTW opens with crowd favourites until it knows your taste; rate a few and the picks start to follow you.`,
+    is_stretch_pick: false,
+    generated_at: now,
+    fingerprint_version: tasteVersion,
+  }
+}
+
+// ── Fetch ────────────────────────────────────────────────────
+
+const NEVER_AT_OR_BELOW = -5   // play brain: gen ≤ -5 is "Never" (brain.ts nevers)
+
+async function loadPlayGenres(userId: string): Promise<PlayGenres> {
+  const { data, error } = await createServiceClient()
+    .from('play_state')
+    .select('state')
+    .eq('user_id', userId)
+    .maybeSingle<{ state: { sel?: GameGenre[] | null; loved?: GameGenre[]; gen?: Record<string, number> } }>()
+  // Missing table (migration 0024 not run) or no row: no tilt, no error.
+  if (error || !data?.state) return NO_PLAY_GENRES
+  const s = data.state
+  const loved = new Set<GameGenre>(s.loved ?? [])
+  const liked = new Set<GameGenre>((s.sel ?? []).filter(g => !loved.has(g)))
+  const never = new Set<GameGenre>(
+    Object.entries(s.gen ?? {}).filter(([, v]) => v <= NEVER_AT_OR_BELOW).map(([g]) => g as GameGenre),
+  )
+  return { loved, liked, never }
+}
+
+export async function coldStartBatch(dna: DNASchema, contentType?: ContentType): Promise<RecommendationResult[]> {
+  const supabase = createServiceClient()
+  const userId = dna.metadata.user_id
+  const titleType = titleTypeFor(contentType)
+
+  // Same hard exclusions as step1: judged, saved, removed; served goes last.
+  const excluded = new Set<string>()
+  for (const s of dna.signals) excluded.add(titleKey(s.type, s.tmdb_id))
+  for (const h of dna.learning_loop.recommendation_history) if (isSavedMarker(h)) excluded.add(recordKey(h))
+
+  // The user's standing rules ("no anime", "nothing with X") still apply.
+  // `crew` is only fetched when there are rules to match it against: it
+  // doubles the payload (450 KB vs 210 KB for 400 movies, measured
+  // 2026-10-21) and a cold-start user rarely has any.
+  const rules = dna.contextual_logic.exclusion_rules
+  const columns = 'tmdb_id, type, title, release_year, tmdb_rating, tmdb_vote_count, genres, keywords, original_language, tone_tags'
+  let query = supabase
+    .from('titles')
+    .select(rules.length > 0 ? `${columns}, crew` : columns)
+    .gte('tmdb_vote_count', MIN_VOTES)
+    .gte('tmdb_rating', MIN_RATING)
+    .gte('release_year', CURRENT_YEAR - RECENT_YEARS)
+    .order('tmdb_vote_count', { ascending: false })
+    .limit(POOL_LIMIT)
+  if (titleType) query = query.eq('type', titleType)
+
+  const [poolRes, removedRes, servedRes, play] = await Promise.all([
+    query,
+    supabase.from('removed_titles').select('tmdb_id, media_type').eq('user_id', userId),
+    supabase.from('served_titles').select('tmdb_id, media_type').eq('user_id', userId),
+    loadPlayGenres(userId),
+  ])
+  if (poolRes.error)    throw new Error(`Cold start failed (titles): ${poolRes.error.message}`)
+  if (removedRes.error) throw new Error(`Cold start failed (removed_titles): ${removedRes.error.message}`)
+  if (servedRes.error)  throw new Error(`Cold start failed (served_titles): ${servedRes.error.message}`)
+  for (const r of removedRes.data ?? []) excluded.add(titleKey(r.media_type as MediaType, r.tmdb_id))
+  const served = new Set((servedRes.data ?? []).map(r => titleKey(r.media_type as MediaType, r.tmdb_id)))
+
+  const pool = ((poolRes.data ?? []) as unknown as ColdStartTitle[]).filter(t => rules.length === 0 || !isExcluded(t, rules))
+
+  const now = new Date().toISOString()
+  return rankColdStart(pool, play, excluded, served).map(t => toColdStartResult(t, dna.metadata.taste_version, now))
+}
