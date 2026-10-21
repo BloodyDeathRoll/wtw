@@ -12,6 +12,7 @@ import {
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { freshState, type PlayState } from '@/app/play/lib/brain'
 import { MIN_CONTENT_SAMPLES } from '@/modules/dna/lib/update-content-affinity'
+import { lineageBoost } from '@/modules/dna/lib/reaction-score'
 
 // Slice 2 (2026-10-21): what "Behind the curtain" shows is what the DNA
 // registers — scale beliefs, genre chips, trusted creators — as a SET done
@@ -43,6 +44,7 @@ describe('genreDelta', () => {
     expect(genreDelta(2)).toBeCloseTo(0.30)        // love = always loved
     expect(genreDelta(1)).toBeCloseTo(0.15)        // like = always liked
     expect(genreDelta(2.6)).toBeCloseTo(0.30)      // drift above love caps
+    expect(genreDelta(3)).toBeCloseTo(0.30)
     expect(genreDelta(-1)).toBeCloseTo(-0.10)
     expect(genreDelta(-3)).toBeCloseTo(-0.20)      // caps at always disliked
     expect(genreDelta(0.3)).toBeNull()
@@ -209,7 +211,7 @@ describe('applyPlayInfluence', () => {
     expect((w.slow_burn + w.moderate + w.high_octane) / 3).toBeCloseTo(0.5, 1)
   })
 
-  it('never overwrites a strand B value something surer has set', () => {
+  it('never overwrites a strand B value something at least as sure has set', () => {
     const dna = createBlankDNA('u1')
     dna.strand_b_narrative_dimensions.narrative_complexity = { value: 'low', confidence: 0.9, notes: 'said so in chat' }
     const S = setup()
@@ -217,6 +219,41 @@ describe('applyPlayInfluence', () => {
     const m = applyPlayInfluence(dna, null, playInfluence(S), [], snap(S))
     expect(dna.strand_b_narrative_dimensions.narrative_complexity.value).toBe('low')
     expect(m.strandB.narrative_complexity).toBeUndefined()
+    // A tie goes to what was there.
+    const want = playInfluence(S).strandB.narrative_complexity!.confidence
+    dna.strand_b_narrative_dimensions.narrative_complexity = { value: 'low', confidence: want, notes: '' }
+    applyPlayInfluence(dna, null, playInfluence(S), [], snap(S))
+    expect(dna.strand_b_narrative_dimensions.narrative_complexity.value).toBe('low')
+  })
+
+  it('a weight already at the ceiling: retracting is inexact there, and recentring absorbs it', () => {
+    const dna = createBlankDNA('u1')
+    const w = dna.strand_c_visceral_specs.tone_weights
+    w.comedic = 1   // a long run of loved comedies, clamped by the ratings writer
+    const S = setup()
+    believe(S, 'tone', 0.9)
+    const m1 = applyPlayInfluence(dna, null, playInfluence(S), [], snap(S))
+    expect(m1.tone.comedic).toBeGreaterThan(0)
+    S.sw.tone = 0; S.sv.tone = 0
+    applyPlayInfluence(dna, m1, playInfluence(S), [], snap(S))
+    // Still the top tone, and the group is still centred — the residue went
+    // into the shared shift, not into the order.
+    expect(w.comedic).toBe(Math.max(...Object.values(w)))
+    expect(Object.values(w).reduce((s, x) => s + x, 0) / 5).toBeCloseTo(0.5, 1)
+  })
+
+  it('a trusted creator ratings also loved keeps a boost its score still earns, and no more', () => {
+    const dna = createBlankDNA('u1')
+    const S = setup()
+    const nolan: ResolvedCreator = { name: 'Christopher Nolan', bucket: 'directors', tmdb_person_id: '525' }
+    const m1 = applyPlayInfluence(dna, null, playInfluence(S), [nolan], snap(S))
+    const e = dna.strand_a_creative_affinity.directors['525']
+    // Three loved Nolan films rated in the app since (the crew writer's arithmetic).
+    e.score = (0.20 * 2 + 0.30 * 3) / 5; e.sample_size = 5; e.confidence = 0.4; e.lineage_boost = 'high'
+    applyPlayInfluence(dna, m1, playInfluence(S), [], snap(S))
+    expect(e.sample_size).toBe(3)
+    expect(e.score).toBeCloseTo(0.30)
+    expect(e.lineage_boost).toBe(lineageBoost(e.score))
   })
 
   it('sets a strand B value over the blank default, and gives it back when the belief goes', () => {

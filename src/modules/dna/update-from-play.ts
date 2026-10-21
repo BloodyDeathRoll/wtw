@@ -313,6 +313,10 @@ export function applyPlayInfluence(
     for (const [k, ap] of Object.entries(prev.crew)) {
       const [bucket, id] = k.split(':') as [CrewBucket, string]
       removeSamples(a[bucket], id, ap)
+      // The boost follows the score; an entry that survived the retraction
+      // (ratings added to it) must not keep a boost its score no longer earns.
+      const left = a[bucket][id]
+      if (left) left.lineage_boost = lineageBoost(left.score)
     }
   }
 
@@ -351,8 +355,8 @@ export function applyPlayInfluence(
   if (Object.keys(inf.tone).length || prev?.tone && Object.keys(prev.tone).length) recenterWeights(c.tone_weights)
 
   for (const [dim, want] of Object.entries(inf.strandB) as [keyof StrandB, { value: StrandB[keyof StrandB]['value']; confidence: number }][]) {
-    // Chat or ratings that are surer than the games keep their value.
-    if (b[dim].confidence > want.confidence) continue
+    // Chat or ratings that are at least as sure as the games keep their value.
+    if (b[dim].confidence >= want.confidence) continue
     next.strandB[dim] = { prior: { value: b[dim].value, confidence: b[dim].confidence }, set: { ...want } }
     b[dim].value = want.value
     b[dim].confidence = want.confidence
@@ -438,10 +442,13 @@ export type PlaySyncOutcome = 'synced' | 'not_due' | 'missing' | 'conflict'
  */
 export async function syncPlayToDNA(userId: string, S: PlayState, titles: GameTitle[]): Promise<PlaySyncOutcome> {
   const inf = playInfluence(S)
-  const creators = await resolveCreators(inf.creators, S.used, titles).catch(err => {
-    console.warn('[play-sync] creator lookup failed (crew skipped):', err instanceof Error ? err.message : err)
-    return [] as ResolvedCreator[]
-  })
+  // A failed catalog lookup aborts the sync rather than writing a marker
+  // without the creators: the marker would then say "not due" for this
+  // state and the trusted creators would wait for the next milestone. Left
+  // unwritten, the next save simply retries.
+  const creators = await resolveCreators(inf.creators, S.used, titles)
+  const dropped = inf.creators.filter(n => !creators.some(c => c.name === n))
+  if (dropped.length) console.log(`[play-sync] trusted creator(s) not in the catalog crew, skipped: ${dropped.join(', ')}`)
   const snapshot = { sel: S.sel, block: S.block, round: S.round, skipped: S.skipped, done: seasonDone(S) }
 
   // Filled by the mutate below (re-run on a compare-and-set miss, so the
