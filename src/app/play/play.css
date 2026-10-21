@@ -755,7 +755,9 @@
 .wtw-play .rib.on{background:var(--gold);color:#0b0820;font-size:17px;font-weight:800;padding-top:9px}
 .wtw-play .rib:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .wtw-play .bet-poster[style] .rib{width:24px;height:32px;font-size:17px;padding-top:4px}
-.wtw-play .toast.has-undo{display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:auto}
+.wtw-play .toast.has-undo{display:flex;align-items:center;justify-content:space-between;gap:12px}
+/* Only Undo takes taps: the toast sits over the bottom buttons, which must stay usable under it. */
+.wtw-play .toast.has-undo button{pointer-events:auto}
 .wtw-play .toast.has-undo button{border:0;background:none;color:#f1c46d;font-weight:700;font-size:16px;padding:4px 2px;cursor:pointer}
 .wtw-play .screen.wl{padding-bottom:24px}
 .wtw-play .wl-hd{display:flex;justify-content:space-between;align-items:baseline;margin:8px 20px 0}
@@ -928,4 +930,51 @@
   .wtw-play .other-play .gq span{margin-top:2px}
   .wtw-play .other-play .choices.two .choice{padding:8px 12px;font-size:15px}
   .wtw-play .other-play .row-btns .ghost{height:48px}
+}
+
+/* Blind Taste Test, "book cover" edition (2026-10-21) */
+.wtw-play .blind-play{overflow:hidden}
+.wtw-play .blind-screen{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;gap:16px}
+.wtw-play .blind-story > .row-btns{margin-top:auto}
+.wtw-play .blind-play .gq{margin-top:0}
+.wtw-play .blind-play .plot-card{border:1px solid rgba(61,220,151,.35)}
+.wtw-play .blind-play .plot-card small{color:#3ddc97}
+.wtw-play .blind-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.wtw-play .blind-chips span{font-size:13px;color:#cfcfd3;background:var(--pill-dark);border-radius:999px;padding:4px 11px}
+.wtw-play .blind-dots{display:flex;gap:6px;width:100%}
+.wtw-play .blind-dots i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden;position:relative}
+.wtw-play .blind-dots i::after{content:"";position:absolute;inset:0;background:#3ddc97;transform:scaleX(0);transform-origin:left;transition:transform .6s cubic-bezier(.22,1,.36,1)}
+.wtw-play .blind-dots i.now::after{transform:scaleX(.18);opacity:.55}
+.wtw-play .blind-dots i.on::after{transform:scaleX(1);opacity:1}
+.wtw-play .blind-eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#a8a8ad;font-weight:600}
+.wtw-play .blind-play .reveal-card{gap:8px}
+.wtw-play .blind-play .reveal-poster{width:150px}
+.wtw-play .blind-play .reveal-card h2{margin-top:4px}
+.wtw-play .blind-trailer{position:absolute;left:8px;bottom:8px;z-index:2;font-size:12.5px;font-weight:600;color:#fff;background:rgba(0,0,0,.72);border-radius:999px;padding:5px 10px;text-decoration:none}
+.wtw-play .blind-star{color:#ffd23d;font-weight:700;white-space:nowrap}
+.wtw-play .cover-line{margin:2px 0 0;font-size:18px;line-height:1.4;color:#3ddc97;font-weight:600;max-width:320px}
+.wtw-play .blind-after{margin-top:auto;width:100%;display:flex;flex-direction:column;gap:12px;align-items:center}
+.wtw-play .blind-after .seen-q{margin:0;font-size:17px;color:#a8a8ad}
+.wtw-play .blind-after .cta{max-width:none}
+.wtw-play .seen-btns.three{grid-template-columns:1fr 1fr 1fr}
+.wtw-play .seen-btns.three button{font-size:16px;padding:0 6px}
+/* Motion: a story glides in from the right and leaves to the left; the cover is lifted (poster
+   sharpens out of a soft blur), then title, facts and the cover line rise in one after another. */
+.wtw-play .blind-story{animation:blind-in .48s cubic-bezier(.22,1,.36,1) both}
+.wtw-play .blind-leave{animation:blind-out .26s cubic-bezier(.55,0,.75,.2) both}
+.wtw-play .blind-leave.fade{animation-name:blind-fade}
+.wtw-play .blind-unveil{animation:blind-unveil .75s cubic-bezier(.22,1,.36,1) both}
+.wtw-play .blind-rise{animation:blind-rise .5s cubic-bezier(.22,1,.36,1) both}
+.wtw-play .blind-rise.r1{animation-delay:.22s}
+.wtw-play .blind-rise.r2{animation-delay:.3s}
+.wtw-play .blind-rise.r3{animation-delay:.42s}
+.wtw-play .blind-rise.r4{animation-delay:.58s}
+@keyframes blind-in{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:none}}
+@keyframes blind-out{to{opacity:0;transform:translateX(-36px)}}
+@keyframes blind-fade{to{opacity:0;transform:scale(.97)}}
+@keyframes blind-unveil{from{opacity:.15;filter:blur(14px);transform:scale(1.06)}to{opacity:1;filter:none;transform:none}}
+@keyframes blind-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .wtw-play .blind-story,.wtw-play .blind-leave,.wtw-play .blind-unveil,.wtw-play .blind-rise{animation:none}
+  .wtw-play .blind-dots i::after{transition:none}
 }

@@ -70,14 +70,19 @@ export interface MindRun {
 
 export type GameId = 'bet' | 'mind' | 'blind' | 'other' | 'hilo'
 
-/** Blind Taste Test: plot → would you watch it? → which one is it? → reveal. */
+/**
+ * Blind Taste Test: the story without its cover → would you watch it? → the
+ * cover → still in? ("Seen it" → how was it?).
+ */
 export interface BlindRun {
   deck: Title[]; i: number
-  step: 'watch' | 'name' | 'reveal'
-  opts: Title[]
+  step: 'story' | 'reveal' | 'seen'
+  /** The answer on the story alone, for the story on screen. */
+  first: boolean | null
   yes: Title[]; no: Title[]
-  named: number
-  last: { correct: boolean; chosen: string } | null
+  /** Stories whose answer flipped once the cover showed. */
+  changed: Title[]
+  seen: number
 }
 
 /** The Other Side of the Story: clues one by one, guess from four, then "have you seen it?". */
@@ -200,8 +205,9 @@ export interface Ctl {
   finishSeason(): void
   // path games and the same games in Games
   blindWatch(yes: boolean): void
-  blindName(t: Title): void
-  blindNext(): void
+  /** After the cover: keep the first answer, flip it ("Changed my mind"), or seen it already. */
+  blindAfter(v: 'keep' | 'flip' | 'seen'): void
+  blindSeen(r: 'loved' | 'liked' | 'disliked'): void
   /** `typed`: named from memory rather than picked from the four answers — a stronger sign of having seen it. */
   otherGuess(t: Title, typed?: boolean): void
   otherClue(): void

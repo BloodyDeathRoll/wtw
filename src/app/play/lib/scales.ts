@@ -52,6 +52,15 @@ export type AIScale = (typeof AI_SCALES)[number]
 /** One Other Side clue. `src` says where its facts come from: TMDB's plot, or the film itself (Eran, 2026-10-19). */
 export interface SideClue { who: string; text: string; src: 'tmdb' | 'film' }
 
+/**
+ * Blind Taste Test level (1–5), the story without its cover, and the reveal.
+ * Levels: 1 not who you think (animated, animals, toys), 2 longer than you
+ * think (a series), 3 older than it sounds (before 2000), 4 not in English,
+ * 5 never heard of it (mostly true stories). `src` says where the reveal's
+ * facts come from ("tmdb", "film", "fact"), for spot-checks.
+ */
+export interface BlindCover { level: 1 | 2 | 3 | 4 | 5; story: string; cover: string; src: string | null }
+
 export interface GameTitle {
   /** `${type}:${tmdb_id}`, the same composite key as src/lib/title-key.ts. */
   id: string
@@ -69,11 +78,11 @@ export interface GameTitle {
   /** TMDB's plot overview, cut to whole sentences — real text, never rewritten. */
   overview: string
   /**
-   * Blind Taste Test's version of the plot: `overview` retold with no names
-   * or giveaways, adding nothing (data/plot-rewrites.json). Attached at load
-   * by `withBlindPlots`, and only while TMDB's plot is the one it was made from.
+   * Blind Taste Test, "book cover" edition (2026-10-21): the story told
+   * without the thing people judge on sight, and the line that reveals it
+   * (data/blind-covers.json). Attached at load by `withBlindCovers`.
    */
-  blind?: string
+  cover?: BlindCover
   /**
    * The Other Side of the Story: five side characters each telling the story
    * in their own words, hardest first (data/other-clues.json, written for ~120

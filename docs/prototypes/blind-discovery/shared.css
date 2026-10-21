@@ -1,0 +1,28 @@
+/* Blind Taste Test as a discovery game — mock-ups, 2026-10-21. Live look: black, Inter, orange primary. */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--fg:#F2F2F2;--muted:#8A8A8E;--dim:#5E5E62;--elev:#161618;--elev2:#1E1E22;--line:rgba(255,255,255,.08);--acc:#3ddc97;--gold:#D49B3A;--o1:#F2A33A;--o2:#E8552B}
+body{background:#2a2a2e;font-family:Inter,system-ui,sans-serif;color:var(--fg)}
+.phone{position:relative;width:375px;height:812px;overflow:hidden;background:radial-gradient(360px 360px at 100% 100%,rgba(75,91,255,.2),transparent 70%),#000}
+.top{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.top .back{font-size:30px;color:#fff;width:40px;line-height:1}
+.top .brand{font-weight:700;font-size:22px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.top .brand i{width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#4B5BFF,var(--gold));display:block}
+.top .hb{width:40px;display:grid;gap:6px;justify-items:end}.top .hb i{display:block;width:24px;height:2px;background:#fff}
+.ghead{display:flex;align-items:center;justify-content:space-between;padding:4px 16px 0}
+.ghead .gname{font-family:"Bebas Neue";font-size:24px;letter-spacing:.05em;color:var(--acc)}
+.ghead .count{font-size:13px;color:var(--muted)}
+.dots{display:flex;gap:6px;padding:8px 16px 0}.dots i{flex:1;height:4px;border-radius:2px;background:#2a2a2e}.dots i.on{background:var(--acc)}
+h2{font-size:24px;font-weight:700;line-height:1.2;text-align:center;padding:18px 24px 6px}
+.sub{font-size:14px;color:var(--muted);text-align:center;padding:0 28px}
+.story{background:var(--elev);border:1px solid var(--line);border-radius:18px;padding:16px 18px;position:relative}
+.story .tag{font-family:"Bebas Neue";font-size:15px;letter-spacing:.08em;color:var(--acc)}
+.story p{font-size:16.5px;line-height:1.45;margin-top:6px;color:#ececf0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chips span{font-size:12.5px;color:#cfcfd3;background:var(--elev2);border-radius:999px;padding:4px 10px}
+.btn{height:56px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:17px;color:#fff;background:linear-gradient(90deg,var(--o1),var(--o2))}
+.btn.ghost{background:var(--elev2);color:#e6e6ea;font-weight:600}
+.pill{height:44px;border-radius:999px;display:grid;place-items:center;font-size:15px;color:#e6e6ea;background:var(--elev2);padding:0 18px}
+.poster{border-radius:14px;background-size:cover;background-position:center;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+.ribbon{position:absolute;top:0;right:12px;width:30px;height:38px;background:#1b1b1e;clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);display:grid;place-items:start center;padding-top:4px;font-weight:700;color:#fff;font-size:18px}
+.label{position:absolute;z-index:9;left:0;right:0;bottom:0;padding:7px 12px;background:#fff3;backdrop-filter:blur(6px);font-size:12px;color:#fff;text-align:center;font-weight:600}
+.rating{color:#ffd23d;font-weight:700}

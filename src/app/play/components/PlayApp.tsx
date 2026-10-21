@@ -35,7 +35,7 @@ import type { SavedPlay } from '../lib/server'
 import { readLocal, usePersistence } from './persist'
 import { demoStateAt } from '../lib/demo'
 import { SAVED_FROM, loadAccountWatchlist, saveTitle, savedIds, unsaveTitle, type SaveSource } from '../lib/watchlist'
-import type { Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
+import type { BlindRun, Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
 import { GAMES } from './games'
 import Screens from './Screens'
 
@@ -324,10 +324,10 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     const lv = LEVELS[id][Math.min(level, LEVELS[id].length - 1)]
     const base: GameRun = { id, phase: 'play', k0: knowledge(S), inPath, level }
     if (id === 'blind') {
-      const deck = blindDeck(S, T, lv)
-      if (deck.length < 3) { toast('New stories every Monday. You\'ve seen them all for now.'); return null }
-      deck.forEach(t => markServed(S, 'blind', t.id))
-      return { ...base, blind: { deck, i: 0, step: 'watch', opts: options(T, deck[0]), yes: [], no: [], named: 0, last: null } }
+      const dealt = blindDeck(S, T, level)
+      if (!dealt.deck.length) { toast('You\'ve seen every story for now. More are coming.'); return null }
+      dealt.deck.forEach(t => markServed(S, 'blind', t.id))
+      return { ...base, level: dealt.level, blind: { deck: dealt.deck, i: 0, step: 'story', first: null, yes: [], no: [], changed: [], seen: 0 } }
     }
     if (id === 'other') {
       const deck = otherDeck(S, T, lv)
@@ -339,6 +339,26 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     if (!a || !b) { toast('New rounds every Monday. You\'ve played them all for now.'); return null }
     markServed(S, 'hilo', a.id); markServed(S, 'hilo', b.id)
     return { ...base, hilo: { a, b, streak: 0, target: lv.size, step: 'guess', last: null, seen: [a, b] } }
+  }
+
+  /** Next Blind story, or the round's result: what the stories alone got a yes, and what the covers changed. */
+  function blindAdvance(g: GameRun, b: BlindRun) {
+    if (b.i + 1 < b.deck.length) { set({ game: { ...g, blind: { ...b, i: b.i + 1, step: 'story', first: null } } }); return }
+    if (g.inPath) for (const y of b.yes) for (const n of b.no) tallyPick(S, y, n)
+    const lean = g.inPath ? blockLean(S, false)?.replace('This block you kept picking the', 'Without the covers, you leaned toward the') : null
+    const n = b.deck.length, k = b.changed.length
+    const names = b.changed.map(t => t.title)
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]
+    finishGame(g, {
+      big: `You'd watch ${b.yes.length} of ${n}`, score: 0, cleared: true,
+      headline: k === 0 ? 'The covers didn\'t sway you.' : `The cover changed your mind ${k === 1 ? 'once' : `${k} times`}.`,
+      lines: [
+        `On the story alone, you'd watch *${b.yes.length} of ${n}*.`,
+        k ? `Once you saw what it was, you changed your mind on *${list}*.` : 'Seeing what they were didn\'t change a single answer.',
+        ...(lean ? [lean] : []),
+      ],
+      posters: b.deck,
+    }, [])
   }
 
   /** A season game is over: close the step (path) or show the game's result (Games). */
@@ -618,30 +638,27 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       const t = b.deck[b.i]
       learnFromRating(S, t, yes ? 0.5 : -0.5, 0.4)
       if (g.inPath && yes) countBlockPick(S, [t], null, false)
-      set({ game: { ...g, blind: { ...b, step: 'name', yes: yes ? [...b.yes, t] : b.yes, no: yes ? b.no : [...b.no, t] } } })
-      commit([{ kind: 'blind_watch', item_key: t.id, payload: { title: t.id, would_watch: yes } }])
+      set({ game: { ...g, blind: { ...b, step: 'reveal', first: yes, yes: yes ? [...b.yes, t] : b.yes, no: yes ? b.no : [...b.no, t] } } })
+      commit([{ kind: 'blind_watch', item_key: t.id, payload: { title: t.id, would_watch: yes, level: t.cover?.level ?? null } }])
     },
-    blindName(choice) {
+    blindAfter(v) {
       const g = ui.game, b = g?.blind
       if (!g || !b) return
-      const t = b.deck[b.i], correct = choice.id === t.id
-      set({ game: { ...g, blind: { ...b, step: 'reveal', named: b.named + (correct ? 1 : 0), last: { correct, chosen: choice.id } } } })
-      commit([{ kind: 'blind_name', item_key: t.id, payload: { title: t.id, guessed: choice.id, correct } }])
+      const t = b.deck[b.i]
+      if (v === 'seen') { set({ game: { ...g, blind: { ...b, step: 'seen' } } }); return }
+      // The first answer stands unless the cover changed it. Saving is the poster's ribbon, never this.
+      const after = v === 'flip' ? !b.first : !!b.first
+      if (v === 'flip') learnFromRating(S, t, after ? 0.5 : -0.5, 0.4)
+      commit([{ kind: 'blind_cover', item_key: t.id, payload: { title: t.id, level: t.cover?.level ?? null, before: b.first, after } }])
+      blindAdvance(g, { ...b, changed: v === 'flip' ? [...b.changed, t] : b.changed })
     },
-    blindNext() {
+    blindSeen(r) {
       const g = ui.game, b = g?.blind
       if (!g || !b) return
-      if (b.i + 1 < b.deck.length) { set({ game: { ...g, blind: { ...b, i: b.i + 1, step: 'watch', opts: options(T, b.deck[b.i + 1]), last: null } } }); return }
-      // Lesson: what the stories they'd watch have in common, versus the ones they wouldn't.
-      if (g.inPath) for (const y of b.yes) for (const n of b.no) tallyPick(S, y, n)
-      const lean = g.inPath ? blockLean(S, false)?.replace('This block you kept picking the', 'Without the posters, you said yes to the') : null
-      const n = b.deck.length
-      finishGame(g, {
-        big: `You named ${b.named} of ${n}`, score: b.named, cleared: b.named >= Math.ceil(n / 2),
-        headline: b.named === n ? 'A perfect read.' : b.named >= n / 2 ? 'You know your stories.' : 'Tricky without the names, right?',
-        lines: [`You named *${b.named} of ${n}* from the plot alone.`, ...(lean ? [lean] : []), `You'd watch ${b.yes.length} of the ${n} stories.`],
-        posters: b.deck,
-      }, [])
+      const t = b.deck[b.i]
+      reactToPickBrain(S, t, r, 'Blind Taste Test')
+      commit([{ kind: 'blind_seen', item_key: t.id, payload: { title: t.id, level: t.cover?.level ?? null, reaction: r } }])
+      blindAdvance(g, { ...b, seen: b.seen + 1 })
     },
     otherGuess(choice, typed = false) {
       const g = ui.game, o = g?.other

@@ -130,6 +130,39 @@ describe('Blind Taste Test plot rewrites (data/plot-rewrites.json)', () => {
   })
 })
 
+describe('Blind Taste Test covers (data/blind-covers.json)', () => {
+  it('belong to real titles, at levels 1–5, with a story worth judging and a reveal', async () => {
+    const titles: GameTitle[] = (await import('@/app/play/data/titles.json')).default as GameTitle[]
+    const covers: Record<string, { level: number; story: string; cover: string }> = (await import('@/app/play/data/blind-covers.json')).default
+    const ids = new Set(titles.map(t => t.id))
+    const bad = Object.entries(covers).filter(([id, c]) => !ids.has(id) || c.level < 1 || c.level > 5 || c.story.length < 45 || !c.cover).map(([id]) => id)
+    expect(bad).toEqual([])
+    for (const level of [1, 2, 3, 4, 5]) expect(Object.values(covers).filter(c => c.level === level).length).toBeGreaterThanOrEqual(15)
+  })
+
+  it('never name a lead character, and never say the cover out loud', async () => {
+    const titles: GameTitle[] = (await import('@/app/play/data/titles.json')).default as GameTitle[]
+    const covers: Record<string, { level: number; story: string }> = (await import('@/app/play/data/blind-covers.json')).default
+    const said: Record<number, RegExp> = {
+      1: /\b(animat\w*|cartoon|anime)\b/i, 2: /\b(series|seasons?|episodes?)\b/i,
+      4: /\b(korea\w*|japan\w*|spain|spanish|mexic\w*|french|paris|ital\w*|german\w*|turk\w*)\b/i, 5: /\b(documentar\w*|true story)\b/i,
+    }
+    const leaks: string[] = []
+    for (const t of titles) {
+      const c = covers[t.id]
+      if (!c) continue
+      if (said[c.level]?.test(c.story)) leaks.push(`${t.title}: says its cover`)
+      for (const name of t.characters.slice(0, 2)) {
+        if (/^(self|himself|herself)\b/i.test(name)) continue
+        for (const part of name.replace(/["'“”‘’]/g, ' ').split(/[\s.,/()-]+/)) {
+          if (part.length >= 3 && /^[A-Z]/.test(part) && part !== 'The' && new RegExp(`\\b${part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(c.story)) leaks.push(`${t.title}: ${part}`)
+        }
+      }
+    }
+    expect(leaks).toEqual([])
+  })
+})
+
 describe('Other Side clues (data/other-clues.json)', () => {
   it('give every title five clues from known characters, and never name a lead or the title', async () => {
     const titles: GameTitle[] = (await import('@/app/play/data/titles.json')).default as GameTitle[]

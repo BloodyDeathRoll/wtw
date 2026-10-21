@@ -6,8 +6,8 @@ import {
 } from '@/app/play/lib/brain'
 import { blockTypeFor, SEASON, seasonDone } from '@/app/play/lib/blocks'
 import { factHeadline, revealOf, revealTier } from '@/app/play/lib/reveal'
-import { redact, blindDeck, blindPlot, withBlindPlots, withSideClues, sideClues, otherDeck, titleSearch, markServed, LEVELS } from '@/app/play/lib/games'
-import type { GameTitle } from '@/app/play/lib/scales'
+import { blindChips, blindDeck, withBlindCovers, withSideClues, sideClues, otherDeck, titleSearch, markServed, LEVELS } from '@/app/play/lib/games'
+import type { BlindCover, GameTitle } from '@/app/play/lib/scales'
 import type { GameGenre } from '@/app/play/lib/genres'
 
 // A deterministic stand-in for Math.random.
@@ -207,53 +207,36 @@ describe('the season', () => {
 })
 
 describe('season games', () => {
-  const t = (over: Partial<GameTitle>) => prepareTitles([title({ genres: ['drama'], ...over } as never)])[0]
 
-  it('blacks out character names and title words, keeps the rest of the real plot', () => {
-    const x = t({ title: 'The Shawshank Redemption', characters: ['Andy Dufresne', "Ellis Boyd 'Red' Redding"], aliases: [], keywords: [],
-      overview: 'Banker Andy Dufresne is sent to Shawshank prison, where he befriends Red.' })
-    const r = redact(x)
-    expect(r).not.toMatch(/Andy|Dufresne|Shawshank|Red\b/)
-    expect(r).toContain('is sent to')
-    expect(r).toContain('prison')
-  })
+  const story = 'A family moves to a quiet town and slowly uncovers what the neighbours have been hiding for years.'
+  const covered = (n: number, level: (i: number) => BlindCover['level'], over: (i: number) => Partial<GameTitle> = () => ({})) => {
+    const pool = prepareTitles(Array.from({ length: n }, (_, i) => title({ genres: ['drama'], ...over(i) })))
+    return withBlindCovers(pool, Object.fromEntries(pool.map((x, i) => [x.id, { level: level(i), story, cover: 'It\'s animated.', src: 'tmdb' }])))
+  }
 
-  it('also blacks out a series name the hero is known by (Batman for The Dark Knight)', () => {
-    const x = t({ title: 'The Dark Knight', characters: ['Bruce Wayne'], aliases: ['Batman', 'Begins'], keywords: [],
-      overview: 'Batman raises the stakes in his war on crime.' })
-    expect(redact(x)).not.toContain('Batman')
-  })
-
-  it('shows the retold plot when there is one, and the blacked-out original if TMDB\'s plot has changed since', () => {
-    const x = t({ title: 'Fight Club', characters: ['Tyler Durden'], aliases: [], keywords: [],
-      overview: 'A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy.' })
-    const retold = 'A disturbed man and a slippery salesman channel raw male aggression into a shocking new kind of therapy.'
-    const [fresh] = withBlindPlots([x], { [x.id]: { src: x.overview, text: retold } })
-    expect(blindPlot(fresh)).toBe(retold)
-    const [stale] = withBlindPlots([x], { [x.id]: { src: 'An older TMDB plot.', text: retold } })
-    expect(stale.blind).toBeUndefined()
-    expect(blindPlot(stale)).toBe(redact(stale))
-  })
-
-  it('skips a retold plot too short to judge', () => {
+  it('deals five Blind stories a round, all hiding the level\'s kind of cover', () => {
     const S = setUp()
-    const pool = prepareTitles(Array.from({ length: 12 }, (_, i) => title({
-      genres: ['drama'], characters: ['Ann'], aliases: [], keywords: [],
-      overview: 'A long and winding story about a family that moves to a quiet town and discovers what its neighbours have hidden for years.',
-      blind: i % 2 ? 'The early life of a boy genius.' : 'A family moves to a quiet town and slowly uncovers what the neighbours have been hiding for years.',
-    } as never)))
-    const deck = blindDeck(S, pool, LEVELS.blind[0])
-    expect(deck.length).toBeGreaterThan(0)
-    expect(deck.every(x => (x.blind ?? '').length >= 45)).toBe(true)
+    const pool = covered(30, i => (i % 3 ? 1 : 3))
+    const { deck, level } = blindDeck(S, pool, 0)
+    expect(level).toBe(0)
+    expect(deck).toHaveLength(5)
+    expect(deck.every(x => x.cover?.level === 1)).toBe(true)
   })
 
-  it('hides a word from a character name only where it is used as a name', () => {
-    const x = t({ title: 'Guardians of the Galaxy', characters: ['Peter Quill', 'Nova Prime', 'Agent Coulson'], aliases: [], keywords: [],
-      overview: 'Peter Quill becomes the prime target of a manhunt, chased by an FBI agent and Nova Prime himself.' })
-    const r = redact(x)
-    expect(r).not.toMatch(/Peter|Quill|Prime/)
-    expect(r).toContain('the prime target')
-    expect(r).toContain('an FBI agent')
+  it('moves on to the next Blind level that still has a round when one runs out', () => {
+    const S = setUp()
+    const pool = covered(12, i => (i < 2 ? 1 : 3))
+    const { deck, level } = blindDeck(S, pool, 0)
+    expect(level).toBe(2)
+    expect(deck.every(x => x.cover?.level === 3)).toBe(true)
+    pool.forEach(x => markServed(S, 'blind', x.id))
+    expect(blindDeck(S, pool, 0).deck).toEqual([])
+  })
+
+  it('keeps the story card from giving the cover away', () => {
+    const [film, show] = covered(2, i => (i ? 2 : 1), i => (i ? { type: 'tv', seasons: 4 } : { runtime: 109, year: 2016 }))
+    expect(blindChips(film)).toEqual(['Movie', '1h 49m'])         // no year, no "animated"
+    expect(blindChips(show)).toEqual([])                          // its cover is being a series
   })
 
   it('deals Other Side stories only from titles with a full set of five written clues', () => {
@@ -284,14 +267,10 @@ describe('season games', () => {
   it('never serves the same story twice, and never a "Never" genre', () => {
     const S = setUp()
     S.gen.horror = -9
-    const lv = LEVELS.blind[0]
-    const pool = prepareTitles(Array.from({ length: 30 }, (_, i) => title({
-      genres: [i % 5 === 0 ? 'horror' : 'drama'], characters: ['Ann'], aliases: [], keywords: [],
-      overview: 'A long and winding story about a family that moves to a quiet town and discovers what its neighbours have hidden for years.',
-    } as never)))
-    const first = blindDeck(S, pool, lv)
+    const pool = covered(30, () => 1, i => ({ genres: [i % 5 === 0 ? 'horror' : 'drama'] }))
+    const first = blindDeck(S, pool, 0).deck
     first.forEach(x => markServed(S, 'blind', x.id))
-    const second = blindDeck(S, pool, lv)
+    const second = blindDeck(S, pool, 0).deck
     expect(first.some(x => x.genres.includes('horror'))).toBe(false)
     expect(second.some(x => first.includes(x))).toBe(false)
   })

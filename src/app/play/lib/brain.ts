@@ -942,13 +942,13 @@ export function learnFromRating(S: PlayState, t: Title, dev: number, w: number):
  * and teach the brain like a rating; "removed" only hides the title. Slice 2
  * replays these (play_events kind 'pick_reaction') into the live DNA.
  */
-export function reactToPick(S: PlayState, t: Title, r: PickReaction): void {
+export function reactToPick(S: PlayState, t: Title, r: PickReaction, from = 'your picks'): void {
   ;(S.pickReactions ??= {})[t.id] = r
   if (r === 'removed') { note(S, `Removed ${t.title} from your picks`); return }
   const dev = r === 'loved' ? 1 : r === 'liked' ? 0.5 : -1
   learnFromRating(S, t, dev, r === 'loved' ? 0.8 : 0.6)
   groupSignal(S, t, dev > 0 ? 1 : -1)
-  note(S, `${r === 'loved' ? 'Loved' : r === 'liked' ? 'Liked' : 'Didn\'t like'} ${t.title} (from your picks)`)
+  note(S, `${r === 'loved' ? 'Loved' : r === 'liked' ? 'Liked' : 'Didn\'t like'} ${t.title} (from ${from})`)
 }
 
 /** Settle one bet: who scores, and what the brain learns. */
