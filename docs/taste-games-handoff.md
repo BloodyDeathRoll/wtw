@@ -12,13 +12,13 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 - New designs → **mock-ups first** (2–3 options, real content, phone size), Eran picks, then build. Pipeline: HTML in `docs/prototypes/<topic>/` → headless Chrome → `sips` → JPEG (see `docs/prototypes/reveal/` and `watchlist/`).
 - Eran plays and sends screenshots + numbered feedback. Answer each point, fix the clear ones, propose options for structural ones.
 - Never say "done" without clicking it through yourself (browser pane, phone size; screenshots taken mid-fade look dim — retake).
-- **Ask before every commit and push.** This Mac has no GitHub sign-in for the command line (`gh` not installed; the old token was revoked 2026-10-20). You commit locally; Eran pushes with **GitHub Desktop** and opens the PR on github.com. Offered, not done: install `gh` + browser sign-in so Claude can push.
+- **Ask before every commit, push and merge.** Since 2026-10-21 GitHub's `gh` tool is installed (`~/.local/bin/gh`, signed in as eran-manor), so Claude pushes, opens the PR, watches the checks and merges, each only after Eran's OK. No more GitHub Desktop round trips.
 
 ## Where things stand (2026-10-21)
 
 - **#129 merged** (2026-10-19): `/play` — the season, the three season games, the reveal, My picks, the watchlist ribbon.
 - **#130 merged by Shahar** (2026-10-21): the games are now **the app's onboarding, live for every user** (`PLAY_ONBOARDING_LIVE = true` in `src/lib/play-rollout.ts`). `/` redirects to `/play` until the player finishes the season or taps Skip. Home lost the input bar (chat is the top-left icon) and has Picks · Watchlist · Games buttons. `/play` sits in the app shell, follows Shahar's Figma "games" frame (orange primary buttons), and has no step numbers or path map. Brand-new players hear a voice intro that leads into the games.
-- **Progress tables (migration 0024) run live on 2026-10-19.** Signed-in progress saves to `play_state`, and every answer goes to `play_events`. **Real players' data now exists**, the best input for tuning the games.
+- **Progress tables (migration 0024) run live on 2026-10-19.** Signed-in progress saves to `play_state`, and every answer goes to `play_events`. Only a couple of people play so far, so there's no meaningful data yet: judge games by playing them, not by stats.
 - **Merging to `main` deploys to production automatically** (GITGUIDE). Every games change reaches real users on merge, so click it through before the PR.
 
 ## What a player experiences now
@@ -76,12 +76,12 @@ Tests: `tests/unit/play-brain.test.ts`, `play-titles.test.ts`, `play-watchlist.t
 - Spark-style swipe rows for genres.
 - Data first: a "Did you know?" needs a sourced dataset.
 
-## How to judge a game (proposed, for Eran to confirm)
+## How we work on the games (Eran, 2026-10-21)
 
-1. **Fun.** Do players finish it? Where do they quit or skip? (`play_events`; the Skip and "Haven't seen it" taps.)
-2. **Taste signal.** Does playing it make the brain's predictions better? Simulate first (as for the final round: a consistent player vs a random tapper vs genres-only), then check real players' final-round scores.
-3. **Honesty.** Real facts, no fake knowing, nothing repeated.
+- **One game at a time:** idea → mock-ups → Eran picks → build → Eran plays → fix → PR. Finish one before starting the next.
+- **No player stats for now.** Only a couple of people play, so don't pull or analyse `play_events`; Eran's play-throughs are the test.
+- What makes a game good: **fun** (Eran wants to keep playing), **a real taste signal** (the brain learns something it couldn't from a plain This or that; simulate when in doubt, as for the final round), and **honesty** (real facts, no fake knowing, nothing repeated).
 
 ## Opening prompt for the next session (games phase)
 
-> Read `docs/taste-games-handoff.md`, then `CLAUDE.md` and the latest entries in `docs/INTEGRATION.md`. The taste games are live as WTW's onboarding for every user. From now on we're inventing, creating and improving the games. Pull `main`, start the dev server, and play `/play?demo=1` yourself (try `&new=1` for a brand-new player) so you know how it looks after Shahar's #130. Then, without changing anything, give me: (1) a short read of how real players are doing, from `play_events` if you can reach it (read-only; tell me if you can't): how far they get, where they skip, how they score in the final round; (2) your top 3 ideas to make the season more fun or teach the brain more, each in two lines; (3) what you'd do about the games not feeding the real recommendations yet. Mock-ups before any build; don't commit or push without asking me.
+> Read `docs/taste-games-handoff.md`, then `CLAUDE.md` and the latest entries in `docs/INTEGRATION.md`. The taste games are live as WTW's onboarding. From now on we build the games, one at a time. Pull `main`, start the dev server, and play `/play?demo=1` yourself so you know how it looks after Shahar's #130. Then tell me you're ready, and I'll tell you which game we're working on. Mock-ups before any build; don't commit or push without asking me.
