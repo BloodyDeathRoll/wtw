@@ -4,14 +4,38 @@
  * loaded or saved. A save carrying an older version is refused with 409, so
  * two open tabs can't silently overwrite each other.
  *
+ * After a save lands, the games' beliefs are folded into the live DNA when a
+ * milestone has passed (src/modules/dna/update-from-play.ts). After the
+ * response: the fold is a DNA read-modify-write plus an embedding check, and
+ * a save must never wait on it or fail because of it.
+ *
  * 503 { error: 'not_set_up' } until the migration is run; the client then
  * keeps progress in the browser.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { isMissingTable } from '@/app/play/lib/server'
 import { MAX_STATE_BYTES } from '@/app/play/lib/events'
+import type { PlayState } from '@/app/play/lib/brain'
+import type { GameTitle } from '@/app/play/lib/scales'
+import { syncPlayToDNA } from '@/modules/dna/update-from-play'
+import rawTitles from '@/app/play/data/titles.json'
+
+/** The game catalogue, for resolving trusted creators to the catalog's crew ids. */
+const titles = rawTitles as GameTitle[]
+
+function syncAfterSave(userId: string, state: PlayState, supabase: Parameters<typeof syncPlayToDNA>[2]) {
+  const run = async () => {
+    try {
+      const outcome = await syncPlayToDNA(userId, state, supabase, titles)
+      if (outcome !== 'not_due') console.log(`[play/state] dna sync: ${outcome}`)
+    } catch (err) {
+      console.error('[play/state] dna sync failed:', err instanceof Error ? err.message : err)
+    }
+  }
+  try { after(run) } catch { void run() }
+}
 
 export async function PUT(req: NextRequest) {
   const supabase = await createClient()
@@ -41,6 +65,7 @@ export async function PUT(req: NextRequest) {
     if (isMissingTable(error)) return NextResponse.json({ error: 'not_set_up' }, { status: 503 })
     if (error?.code === '23505') return NextResponse.json({ error: 'conflict' }, { status: 409 })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    syncAfterSave(user.id, state as PlayState, supabase)
     return NextResponse.json({ version: 1 })
   }
 
@@ -53,5 +78,6 @@ export async function PUT(req: NextRequest) {
   if (isMissingTable(error)) return NextResponse.json({ error: 'not_set_up' }, { status: 503 })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data?.length) return NextResponse.json({ error: 'conflict' }, { status: 409 })
+  syncAfterSave(user.id, state as PlayState, supabase)
   return NextResponse.json({ version: version + 1 })
 }
