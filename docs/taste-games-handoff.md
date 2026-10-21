@@ -31,9 +31,9 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 6. **Games tab** (home's Games button, menu "Play" → `/play?tab=games`): Blind Taste Test, The Other Side, Higher or Lower (always open, 5 levels each); The Bet and Mind Reader (after the season); "Soon": Choose the Ending, Movie Night Planner, Upgrade, Recast. **Restart calibration** is here too.
 7. **Watchlist ribbon** on every poster saves into the app's one synced watchlist; a save counts as a taste signal.
 
-## The biggest gap: the games don't teach the real app yet
+## The games teach the real app (Slice 2 — landed 2026-10-21)
 
-The season's answers stay in the games' own brain. They **do not write the live taste DNA** ("Slice 2"), so the recommendations a player lands on after 15 steps don't reflect anything they played. Every new user now goes through the games, so this matters more than any polish. It's DNA-writer work, which is **Eran's lane (A3)**, with Alon (engine) for how the picks use it. Rules for any DNA write: `docs/DNA-CONTRACT.md`.
+What "Behind the curtain" shows is what the live taste DNA registers: the scale beliefs, the genre chips (and "Never"), the creators they trust. It happens on the server after a save, at milestones (genres set, block done, Skip, season done, every few picks in the games phase), and each time it replaces what the previous sync wrote — so a restart with new genres swaps them, and nothing the player rated in the app is touched. Details: `docs/INTEGRATION.md` (2026-10-21 entry) and `docs/DNA-CONTRACT.md` ("The taste games as a writer"). Until a player has 15 ratings in the app the picks stay the popular batch (tilted to their genres); from then on the real engine runs on a fingerprint the games pre-shaped.
 
 ## Rules Eran set (do not re-litigate)
 

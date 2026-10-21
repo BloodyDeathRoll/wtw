@@ -107,7 +107,7 @@ const NUDGE_EVERY = 15;
 
 type ViewMode = "compact" | "full";
 
-const PAGE_FETCH_LIMIT = 50; // hard cap; the mock list is short anyway
+const PAGE_FETCH_LIMIT = 50; // hard cap — one engine batch
 const WATCHLIST_PAGE_SIZE = 6; // matches the API's page size so scrolling feels the same
 
 const HEADER_TITLE: Record<Mode, string> = {
@@ -116,7 +116,7 @@ const HEADER_TITLE: Record<Mode, string> = {
   watchlist: "Watchlist",
 };
 
-/** rec.id is "type:tmdb_id" for engine recs, a bare slug for pre-session mocks. */
+/** rec.id is "type:tmdb_id" for engine recs (a bare slug only in legacy saved entries). */
 function tmdbIdOf(id: string): string {
   return id.includes(":") ? id.split(":")[1] : id;
 }
@@ -499,7 +499,7 @@ export default function RecommendationsView({
         // The feedback route's contract is { tmdb_id, action, reaction, ... }.
         // (The UI used to send { recommendation_id, rating } — every click
         // silently 400'd and no rating ever reached the fingerprint.)
-        // rec.id is "type:tmdb_id" for engine recs, a slug for mocks.
+        // rec.id is "type:tmdb_id" for engine recs (a bare slug only in legacy saved entries).
         const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
         const res = await fetch("/api/recommendations/feedback", {
           method: "POST",
@@ -1455,7 +1455,7 @@ function WhyDetailOverlay({
 
   useEffect(() => {
     let cancelled = false;
-    // rec.id is "type:tmdb_id" for engine recs, a slug for pre-session mocks.
+    // rec.id is "type:tmdb_id" for engine recs (a bare slug only in legacy saved entries).
     const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
 
     // Serve from this session's cache if we've opened this "Why" before.

@@ -1,10 +1,9 @@
 // Shape consumed by the recommendations UI.
 //
-// Today this is hand-rolled mock data from /api/recommendations/generate.
-// When Alon's rec engine merges, that route will return Alon's
-// RecommendationResult (from src/types/dna.ts) enriched with title
-// metadata (poster_url, meta, where). The contract here is what the UI
-// renders — the route can adapt either source to fit.
+// /api/recommendations/generate returns the engine's RecommendationResult
+// (from src/types/dna.ts) enriched with title metadata (poster_url, meta,
+// where). The contract here is what the UI renders — the route adapts the
+// source to fit.
 
 export type ContentKind = "movie" | "tv";
 
@@ -31,7 +30,9 @@ export interface Recommendation {
   meta: string;
   /** External aggregate rating, 0–10 scale. */
   rating: number;
-  /** Fingerprint match 0–1; render as percentage. */
+  /** Fingerprint match 0–1; render as percentage. 0 = no claim (a cold-start
+   *  pick served before the fingerprint is trusted, or a title saved from the
+   *  taste games): the card shows no ring and no breakdown. */
   match: number;
   /** One-line fingerprint reason — driver of "why this?". */
   reason: string;
