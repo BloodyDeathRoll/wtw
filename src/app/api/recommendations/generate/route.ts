@@ -399,7 +399,8 @@ export async function GET(req: Request) {
     }
   }
 
-  // Cold cache: regenerate on demand. Under 15 signals this is the cold-start
+  // Cold cache: regenerate on demand. Until the fingerprint is ready (season
+  // finished or 10 ratings — cold-start.ts fingerprintReady) this is the cold-start
   // batch (popular crowd-pleasers, src/modules/engine/pipeline/cold-start.ts),
   // which needs no embedding, so a blank fingerprint generates fine.
   // generateRecommendations writes the Redis cache, so subsequent paginated
