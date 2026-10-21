@@ -147,10 +147,14 @@ const SPREAD_FLOOR = 0.02
  *   ratings  up to 0.25  fifteen rated titles (the bar for the real pipeline)
  * Choosing genres alone is ~0.3: little, but something.
  */
+/** Genre entries the content scorer will actually read (it ignores thinner ones). */
+const genresWithEvidence = (dna: DNASchema) =>
+  Object.values(dna.strand_c_visceral_specs.genre_affinity ?? {}).filter(e => e.sample_size >= MIN_CONTENT_SAMPLES).length
+
 export function evidenceOf(dna: DNASchema): number {
   const c = dna.strand_c_visceral_specs
   const a = dna.strand_a_creative_affinity
-  const genres = Object.values(c.genre_affinity ?? {}).filter(e => e.sample_size >= MIN_CONTENT_SAMPLES).length
+  const genres = genresWithEvidence(dna)
   // Spread within each group, around its own mean: a blank DNA's pacing
   // weights sum to 1 (0.34 / 0.33 / 0.33), so distance from 0.5 would read
   // as evidence where there is none.
@@ -206,9 +210,12 @@ export function coldStartScore(
   let score = W_POPULARITY * popularity + W_RATING * rating + W_RECENCY * recency
 
   // The games' genre choice straight from play_state, only until the DNA
-  // carries it itself (then the content scorer below reads it there).
+  // carries genres the content scorer will read (same floor as the scorer;
+  // a thinner entry would switch the tilt off while the scorer still says
+  // neutral). With evidence the tilt is then scaled by (1 − w) like the rest
+  // of the popular side — intended: it is the popular side's only taste.
   const chosen = play.loved.size + play.liked.size
-  if (chosen > 0 && countEntries(taste?.dna.strand_c_visceral_specs.genre_affinity) === 0) {
+  if (chosen > 0 && (!taste || genresWithEvidence(taste.dna) === 0)) {
     const { firm, hinted } = candidateGenres(t)
     const own = new Set([...firm, ...hinted])
     if ([...own].some(g => play.loved.has(g)))      score += BOOST_LOVED

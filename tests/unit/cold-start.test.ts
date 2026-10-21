@@ -218,7 +218,11 @@ describe('rankColdStart with a fingerprint', () => {
     const loves = play({ loved: ['comedy'] })
     // Before the games wrote the DNA: the tilt from play_state lifts comedy.
     expect(rankColdStart(pool, loves, none, none, 50, undefined, taste())[0].tmdb_id).toBe('comedy')
-    // After: the DNA says the opposite, and only the DNA is read.
+    // A thin entry the content scorer would ignore keeps the tilt on.
+    const thin = createBlankDNA('u1')
+    thin.strand_c_visceral_specs.genre_affinity = { drama: { score: 0.3, confidence: 0.15, sample_size: 1 } }
+    expect(rankColdStart(pool, loves, none, none, 50, undefined, taste(thin))[0].tmdb_id).toBe('comedy')
+    // After: the DNA says the opposite with real evidence, and only the DNA is read.
     const dna = createBlankDNA('u1')
     dna.strand_c_visceral_specs.genre_affinity = { drama: { score: 0.3, confidence: 0.3, sample_size: 4 } }
     expect(rankColdStart(pool, loves, none, none, 50, undefined, taste(dna))[0].tmdb_id).toBe('drama')
