@@ -89,11 +89,18 @@ export function readMarker(dna: DNASchema): PlayDnaMarker | null {
   }
   // TMDB person ids are numeric; the key is split on ':' when retracting.
   if (!Object.keys(m.crew as object).every(k => /^(directors|writers|cinematographers|actors):\d+$/.test(k))) return null
-  for (const k of ['pacing', 'tone'] as const) {
-    if (!isObj(m[k]) || !Object.values(m[k] as object).every(fin)) return null
+  // Keys too: an unknown tag would be written back as NaN, an unknown
+  // dimension would throw on retraction.
+  const PACING = ['slow_burn', 'moderate', 'high_octane']
+  const TONES  = ['cynical', 'warm', 'dark', 'comedic', 'hopeful']
+  const DIMS   = ['moral_ambiguity', 'narrative_complexity', 'emotional_demand', 'originality_weight', 'humor_style', 'protagonist_type', 'ensemble_vs_solo']
+  for (const [k, allowed] of [['pacing', PACING], ['tone', TONES]] as const) {
+    if (!isObj(m[k])) return null
+    for (const [tag, d] of Object.entries(m[k] as object)) if (!allowed.includes(tag) || !fin(d)) return null
   }
   if (!isObj(m.strandB)) return null
-  for (const rec of Object.values(m.strandB as object)) {
+  for (const [dim, rec] of Object.entries(m.strandB as object)) {
+    if (!DIMS.includes(dim)) return null
     if (!isObj(rec) || !isObj(rec.prior) || !isObj(rec.set) || !fin(rec.prior.confidence) || !fin(rec.set.confidence)) return null
   }
   return m as unknown as PlayDnaMarker
