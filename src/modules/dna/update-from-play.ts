@@ -82,11 +82,13 @@ export function readMarker(dna: DNASchema): PlayDnaMarker | null {
   const m = dna.metadata.play_sync
   if (!isObj(m) || m.v !== 1) return null
   if (!Array.isArray(m.rules) || !m.rules.every(r => typeof r === 'string')) return null
-  if (!fin(m.block) || !fin(m.round)) return null
+  if (!fin(m.block) || !fin(m.round) || typeof m.done !== 'boolean' || typeof m.skipped !== 'boolean') return null
+  if (m.sel !== null && !(Array.isArray(m.sel) && m.sel.every(g => typeof g === 'string'))) return null
   for (const k of ['genres', 'languages', 'crew'] as const) {
     if (!isObj(m[k]) || !Object.values(m[k] as object).every(isApplied)) return null
   }
-  if (!Object.keys(m.crew as object).every(k => /^(directors|writers|cinematographers|actors):.+$/.test(k))) return null
+  // TMDB person ids are numeric; the key is split on ':' when retracting.
+  if (!Object.keys(m.crew as object).every(k => /^(directors|writers|cinematographers|actors):\d+$/.test(k))) return null
   for (const k of ['pacing', 'tone'] as const) {
     if (!isObj(m[k]) || !Object.values(m[k] as object).every(fin)) return null
   }

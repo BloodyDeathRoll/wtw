@@ -333,6 +333,10 @@ describe('readMarker / isSyncableState', () => {
     expect(readMarker(dna)).toBeNull()
     dna.metadata.play_sync = { ...m, pacing: { high_octane: 'up' } } as unknown as Record<string, unknown>
     expect(readMarker(dna)).toBeNull()
+    dna.metadata.play_sync = { ...m, sel: 'comedy' } as unknown as Record<string, unknown>
+    expect(readMarker(dna)).toBeNull()
+    dna.metadata.play_sync = { ...m, crew: { 'directors:not-an-id': { delta: 0.2, n: 2, conf: 0.15, name: 'x' } } } as unknown as Record<string, unknown>
+    expect(readMarker(dna)).toBeNull()
   })
 
   it('accepts a real play state and refuses a malformed one', () => {
