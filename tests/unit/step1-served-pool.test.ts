@@ -35,6 +35,7 @@ const { createBlankDNA } = await import('@/modules/dna/blank-dna')
 
 describe('step 1 — served pool is best-effort', () => {
   it('a served-pool failure costs the seen slice, not the batch', async () => {
+    calls.rpcs.length = 0
     const dna = createBlankDNA('u1')
     const candidates = await getCandidates(dna, undefined, 'movies')
     expect(calls.rpcs).toContain('get_served_candidates')

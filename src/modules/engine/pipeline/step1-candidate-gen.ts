@@ -173,10 +173,13 @@ export async function getCandidates(
         ...ruleParams,
       }).then(res => {
         if (res.error) {
-          console.warn('[step1] served pool unavailable (fresh pools only):', res.error.message)
+          console.error('[step1] served pool unavailable (fresh pools only):', res.error.message)
           return { data: [], error: null }
         }
         return res
+      }, (err: unknown) => {
+        console.error('[step1] served pool unavailable (fresh pools only):', err instanceof Error ? err.message : err)
+        return { data: [], error: null }
       })
 
   const [votesRes, narrativeRes, seenRes] = await Promise.all([byVotes, byNarrative, seen])

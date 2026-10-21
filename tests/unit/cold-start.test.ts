@@ -13,8 +13,7 @@ import {
   type Taste,
 } from '@/modules/engine/pipeline/cold-start'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
-import { applyPlayInfluence, playInfluence } from '@/modules/dna/update-from-play'
-import { freshState } from '@/app/play/lib/brain'
+import type { PlayDnaMarker } from '@/modules/dna/lib/play-marker'
 import type { DNASchema } from '@/types/dna'
 
 // 2026-10-21: a new user (genres chosen, one game, Skip) was served a
@@ -62,18 +61,18 @@ describe('isColdStart / fingerprintReady', () => {
   })
 
   it('ends when the taste season was finished, with no ratings at all', () => {
+    // The marker the games' sync leaves at metadata.play_sync (play-marker.ts).
+    const marker = (done: boolean, skipped: boolean): PlayDnaMarker => ({
+      v: 1, sel: ['comedy'], block: done ? 16 : 4, round: done ? 40 : 6, done, skipped,
+      genres: {}, languages: {}, rules: [], pacing: {}, tone: {}, strandB: {}, crew: {},
+    })
     const dna = createBlankDNA('u1')
-    const S = freshState()
-    S.sel = ['comedy']
-    S.block = 16                                   // past the 15-step season
-    const marker = applyPlayInfluence(dna, null, playInfluence(S), [], { sel: S.sel, block: S.block, round: 40, skipped: undefined, done: true })
-    dna.metadata.play_sync = marker as unknown as Record<string, unknown>
+    dna.metadata.play_sync = marker(true, false) as unknown as Record<string, unknown>
     expect(fingerprintReady(dna)).toBe(true)
     expect(isColdStart(dna)).toBe(false)
     // Skipped part-way: not finished, so not ready on the games alone.
-    const skipped = applyPlayInfluence(createBlankDNA('u2'), null, playInfluence(S), [], { sel: S.sel, block: 4, round: 6, skipped: true, done: false })
     const dna2 = createBlankDNA('u2')
-    dna2.metadata.play_sync = skipped as unknown as Record<string, unknown>
+    dna2.metadata.play_sync = marker(false, true) as unknown as Record<string, unknown>
     expect(fingerprintReady(dna2)).toBe(false)
   })
 })
