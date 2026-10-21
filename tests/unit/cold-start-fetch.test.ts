@@ -9,6 +9,7 @@ const fixture = vi.hoisted(() => ({
   pool: [] as Record<string, unknown>[],
   served: [] as { tmdb_id: string; media_type: string }[],
   play: null as Record<string, unknown> | null,
+  playError: null as { code?: string; message: string } | null,
 }))
 
 vi.mock('@/lib/supabase/service', () => ({
@@ -19,7 +20,9 @@ vi.mock('@/lib/supabase/service', () => ({
         select: (cols: string) => { if (table === 'titles') calls.selects.push(cols); return q },
         gte: () => q, eq: () => q, order: () => q,
         limit: (n: number) => { limit = n; calls.limits.push(n); return q },
-        maybeSingle: async () => ({ data: fixture.play ? { state: fixture.play } : null, error: null }),
+        maybeSingle: async () => fixture.playError
+          ? { data: null, error: fixture.playError }
+          : { data: fixture.play ? { state: fixture.play } : null, error: null },
         then: (resolve: (v: unknown) => void) =>
           resolve({
             data: table === 'titles' ? fixture.pool.slice(0, limit) : table === 'served_titles' ? fixture.served : [],
@@ -47,6 +50,7 @@ beforeEach(() => {
   fixture.pool = Array.from({ length: 2000 }, (_, i) => row(i))
   fixture.served = []
   fixture.play = null
+  fixture.playError = null
 })
 
 describe('isColdStart — signals only', () => {
@@ -128,6 +132,13 @@ describe('coldStartBatch', () => {
     expect(calls.limits).toEqual([400])
     expect(batch).toHaveLength(50)
     expect(batch.slice(0, 20).every(b => Number(b.tmdb_id.slice(1)) >= 100)).toBe(true)   // fresh first
+  })
+
+  it('a missing play_state table means no tilt; any other read error fails the batch', async () => {
+    fixture.playError = { code: 'PGRST205', message: "Could not find the table 'public.play_state' in the schema cache" }
+    await expect(coldStartBatch(createBlankDNA('u1'), 'movies')).resolves.toHaveLength(50)
+    fixture.playError = { code: '57014', message: 'canceling statement due to statement timeout' }
+    await expect(coldStartBatch(createBlankDNA('u1'), 'movies')).rejects.toThrow(/play_state/)
   })
 
   it('asks for crew when the user has exclusion rules', async () => {

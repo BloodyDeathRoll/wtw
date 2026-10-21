@@ -206,9 +206,13 @@ export function playGenresOf(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | n
   const loved = new Set<GameGenre>(state.loved ?? [])
   const liked = new Set<GameGenre>((state.sel ?? []).filter(g => !loved.has(g)))
   // "Never" is the brain's own call (gen ≤ -5), so the threshold can't drift.
-  const never = new Set<GameGenre>(state.gen ? nevers(state as PlayState) : [])
+  const never = new Set<GameGenre>(state.gen ? nevers(state) : [])
   return { loved, liked, never }
 }
+
+/** True for a table missing from the schema (migration 0024 not run) — same test as src/app/play/lib/server.ts. */
+const isMissingTable = (e: { code?: string; message?: string }) =>
+  e.code === 'PGRST205' || e.code === '42P01' || /does not exist|schema cache/i.test(e.message ?? '')
 
 async function loadPlayGenres(userId: string): Promise<PlayGenres> {
   const { data, error } = await createServiceClient()
@@ -216,8 +220,13 @@ async function loadPlayGenres(userId: string): Promise<PlayGenres> {
     .select('state')
     .eq('user_id', userId)
     .maybeSingle<{ state: Pick<PlayState, 'sel' | 'loved' | 'gen'> }>()
-  // Missing table (migration 0024 not run) or no row: no tilt, no error.
-  if (error) return NO_PLAY_GENRES
+  // Missing table or no row: no tilt. Any other failure fails the batch —
+  // "Never" is a hard preference, and a batch built without it would be
+  // cached under taste_version and served until the next bump.
+  if (error) {
+    if (isMissingTable(error)) return NO_PLAY_GENRES
+    throw new Error(`Cold start failed (play_state): ${error.message}`)
+  }
   return playGenresOf(data?.state)
 }
 

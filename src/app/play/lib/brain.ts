@@ -150,7 +150,8 @@ export const conf = (S: PlayState, a: Scale) => 1 - Math.exp(-S.sw[a] / 5.5)
 
 export const loves = (S: PlayState): GameGenre[] =>
   S.sel ?? GAME_GENRES.filter(g => S.gen[g.id] >= 1).map(g => g.id)
-export const nevers = (S: PlayState): GameGenre[] =>
+/** Reads only `gen`, and says so in the type: the engine's cold start calls it on a partial state. */
+export const nevers = (S: Pick<PlayState, 'gen'>): GameGenre[] =>
   GAME_GENRES.filter(g => S.gen[g.id] <= -5).map(g => g.id)
 
 const PRED_WINDOW = 30
