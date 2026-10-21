@@ -219,6 +219,14 @@ export interface DNAMetadata {
   last_updated: string              // ISO-8601
   total_sessions: number
   fingerprint_embedding_ref: string
+  /**
+   * What the taste games last wrote into this DNA, so the next sync can take
+   * exactly that out before writing the current belief (2026-10-21). Owned by
+   * src/modules/dna/update-from-play.ts and opaque to every other reader;
+   * absent until the first sync. Lives here, not in a side table, so one
+   * compare-and-set covers the contribution and its record.
+   */
+  play_sync?: Record<string, unknown>
 }
 
 export interface DNASchema {

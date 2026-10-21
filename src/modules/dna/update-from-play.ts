@@ -15,17 +15,20 @@
  * SET, done as retract-then-apply: a marker records exactly what the last
  * sync put into each field, the next sync takes that back out and puts the
  * current belief in. Ratings and chat keep writing the same fields in
- * between and are never touched. The marker is a `play_events` row
- * (`kind: 'dna_sync'`) — server-owned, so a client re-save can't lose it.
+ * between and are never touched. The marker lives IN the DNA
+ * (`metadata.play_sync`), so the contribution and its record land in one
+ * compare-and-set: two saves at the same milestone can't both retract the
+ * same marker (the loser's CAS misses and it re-runs against the row that
+ * already holds the new one, which is then not due), and a half-written
+ * sync can't leave a contribution nothing records.
  *
  * Runs at milestones (genres set, a block finished, Skip, season done, or
  * every few picks in the games phase), each a `taste_version` bump. Rules
  * for any DNA write: docs/DNA-CONTRACT.md.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DNASchema, StrandB, StrandC, ContentAffinityEntry, CrewAffinityEntry, ExclusionRule } from '@/types/dna'
-import { getRedis } from '@/lib/redis'
+import { ruleKey } from '@/lib/exclusion-rules'
 import { conf, est, nevers, trustedCreators, type PlayState } from '@/app/play/lib/brain'
 import { seasonDone } from '@/app/play/lib/blocks'
 import type { GameGenre } from '@/app/play/lib/genres'
@@ -64,7 +67,31 @@ export interface PlayDnaMarker {
   crew: Record<string, Applied & { name: string }>
 }
 
-export const MARKER_KIND = 'dna_sync'
+const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x)
+
+/** The stored marker, or null when absent or not something this code wrote. */
+export function readMarker(dna: DNASchema): PlayDnaMarker | null {
+  const m = dna.metadata.play_sync
+  if (!isObj(m) || m.v !== 1) return null
+  for (const k of ['genres', 'languages', 'pacing', 'tone', 'strandB', 'crew']) if (!isObj(m[k])) return null
+  if (!Array.isArray(m.rules) || typeof m.block !== 'number' || typeof m.round !== 'number') return null
+  return m as unknown as PlayDnaMarker
+}
+
+/**
+ * The fields the sync reads, checked before a client-sent state is trusted
+ * with them. Anything else in the state is the games' own business.
+ */
+export function isSyncableState(x: unknown): x is PlayState {
+  if (!isObj(x) || x.v !== 3) return false
+  if (x.sel !== null && !(Array.isArray(x.sel) && x.sel.every(g => typeof g === 'string'))) return false
+  for (const k of ['gen', 'sw', 'sv', 'crew', 'crewSeen']) {
+    if (!isObj(x[k]) || !Object.values(x[k] as object).every(v => typeof v === 'number')) return false
+  }
+  if (!Array.isArray(x.used) || !x.used.every(id => typeof id === 'string')) return false
+  if (!Array.isArray(x.preds) || !x.preds.every(p => typeof p === 'number')) return false
+  return typeof x.block === 'number' && typeof x.round === 'number'
+}
 
 // ── The games' genres → the catalog's genre names ─────────────────────────
 // Lowercased TMDB genre names, movie and TV (src/app/play/lib/genres.ts has
@@ -230,7 +257,11 @@ function addSamples(map: AffinityMap, key: string, delta: number, n: number, mak
   return { delta, n, conf: confApplied }
 }
 
-/** Exact inverse of addSamples for the score and the sample count; confidence by the recorded amount. */
+/**
+ * Inverse of addSamples: exact for the score and the sample count; the
+ * confidence comes down by the amount recorded, which is exact unless a
+ * later writer clamped it at 0 or 1 in between.
+ */
 function removeSamples(map: AffinityMap, key: string, a: Applied): void {
   const e = map[key]
   if (!e) return
@@ -262,6 +293,8 @@ export function applyPlayInfluence(
   const logic = dna.contextual_logic
 
   // ── retract ──
+  // Weights: subtracting the stored delta is exact unless a later writer
+  // clamped the tag at 0 or 1 in between; recentring absorbs the residue.
   if (prev) {
     const ga = (c.genre_affinity ??= {}), la = (c.language_affinity ??= {})
     for (const [k, ap] of Object.entries(prev.genres)) removeSamples(ga, k, ap)
@@ -297,8 +330,10 @@ export function applyPlayInfluence(
   for (const g of inf.never) {
     for (const name of NEVER_RULE_NAMES[g]) {
       const id = `play:never:${name}`
-      if (logic.exclusion_rules.some(r => r.id === id)) continue
       const rule: ExclusionRule = { type: 'genre', id, name, raw: `Never: ${name}`, reason: 'Marked "Never" in the taste games' }
+      // A rule chat already made for the same genre stands; ours is not
+      // added beside it (the reranker would read "NEVER wants: horror, horror").
+      if (logic.exclusion_rules.some(r => ruleKey(r) === ruleKey(rule))) continue
       logic.exclusion_rules.push(rule)
       next.rules.push(id)
     }
@@ -348,6 +383,7 @@ export function needsSync(S: PlayState, prev: PlayDnaMarker | null): boolean {
     prev.block !== S.block ||
     prev.done !== done ||
     prev.skipped !== !!S.skipped ||
+    S.round < prev.round ||                             // a restart reset it
     S.round - prev.round >= ROUNDS_BETWEEN_SYNCS
   )
 }
@@ -392,70 +428,40 @@ export async function resolveCreators(names: string[], used: string[], titles: G
   return out
 }
 
-export type PlaySyncOutcome = 'synced' | 'not_due' | 'locked' | 'missing' | 'conflict' | 'not_set_up'
+export type PlaySyncOutcome = 'synced' | 'not_due' | 'missing' | 'conflict'
 
 /**
  * Fold the play state into the user's DNA if a milestone has passed since the
- * last sync. `supabase` is the signed-in user's client (RLS keeps the marker
- * row theirs). Never throws for the caller's sake beyond what it reports.
+ * last sync. The "is it due" check runs inside the compare-and-set, against
+ * the marker the row actually holds, so a concurrent sync that landed first
+ * makes this one `not_due` on its retry instead of a second retraction.
  */
-export async function syncPlayToDNA(
-  userId: string,
-  S: PlayState,
-  supabase: SupabaseClient,
-  titles: GameTitle[],
-): Promise<PlaySyncOutcome> {
-  const { data: markerRow, error: markerError } = await supabase
-    .from('play_events')
-    .select('payload')
-    .eq('user_id', userId)
-    .eq('kind', MARKER_KIND)
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle<{ payload: PlayDnaMarker }>()
-  if (markerError) {
-    if (/does not exist|schema cache/i.test(markerError.message)) return 'not_set_up'
-    throw new Error(`play sync: marker read failed: ${markerError.message}`)
-  }
-  const prev = markerRow?.payload?.v === 1 ? markerRow.payload : null
-  if (!needsSync(S, prev)) return 'not_due'
+export async function syncPlayToDNA(userId: string, S: PlayState, titles: GameTitle[]): Promise<PlaySyncOutcome> {
+  const inf = playInfluence(S)
+  const creators = await resolveCreators(inf.creators, S.used, titles).catch(err => {
+    console.warn('[play-sync] creator lookup failed (crew skipped):', err instanceof Error ? err.message : err)
+    return [] as ResolvedCreator[]
+  })
+  const snapshot = { sel: S.sel, block: S.block, round: S.round, skipped: S.skipped, done: seasonDone(S) }
 
-  // Two saves at the same milestone (two tabs, a flush on leave) must not
-  // both retract the same marker. Short NX lock; the loser simply skips —
-  // the next milestone catches up.
-  const lock = await getRedis().set(`play_sync:${userId}`, '1', { nx: true, ex: 15 }).catch(() => 'OK')
-  if (lock === null) return 'locked'
+  // Filled by the mutate below (re-run on a compare-and-set miss, so the
+  // last run's values are the ones that were saved).
+  const result: { dna?: DNASchema } = {}
+  const outcome = await withDNAUpdate(userId, dna => {
+    const prev = readMarker(dna)
+    if (!needsSync(S, prev)) return false
+    const marker = applyPlayInfluence(dna, prev, inf, creators, snapshot)
+    dna.metadata.play_sync = marker as unknown as Record<string, unknown>
+    bumpVersion(dna)
+    result.dna = dna
+    return true
+  }, 3)
+  if (outcome === 'unchanged') return 'not_due'
+  if (outcome !== 'saved' || !result.dna) return outcome === 'missing' ? 'missing' : 'conflict'
 
-  try {
-    const inf = playInfluence(S)
-    const creators = await resolveCreators(inf.creators, S.used, titles).catch(err => {
-      console.warn('[play-sync] creator lookup failed (crew skipped):', err instanceof Error ? err.message : err)
-      return [] as ResolvedCreator[]
-    })
-    const snapshot = { sel: S.sel, block: S.block, round: S.round, skipped: S.skipped, done: seasonDone(S) }
-
-    // Filled by the mutate below (re-run on a compare-and-set miss, so the
-    // last run's values are the ones that were saved).
-    const result: { marker?: PlayDnaMarker; dna?: DNASchema } = {}
-    const outcome = await withDNAUpdate(userId, dna => {
-      result.marker = applyPlayInfluence(dna, prev, inf, creators, snapshot)
-      bumpVersion(dna)
-      result.dna = dna
-      return true
-    }, 3)
-    if (outcome !== 'saved' || !result.marker || !result.dna) return outcome === 'missing' ? 'missing' : 'conflict'
-
-    const { error: insertError } = await supabase
-      .from('play_events')
-      .insert({ user_id: userId, kind: MARKER_KIND, item_key: null, payload: result.marker })
-    if (insertError) throw new Error(`play sync: marker write failed: ${insertError.message}`)
-
-    // The narrative pool reads the embedding by taste_version; best-effort,
-    // the row's text hash skips the Mistral call when nothing moved.
-    await regenerateEmbedding(userId, result.dna).catch(err =>
-      console.warn('[play-sync] embedding regen failed:', err instanceof Error ? err.message : err))
-    return 'synced'
-  } finally {
-    await getRedis().del(`play_sync:${userId}`).catch(() => {})
-  }
+  // The narrative pool reads the embedding by taste_version; best-effort,
+  // the row's text hash skips the Mistral call when nothing moved.
+  await regenerateEmbedding(userId, result.dna).catch(err =>
+    console.warn('[play-sync] embedding regen failed:', err instanceof Error ? err.message : err))
+  return 'synced'
 }

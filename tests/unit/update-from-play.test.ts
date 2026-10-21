@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   applyPlayInfluence,
   genreDelta,
+  isSyncableState,
   needsSync,
   playInfluence,
+  readMarker,
   type PlayDnaMarker,
   type ResolvedCreator,
 } from '@/modules/dna/update-from-play'
@@ -143,6 +145,30 @@ describe('applyPlayInfluence', () => {
     expect(dna.contextual_logic.exclusion_rules.map(r => r.id)).toEqual(['play:never:anime'])
   })
 
+  it('a rating that landed between syncs on a genre only the games had set survives the retraction', () => {
+    const dna = createBlankDNA('u1')
+    const S = setup()
+    const m1 = applyPlayInfluence(dna, null, playInfluence(S), [], snap(S))
+    const g = dna.strand_c_visceral_specs.genre_affinity!
+    // One liked comedy rated in the app (the ratings writer's own arithmetic).
+    g.comedy = { score: (0.30 * 3 + 0.15) / 4, confidence: 0.15 + 0.08, sample_size: 4 }
+    // Comedy leaves the games' chips entirely.
+    S.gen.comedy = 0
+    applyPlayInfluence(dna, m1, playInfluence(S), [], snap(S))
+    expect(g.comedy.sample_size).toBe(1)
+    expect(g.comedy.score).toBeCloseTo(0.15)
+    expect(g.comedy.confidence).toBeCloseTo(0.08)
+  })
+
+  it('does not add a Never rule beside one chat already made for the genre', () => {
+    const dna = createBlankDNA('u1')
+    dna.contextual_logic.exclusion_rules.push({ type: 'genre', id: 'chat-1', name: 'Horror', raw: 'no horror', reason: 'said so' })
+    const S = setup()
+    const m = applyPlayInfluence(dna, null, playInfluence(S), [], snap(S))
+    expect(dna.contextual_logic.exclusion_rules.map(r => r.id)).toEqual(['chat-1', 'play:never:anime'])
+    expect(m.rules).toEqual(['play:never:anime'])
+  })
+
   it('leaves what ratings added to the same genre in between', () => {
     const dna = createBlankDNA('u1')
     const S = setup()
@@ -246,5 +272,30 @@ describe('needsSync', () => {
     S.round = 0
     S.sel = ['drama']
     expect(needsSync(S, marker)).toBe(true)           // genres changed
+    S.sel = ['comedy']
+    S.round = 2
+    expect(needsSync(S, { ...marker, round: 5 })).toBe(true)   // round went backwards: a restart
+  })
+})
+
+describe('readMarker / isSyncableState', () => {
+  it('reads back only a marker this code wrote', () => {
+    const dna = createBlankDNA('u1')
+    expect(readMarker(dna)).toBeNull()
+    dna.metadata.play_sync = { v: 1, genres: 'nope' }
+    expect(readMarker(dna)).toBeNull()
+    const S = setup()
+    const m = applyPlayInfluence(dna, null, playInfluence(S), [], snap(S))
+    dna.metadata.play_sync = m as unknown as Record<string, unknown>
+    expect(readMarker(dna)).toEqual(m)
+  })
+
+  it('accepts a real play state and refuses a malformed one', () => {
+    expect(isSyncableState(setup())).toBe(true)
+    expect(isSyncableState(null)).toBe(false)
+    expect(isSyncableState({ ...setup(), gen: { comedy: 'two' } })).toBe(false)
+    expect(isSyncableState({ ...setup(), sel: 'comedy' })).toBe(false)
+    expect(isSyncableState({ ...setup(), used: [1, 2] })).toBe(false)
+    expect(isSyncableState({ ...setup(), v: 2 })).toBe(false)
   })
 })

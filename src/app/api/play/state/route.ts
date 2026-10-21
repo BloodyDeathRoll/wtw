@@ -17,18 +17,23 @@ import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { isMissingTable } from '@/app/play/lib/server'
 import { MAX_STATE_BYTES } from '@/app/play/lib/events'
-import type { PlayState } from '@/app/play/lib/brain'
 import type { GameTitle } from '@/app/play/lib/scales'
-import { syncPlayToDNA } from '@/modules/dna/update-from-play'
+import { isSyncableState, syncPlayToDNA } from '@/modules/dna/update-from-play'
 import rawTitles from '@/app/play/data/titles.json'
 
 /** The game catalogue, for resolving trusted creators to the catalog's crew ids. */
 const titles = rawTitles as GameTitle[]
 
-function syncAfterSave(userId: string, state: PlayState, supabase: Parameters<typeof syncPlayToDNA>[2]) {
+function syncAfterSave(userId: string, state: unknown) {
+  // The save above only checked `v`; the sync reads more, so it gets the
+  // state only when the fields it reads have the shape it expects.
+  if (!isSyncableState(state)) {
+    console.warn('[play/state] dna sync skipped: state not syncable')
+    return
+  }
   const run = async () => {
     try {
-      const outcome = await syncPlayToDNA(userId, state, supabase, titles)
+      const outcome = await syncPlayToDNA(userId, state, titles)
       if (outcome !== 'not_due') console.log(`[play/state] dna sync: ${outcome}`)
     } catch (err) {
       console.error('[play/state] dna sync failed:', err instanceof Error ? err.message : err)
@@ -65,7 +70,7 @@ export async function PUT(req: NextRequest) {
     if (isMissingTable(error)) return NextResponse.json({ error: 'not_set_up' }, { status: 503 })
     if (error?.code === '23505') return NextResponse.json({ error: 'conflict' }, { status: 409 })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    syncAfterSave(user.id, state as PlayState, supabase)
+    syncAfterSave(user.id, state)
     return NextResponse.json({ version: 1 })
   }
 
@@ -78,6 +83,6 @@ export async function PUT(req: NextRequest) {
   if (isMissingTable(error)) return NextResponse.json({ error: 'not_set_up' }, { status: 503 })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data?.length) return NextResponse.json({ error: 'conflict' }, { status: 409 })
-  syncAfterSave(user.id, state as PlayState, supabase)
+  syncAfterSave(user.id, state)
   return NextResponse.json({ version: version + 1 })
 }
