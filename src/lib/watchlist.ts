@@ -87,7 +87,7 @@ export function getWatchlist(): WatchlistEntry[] {
 
 /**
  * Is this title saved? `id` is the Recommendation id — "type:tmdb_id" for engine
- * recs, a bare slug for pre-session mocks. Always the composite id, never a bare
+ * recs (a bare slug only in legacy saved entries). Always the composite id, never a bare
  * tmdb_id: TMDB movie and TV ids collide (migration 0014).
  */
 export function isInWatchlist(id: string): boolean {
