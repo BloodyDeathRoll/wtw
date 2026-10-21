@@ -180,7 +180,7 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - #129 (the season, games, reveal, watchlist) merged 2026-10-19; #130 (Shahar) made the games the live onboarding for every user on 2026-10-21. `docs/taste-games-handoff.md` is rewritten for the games phase: where things stand, the code map, Eran's rules, ideas on the shelf, how to judge a game, and the opening prompt for the next session.
 - **Biggest gap:** the games still don't write the live DNA (Slice 2), so the recommendations a player lands on after the season don't reflect it. Every new user plays the season now, so this outranks polish. DNA-writer work = A3 (Eran), with A2 for how picks use it.
 - `Picks.tsx` (the games' own picks) can't be reached since #130 sends the season's end to the real recommendations; its live-card `MatchRing` guard (`match > 0`) still matters for game saves in the watchlist.
-- Real players' answers are now in `play_events`: read them (read-only) before tuning the games.
+- Games phase (Eran): build the games one at a time, judged by playing them. Only a couple of people play so far, so no player stats for now.
 - Housekeeping: the GitHub token embedded in Eran's git remote was refused, then revoked and removed (2026-10-20). Eran pushes with GitHub Desktop; `gh` isn't installed.
 
 ### 2026-10-20 — Taste games inside the app (`feat/play-in-app`)
