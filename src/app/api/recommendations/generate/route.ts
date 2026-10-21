@@ -1,6 +1,7 @@
 // GET  — serves paginated recommendations to the UI.
-//        Checks Redis cache (keyed by taste_version) first; falls back to mocks
-//        when the DB is not yet seeded or no recs have been generated.
+//        Checks Redis cache (keyed by taste_version) first; otherwise runs the
+//        engine on the spot (a brand-new user gets a blank DNA here and the
+//        cold-start batch of popular titles — never placeholder cards).
 // POST — runs the full Assignment 2 engine pipeline and returns RecommendationResult[]
 
 import { NextRequest, NextResponse, after } from "next/server";
@@ -8,11 +9,8 @@ import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  MOCK_RECOMMENDATIONS,
-  pageOf,
-} from "@/modules/session/recommendations/mock-data";
 import { generateRecommendations } from "@/modules/engine";
+import { createBlankDNA } from "@/modules/dna/blank-dna";
 import { ensureWatchProviders } from "@/modules/engine/enrichment/ensure-watch-providers";
 import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
 import { isExcluded, type MatchableTitle } from "@/lib/exclusion-rules";
@@ -46,8 +44,8 @@ const MATCH_DISPLAY_CEILING = 0.8;
 // from a shared cache, so that means putting the region in the cache key.
 const WATCH_REGION = "US";
 
-// Deterministic motif/palette fallback for titles without a poster —
-// same visual language as the mock cards, keyed stably off tmdb_id.
+// Deterministic motif/palette fallback for titles without a poster,
+// keyed stably off tmdb_id.
 const MOTIFS: MotifKind[] = ["spades", "circle", "star", "cross", "dot", "wave"];
 const PALETTES: [string, string][] = [
   ["#1B2A28", "#C7B8FF"],
@@ -203,9 +201,9 @@ export async function GET(req: Request) {
 
   let cachedRecs: RecommendationResult[] | null = null
   let dna: DNASchema | null = null
-  // Distinguishes "read the DNA and the user genuinely has none" (→ mocks are
-  // the correct pre-first-session placeholder) from "couldn't read the DNA at
-  // all" (→ fingerprint status unknown, so we must NOT risk serving mocks).
+  // Distinguishes "read the DNA and the user genuinely has none" (→ create
+  // the blank one and generate) from "couldn't read the DNA at all" (→ fail
+  // closed with a retryable error rather than guess).
   let dnaReadFailed = false
 
   // ── Read the fingerprint and the removed list together (independent reads,
@@ -225,9 +223,9 @@ export async function GET(req: Request) {
     const { data, error } = dnaResult;
 
     if (error && error.code !== "PGRST116") {
-      // PGRST116 = no row = determinate "not onboarded" (fine → mocks). Any
-      // other error means we couldn't determine fingerprint status → fail
-      // closed below rather than guess.
+      // PGRST116 = no row = determinate "not onboarded" (fine → blank DNA
+      // below). Any other error means we couldn't determine fingerprint
+      // status → fail closed below rather than guess.
       dnaReadFailed = true
       console.error("[recommendations/generate] DNA read failed:", error.message)
     } else {
@@ -242,8 +240,7 @@ export async function GET(req: Request) {
   }
 
   // ── Read the rec cache (a Redis blip here is non-fatal: dna is already known,
-  //    so the cold path below still routes a fingerprinted user to regen, never
-  //    to mocks) ───────────────────────────────────────────────────────────
+  //    so the cold path below regenerates) ──────────────────────────────────
   if (dna) {
     try {
       cachedRecs = await getCachedRecommendations(user.id, dna.metadata.taste_version, contentType)
@@ -351,8 +348,7 @@ export async function GET(req: Request) {
   }
 
   // Couldn't read the DNA (DB outage) — fingerprint status is unknown, so fail
-  // closed: a fingerprinted user must NEVER see mocks, and we can't rule that
-  // out here. Return a retryable error instead of guessing.
+  // closed with a retryable error instead of guessing.
   if (dnaReadFailed) {
     return NextResponse.json(
       { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
@@ -360,66 +356,78 @@ export async function GET(req: Request) {
     );
   }
 
-  // Cold cache. Mocks are a PRE-FIRST-SESSION placeholder only — a user who
-  // already has a fingerprint must never see them. A blank DNA carries
-  // taste_version 1 but total_sessions 0, so key off sessions/signals, not
-  // version. When fingerprinted, regenerate on demand: generateRecommendations
-  // writes the Redis cache, so subsequent paginated GETs hit the warm path
-  // above; here we serve the fresh list directly.
-  const hasFingerprint =
-    !!dna && (dna.metadata.total_sessions > 0 || dna.signals.length > 0);
-
-  if (hasFingerprint) {
-    try {
-      await generateRecommendations(user.id, undefined, { contentType });
-      const fresh = await getCachedRecommendations(user.id, dna!.metadata.taste_version, contentType);
-      if (fresh && fresh.length > 0) {
-        return servePage(fresh, "regenerated");
-      }
-      // Regen legitimately produced nothing (e.g. every candidate is watched or
-      // removed). Return an empty page — NOT mocks.
-      return NextResponse.json({
-        recommendations: [],
-        next_offset: offset,
-        has_more: false,
-        source: "regenerated_empty",
-      });
-    } catch (err) {
-      // A fingerprinted user must never see mocks — surface a retryable error
-      // instead of fabricated titles.
-      console.error(
-        "[recommendations/generate] cold regen failed:",
-        err instanceof Error ? err.message : err,
-      );
+  // No fingerprint row yet: the very first visit, before the app shell's
+  // warm-up (POST /api/dna/bootstrap) has landed. Create the blank DNA here,
+  // the same way bootstrap does, so this request can generate instead of
+  // showing placeholders (removed 2026-10-21 — real users saw mock cards
+  // with invented art). Both writers only write when the row is still null;
+  // if the warm-up won the race, generate from what it wrote, not from this
+  // request's copy. The users row itself always exists by now: migration
+  // 0001's on_auth_user_created trigger inserts it at signup.
+  if (!dna) {
+    const db = createServiceClient();
+    const blank = createBlankDNA(userId);
+    const { data: written, error: writeError } = await db
+      .from("users")
+      .update({ dna: blank, updated_at: new Date().toISOString() })
+      .eq("id", userId)
+      .is("dna", null)
+      .select("dna");
+    if (writeError) {
+      console.error("[recommendations/generate] blank DNA write failed:", writeError.message);
       return NextResponse.json(
         { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
         { status: 503 },
       );
     }
+    if (written && written.length > 0) {
+      dna = blank;
+    } else {
+      const { data: row, error: rereadError } = await db
+        .from("users")
+        .select("dna")
+        .eq("id", userId)
+        .single<{ dna: DNASchema | null }>();
+      if (rereadError || !row?.dna) {
+        console.error("[recommendations/generate] DNA re-read after lost race failed:", rereadError?.message ?? "no dna");
+        return NextResponse.json(
+          { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
+          { status: 503 },
+        );
+      }
+      dna = row.dna;
+    }
   }
 
-  // Genuinely no fingerprint yet (pre-first-session) — mocks are the intended
-  // placeholder here, and ONLY here.
-  const mockWanted = titleTypeFor(contentType);
-  const mockTypeFiltered = mockWanted
-    ? MOCK_RECOMMENDATIONS.filter((r) => r.type === mockWanted)
-    : MOCK_RECOMMENDATIONS;
-  // `removed` is keyed `${media_type}:${tmdb_id}`. Mock ids are bare slugs with
-  // no `type:` prefix (unlike engine rec ids), and handleRemove persists them as
-  // tmdb_id = the bare id, so reconstruct the same key here — using r.id
-  // directly would never match and the removed mock would reappear.
-  const mockFiltered = mockTypeFiltered.filter(
-    (r) => !removed.has(`${r.type}:${r.id}`),
-  );
-
-  const { items, nextOffset, hasMore } = pageOf(mockFiltered, offset, DEFAULT_PAGE_SIZE);
-
-  return NextResponse.json({
-    recommendations: items,
-    next_offset: nextOffset,
-    has_more: hasMore,
-    source: "mock",
-  });
+  // Cold cache: regenerate on demand. Under 15 signals this is the cold-start
+  // batch (popular crowd-pleasers, src/modules/engine/pipeline/cold-start.ts),
+  // which needs no embedding, so a blank fingerprint generates fine.
+  // generateRecommendations writes the Redis cache, so subsequent paginated
+  // GETs hit the warm path above; here we serve the fresh list directly.
+  try {
+    await generateRecommendations(userId, undefined, { dna, contentType });
+    const fresh = await getCachedRecommendations(userId, dna.metadata.taste_version, contentType);
+    if (fresh && fresh.length > 0) {
+      return servePage(fresh, "regenerated");
+    }
+    // Regen legitimately produced nothing (e.g. every candidate is watched or
+    // removed). Return an empty page.
+    return NextResponse.json({
+      recommendations: [],
+      next_offset: offset,
+      has_more: false,
+      source: "regenerated_empty",
+    });
+  } catch (err) {
+    console.error(
+      "[recommendations/generate] cold regen failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return NextResponse.json(
+      { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
+      { status: 503 },
+    );
+  }
 }
 
 // Each POST can spend a Mistral call on the shared free-tier key, and a
