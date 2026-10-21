@@ -34,6 +34,7 @@ import { titleTypeFor, type ContentType } from '@/lib/content-type'
 import { isExcluded } from '@/lib/exclusion-rules'
 import { candidateGenres, neverGenres, type GameGenre } from '@/app/play/lib/genres'
 import { nevers, type PlayState } from '@/app/play/lib/brain'
+import { isMissingTable } from '@/app/play/lib/server'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import { BATCH_SIZE } from './step3b-compose-batch'
 
@@ -209,10 +210,6 @@ export function playGenresOf(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | n
   const never = new Set<GameGenre>(state.gen ? nevers(state) : [])
   return { loved, liked, never }
 }
-
-/** True for a table missing from the schema (migration 0024 not run) — same test as src/app/play/lib/server.ts. */
-const isMissingTable = (e: { code?: string; message?: string }) =>
-  e.code === 'PGRST205' || e.code === '42P01' || /does not exist|schema cache/i.test(e.message ?? '')
 
 async function loadPlayGenres(userId: string): Promise<PlayGenres> {
   const { data, error } = await createServiceClient()
