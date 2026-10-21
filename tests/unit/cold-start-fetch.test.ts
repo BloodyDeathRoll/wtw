@@ -41,7 +41,7 @@ const { freshState } = await import('@/app/play/lib/brain')
 const YEAR = new Date().getFullYear()
 const row = (i: number, genre = 'Drama') => ({
   tmdb_id: `t${i}`, type: 'movie', title: `Title ${i}`, release_year: YEAR - 1, tmdb_rating: 7.5,
-  tmdb_vote_count: 100_000 - i, genres: [{ name: genre }], keywords: [], original_language: 'en', tone_tags: [],
+  tmdb_vote_count: 100_000 - i, genres: [{ name: genre }], keywords: [], original_language: 'en', tone_tags: [], pacing_tag: null,
 })
 
 beforeEach(() => {
