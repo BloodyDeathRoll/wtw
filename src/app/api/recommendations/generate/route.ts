@@ -362,7 +362,8 @@ export async function GET(req: Request) {
   // showing placeholders (removed 2026-10-21 — real users saw mock cards
   // with invented art). Both writers only write when the row is still null;
   // if the warm-up won the race, generate from what it wrote, not from this
-  // request's copy.
+  // request's copy. The users row itself always exists by now: migration
+  // 0001's on_auth_user_created trigger inserts it at signup.
   if (!dna) {
     const db = createServiceClient();
     const blank = createBlankDNA(userId);

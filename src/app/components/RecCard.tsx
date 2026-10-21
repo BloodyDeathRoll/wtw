@@ -243,7 +243,10 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
   // composite_score 0 is "no match claim": a cold-start pick (popular titles
   // served under 15 ratings) or a title saved from the taste games. A fake
   // breakdown of a score that doesn't exist is exactly the kind of claim the
-  // games were built to avoid — say what the card is instead.
+  // games were built to avoid — say what the card is instead. The heading is
+  // safe: this panel only renders from the engine's cached batch (the explain
+  // route 404s otherwise), and the only 0-score results in that cache are
+  // cold-start picks; game saves never reach it.
   const noClaim = !(result.composite_score > 0)
 
   return (
