@@ -138,6 +138,10 @@ export interface Taste {
 const countEntries = (m: Record<string, unknown> | undefined) => Object.keys(m ?? {}).length
 const SPREAD_FLOOR = 0.02
 
+/** Genre entries the content scorer will actually read (it ignores thinner ones). */
+const genresWithEvidence = (dna: DNASchema) =>
+  Object.values(dna.strand_c_visceral_specs.genre_affinity ?? {}).filter(e => e.sample_size >= MIN_CONTENT_SAMPLES).length
+
 /**
  * How much the fingerprint knows, 0..1, whatever wrote it — the games, ratings
  * or chat all count the same because they all land in the same fields:
@@ -147,10 +151,6 @@ const SPREAD_FLOOR = 0.02
  *   ratings  up to 0.25  fifteen rated titles (the bar for the real pipeline)
  * Choosing genres alone is ~0.3: little, but something.
  */
-/** Genre entries the content scorer will actually read (it ignores thinner ones). */
-const genresWithEvidence = (dna: DNASchema) =>
-  Object.values(dna.strand_c_visceral_specs.genre_affinity ?? {}).filter(e => e.sample_size >= MIN_CONTENT_SAMPLES).length
-
 export function evidenceOf(dna: DNASchema): number {
   const c = dna.strand_c_visceral_specs
   const a = dna.strand_a_creative_affinity
