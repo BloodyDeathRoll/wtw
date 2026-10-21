@@ -53,7 +53,7 @@ beforeEach(() => {
   fixture.playError = null
 })
 
-describe('isColdStart — signals only', () => {
+describe('isColdStart — ratings or a finished season, nothing else', () => {
   it('named crew (chat, or a trusted creator from the games) does not end it', () => {
     const dna = createBlankDNA('u1')
     expect(dna.signals.length).toBeLessThan(COLD_START_SIGNALS)

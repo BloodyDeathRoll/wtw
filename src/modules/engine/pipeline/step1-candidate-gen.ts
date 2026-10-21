@@ -52,8 +52,12 @@ const FRESH_BY_VOTES_LIMIT     = 150
 const FRESH_BY_NARRATIVE_LIMIT = 150
 // Cosine on these embeddings clusters tightly (a 15-vote title scored 0.95
 // next to Shawshank at 0.96, measured 2026-08-28) — floor the taste pool so it
-// isn't obscure junk the scorer has to sink.
-const FRESH_BY_NARRATIVE_MIN_VOTES = 100
+// isn't obscure junk the scorer has to sink. Raised 100 → 1,000 on 2026-10-21:
+// at 100 the pool handed a thin fingerprint 125-vote Swedish and Turkish films
+// (the composite has no popularity term to sink them), and the real pipeline
+// now runs from a finished season or 10 ratings, not 15. 5,138 catalog titles
+// clear 1,000 votes — plenty for a 150-row nearest-neighbour pool.
+const FRESH_BY_NARRATIVE_MIN_VOTES = 1000
 const SEEN_LIMIT               = 150
 
 export async function getCandidates(
@@ -151,6 +155,13 @@ export async function getCandidates(
       return { data: [], error: null }
     })
 
+  // Best-effort, like the narrative pool: the seen slice is 20% of the batch
+  // at most, and this RPC matches on `type || ':' || tmdb_id` over the whole
+  // catalog (7 s cold, measured 2026-10-21 with 49 keys). On 2026-10-21 it hit
+  // the statement timeout on a user's 15th rating and sank the generation —
+  // the precompute parked nothing, the refresh stayed armed, and the user
+  // kept the cold batch. Migration 0025 indexes the expression; this keeps a
+  // slow one from costing the whole batch either way.
   const seen = servedKeys.length === 0
     ? Promise.resolve({ data: [], error: null })
     : supabase.rpc('get_served_candidates', {
@@ -160,12 +171,20 @@ export async function getCandidates(
         max_runtime:  maxRuntime,
         pool_limit:   SEEN_LIMIT,
         ...ruleParams,
+      }).then(res => {
+        if (res.error) {
+          console.error('[step1] served pool unavailable (fresh pools only):', res.error.message)
+          return { data: [], error: null }
+        }
+        return res
+      }, (err: unknown) => {
+        console.error('[step1] served pool unavailable (fresh pools only):', err instanceof Error ? err.message : err)
+        return { data: [], error: null }
       })
 
   const [votesRes, narrativeRes, seenRes] = await Promise.all([byVotes, byNarrative, seen])
   if (votesRes.error) throw new Error(`Candidate generation failed: ${votesRes.error.message}`)
   if (narrativeRes.error) throw new Error(`Candidate generation failed (narrative pool): ${narrativeRes.error.message}`)
-  if (seenRes.error) throw new Error(`Candidate generation failed (served pool): ${seenRes.error.message}`)
 
   // Union the fresh pools on the composite key; a title in both is one candidate.
   const fresh = new Map<string, TitleRow>()

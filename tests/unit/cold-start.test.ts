@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
   COLD_START_SIGNALS,
+  READY_SIGNALS,
   NO_PLAY_GENRES,
   evidenceOf,
+  fingerprintReady,
   isColdStart,
   rankColdStart,
   toColdStartResult,
@@ -11,6 +13,7 @@ import {
   type Taste,
 } from '@/modules/engine/pipeline/cold-start'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
+import type { PlayDnaMarker } from '@/modules/dna/lib/play-marker'
 import type { DNASchema } from '@/types/dna'
 
 // 2026-10-21: a new user (genres chosen, one game, Skip) was served a
@@ -46,14 +49,31 @@ const none = new Set<string>()
 const signal = (i: number): DNASchema['signals'][number] =>
   ({ tmdb_id: String(i), type: 'movie', reaction: 'liked' }) as unknown as DNASchema['signals'][number]
 
-describe('isColdStart', () => {
-  it('is true for a blank fingerprint and until the signal bar is met', () => {
+describe('isColdStart / fingerprintReady', () => {
+  it('ends at 10 rated titles', () => {
     const dna = createBlankDNA('u1')
     expect(isColdStart(dna)).toBe(true)
-    dna.signals = Array.from({ length: COLD_START_SIGNALS - 1 }, (_, i) => signal(i))
+    dna.signals = Array.from({ length: READY_SIGNALS - 1 }, (_, i) => signal(i))
     expect(isColdStart(dna)).toBe(true)
     dna.signals.push(signal(99))
     expect(isColdStart(dna)).toBe(false)
+    expect(COLD_START_SIGNALS).toBeGreaterThan(READY_SIGNALS)   // the evidence scale and stretch gate stay at 15
+  })
+
+  it('ends when the taste season was finished, with no ratings at all', () => {
+    // The marker the games' sync leaves at metadata.play_sync (play-marker.ts).
+    const marker = (done: boolean, skipped: boolean): PlayDnaMarker => ({
+      v: 1, sel: ['comedy'], block: done ? 16 : 4, round: done ? 40 : 6, done, skipped,
+      genres: {}, languages: {}, rules: [], pacing: {}, tone: {}, strandB: {}, crew: {},
+    })
+    const dna = createBlankDNA('u1')
+    dna.metadata.play_sync = marker(true, false) as unknown as Record<string, unknown>
+    expect(fingerprintReady(dna)).toBe(true)
+    expect(isColdStart(dna)).toBe(false)
+    // Skipped part-way: not finished, so not ready on the games alone.
+    const dna2 = createBlankDNA('u2')
+    dna2.metadata.play_sync = marker(false, true) as unknown as Record<string, unknown>
+    expect(fingerprintReady(dna2)).toBe(false)
   })
 })
 
