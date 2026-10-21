@@ -90,10 +90,11 @@ export function readMarker(dna: DNASchema): PlayDnaMarker | null {
   // TMDB person ids are numeric; the key is split on ':' when retracting.
   if (!Object.keys(m.crew as object).every(k => /^(directors|writers|cinematographers|actors):\d+$/.test(k))) return null
   // Keys too: an unknown tag would be written back as NaN, an unknown
-  // dimension would throw on retraction.
-  const PACING = ['slow_burn', 'moderate', 'high_octane']
-  const TONES  = ['cynical', 'warm', 'dark', 'comedic', 'hopeful']
-  const DIMS   = ['moral_ambiguity', 'narrative_complexity', 'emotional_demand', 'originality_weight', 'humor_style', 'protagonist_type', 'ensemble_vs_solo']
+  // dimension would throw on retraction. The allowed names are the DNA's own
+  // keys, so a tag added to the contract later is accepted the day it lands.
+  const PACING = Object.keys(dna.strand_c_visceral_specs.pacing_weights)
+  const TONES  = Object.keys(dna.strand_c_visceral_specs.tone_weights)
+  const DIMS   = Object.keys(dna.strand_b_narrative_dimensions)
   for (const [k, allowed] of [['pacing', PACING], ['tone', TONES]] as const) {
     if (!isObj(m[k])) return null
     for (const [tag, d] of Object.entries(m[k] as object)) if (!allowed.includes(tag) || !fin(d)) return null
