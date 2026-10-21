@@ -4,9 +4,10 @@
  * Threads all 8 steps together for a single user recommendation request.
  * Early-returns from Redis cache when the fingerprint hasn't changed.
  *
- * Step 0 → under 15 rated titles the fingerprint isn't trusted: the batch is
- *          popular recent crowd-pleasers instead (cold-start.ts), and steps
- *          1–7 are skipped. Pagination, caching and providers work the same.
+ * Step 0 → until the fingerprint is ready (the taste season finished, or 10
+ *          rated titles) the batch is popular recent crowd-pleasers instead
+ *          (cold-start.ts), and steps 1–7 are skipped. Pagination, caching
+ *          and providers work the same.
  * Step 1 → candidates: fresh pool (never served: most-voted ∪ nearest to the
  *          fingerprint) + seen pool (served before, never rated)
  * Step 2 → composite scores (crew 35%, narrative 30%, visceral 20%, external 10%, recency 5%)
@@ -160,8 +161,8 @@ async function checkBatchProviders(results: RecommendationResult[]): Promise<voi
 // ─────────────────────────────────────────────
 
 /**
- * Under COLD_START_SIGNALS rated titles: popular, recent crowd-pleasers
- * (cold-start.ts). No embedding, no rerank, no LLM
+ * Until the fingerprint is ready (season finished or 10 ratings):
+ * popular, recent crowd-pleasers (cold-start.ts). No embedding, no rerank, no LLM
  * explanations — and no session context: mood and the immediate request are
  * modifiers on a fingerprint, and there is none yet to modify (the
  * Movies/Series toggle still arrives as `contentType`). The caller's

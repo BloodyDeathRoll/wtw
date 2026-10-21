@@ -7,8 +7,11 @@
  * the composite was the narrative percentile — and the nearest neighbours of
  * nobody's taste are obscure by construction. Popularity was never scored.
  *
- * Until a user has COLD_START_SIGNALS rated titles (the same bar the stretch
- * pick waits for) the batch is instead what Netflix would open with: the
+ * Until the fingerprint is ready (`fingerprintReady`: the taste season
+ * finished, or READY_SIGNALS rated titles — Shahar, 2026-10-21: "if a user
+ * completed the games you already know them, even with 0 ratings their
+ * recommendations must be ranked; one or two games but 10 ratings, ranked")
+ * the batch is instead what Netflix would open with: the
  * most-voted, well-rated, recent titles of the type they're browsing —
  * ordered, more and more, by the fingerprint. The picks get personal
  * gradually, not at a cliff (Shahar, 2026-10-21): choosing genres is very
@@ -44,25 +47,36 @@ import { computeContentAffinity } from '../scoring/content-affinity'
 import { computeVisceralMatch } from '../scoring/visceral-match'
 import { computeCrewAffinity } from '../scoring/crew-affinity'
 import { MIN_CONTENT_SAMPLES } from '@/modules/dna/lib/update-content-affinity'
+import { readMarker } from '@/modules/dna/update-from-play'
 import type { TMDBCrewSnapshot } from '@/lib/tmdb'
 import { nevers, type PlayState } from '@/app/play/lib/brain'
 import { isMissingTable } from '@/app/play/lib/server'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import { BATCH_SIZE } from './step3b-compose-batch'
 
-/** Signals needed before the real pipeline runs — matches step5's stretch gate. */
+/** Rated titles that make the fingerprint ready on their own. */
+export const READY_SIGNALS = 10
+/** Kept for the evidence scale (ratings count up to this many) and the stretch gate in step5. */
 export const COLD_START_SIGNALS = 15
 
 /**
- * Signals only. An earlier cut also ended cold start on any named crew in
- * strand_a (a chat that said "I love Nolan"), but the taste games write
- * strand_a too (update-from-play.ts, "creators they trust"), and one trusted
- * creator is not a fingerprint the composite can rank 300 titles on — it
- * would send that player straight back to the obscure picks this exists to
- * stop. Chat-named crew shapes the pipeline from the 15th rating on.
+ * Ready = the real, ranked pipeline runs and cards carry a "% match".
+ * Either the taste season was finished (the games' sync records it in
+ * `metadata.play_sync.done`) or READY_SIGNALS titles were rated. Both are
+ * explicit statements of taste, not a count of evidence.
+ */
+export function fingerprintReady(dna: DNASchema): boolean {
+  if (dna.signals.length >= READY_SIGNALS) return true
+  return readMarker(dna)?.done === true
+}
+
+/**
+ * Not ready yet. (An earlier cut ended cold start on any named crew in
+ * strand_a; dropped because the games write strand_a too and one trusted
+ * creator can't carry the composite over 300 titles.)
  */
 export function isColdStart(dna: DNASchema): boolean {
-  return dna.signals.length < COLD_START_SIGNALS
+  return !fingerprintReady(dna)
 }
 
 // ── Pool shape ───────────────────────────────────────────────
@@ -91,7 +105,7 @@ const W_CONTENT    = 0.45
 const W_VISCERAL   = 0.30
 const W_CREW       = 0.25
 // How much of the order the fingerprint can take at full evidence. The rest
-// stays popularity until the real pipeline runs at COLD_START_SIGNALS.
+// stays popularity until the fingerprint is ready (fingerprintReady).
 const TASTE_SHARE_MAX = 0.7
 // The games' genre choice straight from play_state, used only while the DNA
 // holds no genre affinity at all (before the games wrote it, or a player who
