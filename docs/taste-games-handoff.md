@@ -12,7 +12,7 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 - New designs → **mock-ups first** (2–3 options, real content, phone size), Eran picks, then build. Pipeline: HTML in `docs/prototypes/<topic>/` → headless Chrome → `sips` → JPEG (see `docs/prototypes/reveal/` and `watchlist/`).
 - Eran plays and sends screenshots + numbered feedback. Answer each point, fix the clear ones, propose options for structural ones.
 - Never say "done" without clicking it through yourself (browser pane, phone size; screenshots taken mid-fade look dim — retake).
-- **Ask before every commit and push.** This Mac has no GitHub sign-in for the command line (`gh` not installed; the old token was revoked 2026-10-20). You commit locally; Eran pushes with **GitHub Desktop** and opens the PR on github.com. Offered, not done: install `gh` + browser sign-in so Claude can push.
+- **Ask before every commit, push and merge.** Since 2026-10-21 GitHub's `gh` tool is installed (`~/.local/bin/gh`, signed in as eran-manor), so Claude pushes, opens the PR, watches the checks and merges, each only after Eran's OK. No more GitHub Desktop round trips.
 
 ## Where things stand (2026-10-21)
 

@@ -181,7 +181,7 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - **Biggest gap:** the games still don't write the live DNA (Slice 2), so the recommendations a player lands on after the season don't reflect it. Every new user plays the season now, so this outranks polish. DNA-writer work = A3 (Eran), with A2 for how picks use it.
 - `Picks.tsx` (the games' own picks) can't be reached since #130 sends the season's end to the real recommendations; its live-card `MatchRing` guard (`match > 0`) still matters for game saves in the watchlist.
 - Games phase (Eran): build the games one at a time, judged by playing them. Only a couple of people play so far, so no player stats for now.
-- Housekeeping: the GitHub token embedded in Eran's git remote was refused, then revoked and removed (2026-10-20). Eran pushes with GitHub Desktop; `gh` isn't installed.
+- Housekeeping: the GitHub token embedded in Eran's git remote was refused, then revoked and removed (2026-10-20). Since 2026-10-21 `gh` is installed and signed in, so Claude pushes, opens and merges PRs (each with Eran's OK).
 
 ### 2026-10-20 — Taste games inside the app (`feat/play-in-app`)
 - Migration 0024 was run live on 2026-10-19 and verified (play_state, play_events, RLS). #129 merged + deployed.
