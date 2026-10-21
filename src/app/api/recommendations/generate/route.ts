@@ -360,15 +360,18 @@ export async function GET(req: Request) {
   // warm-up (POST /api/dna/bootstrap) has landed. Create the blank DNA here,
   // the same way bootstrap does, so this request can generate instead of
   // showing placeholders (removed 2026-10-21 — real users saw mock cards
-  // with invented art). Both writers only write when the row is null, so a
-  // race with the warm-up just writes the same blank twice.
+  // with invented art). Both writers only write when the row is still null;
+  // if the warm-up won the race, generate from what it wrote, not from this
+  // request's copy.
   if (!dna) {
+    const db = createServiceClient();
     const blank = createBlankDNA(userId);
-    const { error: writeError } = await createServiceClient()
+    const { data: written, error: writeError } = await db
       .from("users")
       .update({ dna: blank, updated_at: new Date().toISOString() })
       .eq("id", userId)
-      .is("dna", null);
+      .is("dna", null)
+      .select("dna");
     if (writeError) {
       console.error("[recommendations/generate] blank DNA write failed:", writeError.message);
       return NextResponse.json(
@@ -376,7 +379,23 @@ export async function GET(req: Request) {
         { status: 503 },
       );
     }
-    dna = blank;
+    if (written && written.length > 0) {
+      dna = blank;
+    } else {
+      const { data: row, error: rereadError } = await db
+        .from("users")
+        .select("dna")
+        .eq("id", userId)
+        .single<{ dna: DNASchema | null }>();
+      if (rereadError || !row?.dna) {
+        console.error("[recommendations/generate] DNA re-read after lost race failed:", rereadError?.message ?? "no dna");
+        return NextResponse.json(
+          { error: "Couldn't load recommendations right now", recommendations: [], next_offset: offset, has_more: false },
+          { status: 503 },
+        );
+      }
+      dna = row.dna;
+    }
   }
 
   // Cold cache: regenerate on demand. Under 15 signals this is the cold-start
@@ -410,6 +429,9 @@ export async function GET(req: Request) {
   }
 }
 
+// Each POST can spend a Mistral call on the shared free-tier key, and a
+// session_override_active body skips the cache (dream review 2026-09-30); the
+// window is generous for a real user.
 const RATE_LIMIT = { scope: "recommendations-generate", perUser: 20, windowSec: 10 * 60 };
 
 // ── POST: full engine pipeline (Assignment 2) ─────────────────
