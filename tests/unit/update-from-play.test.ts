@@ -47,6 +47,7 @@ describe('genreDelta', () => {
     expect(genreDelta(3)).toBeCloseTo(0.30)
     expect(genreDelta(-1)).toBeCloseTo(-0.10)
     expect(genreDelta(-3)).toBeCloseTo(-0.20)      // caps at always disliked
+    expect(genreDelta(-4)).toBeCloseTo(-0.20)
     expect(genreDelta(0.3)).toBeNull()
     expect(genreDelta(-9)).toBeNull()              // Never is a rule, not an affinity
   })
@@ -325,6 +326,13 @@ describe('readMarker / isSyncableState', () => {
     const m = applyPlayInfluence(dna, null, playInfluence(S), [], snap(S))
     dna.metadata.play_sync = m as unknown as Record<string, unknown>
     expect(readMarker(dna)).toEqual(m)
+    // A corrupt number anywhere the retraction would subtract → no marker, nothing retracted.
+    dna.metadata.play_sync = { ...m, genres: { ...m.genres, comedy: { delta: NaN, n: 3, conf: 0.15 } } } as unknown as Record<string, unknown>
+    expect(readMarker(dna)).toBeNull()
+    dna.metadata.play_sync = { ...m, crew: { 'nope:525': { delta: 0.2, n: 2, conf: 0.15, name: 'x' } } } as unknown as Record<string, unknown>
+    expect(readMarker(dna)).toBeNull()
+    dna.metadata.play_sync = { ...m, pacing: { high_octane: 'up' } } as unknown as Record<string, unknown>
+    expect(readMarker(dna)).toBeNull()
   })
 
   it('accepts a real play state and refuses a malformed one', () => {

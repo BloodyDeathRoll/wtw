@@ -69,12 +69,31 @@ export interface PlayDnaMarker {
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x)
 
-/** The stored marker, or null when absent or not something this code wrote. */
+const fin = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x)
+const isApplied = (x: unknown): x is Applied => isObj(x) && fin(x.delta) && fin(x.n) && fin(x.conf)
+
+/**
+ * The stored marker, or null when absent or not something this code wrote.
+ * Every number the retraction will subtract is checked: a corrupt marker
+ * yields null, and null means "retract nothing", which is the safe failure
+ * (a NaN in a running average would poison the entry for good).
+ */
 export function readMarker(dna: DNASchema): PlayDnaMarker | null {
   const m = dna.metadata.play_sync
   if (!isObj(m) || m.v !== 1) return null
-  for (const k of ['genres', 'languages', 'pacing', 'tone', 'strandB', 'crew']) if (!isObj(m[k])) return null
-  if (!Array.isArray(m.rules) || typeof m.block !== 'number' || typeof m.round !== 'number') return null
+  if (!Array.isArray(m.rules) || !m.rules.every(r => typeof r === 'string')) return null
+  if (!fin(m.block) || !fin(m.round)) return null
+  for (const k of ['genres', 'languages', 'crew'] as const) {
+    if (!isObj(m[k]) || !Object.values(m[k] as object).every(isApplied)) return null
+  }
+  if (!Object.keys(m.crew as object).every(k => /^(directors|writers|cinematographers|actors):.+$/.test(k))) return null
+  for (const k of ['pacing', 'tone'] as const) {
+    if (!isObj(m[k]) || !Object.values(m[k] as object).every(fin)) return null
+  }
+  if (!isObj(m.strandB)) return null
+  for (const rec of Object.values(m.strandB as object)) {
+    if (!isObj(rec) || !isObj(rec.prior) || !isObj(rec.set) || !fin(rec.prior.confidence) || !fin(rec.set.confidence)) return null
+  }
   return m as unknown as PlayDnaMarker
 }
 
