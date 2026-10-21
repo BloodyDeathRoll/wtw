@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest'
 // refresh stayed armed, the user kept the cold batch. The seen slice is at
 // most 20% of a batch; losing it must cost that slice, not the batch.
 
-const calls = vi.hoisted(() => ({ rpcs: [] as string[] }))
+const calls = vi.hoisted(() => ({ rpcs: [] as string[], servedThrows: false }))
 const row = (id: string) => ({ tmdb_id: id, type: 'movie', title: id, genres: [], crew: { directors: [], writers: [], cinematographers: [], cast: [] }, tone_tags: [], pacing_tag: null, release_year: 2020, tmdb_rating: 7, tmdb_vote_count: 5000, keywords: [], original_language: 'en' })
 
 vi.mock('@/lib/supabase/service', () => ({
@@ -20,7 +20,10 @@ vi.mock('@/lib/supabase/service', () => ({
     }),
     rpc: async (name: string) => {
       calls.rpcs.push(name)
-      if (name === 'get_served_candidates') return { data: null, error: { message: 'canceling statement due to statement timeout' } }
+      if (name === 'get_served_candidates') {
+        if (calls.servedThrows) throw new Error('fetch failed')
+        return { data: null, error: { message: 'canceling statement due to statement timeout' } }
+      }
       if (name === 'get_candidate_titles') return { data: [row('v1'), row('v2')], error: null }
       return { data: [row('n1')], error: null }
     },
@@ -41,5 +44,11 @@ describe('step 1 — served pool is best-effort', () => {
     expect(calls.rpcs).toContain('get_served_candidates')
     expect(candidates.map(c => c.tmdb_id).sort()).toEqual(['n1', 'v1', 'v2'])
     expect(candidates.every(c => c.previously_served === false)).toBe(true)
+  })
+
+  it('a served-pool request that rejects outright costs the same slice', async () => {
+    calls.servedThrows = true
+    const candidates = await getCandidates(createBlankDNA('u1'), undefined, 'movies')
+    expect(candidates.map(c => c.tmdb_id).sort()).toEqual(['n1', 'v1', 'v2'])
   })
 })

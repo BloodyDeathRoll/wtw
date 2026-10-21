@@ -73,4 +73,3 @@ export function readMarker(dna: DNASchema): PlayDnaMarker | null {
   }
   return m as unknown as PlayDnaMarker
 }
-
