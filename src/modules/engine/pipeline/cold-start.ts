@@ -8,9 +8,7 @@
  * nobody's taste are obscure by construction. Popularity was never scored.
  *
  * Until a user has COLD_START_SIGNALS rated titles (the same bar the stretch
- * pick waits for) — or has named a director, writer or actor in chat, which
- * gives the crew scorer something real to rank on — the batch is instead
- * what Netflix would open with: the most-voted, well-rated, recent titles of
+ * pick waits for) the batch is instead what Netflix would open with: the most-voted, well-rated, recent titles of
  * the type they're browsing, tilted toward the genres they chose in the taste
  * games and never one they said "Never" to. No embedding, no LLM rerank, no
  * LLM explanations — nothing a blank profile could feed them. Cards carry
@@ -41,13 +39,16 @@ import { BATCH_SIZE } from './step3b-compose-batch'
 /** Signals needed before the real pipeline runs — matches step5's stretch gate. */
 export const COLD_START_SIGNALS = 15
 
+/**
+ * Signals only. An earlier cut also ended cold start on any named crew in
+ * strand_a (a chat that said "I love Nolan"), but the taste games write
+ * strand_a too (update-from-play.ts, "creators they trust"), and one trusted
+ * creator is not a fingerprint the composite can rank 300 titles on — it
+ * would send that player straight back to the obscure picks this exists to
+ * stop. Chat-named crew shapes the pipeline from the 15th rating on.
+ */
 export function isColdStart(dna: DNASchema): boolean {
-  if (dna.signals.length >= COLD_START_SIGNALS) return false
-  const a = dna.strand_a_creative_affinity
-  const namedCrew =
-    Object.keys(a.directors).length + Object.keys(a.writers).length +
-    Object.keys(a.cinematographers).length + Object.keys(a.actors).length
-  return namedCrew === 0
+  return dna.signals.length < COLD_START_SIGNALS
 }
 
 // ── Pool shape ───────────────────────────────────────────────

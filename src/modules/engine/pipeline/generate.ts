@@ -160,8 +160,8 @@ async function checkBatchProviders(results: RecommendationResult[]): Promise<voi
 // ─────────────────────────────────────────────
 
 /**
- * Under COLD_START_SIGNALS rated titles and no named crew: popular, recent
- * crowd-pleasers (cold-start.ts). No embedding, no rerank, no LLM
+ * Under COLD_START_SIGNALS rated titles: popular, recent crowd-pleasers
+ * (cold-start.ts). No embedding, no rerank, no LLM
  * explanations — and no session context: mood and the immediate request are
  * modifiers on a fingerprint, and there is none yet to modify (the
  * Movies/Series toggle still arrives as `contentType`). The caller's

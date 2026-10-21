@@ -49,14 +49,14 @@ beforeEach(() => {
   fixture.play = null
 })
 
-describe('isColdStart — named crew ends it early', () => {
-  it('a chat that named a director gets the real pipeline before 15 signals', () => {
+describe('isColdStart — signals only', () => {
+  it('named crew (chat, or a trusted creator from the games) does not end it', () => {
     const dna = createBlankDNA('u1')
     expect(dna.signals.length).toBeLessThan(COLD_START_SIGNALS)
     expect(isColdStart(dna)).toBe(true)
     dna.strand_a_creative_affinity.directors['525'] =
       { name: 'Christopher Nolan', score: 0.3, confidence: 0.5, sample_size: 1, lineage_boost: 'none' }
-    expect(isColdStart(dna)).toBe(false)
+    expect(isColdStart(dna)).toBe(true)
   })
 })
 
