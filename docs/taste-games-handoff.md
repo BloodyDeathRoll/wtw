@@ -27,8 +27,9 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 2. **Season 1, 15 steps** (fill-only bar, no numbers): This or that → Knockout → This or that → **Blind Taste Test** → Lightning → This or that → **The Other Side of the Story** → Deep dive → This or that → **Higher or Lower** → Directors → This or that → **Final round** (10 picks, the brain seals its call before each) → **Reveal** in three tones by that score (confetti once at 7/10+, "You stumped me" at 0–3).
 3. **Skip** is available after the genres (confirm sheet) and lands on recommendations. Skipped players see a "Finish calibration" card every 15 recommendations.
 4. **Finishing the season opens the app's real recommendations.** The games' own picks screen (`Picks.tsx`) can no longer be reached.
-5. **Games tab** (home's Games button, menu "Play" → `/play?tab=games`): Blind Taste Test, The Other Side, Higher or Lower (always open, 5 levels each); The Bet and Mind Reader (after the season); "Soon": Choose the Ending, Movie Night Planner, Upgrade, Recast. **Restart calibration** is here too.
-6. **Watchlist ribbon** on every poster saves into the app's one synced watchlist; a save counts as a taste signal.
+5. **Blind Taste Test is the "book cover" game** (2026-10-21): the story told without what you'd judge on sight, then the reveal and "still in?". Five levels by kind of cover; content in `data/blind-covers.json`.
+6. **Games tab** (home's Games button, menu "Play" → `/play?tab=games`): Blind Taste Test, The Other Side, Higher or Lower (always open, 5 levels each); The Bet and Mind Reader (after the season); "Soon": Choose the Ending, Movie Night Planner, Upgrade, Recast. **Restart calibration** is here too.
+7. **Watchlist ribbon** on every poster saves into the app's one synced watchlist; a save counts as a taste signal.
 
 ## The biggest gap: the games don't teach the real app yet
 

@@ -1,0 +1,1646 @@
+{
+ "tv:60625": {
+  "level": 1,
+  "story": "A sociopathic genius scientist drags his timid grandson along on adventures across the universe.",
+  "cover": "It's an animated series, made for adults.",
+  "src": "film"
+ },
+ "movie:150540": {
+  "level": 1,
+  "story": "When a girl moves to a new city, the feelings that run her mind team up to help her through the change.",
+  "cover": "It's animated, and her feelings are little characters living inside her head.",
+  "src": "tmdb + film"
+ },
+ "tv:456": {
+  "level": 1,
+  "story": "The antics and everyday adventures of a family of five in an average American town, and the cast of thousands around them.",
+  "cover": "It's a cartoon, and the family is yellow.",
+  "src": "film"
+ },
+ "tv:31910": {
+  "level": 1,
+  "story": "After two and a half years away, a young man finally returns to his village and sets about chasing his ambitions.",
+  "cover": "It's anime, and he's a ninja.",
+  "src": "tmdb"
+ },
+ "movie:14160": {
+  "level": 1,
+  "story": "A man has spent his entire life dreaming of exploring the world and living it to the full.",
+  "cover": "It's animated, and he sets off by tying thousands of balloons to his house.",
+  "src": "film"
+ },
+ "movie:354912": {
+  "level": 1,
+  "story": "Despite his family's strange, generations-old ban on music, a boy dreams of becoming a great musician like his idol.",
+  "cover": "It's animated, and most of it takes place in the Land of the Dead.",
+  "src": "film"
+ },
+ "tv:1429": {
+  "level": 1,
+  "story": "A century ago, the last of humanity retreated behind the towering walls of a fortified city to escape the giant man-eaters roaming the land outside.",
+  "cover": "It's anime, and the man-eaters are giant, human-shaped Titans.",
+  "src": "tmdb"
+ },
+ "tv:85937": {
+  "level": 1,
+  "story": "After a monster's attack leaves his family dead and his sister cursed, a boy sets out on a dangerous journey to find a cure and avenge those he's lost.",
+  "cover": "It's anime, and the monsters are demons.",
+  "src": "tmdb"
+ },
+ "movie:12": {
+  "level": 1,
+  "story": "When his only son is snatched from home and ends up trapped in a dentist's office, an overprotective father sets out on a long, dangerous journey to bring him back.",
+  "cover": "Father and son are clownfish, and the dentist's office has a fish tank.",
+  "src": "tmdb + film"
+ },
+ "movie:10681": {
+  "level": 1,
+  "story": "After hundreds of years alone, doing the one job he was made for, a lonely worker finds a new purpose when a sleek visitor arrives.",
+  "cover": "It's animated, and they're both robots.",
+  "src": "tmdb"
+ },
+ "movie:862": {
+  "level": 1,
+  "story": "He leads a happy little gang in a boy's room and has always been the boy's favourite, until a birthday brings a new arrival. Afraid of losing his place in the boy's heart, he starts plotting against the newcomer.",
+  "cover": "They're toys: a cowboy doll and a space ranger action figure.",
+  "src": "tmdb + film"
+ },
+ "movie:8587": {
+  "level": 1,
+  "story": "A young heir who can't wait to rule grows up under his father's watchful eye, while his uncle quietly plots to take the throne.",
+  "cover": "They're lions: the heir is a cub, and the throne is the Pride Lands.",
+  "src": "tmdb"
+ },
+ "movie:585": {
+  "level": 1,
+  "story": "A lovable giant and his wisecracking sidekick are the top team at a factory that runs on children's screams.",
+  "cover": "They're monsters, and the factory scares children for their screams.",
+  "src": "tmdb"
+ },
+ "tv:94605": {
+  "level": 1,
+  "story": "Amid the bitter divide between two twin cities, two sisters end up fighting on opposite sides of a war over magical technology and clashing beliefs.",
+  "cover": "It's animated, and it's based on the video game League of Legends.",
+  "src": "film"
+ },
+ "movie:9806": {
+  "level": 1,
+  "story": "A former hero has given up hero work for an insurance job and a suburban life with his wife, also a former hero, and their three kids.",
+  "cover": "It's animated, and the whole family has superpowers.",
+  "src": "film"
+ },
+ "movie:808": {
+  "level": 1,
+  "story": "A grumpy loner who likes his swamp just the way it is has to rescue a princess to get his peace and quiet back.",
+  "cover": "It's animated, and he's a big green ogre.",
+  "src": "tmdb + film"
+ },
+ "tv:95557": {
+  "level": 1,
+  "story": "A teenage boy is completely normal, except that his father is the most powerful superhero on the planet.",
+  "cover": "It's an animated series, and a very violent one, made for adults.",
+  "src": "film"
+ },
+ "movie:2062": {
+  "level": 1,
+  "story": "Born into a family that eats whatever it can find, a young dreamer with a remarkably refined palate wants only one thing: to become a real chef.",
+  "cover": "He's a rat.",
+  "src": "tmdb"
+ },
+ "movie:129": {
+  "level": 1,
+  "story": "A young girl is trapped in a strange world of spirits, and when her parents are mysteriously transformed, she has to find courage she never knew she had to free them.",
+  "cover": "It's anime, and her parents are turned into pigs.",
+  "src": "film"
+ },
+ "movie:269149": {
+  "level": 1,
+  "story": "Determined to prove herself, a rookie who's the first of her kind on the city's police force jumps at her first real case, even if it means teaming up with a small-time con artist.",
+  "cover": "The rookie cop is a rabbit, and the con artist is a fox.",
+  "src": "tmdb"
+ },
+ "tv:37854": {
+  "level": 1,
+  "story": "Years ago, a legendary pirate was executed, leaving behind a famous treasure, and whoever claims it will be crowned the new king of the pirates.",
+  "cover": "It's anime, and the hero's body stretches like rubber.",
+  "src": "film"
+ },
+ "tv:65930": {
+  "level": 1,
+  "story": "A boy has dreamed of being a hero all his life, a lofty goal for anyone, but especially for a kid with no superpowers.",
+  "cover": "It's anime, set in a world where most people are born with superpowers.",
+  "src": "film"
+ },
+ "tv:62715": {
+  "level": 1,
+  "story": "With their last great enemy defeated and Earth at peace, a planet's mightiest heroes settle into normal lives, one of them as a farmer. But they can't get too comfortable.",
+  "cover": "It's anime, and the farmer is the strongest fighter on Earth.",
+  "src": "tmdb"
+ },
+ "movie:109445": {
+  "level": 1,
+  "story": "A young princess dreams of true love at her sister's coronation, then sets out on a dangerous journey to end the endless winter that has fallen over the kingdom.",
+  "cover": "It's animated, and her sister has ice powers.",
+  "src": "tmdb + film"
+ },
+ "movie:324857": {
+  "level": 1,
+  "story": "Struggling to find his place while juggling school and family, a teenager is bitten by an unusual creature and develops powers just like a famous hero's.",
+  "cover": "It's animated, and he becomes Spider-Man.",
+  "src": "tmdb"
+ },
+ "tv:13916": {
+  "level": 1,
+  "story": "A top student with a bright future is bored out of his mind, until he finds a notebook dropped by a rogue spirit from the underworld.",
+  "cover": "It's anime, and anyone whose name is written in the notebook dies.",
+  "src": "film"
+ },
+ "tv:2190": {
+  "level": 1,
+  "story": "The misadventures of four irreverent schoolkids in a quiet, dysfunctional little town in Colorado.",
+  "cover": "It's a cartoon, made to look like paper cut-outs, and it's very much for adults.",
+  "src": "film"
+ },
+ "tv:1434": {
+  "level": 1,
+  "story": "The misadventures of a dysfunctional family: a bumbling dad, a long-suffering mum and their three kids.",
+  "cover": "It's a cartoon, and the family dog talks.",
+  "src": "tmdb + film"
+ },
+ "movie:177572": {
+  "level": 1,
+  "story": "A special bond grows between a gifted boy and the gentle, oversized helper his brother built, and together with friends they become a band of high-tech heroes.",
+  "cover": "It's animated, and the helper is a big inflatable robot.",
+  "src": "tmdb + film"
+ },
+ "tv:65334": {
+  "level": 1,
+  "story": "Two Paris teenagers are given magical jewels that turn them into superheroes, but neither knows the other's secret identity, or that they sit in the same class.",
+  "cover": "It's an animated series: she becomes Ladybug, he becomes Cat Noir.",
+  "src": "tmdb"
+ },
+ "tv:95479": {
+  "level": 1,
+  "story": "A boy with incredible physical strength lives a completely ordinary high school life.",
+  "cover": "It's anime, and his ordinary life ends when he swallows a cursed finger.",
+  "src": "film"
+ },
+ "movie:20352": {
+  "level": 1,
+  "story": "Determined to prove he's the greatest villain in the world, a bad guy hatches an outrageous plan to steal the Moon.",
+  "cover": "It's animated, and his henchmen are little yellow Minions.",
+  "src": "film"
+ },
+ "movie:10193": {
+  "level": 1,
+  "story": "A boy's oldest friends haven't spent time with him in years, and with him about to leave for college, they end up accidentally left at a sinister day care centre.",
+  "cover": "They're his toys.",
+  "src": "tmdb"
+ },
+ "movie:920": {
+  "level": 1,
+  "story": "A hotshot rookie racer, desperate to win, learns that life is about the journey rather than the finish line when he gets stuck in a sleepy town on an old highway.",
+  "cover": "It's animated, and everyone in it is a car.",
+  "src": "tmdb + film"
+ },
+ "tv:63926": {
+  "level": 1,
+  "story": "A man became a hero just for fun, and after three years of so-called special training, he's so strong that nothing can touch him.",
+  "cover": "It's anime, and he beats every enemy with a single punch.",
+  "src": "film"
+ },
+ "movie:863": {
+  "level": 1,
+  "story": "With their owner away at summer camp, a boy's oldest friends are left to their own devices, until an obsessive collector snatches one of them.",
+  "cover": "They're toys, and the collector owns a toy store.",
+  "src": "tmdb"
+ },
+ "tv:615": {
+  "level": 1,
+  "story": "The adventures of a pizza delivery boy from New York at the end of the twentieth century.",
+  "cover": "It's a cartoon, and he wakes up a thousand years in the future.",
+  "src": "film"
+ },
+ "movie:10191": {
+  "level": 1,
+  "story": "The shy son of a Viking chief faces a rite of passage on the edge of manhood: he must slay a fearsome beast to prove himself a warrior.",
+  "cover": "It's animated, and the beast is a dragon he ends up befriending.",
+  "src": "tmdb + film"
+ },
+ "movie:425": {
+  "level": 1,
+  "story": "Three unlikely companions set out on a comic quest to return a lost baby to his father, as the world teeters on the edge of a deep freeze.",
+  "cover": "It's animated: a mammoth, a sloth and a sabre-toothed tiger.",
+  "src": "tmdb"
+ },
+ "movie:62177": {
+  "level": 1,
+  "story": "In the mystical Scottish Highlands, a young girl is the princess of a kingdom ruled by her father and mother.",
+  "cover": "It's animated, and her mother is turned into a bear.",
+  "src": "film"
+ },
+ "movie:277834": {
+  "level": 1,
+  "story": "When a terrible curse reaches her island, a chief's headstrong daughter answers the call of the sea to find a demigod and set things right.",
+  "cover": "It's animated, and the sea itself helps her along.",
+  "src": "tmdb + film"
+ },
+ "movie:260513": {
+  "level": 1,
+  "story": "One hero springs into action to save the day, while another faces his greatest challenge yet: dealing with his three kids.",
+  "cover": "It's animated, and the whole family has superpowers, baby included.",
+  "src": "film"
+ },
+ "tv:12609": {
+  "level": 1,
+  "story": "A young boy sets off with his teenage friend to find seven magical orbs that grant one wish to whoever gathers them.",
+  "cover": "It's anime, and the boy has a monkey's tail.",
+  "src": "film"
+ },
+ "movie:809": {
+  "level": 1,
+  "story": "Happily ever after has never seemed so far away, when a trip to meet the in-laws turns into a twisted adventure for a couple.",
+  "cover": "It's animated, and the couple are ogres.",
+  "src": "film"
+ },
+ "movie:82690": {
+  "level": 1,
+  "story": "A huge, hulking man who has spent thirty years smashing buildings, only to watch the hero fix them, is sick of being the bad guy.",
+  "cover": "It's animated, and he's the villain of an arcade video game.",
+  "src": "tmdb + film"
+ },
+ "tv:387": {
+  "level": 1,
+  "story": "Deep under the ocean, a cheerful, tireless fry cook loves his job more than anything in the world.",
+  "cover": "It's a cartoon, and he's a square yellow sponge.",
+  "src": "tmdb + film"
+ },
+ "movie:9502": {
+  "level": 1,
+  "story": "Chosen by prophecy but doubted by everyone, a clumsy, unlikely hero is thrown into the world of martial arts as a deadly enemy threatens his peaceful valley.",
+  "cover": "It's animated, and the unlikely hero is a panda.",
+  "src": "tmdb"
+ },
+ "tv:15260": {
+  "level": 1,
+  "story": "A young boy and his best friend, who can stretch into any shape, go on surreal adventures through a strange post-apocalyptic land.",
+  "cover": "It's a cartoon, and his best friend is a dog.",
+  "src": "tmdb"
+ },
+ "movie:812": {
+  "level": 1,
+  "story": "In a rough city, a kind-hearted street kid and a princess fall in love, though she is only allowed to marry a prince.",
+  "cover": "It's animated, and there's a genie in a lamp.",
+  "src": "film"
+ },
+ "movie:4935": {
+  "level": 1,
+  "story": "A young hat maker is cursed by a witch and turned into an old woman, and gets caught up with a wizard who refuses to fight for the king.",
+  "cover": "It's anime, and the wizard's castle walks.",
+  "src": "film"
+ },
+ "tv:61222": {
+  "level": 1,
+  "story": "Meet the most beloved sitcom star of the nineties, twenty years later: a grump with a heart of, well, not quite gold. Copper, maybe.",
+  "cover": "It's an animated series, and he's a horse.",
+  "src": "tmdb"
+ },
+ "movie:128": {
+  "level": 1,
+  "story": "A young prince from a disappearing tribe is cursed by a demon god and has to journey west to find a cure.",
+  "cover": "It's anime, and the demon god is a giant boar.",
+  "src": "tmdb"
+ },
+ "movie:8392": {
+  "level": 1,
+  "story": "Two sisters move to the countryside with their father to be closer to their mother in hospital, and find the woods around them are home to magical forest spirits.",
+  "cover": "It's anime, and one of the forest spirits is a bus shaped like a cat.",
+  "src": "film"
+ },
+ "movie:12477": {
+  "level": 1,
+  "story": "In the final months of the Second World War, a teenage boy and his little sister are orphaned when their mother is killed in an air raid in Japan.",
+  "cover": "It's an animated film, from Studio Ghibli.",
+  "src": "film"
+ },
+ "movie:12429": {
+  "level": 1,
+  "story": "When a young boy who lives on a clifftop by the sea rescues a stranded goldfish, he gets more than he bargained for.",
+  "cover": "It's anime, and the goldfish wants to become a human girl.",
+  "src": "film"
+ },
+ "movie:10515": {
+  "level": 1,
+  "story": "A young boy and a girl with a magic crystal race against pirates and foreign agents to find a legendary floating fortress.",
+  "cover": "It's anime, from Studio Ghibli.",
+  "src": "film"
+ },
+ "movie:16859": {
+  "level": 1,
+  "story": "A young witch spending her required year living on her own struggles to fit into a new town while earning her keep with an air courier business.",
+  "cover": "It's anime, and she makes her deliveries by broomstick, with her talking black cat.",
+  "src": "tmdb + film"
+ },
+ "movie:635302": {
+  "level": 1,
+  "story": "A boy and two unusual companions, one raised by wild animals and one who only shows his true power in his sleep, board a train with a senior fighter to defeat a monster that has been killing the people sent to stop it.",
+  "cover": "It's anime, and the monster is a demon.",
+  "src": "tmdb"
+ },
+ "movie:81": {
+  "level": 1,
+  "story": "After a global war, a seaside valley is one of the last places on Earth untouched by a poisonous jungle and the powerful insects that guard it.",
+  "cover": "It's anime, by Hayao Miyazaki.",
+  "src": "film"
+ },
+ "movie:11621": {
+  "level": 1,
+  "story": "In Italy between the world wars, sky pirates in biplanes prey on wealthy cruise ships on the Adriatic.",
+  "cover": "It's anime, and the pilot who takes on the sky pirates is a pig.",
+  "src": "film"
+ },
+ "movie:149870": {
+  "level": 1,
+  "story": "A lifelong love of flight drives a Japanese aeronautical engineer whose career includes designing a famous fighter plane of the Second World War.",
+  "cover": "It's anime, and he was a real engineer.",
+  "src": "tmdb"
+ },
+ "movie:10494": {
+  "level": 1,
+  "story": "A rising pop star quits singing to become an actress, and after she takes a role on a popular detective show, the people around her start turning up murdered.",
+  "cover": "It's anime, and it's made for adults.",
+  "src": "film"
+ },
+ "movie:51739": {
+  "level": 1,
+  "story": "A teenage girl and her family live quietly hidden in a house, making their home out of things they \"borrow\" from the people who live there.",
+  "cover": "It's anime, and her family is only a few inches tall.",
+  "src": "tmdb + film"
+ },
+ "tv:35610": {
+  "level": 1,
+  "story": "A modern-day girl who lives beside an old shrine falls down a well and lands five hundred years in the past.",
+  "cover": "It's anime, and she meets a half-demon there.",
+  "src": "tmdb + film"
+ },
+ "movie:508883": {
+  "level": 1,
+  "story": "During the Second World War, a teenage boy haunted by his mother's death is moved from Tokyo to the quiet country home of his new stepmother, who looks remarkably like his mother.",
+  "cover": "It's anime, and a talking heron leads him into another world.",
+  "src": "film"
+ },
+ "movie:568160": {
+  "level": 1,
+  "story": "The summer of his first year of high school, a boy runs away from his remote island home to Tokyo, and is soon pushed to his limits, both financially and personally.",
+  "cover": "It's anime, and the girl he meets can make the sun come out.",
+  "src": "film"
+ },
+ "movie:110420": {
+  "level": 1,
+  "story": "After the man she loves, who is secretly more than human, dies in an accident, a woman has to raise their son and daughter alone, and the traits they inherited from him make it anything but easy.",
+  "cover": "It's anime, and the man she loved was a werewolf.",
+  "src": "tmdb"
+ },
+ "movie:15370": {
+  "level": 1,
+  "story": "A girl saves a cat from being run over, and soon learns it's no ordinary animal: it's a prince.",
+  "cover": "It's anime, and she's whisked away to the Kingdom of Cats.",
+  "src": "tmdb + film"
+ },
+ "movie:8885": {
+  "level": 1,
+  "story": "A film director interviews fellow veterans of a war he served in, to piece together his own memories of it.",
+  "cover": "It's animated, and it's a documentary.",
+  "src": "tmdb"
+ },
+ "movie:680813": {
+  "level": 1,
+  "story": "A man looks back on his childhood as a refugee from Afghanistan, while struggling with a secret he's kept hidden for twenty years.",
+  "cover": "It's a documentary, and it's animated, to keep his identity hidden.",
+  "src": "tmdb"
+ },
+ "tv:1399": {
+  "level": 2,
+  "story": "Seven noble families fight for control of a mythical land until their feuding becomes all-out war, while an ancient evil stirs in the far north.",
+  "cover": "It's a series: 8 seasons, 73 episodes.",
+  "src": "tmdb"
+ },
+ "tv:66732": {
+  "level": 2,
+  "story": "When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying forces and one strange little girl.",
+  "cover": "It's a series: 5 seasons, 42 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1396": {
+  "level": 2,
+  "story": "A schoolteacher in the American Southwest is told he has a serious illness and not long to live.",
+  "cover": "It's a series: 5 seasons, 62 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1402": {
+  "level": 2,
+  "story": "A sheriff's deputy wakes from a coma into a ruined world overrun by flesh-eating corpses, and sets out to find his family, meeting other survivors along the way.",
+  "cover": "It's a series: 11 seasons, 177 episodes.",
+  "src": "tmdb"
+ },
+ "tv:63174": {
+  "level": 2,
+  "story": "Bored and unhappy with ruling the underworld, its king walks away from his throne, retires to Los Angeles and teams up with a police detective to catch criminals.",
+  "cover": "It's a series: 6 seasons, 93 episodes.",
+  "src": "tmdb"
+ },
+ "tv:69050": {
+  "level": 2,
+  "story": "A bold, subversive take on a group of familiar friends, and the darkness and weirdness bubbling under their small town's wholesome surface.",
+  "cover": "It's a series: 7 seasons, 137 episodes.",
+  "src": "tmdb"
+ },
+ "tv:76479": {
+  "level": 2,
+  "story": "A gang of vigilantes sets out to take down corrupt superheroes with nothing but working-class grit and a willingness to fight dirty.",
+  "cover": "It's a series: 5 seasons, 40 episodes.",
+  "src": "tmdb"
+ },
+ "tv:71712": {
+  "level": 2,
+  "story": "A young surgeon with autism leaves a quiet country life to join the surgical team at a prestigious hospital.",
+  "cover": "It's a series: 7 seasons, 126 episodes.",
+  "src": "tmdb"
+ },
+ "tv:85271": {
+  "level": 2,
+  "story": "Two super-powered beings living a picture-perfect suburban life begin to suspect that something isn't right.",
+  "cover": "It's a series: 9 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1418": {
+  "level": 2,
+  "story": "Two physicists find their nerdy little circle of friends growing when an aspiring actress moves in next door.",
+  "cover": "It's a series: 12 seasons, 279 episodes.",
+  "src": "tmdb"
+ },
+ "tv:84958": {
+  "level": 2,
+  "story": "After stealing a powerful artefact, an alternate version of a familiar face is hauled before a mysterious bureaucracy that exists outside time and watches over the timeline.",
+  "cover": "It's a series: 2 seasons, 12 episodes.",
+  "src": "tmdb"
+ },
+ "tv:60735": {
+  "level": 2,
+  "story": "A crime scene investigator wakes from a nine-month coma after being struck by lightning, and discovers he can move faster than anyone alive.",
+  "cover": "It's a series: 9 seasons, 184 episodes.",
+  "src": "tmdb"
+ },
+ "tv:60574": {
+  "level": 2,
+  "story": "A gangster family epic set in England just after the First World War, following a gang with razor blades sewn into their caps and the ruthless boss who means to move up in the world.",
+  "cover": "It's a series: 6 seasons, 36 episodes.",
+  "src": "tmdb"
+ },
+ "tv:82856": {
+  "level": 2,
+  "story": "After the fall of an empire, lawlessness has spread across the galaxy, and a lone gunfighter makes his way through its outer reaches as a bounty hunter.",
+  "cover": "It's a series: 3 seasons, 24 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1416": {
+  "level": 2,
+  "story": "The personal and professional lives of a group of doctors at a Seattle hospital.",
+  "cover": "It's a series: 23 seasons, 466 episodes.",
+  "src": "tmdb"
+ },
+ "tv:85552": {
+  "level": 2,
+  "story": "A group of high school students navigate love and friendship in a world of drugs, sex, trauma and social media.",
+  "cover": "It's a series: 3 seasons, 24 episodes.",
+  "src": "tmdb"
+ },
+ "tv:119051": {
+  "level": 2,
+  "story": "Smart, sarcastic and a little dead inside, a girl investigates twisted mysteries while making new friends, and enemies, at a very strange academy.",
+  "cover": "It's a series: 3 seasons, 16 episodes.",
+  "src": "tmdb"
+ },
+ "tv:75006": {
+  "level": 2,
+  "story": "Reunited by their father's death, estranged siblings with extraordinary powers uncover shocking family secrets, and a threat to all of humanity.",
+  "cover": "It's a series: 4 seasons, 36 episodes.",
+  "src": "tmdb"
+ },
+ "tv:18165": {
+  "level": 2,
+  "story": "Two immortal brothers are obsessed with the same girl, who looks exactly like the beautiful, ruthless woman they both loved more than a century ago.",
+  "cover": "It's a series: 8 seasons, 171 episodes.",
+  "src": "tmdb"
+ },
+ "tv:88396": {
+  "level": 2,
+  "story": "Two heroes team up for a global adventure that tests their abilities, and their patience.",
+  "cover": "It's a series: 6 episodes.",
+  "src": "tmdb"
+ },
+ "tv:48866": {
+  "level": 2,
+  "story": "A century from now, with Earth abandoned because of radiation, the last humans live in a station orbiting the planet, but it won't last forever.",
+  "cover": "It's a series: 7 seasons, 100 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1622": {
+  "level": 2,
+  "story": "Two brothers lost their mother to a mysterious, demonic force when they were boys, and their father raised them to be soldiers.",
+  "cover": "It's a series: 15 seasons, 327 episodes.",
+  "src": "tmdb"
+ },
+ "tv:87108": {
+  "level": 2,
+  "story": "The true story of one of the worst man-made catastrophes in history, and of the brave men and women who sacrificed themselves to save Europe from something even worse.",
+  "cover": "It's a series: 5 episodes.",
+  "src": "tmdb"
+ },
+ "tv:81356": {
+  "level": 2,
+  "story": "An inexperienced teenager borrows from his therapist mother's playbook when he teams up with a rebellious classmate to run a secret advice clinic at school.",
+  "cover": "It's a series: 4 seasons, 32 episodes.",
+  "src": "tmdb"
+ },
+ "tv:44217": {
+  "level": 2,
+  "story": "The adventures of the greatest hero of his age, his band of Norse brothers and his family, as he rises to become king of his people.",
+  "cover": "It's a series: 6 seasons, 89 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1408": {
+  "level": 2,
+  "story": "A drug-addicted, unconventional, misanthropic medical genius leads a team of diagnosticians at a New Jersey teaching hospital.",
+  "cover": "It's a series: 8 seasons, 176 episodes.",
+  "src": "tmdb"
+ },
+ "tv:100088": {
+  "level": 2,
+  "story": "Twenty years after modern civilisation fell, a hardened survivor is hired to smuggle a fourteen-year-old girl out of an oppressive quarantine zone.",
+  "cover": "It's a series: 2 seasons, 16 episodes.",
+  "src": "tmdb"
+ },
+ "tv:77169": {
+  "level": 2,
+  "story": "Thirty years after a famous teenage tournament, one of its old fighters looks for redemption by reopening a notorious martial arts school.",
+  "cover": "It's a series: 6 seasons, 65 episodes.",
+  "src": "tmdb"
+ },
+ "tv:71912": {
+  "level": 2,
+  "story": "A mutated monster hunter for hire journeys toward his destiny in a turbulent world where people often turn out worse than beasts.",
+  "cover": "It's a series: 4 seasons, 32 episodes.",
+  "src": "tmdb"
+ },
+ "tv:19885": {
+  "level": 2,
+  "story": "A modern update finds a famous detective and his doctor partner solving crimes in present-day London.",
+  "cover": "It's a series: 4 seasons, 12 episodes.",
+  "src": "tmdb"
+ },
+ "tv:94997": {
+  "level": 2,
+  "story": "A royal dynasty is at the absolute height of its power, with more than fifteen dragons at its command. Most empires crumble from such heights.",
+  "cover": "It's a series: 3 seasons, 26 episodes.",
+  "src": "tmdb"
+ },
+ "tv:42009": {
+  "level": 2,
+  "story": "Twisted tales that expose humanity's worst traits, its greatest inventions and more.",
+  "cover": "It's a series: 7 seasons, 33 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1412": {
+  "level": 2,
+  "story": "A spoiled billionaire playboy is presumed dead when his yacht is lost at sea. Five years later he comes home a changed man, determined to clean up his city as a hooded vigilante.",
+  "cover": "It's a series: 8 seasons, 170 episodes.",
+  "src": "tmdb"
+ },
+ "tv:63247": {
+  "level": 2,
+  "story": "A dark odyssey about the dawn of artificial consciousness and the evolution of sin.",
+  "cover": "It's a series: 4 seasons, 36 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1413": {
+  "level": 2,
+  "story": "A family moves into a house with a murderous past.",
+  "cover": "It's a series: 13 seasons, 145 episodes.",
+  "src": "tmdb"
+ },
+ "tv:2288": {
+  "level": 2,
+  "story": "A political conspiracy sends an innocent man to death row, and his only hope is his brother, who gets himself locked up in the same jail on purpose to get them both out.",
+  "cover": "It's a series: 5 seasons, 88 episodes.",
+  "src": "tmdb"
+ },
+ "tv:37680": {
+  "level": 2,
+  "story": "While running from a drug deal gone bad, a brilliant young college dropout slips into a job interview with one of New York's best lawyers.",
+  "cover": "It's a series: 9 seasons, 134 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1100": {
+  "level": 2,
+  "story": "A father tells his children the long story of how he and his four best friends got to the moment he met their mother.",
+  "cover": "It's a series: 9 seasons, 208 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1405": {
+  "level": 2,
+  "story": "A police forensic expert in Miami secretly leads a second life as a serial killer, hunting down criminals who slipped through the cracks of justice.",
+  "cover": "It's a series: 8 seasons, 96 episodes.",
+  "src": "tmdb"
+ },
+ "tv:87739": {
+  "level": 2,
+  "story": "In an orphanage in the fifties, a young girl reveals an astonishing talent for chess and begins an unlikely rise to stardom while fighting addiction.",
+  "cover": "It's a series: 7 episodes.",
+  "src": "tmdb"
+ },
+ "tv:62560": {
+  "level": 2,
+  "story": "A young programmer with a crippling social disorder decides the only way he can connect with people is by hacking them, and uses his skills to protect the people he cares about.",
+  "cover": "It's a series: 4 seasons, 45 episodes.",
+  "src": "tmdb"
+ },
+ "tv:61889": {
+  "level": 2,
+  "story": "A lawyer by day, a man who lost his sight as a boy uses his heightened senses to fight crime at night on the streets of his New York neighbourhood.",
+  "cover": "It's a series: 3 seasons, 39 episodes.",
+  "src": "tmdb"
+ },
+ "tv:2316": {
+  "level": 2,
+  "story": "The everyday lives of the staff at a local branch of a paper company in Pennsylvania.",
+  "cover": "It's a series: 9 seasons, 186 episodes.",
+  "src": "tmdb"
+ },
+ "tv:62286": {
+  "level": 2,
+  "story": "What did the world look like in the days it was turning into a horrifying apocalypse?",
+  "cover": "It's a series: 8 seasons, 113 episodes.",
+  "src": "tmdb"
+ },
+ "tv:82883": {
+  "level": 2,
+  "story": "A young woman struggles with the toxic relationship with her overprotective mother, but her attempts to break free lead to murder.",
+  "cover": "It's a series: 8 episodes.",
+  "src": "tmdb"
+ },
+ "tv:4607": {
+  "level": 2,
+  "story": "Stripped of everything, the survivors of a horrific plane crash must work together to stay alive. But the island holds many secrets.",
+  "cover": "It's a series: 6 seasons, 118 episodes.",
+  "src": "tmdb"
+ },
+ "tv:70785": {
+  "level": 2,
+  "story": "A coming-of-age story about an outsider who, against all odds, fights for love, acceptance and her place in the world.",
+  "cover": "It's a series: 3 seasons, 27 episodes.",
+  "src": "tmdb"
+ },
+ "tv:2004": {
+  "level": 2,
+  "story": "A gifted young teen tries to survive life with his dim, dysfunctional family.",
+  "cover": "It's a series: 7 seasons, 151 episodes.",
+  "src": "tmdb"
+ },
+ "tv:34524": {
+  "level": 2,
+  "story": "A high school student's life changes forever when he's bitten by a wild creature and starts turning into one himself.",
+  "cover": "It's a series: 6 seasons, 100 episodes.",
+  "src": "tmdb"
+ },
+ "tv:66788": {
+  "level": 2,
+  "story": "A high school student finds himself at the centre of a string of heartbreaking mysteries set in motion by a friend's suicide.",
+  "cover": "It's a series: 4 seasons, 49 episodes.",
+  "src": "tmdb"
+ },
+ "tv:4604": {
+  "level": 2,
+  "story": "The origins of the world's greatest hero, from his arrival on Earth as a refugee from another planet, through a turbulent adolescence, to his last steps toward his destiny.",
+  "cover": "It's a series: 10 seasons, 216 episodes.",
+  "src": "tmdb"
+ },
+ "tv:62688": {
+  "level": 2,
+  "story": "A young woman sent to Earth from another planet as a girl, and raised by a foster family, has to learn to embrace the powers she's always hidden.",
+  "cover": "It's a series: 6 seasons, 126 episodes.",
+  "src": "tmdb"
+ },
+ "tv:5920": {
+  "level": 2,
+  "story": "A former celebrity psychic uses his razor-sharp eye for detail and his talent for reading people to help California investigators solve serious crimes.",
+  "cover": "It's a series: 7 seasons, 151 episodes.",
+  "src": "tmdb"
+ },
+ "tv:4613": {
+  "level": 2,
+  "story": "Based on survivors' interviews, journals and letters, the story of one company of American paratroopers from training to the end of the Second World War.",
+  "cover": "It's a series: 10 episodes.",
+  "src": "tmdb"
+ },
+ "tv:46648": {
+  "level": 2,
+  "story": "A crime anthology told across multiple timelines, where each investigation digs up the personal and professional secrets of everyone involved, on both sides of the law.",
+  "cover": "It's a series: 5 seasons, 30 episodes.",
+  "src": "tmdb"
+ },
+ "tv:90462": {
+  "level": 2,
+  "story": "After an old toy turns up at a suburban yard sale, a picture-perfect American town is thrown into chaos as a string of horrifying murders exposes its secrets.",
+  "cover": "It's a series: 3 seasons, 24 episodes.",
+  "src": "tmdb"
+ },
+ "tv:60797": {
+  "level": 2,
+  "story": "An eccentric genius and his team of brilliant misfits are the last line of defence against the complex, high-tech threats of the modern age.",
+  "cover": "It's a series: 4 seasons, 93 episodes.",
+  "src": "tmdb"
+ },
+ "tv:4057": {
+  "level": 2,
+  "story": "An elite team of federal profilers studies the country's most twisted criminals, anticipating their next moves before they strike again.",
+  "cover": "It's a series: 19 seasons, 364 episodes.",
+  "src": "tmdb"
+ },
+ "tv:48891": {
+  "level": 2,
+  "story": "A comedy about an eclectic group of detectives in a New York police station, including one slacker who has to shape up when a new boss arrives.",
+  "cover": "It's a series: 8 seasons, 152 episodes.",
+  "src": "tmdb"
+ },
+ "tv:78191": {
+  "level": 2,
+  "story": "A dangerously charming, obsessive man goes to extreme lengths to get into the lives of the women who fascinate him.",
+  "cover": "It's a series: 5 seasons, 50 episodes.",
+  "src": "tmdb"
+ },
+ "tv:124364": {
+  "level": 2,
+  "story": "A nightmarish small town in middle America traps everyone who enters it.",
+  "cover": "It's a series: 4 seasons, 40 episodes.",
+  "src": "tmdb"
+ },
+ "tv:46331": {
+  "level": 2,
+  "story": "A small town is suddenly, inexplicably sealed off from the rest of the world by an enormous invisible barrier.",
+  "cover": "It's a series: 3 seasons, 39 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1403": {
+  "level": 2,
+  "story": "The story of an agent of a secret government organisation.",
+  "cover": "It's a series: 7 seasons, 136 episodes.",
+  "src": "tmdb"
+ },
+ "tv:79242": {
+  "level": 2,
+  "story": "Magic and mischief collide as a half-human, half-witch teenager tries to balance ordinary teenage life with her family's legacy in a secret church.",
+  "cover": "It's a series: 2 seasons, 36 episodes.",
+  "src": "tmdb"
+ },
+ "tv:60708": {
+  "level": 2,
+  "story": "Everyone knows the name of the city's top cop: one of the crime world's greatest enemies, a man whose name means law and order.",
+  "cover": "It's a series: 5 seasons, 100 episodes.",
+  "src": "tmdb"
+ },
+ "tv:84773": {
+  "level": 2,
+  "story": "In a time of relative peace, a large cast of characters faces the return of evil to their world.",
+  "cover": "It's a series: 3 seasons, 24 episodes.",
+  "src": "tmdb"
+ },
+ "tv:88329": {
+  "level": 2,
+  "story": "A retired hero has one simple mission: get home to his family for Christmas. Possible? Maybe, with the help of a young archer who dreams of becoming a hero herself.",
+  "cover": "It's a series: 6 episodes.",
+  "src": "tmdb"
+ },
+ "tv:2691": {
+  "level": 2,
+  "story": "A hedonistic jingle writer's carefree life comes to a sudden stop when his brother and ten-year-old nephew move into his beach house.",
+  "cover": "It's a series: 12 seasons, 262 episodes.",
+  "src": "tmdb"
+ },
+ "tv:74577": {
+  "level": 2,
+  "story": "A seventeen-year-old boy is pretty sure he's a psychopath. A girl his age is the cool, moody new girl at school.",
+  "cover": "It's a series: 2 seasons, 16 episodes.",
+  "src": "tmdb"
+ },
+ "tv:46896": {
+  "level": 2,
+  "story": "A family of thousand-year-old, power-hungry immortals wants to take back the Southern city they built and crush everyone who ever wronged them.",
+  "cover": "It's a series: 5 seasons, 92 episodes.",
+  "src": "tmdb"
+ },
+ "tv:46952": {
+  "level": 2,
+  "story": "One of the bureau's most wanted fugitives walks into federal headquarters in Washington and gives himself up.",
+  "cover": "It's a series: 10 seasons, 218 episodes.",
+  "src": "tmdb"
+ },
+ "tv:92749": {
+  "level": 2,
+  "story": "When a mild-mannered gift-shop worker starts suffering blackouts and memories of another life, he discovers he shares a body with a mercenary.",
+  "cover": "It's a series: 6 episodes.",
+  "src": "tmdb"
+ },
+ "tv:39351": {
+  "level": 2,
+  "story": "A homicide detective discovers he comes from an elite line of special profilers, and his police work starts clashing with his new duties.",
+  "cover": "It's a series: 6 seasons, 122 episodes.",
+  "src": "tmdb"
+ },
+ "tv:63351": {
+  "level": 2,
+  "story": "A gritty chronicle of the war against Colombia's notoriously violent and powerful drug cartels.",
+  "cover": "It's a series: 3 seasons, 30 episodes.",
+  "src": "tmdb"
+ },
+ "tv:110492": {
+  "level": 2,
+  "story": "A vain hero, or villain, who believes in peace at any cost, no matter how many people he has to kill.",
+  "cover": "It's a series: 2 seasons, 16 episodes.",
+  "src": "tmdb"
+ },
+ "tv:71886": {
+  "level": 2,
+  "story": "A coastal town is famous for its legend that it was once home to mermaids.",
+  "cover": "It's a series: 3 seasons, 36 episodes.",
+  "src": "tmdb"
+ },
+ "tv:80213": {
+  "level": 2,
+  "story": "In a dystopian America ruled by a totalitarian party, several seemingly unconnected people live their lives in a small city.",
+  "cover": "It's a series: 2 seasons, 20 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1421": {
+  "level": 2,
+  "story": "A big, blended, wonderfully complicated family offers an honest and often hilarious look at what family looks like today.",
+  "cover": "It's a series: 11 seasons, 250 episodes.",
+  "src": "tmdb"
+ },
+ "tv:57243": {
+  "level": 2,
+  "story": "A nine-hundred-year-old alien with two hearts belongs to a gifted civilisation that mastered time travel.",
+  "cover": "It's a series: 13 seasons, 153 episodes.",
+  "src": "tmdb"
+ },
+ "tv:34307": {
+  "level": 2,
+  "story": "A Chicago dad is the proud single father of six smart, hard-working, independent kids, who would probably be better off without him.",
+  "cover": "It's a series: 11 seasons, 134 episodes.",
+  "src": "tmdb"
+ },
+ "tv:69478": {
+  "level": 2,
+  "story": "In a dystopian future, a woman is forced to live as a concubine under a fundamentalist religious dictatorship.",
+  "cover": "It's a series: 6 seasons, 66 episodes.",
+  "src": "tmdb"
+ },
+ "tv:60622": {
+  "level": 2,
+  "story": "A crime anthology of stories full of malice, violence and murder, set in and around Minnesota.",
+  "cover": "It's a series: 5 seasons, 51 episodes.",
+  "src": "tmdb"
+ },
+ "tv:79744": {
+  "level": 2,
+  "story": "Starting over isn't easy, especially for a small-town man who, after a life-changing incident, is chasing his dream of becoming a Los Angeles police officer.",
+  "cover": "It's a series: 9 seasons, 145 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1409": {
+  "level": 2,
+  "story": "The members of an outlaw motorcycle club with chapters across the country and overseas.",
+  "cover": "It's a series: 7 seasons, 92 episodes.",
+  "src": "tmdb"
+ },
+ "tv:91239": {
+  "level": 2,
+  "story": "Wealth, lust and betrayal in Regency-era England, seen through the eyes of a powerful family.",
+  "cover": "It's a series: 5 seasons, 32 episodes.",
+  "src": "tmdb"
+ },
+ "tv:67178": {
+  "level": 2,
+  "story": "A former Marine out to punish the criminals responsible for his family's murder gets caught up in a military conspiracy.",
+  "cover": "It's a series: 2 seasons, 26 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1425": {
+  "level": 2,
+  "story": "Betrayed by the country's leadership, a congressman sets out on a ruthless climb to power, with blackmail, seduction and ambition as his weapons.",
+  "cover": "It's a series: 6 seasons, 73 episodes.",
+  "src": "tmdb"
+ },
+ "tv:73586": {
+  "level": 2,
+  "story": "The violent world of a family that controls the largest ranch in the United States.",
+  "cover": "It's a series: 5 seasons, 53 episodes.",
+  "src": "tmdb"
+ },
+ "tv:52814": {
+  "level": 2,
+  "story": "An epic war between humanity and an alien threat in the distant future, told through deeply personal stories, action and adventure.",
+  "cover": "It's a series: 2 seasons, 17 episodes.",
+  "src": "tmdb"
+ },
+ "tv:106379": {
+  "level": 2,
+  "story": "The story of the haves and have-nots in a world where there's almost nothing left to have.",
+  "cover": "It's a series: 2 seasons, 16 episodes.",
+  "src": "tmdb"
+ },
+ "tv:67744": {
+  "level": 2,
+  "story": "An agent in the bureau's elite serial crime unit develops new profiling techniques as he pursues some of the most notorious serial killers.",
+  "cover": "It's a series: 2 seasons, 19 episodes.",
+  "src": "tmdb"
+ },
+ "tv:79460": {
+  "level": 2,
+  "story": "At a school where young witches, vampires and werewolves are taught to be their best selves despite their worst impulses, a new generation of teenagers grows up into heroes and villains.",
+  "cover": "It's a series: 4 seasons, 68 episodes.",
+  "src": "tmdb"
+ },
+ "tv:115036": {
+  "level": 2,
+  "story": "A legendary bounty hunter and a mercenary return to a desert planet to claim the criminal territory once ruled by a crime lord and his gang.",
+  "cover": "It's a series: 7 episodes.",
+  "src": "tmdb"
+ },
+ "tv:40008": {
+  "level": 2,
+  "story": "Both a gift and a curse, an investigator has the extraordinary ability to think like the killers he hunts: he sees what they see and feels what they feel.",
+  "cover": "It's a series: 3 seasons, 39 episodes.",
+  "src": "tmdb"
+ },
+ "tv:46296": {
+  "level": 2,
+  "story": "Torn from his homeland and the woman he loves, a man is condemned to the brutal world of the arena, where blood and death are the main entertainment.",
+  "cover": "It's a series: 3 seasons, 33 episodes.",
+  "src": "tmdb"
+ },
+ "tv:60866": {
+  "level": 2,
+  "story": "A medical student who becomes one of the walking dead takes a job at the coroner's office so she can get her hands on the brains she reluctantly has to eat to stay herself.",
+  "cover": "It's a series: 5 seasons, 71 episodes.",
+  "src": "tmdb"
+ },
+ "tv:56570": {
+  "level": 2,
+  "story": "A married nurse from the Second World War is mysteriously swept back two hundred years, into an unknown world where her life is in danger.",
+  "cover": "It's a series: 8 seasons, 101 episodes.",
+  "src": "tmdb"
+ },
+ "tv:108978": {
+  "level": 2,
+  "story": "A veteran military police investigator has only just started his life as a civilian.",
+  "cover": "It's a series: 4 seasons, 32 episodes.",
+  "src": "tmdb"
+ },
+ "tv:80752": {
+  "level": 2,
+  "story": "A virus has wiped out most of humanity and the survivors lost their sight. Centuries later, when twins are born able to see, their father must protect his tribe from a threatened queen.",
+  "cover": "It's a series: 3 seasons, 24 episodes.",
+  "src": "tmdb"
+ },
+ "tv:75450": {
+  "level": 2,
+  "story": "A team of young heroes, led by the sidekick of a famous masked vigilante, comes together to fight evil.",
+  "cover": "It's a series: 4 seasons, 49 episodes.",
+  "src": "tmdb"
+ },
+ "tv:63639": {
+  "level": 2,
+  "story": "Two hundred years in the future, the case of a missing young woman brings a hardened detective and a rogue ship's captain together in a race across the solar system to expose the greatest conspiracy in human history.",
+  "cover": "It's a series: 6 seasons, 62 episodes.",
+  "src": "tmdb"
+ },
+ "tv:113988": {
+  "level": 2,
+  "story": "The gruesome true crimes of one of America's most notorious serial killers, and the failures that let him go on killing in plain sight for over a decade.",
+  "cover": "It's a series: 10 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1705": {
+  "level": 2,
+  "story": "A federal agent, a brilliant scientist who once lived in an institution and his reluctant son uncover a deadly string of impossible events that may be part of a larger pattern.",
+  "cover": "It's a series: 5 seasons, 100 episodes.",
+  "src": "tmdb"
+ },
+ "tv:69740": {
+  "level": 2,
+  "story": "A financial adviser drags his family from Chicago to rural Missouri, where he has to launder five hundred million dollars in five years to keep a drug boss happy.",
+  "cover": "It's a series: 4 seasons, 44 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1424": {
+  "level": 2,
+  "story": "A crime from her past sends a woman to prison, where she trades her comfortable New York life for one of unexpected friendship and conflict among an eccentric group of inmates.",
+  "cover": "It's a series: 7 seasons, 91 episodes.",
+  "src": "tmdb"
+ },
+ "tv:31917": {
+  "level": 2,
+  "story": "Based on young adult novels: four girls whose clique fell apart after their leader vanished.",
+  "cover": "It's a series: 7 seasons, 161 episodes.",
+  "src": "tmdb"
+ },
+ "tv:75219": {
+  "level": 2,
+  "story": "The high-pressure lives of police officers, paramedics and firefighters thrown into the most frightening, shocking and heart-stopping situations.",
+  "cover": "It's a series: 10 seasons, 148 episodes.",
+  "src": "tmdb"
+ },
+ "tv:1407": {
+  "level": 2,
+  "story": "A brilliant intelligence officer is the best in her field, despite living with bipolar disorder, which makes her volatile and unpredictable.",
+  "cover": "It's a series: 8 seasons, 96 episodes.",
+  "src": "tmdb"
+ },
+ "tv:16997": {
+  "level": 2,
+  "story": "The intertwined true stories of three American Marines across the vast ocean battlefields of the Second World War.",
+  "cover": "It's a series: 10 episodes.",
+  "src": "tmdb"
+ },
+ "movie:550": {
+  "level": 3,
+  "story": "A disturbed man and a slippery salesman channel raw male aggression into a shocking new kind of therapy.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "movie:278": {
+  "level": 3,
+  "story": "Sent to prison for a double murder, an upstanding professional starts life over behind bars and puts his head for numbers to work for the man who runs the place.",
+  "cover": "It came out in 1994.",
+  "src": "tmdb"
+ },
+ "movie:680": {
+  "level": 3,
+  "story": "A hit man and his philosophical partner, a gangster's drug-addled girlfriend and a washed-up boxer cross paths in a sprawling, darkly funny crime story.",
+  "cover": "It came out in 1994.",
+  "src": "tmdb"
+ },
+ "movie:13": {
+  "level": 3,
+  "story": "A simple man achieves great things and keeps turning up at big moments in history, each time going far beyond what anyone imagined he could do.",
+  "cover": "It came out in 1994.",
+  "src": "tmdb"
+ },
+ "movie:603": {
+  "level": 3,
+  "story": "Far in the future, a computer hacker joins a band of underground rebels fighting the powerful machines that now rule the earth.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "movie:597": {
+  "level": 3,
+  "story": "A very old woman finally tells the story of a sea voyage from long ago, which she set out on as a young woman with her mother and her fiancé.",
+  "cover": "It came out in 1997.",
+  "src": "tmdb"
+ },
+ "movie:807": {
+  "level": 3,
+  "story": "Two homicide detectives desperately hunt a killer whose crimes follow an ancient list of sins, from one tortured victim to the next.",
+  "cover": "It came out in 1995.",
+  "src": "tmdb"
+ },
+ "movie:238": {
+  "level": 3,
+  "story": "Over ten years after the war, the story of an Italian-American crime family.",
+  "cover": "It came out in 1972.",
+  "src": "tmdb"
+ },
+ "movie:11": {
+  "level": 3,
+  "story": "A princess is captured and held hostage by the forces of a tyrannical regime tightening its grip on the galaxy.",
+  "cover": "It came out in 1977.",
+  "src": "tmdb"
+ },
+ "tv:1668": {
+  "level": 3,
+  "story": "Six young people in New York, on their own and struggling in the real world, find that the support they get from each other is the perfect cure for the pressures of life.",
+  "cover": "It came out in 1994.",
+  "src": "tmdb"
+ },
+ "movie:105": {
+  "level": 3,
+  "story": "A teenager is accidentally sent back thirty years, gets in the way of his parents' first meeting, and catches the eye of his own mother instead.",
+  "cover": "It came out in 1985.",
+  "src": "tmdb"
+ },
+ "movie:37165": {
+  "level": 3,
+  "story": "In a picture-perfect seaside town, an insurance salesman starts to suspect that his whole life is staged and watched by a vast unseen audience.",
+  "cover": "It came out in 1998.",
+  "src": "tmdb"
+ },
+ "movie:497": {
+  "level": 3,
+  "story": "On death row in a Southern prison, a gentle giant of an inmate turns out to have a mysterious power to heal.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "movie:694": {
+  "level": 3,
+  "story": "A man takes a job as caretaker of a remote hotel for the winter, cut off from the rest of the world with his wife and young son.",
+  "cover": "It came out in 1980.",
+  "src": "tmdb"
+ },
+ "movie:1891": {
+  "level": 3,
+  "story": "The saga continues: a young hero learns the old ways from an aging master, hoping to defeat a tyrannical regime, while its most feared enforcer is more determined than ever to catch him.",
+  "cover": "It came out in 1980.",
+  "src": "tmdb"
+ },
+ "movie:274": {
+  "level": 3,
+  "story": "A top student at a federal training academy is sent by her boss to interview a doctor.",
+  "cover": "It came out in 1991.",
+  "src": "tmdb"
+ },
+ "movie:329": {
+  "level": 3,
+  "story": "A wealthy businessman secretly builds an attraction like no other, filled with creatures brought back from the distant past.",
+  "cover": "It came out in 1993.",
+  "src": "tmdb"
+ },
+ "movie:424": {
+  "level": 3,
+  "story": "The true story of a businessman who saved more than a thousand Jewish lives from the Nazis by keeping them working in his factory during the Second World War.",
+  "cover": "It came out in 1993.",
+  "src": "tmdb"
+ },
+ "movie:857": {
+  "level": 3,
+  "story": "As American troops storm the beaches of France, three brothers lie dead on the battlefield, and a fourth is trapped behind enemy lines.",
+  "cover": "It came out in 1998.",
+  "src": "tmdb"
+ },
+ "movie:1892": {
+  "level": 3,
+  "story": "A rescue mission sets out to free a captured friend from a villain's clutches, while an evil emperor readies an even deadlier weapon and a rebel fleet launches an all-out attack on it.",
+  "cover": "It came out in 1983.",
+  "src": "tmdb"
+ },
+ "movie:348": {
+  "level": 3,
+  "story": "On its way back to Earth, the crew of a commercial spaceship picks up a distress signal from a distant planet.",
+  "cover": "It came out in 1979.",
+  "src": "tmdb"
+ },
+ "movie:101": {
+  "level": 3,
+  "story": "New York's best hit man is known as a reliable \"cleaner\", but when a crooked drug agent wipes out the family next door, he reluctantly takes in their twelve-year-old daughter.",
+  "cover": "It came out in 1994.",
+  "src": "tmdb"
+ },
+ "movie:1893": {
+  "level": 3,
+  "story": "A young slave with unusual gifts is discovered on a desert planet, while an evil order returns to take its revenge on an order of knights.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "movie:500": {
+  "level": 3,
+  "story": "A robbery goes badly wrong, someone in the crew must be working for the police, and the tension builds as the survivors regroup in a warehouse.",
+  "cover": "It came out in 1992.",
+  "src": "tmdb"
+ },
+ "tv:2734": {
+  "level": 3,
+  "story": "In the criminal justice system, sexual offences are considered especially heinous.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "movie:78": {
+  "level": 3,
+  "story": "In a smog-choked future Los Angeles, a retired hunter of artificial humans is called back to track down four of them who have escaped to Earth looking for their maker and a way to live longer.",
+  "cover": "It came out in 1982.",
+  "src": "tmdb"
+ },
+ "movie:607": {
+  "level": 3,
+  "story": "After chasing a suspect who turns out to be from another world, a New York cop is recruited into a top-secret agency that polices alien activity on Earth.",
+  "cover": "It came out in 1997.",
+  "src": "tmdb"
+ },
+ "movie:218": {
+  "level": 3,
+  "story": "In a ruined future, ruling machines send a killer cyborg back in time to murder a woman whose unborn son is destined to lead the human resistance.",
+  "cover": "It came out in 1984.",
+  "src": "tmdb"
+ },
+ "movie:769": {
+  "level": 3,
+  "story": "The true story of a Brooklyn kid taken in by neighbourhood gangsters at an early age, who rises through the ranks of the mob.",
+  "cover": "It came out in 1990.",
+  "src": "tmdb"
+ },
+ "movie:280": {
+  "level": 3,
+  "story": "Ten years later, a reprogrammed killing machine is sent back in time to protect a young boy from a new, shape-shifting assassin.",
+  "cover": "It came out in 1991.",
+  "src": "tmdb"
+ },
+ "tv:1398": {
+  "level": 3,
+  "story": "A New Jersey mob boss struggles to balance the conflicting demands of his family at home and the criminal organisation he runs.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "movie:489": {
+  "level": 3,
+  "story": "A headstrong working-class genius is failing at life. After one too many brushes with the law, his last chance is a psychology professor who might be the only one who can reach him.",
+  "cover": "It came out in 1997.",
+  "src": "tmdb"
+ },
+ "tv:4087": {
+  "level": 3,
+  "story": "Two federal agents investigate the bureau's strangest unsolved cases, the ones involving the paranormal.",
+  "cover": "It came out in 1993.",
+  "src": "tmdb"
+ },
+ "movie:240": {
+  "level": 3,
+  "story": "The saga of a crime family continues, following one of its members as a boy in Sicily and as a young man in New York.",
+  "cover": "It came out in 1974.",
+  "src": "tmdb"
+ },
+ "movie:165": {
+  "level": 3,
+  "story": "Two time travellers jump thirty years ahead to fix some family trouble, but things go wrong thanks to an old bully and a sports almanac.",
+  "cover": "It came out in 1989.",
+  "src": "tmdb"
+ },
+ "movie:162": {
+  "level": 3,
+  "story": "A small suburban town gets a visit from a castaway: a scientist's unfinished experiment.",
+  "cover": "It came out in 1990.",
+  "src": "tmdb"
+ },
+ "movie:185": {
+  "level": 3,
+  "story": "In a near-future Britain, a young man and his gang get their kicks beating and raping anyone they please, and when he isn't ruining lives he loses himself in classical music.",
+  "cover": "It came out in 1971.",
+  "src": "tmdb"
+ },
+ "movie:103": {
+  "level": 3,
+  "story": "A sleepless, disturbed loner takes a job driving through the city every night, drifting further from reality as he dreams of cleaning up its filthy streets.",
+  "cover": "It came out in 1976.",
+  "src": "tmdb"
+ },
+ "movie:14": {
+  "level": 3,
+  "story": "A depressed suburban father in a midlife crisis decides to turn his life around after becoming infatuated with his daughter's friend.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "movie:111": {
+  "level": 3,
+  "story": "After getting a green card in exchange for killing a Cuban government official, an immigrant stakes his claim on the Miami drug trade.",
+  "cover": "It came out in 1983.",
+  "src": "tmdb"
+ },
+ "movie:745": {
+  "level": 3,
+  "story": "After an unexpected tragedy, a child psychologist meets a young boy who is hiding a dark secret.",
+  "cover": "It came out in 1999.",
+  "src": "tmdb"
+ },
+ "tv:19614": {
+  "level": 3,
+  "story": "In 1960, seven outcast kids fight an ancient shape-shifting creature that poses as a child-killing clown, while also facing bullies and abusive parents.",
+  "cover": "It came out in 1990.",
+  "src": "tmdb"
+ },
+ "movie:73": {
+  "level": 3,
+  "story": "A young man is released from prison after serving three years for killing two Black men.",
+  "cover": "It came out in 1998.",
+  "src": "tmdb"
+ },
+ "movie:578": {
+  "level": 3,
+  "story": "When a seaside town comes under attack from something in the water, the police chief, a young scientist and a grizzled hunter set out to kill it before it strikes again.",
+  "cover": "It came out in 1975.",
+  "src": "tmdb"
+ },
+ "movie:600": {
+  "level": 3,
+  "story": "A level-headed Marine watches the war strip away his fellow recruits' humanity, from a brutal boot camp to bloody street fighting in Vietnam.",
+  "cover": "It came out in 1987.",
+  "src": "tmdb"
+ },
+ "movie:197": {
+  "level": 3,
+  "story": "Enraged by the murder of his new bride and childhood love, a Scottish warrior wipes out a band of the local English lord's soldiers.",
+  "cover": "It came out in 1995.",
+  "src": "tmdb"
+ },
+ "movie:28": {
+  "level": 3,
+  "story": "At the height of the Vietnam war, an army captain is sent on a dangerous mission that officially does not exist.",
+  "cover": "It came out in 1979.",
+  "src": "tmdb"
+ },
+ "movie:9552": {
+  "level": 3,
+  "story": "When a mysterious entity takes hold of a young girl, her mother turns to two priests to save her life.",
+  "cover": "It came out in 1973.",
+  "src": "tmdb"
+ },
+ "tv:71446": {
+  "level": 4,
+  "story": "To pull off the biggest robbery in history, a mysterious mastermind recruits a crew of eight with one thing in common: none of them has anything to lose.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:93405": {
+  "level": 4,
+  "story": "Hundreds of desperate, broke players accept a strange invitation to compete in children's games for a huge prize, with deadly stakes.",
+  "cover": "It's in Korean, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:76669": {
+  "level": 4,
+  "story": "When three working-class kids enrol at the most exclusive school in the country, the clash between rich and poor students ends in tragedy.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:70523": {
+  "level": 4,
+  "story": "A missing child sends four families on a frantic hunt for answers, and they uncover a mind-bending mystery that spans three generations.",
+  "cover": "It's in German, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "movie:496243": {
+  "level": 4,
+  "story": "A family with no jobs between them takes a keen interest in a wealthy, glamorous household as a way to make a living, until an unexpected incident drags them all in.",
+  "cover": "It's in Korean, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "movie:77338": {
+  "level": 4,
+  "story": "A true story of two men who should never have met: an aristocrat paralysed in an accident, and a young man from the poorest part of town.",
+  "cover": "It's in French, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:12637": {
+  "level": 4,
+  "story": "A group of teenagers spend their school years at an exclusive academy, where they learn about love and life and live their passion for music.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:99966": {
+  "level": 4,
+  "story": "A high school becomes ground zero for a deadly outbreak, and the students trapped inside have to fight their way out, or become one of the rabid infected.",
+  "cover": "It's in Korean, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:105214": {
+  "level": 4,
+  "story": "A married woman spends a fateful weekend away from home that sparks a passion, ends in tragedy and makes her question what she knows about the people closest to her.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:43348": {
+  "level": 4,
+  "story": "A man with a natural gift for business discovers the drug trade early in life, and the power it brings.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "movie:637": {
+  "level": 4,
+  "story": "A touching story of a bookseller of Jewish descent who lives in his own little fairy tale.",
+  "cover": "It's in Italian, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:16286": {
+  "level": 4,
+  "story": "A brilliant economist with a master's degree in finance has just one flaw: she isn't pretty.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:44953": {
+  "level": 4,
+  "story": "Set in the nineties, the life and times of a man who rose to lead a drug cartel.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "movie:194": {
+  "level": 4,
+  "story": "In a tiny café, a sweet but painfully shy young woman stumbles on a gift for helping others, and soon spends her days quietly playing matchmaker and guardian angel.",
+  "cover": "It's in French, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:104877": {
+  "level": 4,
+  "story": "A young woman who has pinned all her hopes on her education clashes with the man who cancelled her scholarship to study abroad.",
+  "cover": "It's in Turkish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:67915": {
+  "level": 4,
+  "story": "Searching for a bride to break his curse of immortality, a nine-hundred-year-old keeper of souls meets a grim reaper and a cheerful student with a tragic past.",
+  "cover": "It's in Korean, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "movie:1417": {
+  "level": 4,
+  "story": "After a civil war, a young girl moves with her pregnant mother into the home of her cruel stepfather.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:67335": {
+  "level": 4,
+  "story": "A young woman born in a town run by the mafia seeks revenge on the people who wrongly hurt and imprisoned her family.",
+  "cover": "It's in Spanish, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "movie:396535": {
+  "level": 4,
+  "story": "When a zombie outbreak pushes the country into a state of emergency, the passengers trapped on board a high-speed express have to fight for their lives.",
+  "cover": "It's in Korean, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:112888": {
+  "level": 4,
+  "story": "Bullied for her looks, a high school girl teaches herself makeup from online videos and transforms into a celebrated stunner almost overnight.",
+  "cover": "It's in Korean, so you'd watch it with subtitles.",
+  "src": "tmdb"
+ },
+ "tv:63333": {
+  "level": 5,
+  "story": "Heroic deeds and epic battles, with a story that takes in politics, religion, war, courage, love, loyalty and the search for who we really are.",
+  "cover": "It's a series: 5 seasons of Saxons and Vikings.",
+  "src": "film"
+ },
+ "tv:126308": {
+  "level": 5,
+  "story": "In feudal Japan, at the dawn of a civil war that will shape a century, a powerful lord is fighting for his life as his rivals unite against him, when a mysterious European ship is found wrecked near a fishing village.",
+  "cover": "It's a series, and it won a record 18 Emmys for a single season.",
+  "src": "fact"
+ },
+ "movie:515042": {
+  "level": 5,
+  "story": "A climber attempts to become the first person ever to scale a famous three-thousand-foot wall in California without ropes.",
+  "cover": "It's a documentary. He really climbed it, with no ropes.",
+  "src": "tmdb"
+ },
+ "tv:96129": {
+  "level": 5,
+  "story": "A criminal's gruesome videos drive a group of amateur online sleuths to launch a risky manhunt that pulls them into a dark underworld.",
+  "cover": "It's a documentary series. It all really happened.",
+  "src": "tmdb"
+ },
+ "movie:489931": {
+  "level": 5,
+  "story": "Kentucky, 2004. Four young men try to pull off one of the most audacious art heists in American history.",
+  "cover": "It really happened, and the real men appear in the film alongside the actors.",
+  "src": "film"
+ },
+ "movie:923632": {
+  "level": 5,
+  "story": "Posing as a wealthy, jet-setting businessman, a con man wooed women online and swindled them out of millions. Now some of his victims want payback.",
+  "cover": "It's a documentary. It all really happened.",
+  "src": "tmdb"
+ },
+ "tv:100698": {
+  "level": 5,
+  "story": "A zoo owner spirals out of control among a cast of eccentric characters, in a murder-for-hire story from the strange world of exotic animal breeding.",
+  "cover": "It's a documentary series. It all really happened.",
+  "src": "tmdb"
+ },
+ "movie:44639": {
+  "level": 5,
+  "story": "The shocking truth behind a global financial meltdown that cost trillions and left millions of people without homes or jobs.",
+  "cover": "It's a documentary, and it won the Oscar.",
+  "src": "tmdb + fact"
+ },
+ "tv:64439": {
+  "level": 5,
+  "story": "A man freed by DNA evidence exposes police corruption, then becomes a suspect in a grisly new crime.",
+  "cover": "It's a documentary series, filmed over ten years.",
+  "src": "tmdb"
+ },
+ "tv:61929": {
+  "level": 5,
+  "story": "The heir to a New York real-estate fortune has been accused of three murders, but has escaped justice for more than thirty years.",
+  "cover": "It's a documentary series, and he's a real man: Robert Durst.",
+  "src": "fact"
+ },
+ "movie:84287": {
+  "level": 5,
+  "story": "In 1994, a thirteen-year-old boy vanished without a trace from his home in Texas. Three and a half years later, he turns up alive in a village in Spain, with a horrifying story to tell.",
+  "cover": "It's a documentary. It all really happened.",
+  "src": "tmdb"
+ },
+ "movie:743601": {
+  "level": 5,
+  "story": "A young mother and her two daughters disappear, and the terrible events that follow shock everyone who knew them.",
+  "cover": "It's a documentary, told through the family's real videos and police footage.",
+  "src": "tmdb + film"
+ },
+ "movie:15584": {
+  "level": 5,
+  "story": "In 2001, a doctor in training is murdered not long after breaking up with his girlfriend.",
+  "cover": "It's a documentary, made by the murdered man's best friend.",
+  "src": "film"
+ },
+ "tv:99626": {
+  "level": 5,
+  "story": "A boy's brutal murder, and the public trials of his guardians and social workers, raise hard questions about how the system protects vulnerable children.",
+  "cover": "It's a documentary series. It all really happened.",
+  "src": "tmdb"
+ },
+ "movie:11194": {
+  "level": 5,
+  "story": "In 1985, two climbers attempt a remote peak in the Peruvian Andes. It goes disastrously, nearly fatally wrong.",
+  "cover": "It's a documentary. The two climbers tell it themselves.",
+  "src": "tmdb + film"
+ },
+ "movie:664280": {
+  "level": 5,
+  "story": "The story of the natural world, told by the man who has seen more of it than anyone else.",
+  "cover": "It's a documentary, told by David Attenborough.",
+  "src": "tmdb"
+ },
+ "tv:85833": {
+  "level": 5,
+  "story": "An inside look at the mind of an infamous serial killer, in his own words, recorded on death row.",
+  "cover": "It's a documentary series, built from his real recorded interviews.",
+  "src": "tmdb"
+ },
+ "movie:14285": {
+  "level": 5,
+  "story": "An unconventional investigation into the wrongful conviction of a man for the murder of a Dallas police officer.",
+  "cover": "It's a documentary from 1988, and it helped free the wrongly convicted man.",
+  "src": "fact"
+ },
+ "tv:116989": {
+  "level": 5,
+  "story": "A notorious hotel becomes even more infamous when one of its guests vanishes. A dive into crime's darkest corners.",
+  "cover": "It's a documentary series. It all really happened.",
+  "src": "tmdb"
+ },
+ "tv:114705": {
+  "level": 5,
+  "story": "Under the sunny glamour of 1980s Los Angeles hides a relentlessly evil serial killer, and two detectives who won't rest until they catch him.",
+  "cover": "It's a documentary series. It all really happened.",
+  "src": "tmdb"
+ },
+ "movie:2260": {
+  "level": 5,
+  "story": "A middle-class American family is torn apart when the father and a son are accused of sexually abusing many children.",
+  "cover": "It's a documentary, built partly from the family's own home videos.",
+  "src": "tmdb + film"
+ },
+ "tv:96481": {
+  "level": 5,
+  "story": "A sultan wages an epic campaign to take a great imperial capital, changing the course of history for centuries.",
+  "cover": "It's a series that mixes drama with historians telling the real story.",
+  "src": "film"
+ },
+ "tv:105177": {
+  "level": 5,
+  "story": "Baffling disappearances, shocking murders and paranormal encounters, one case at a time.",
+  "cover": "It's a documentary series. Every case is real.",
+  "src": "tmdb"
+ },
+ "movie:1400782": {
+  "level": 5,
+  "story": "A long-running dispute between neighbours turns deadly, in a story about fear, prejudice and self-defence laws.",
+  "cover": "It's a documentary, told almost entirely through real police bodycam footage.",
+  "src": "tmdb"
+ },
+ "movie:1779": {
+  "level": 5,
+  "story": "A car factory closes in a Michigan town, wiping out thousands of jobs, and one man keeps trying to get an interview with the company's boss.",
+  "cover": "It's a documentary, and the man is the filmmaker, Michael Moore.",
+  "src": "tmdb + fact"
+ },
+ "tv:58957": {
+  "level": 5,
+  "story": "A self-proclaimed business expert helps small businesses make money with marketing ideas no normal consultant would ever dare to try.",
+  "cover": "It's real: the businesses and their owners are real people.",
+  "src": "tmdb"
+ },
+ "movie:988046": {
+  "level": 5,
+  "story": "A young mother's mysterious death and her son's kidnapping blow open a decades-long mystery about who she really was, and the murderous fugitive at the centre of it.",
+  "cover": "It's a documentary. It all really happened.",
+  "src": "tmdb"
+ }
+}

@@ -25,10 +25,10 @@ interface GameDef {
 
 export const GAMES: (GameDef & { id: GameId | string })[] = [
   // The season's games: always open, on real catalogue data (lib/games.ts).
-  { id: 'blind', name: 'Blind Taste Test', kind: 'season', icon: '?', acc: '#3ddc97', blurb: 'Just the story, no names, no poster. Would you watch it? Can you name it?',
-    rules: ['You get the real plot, retold without names or giveaways.', 'Would you watch it? Yes or no — that part teaches me.', 'Then pick which title it is, out of four.', 'Name as many as you can. Beat your best.'],
+  { id: 'blind', name: 'Blind Taste Test', kind: 'season', icon: '?', acc: '#3ddc97', blurb: 'Just the story, without its cover. Would you watch it? Then see what it really is.',
+    rules: ['You get a story with no title and no poster: nothing you\'d judge on sight.', 'Would you watch it? Answer on the story alone.', 'Then the cover: it\'s a cartoon, a series, an old film, in Korean…', 'Still in? That second answer shows what a cover changes for you.', 'Every level hides a different kind of cover.'],
     levels: LEVELS.blind.map(l => l.label),
-    teach: 'What they like about the story itself, without the poster or the hype.' },
+    teach: 'What they like in a story, and what puts them off before they read a word.' },
   { id: 'other', name: 'The Other Side of the Story', kind: 'season', icon: 'O', acc: '#ff5fa2', blurb: 'Famous stories, told only by their side characters.',
     rules: ['Each clue is the story told by one of its side characters, in their own words.', 'Type your guess any time: clue 1 is worth 5 points, clue 5 is worth 1.', 'From clue 4, pick from four options instead. A wrong guess unlocks the next clue.', 'Haven\'t seen it? Say so at any clue and move on.', 'Then tell me if you watched it for you or with the kids.'],
     levels: LEVELS.other.map(l => l.label),

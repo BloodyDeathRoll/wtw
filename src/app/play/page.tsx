@@ -10,16 +10,16 @@ import { createClient } from '@/lib/supabase/server'
 import { countUserSignals } from '@/lib/welcome'
 import type { AppUser } from '@/modules/session/types'
 import { loadPlay } from './lib/server'
-import { withBlindPlots, withSideClues } from './lib/games'
-import type { GameTitle, SideClue } from './lib/scales'
+import { withBlindCovers, withSideClues } from './lib/games'
+import type { BlindCover, GameTitle, SideClue } from './lib/scales'
 import rawTitles from './data/titles.json'
-import plotRewrites from './data/plot-rewrites.json'
+import blindCovers from './data/blind-covers.json'
 import otherClues from './data/other-clues.json'
 import PlayApp from './components/PlayApp'
 
 export const dynamic = 'force-dynamic'
 
-const titles = withSideClues(withBlindPlots(rawTitles as GameTitle[], plotRewrites), otherClues as Record<string, SideClue[]>)
+const titles = withSideClues(withBlindCovers(rawTitles as GameTitle[], blindCovers as Record<string, BlindCover>), otherClues as Record<string, SideClue[]>)
 
 const DEMO_USER: AppUser = { id: 'dev-demo', email: null, name: null, avatarUrl: null }
 

@@ -1,46 +1,76 @@
 'use client'
 /* The three season games' play screens. Logic and content: lib/games.ts; actions: PlayApp. */
 import { useEffect, useRef, useState } from 'react'
-import { LEVELS, OTHER_OPTIONS_FROM, blindPlot, hiloValue, otherPoints, sideClues, titleSearch } from '../lib/games'
+import { LEVELS, OTHER_OPTIONS_FROM, blindChips, hiloValue, otherPoints, sideClues, titleSearch } from '../lib/games'
 import type { Ctl } from './types'
 import { Poster, SaveRibbon } from './ui'
 
-const credits = (t: { creators: string[]; type: string }) => (t.creators.length ? `${t.type === 'tv' ? 'Created by' : 'Directed by'} ${t.creators.join(', ')}` : '')
+/** How long a finished screen takes to leave before the next one comes in (play.css, .blind-leave). */
+const BLIND_LEAVE_MS = 260
 
 export function BlindPlay({ ctl }: { ctl: Ctl }) {
   const b = ctl.ui.game!.blind!
   const t = b.deck[b.i]
+  const cover = t.cover!
   const last = b.i + 1 >= b.deck.length
+  const chips = blindChips(t)
+  const kind = t.type === 'tv' ? (t.seasons ? `Series · ${t.seasons} season${t.seasons > 1 ? 's' : ''}` : 'Series') : 'Movie'
+  // On "Longer than you think" the reveal itself says how long; don't say it twice.
+  const meta = [cover.level === 2 ? null : kind, t.year, t.where].filter(Boolean).join(' · ')
+  const trailer = t.trailer_key ? `https://www.youtube.com/watch?v=${t.trailer_key}` : null
+  // Let the finished screen glide out before the next one comes in (instant with reduced motion).
+  const [leaving, setLeaving] = useState(false)
+  const leave = (next: () => void) => {
+    if (leaving) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { next(); return }
+    setLeaving(true)
+    setTimeout(() => { setLeaving(false); next() }, BLIND_LEAVE_MS)
+  }
+  const done = b.i + (b.step === 'story' ? 0 : 1)
   return (
-    <div className="gstage">
-      <div className="ptsrow"><span>Story {b.i + 1} of {b.deck.length}</span><span>Named: <b>{b.named}</b></span></div>
-      {b.step !== 'reveal' && (
-        <div className="plot-card"><small>{t.blind ? 'The plot · no names, no title' : 'The plot · names blacked out'}</small><p>{blindPlot(t)}</p></div>
-      )}
-      {b.step === 'watch' && (
-        <>
-          <h2 className="gq">Would you watch it?</h2>
-          <div className="row-btns" style={{ width: '100%' }}>
-            <button className="opt primary" onClick={() => ctl.blindWatch(true)}>Yes, I would</button>
-            <button className="opt" onClick={() => ctl.blindWatch(false)}>Not for me</button>
+    <div className="gstage blind-play">
+      <div className="blind-dots" aria-label={`Story ${b.i + 1} of ${b.deck.length}`}>
+        {b.deck.map((x, k) => <i key={x.id} className={k < done ? 'on' : k === b.i ? 'now' : ''} />)}
+      </div>
+      {b.step === 'story' && (
+        <div key={`s${b.i}`} className={`blind-screen blind-story${leaving ? ' blind-leave fade' : ''}`}>
+          <h2 className="gq">Would you watch this?<span>Just the story. No title, no cover.</span></h2>
+          <div className="plot-card"><small>The story</small><p>{cover.story}</p>
+            {chips.length > 0 && <div className="blind-chips">{chips.map(x => <span key={x}>{x}</span>)}</div>}
           </div>
-        </>
-      )}
-      {b.step === 'name' && (
-        <>
-          <h2 className="gq">Which one is it?</h2>
-          <div className="choices">
-            {b.opts.map(o => <button key={o.id} className="choice" onClick={() => ctl.blindName(o)}>{o.title}<span>{o.year}</span></button>)}
+          <div className="row-btns">
+            <button className="opt" onClick={() => leave(() => ctl.blindWatch(false))}>Pass</button>
+            <button className="opt primary" onClick={() => leave(() => ctl.blindWatch(true))}>I&apos;d watch it</button>
           </div>
-        </>
+        </div>
       )}
-      {b.step === 'reveal' && b.last && (
-        <div className="reveal-card">
-          <div className={`verdict-tag ${b.last.correct ? 'ok' : 'no'}`}>{b.last.correct ? '✓ You named it' : '✗ Not quite'}</div>
-          <div className="reveal-poster"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="blind" /></div>
-          <h2>{t.title}</h2>
-          <p className="q">{t.year}{credits(t) ? ` · ${credits(t)}` : ''}</p>
-          <button className="cta" onClick={ctl.blindNext}>{last ? 'See how you did' : 'Next story'}</button>
+      {b.step !== 'story' && (
+        <div key={`r${b.i}`} className={`blind-screen reveal-card${leaving ? ' blind-leave' : ''}`}>
+          <small className="blind-eyebrow">{b.first ? 'You\'d watch it. Here\'s the cover' : 'You passed. Here\'s the cover'}</small>
+          <div className="reveal-poster blind-unveil"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="blind" />
+            {trailer && <a className="blind-trailer" href={trailer} target="_blank" rel="noopener noreferrer">▶ Trailer</a>}
+          </div>
+          <h2 className="blind-rise r1">{t.title}</h2>
+          <p className="q blind-rise r2">{meta}{t.rating ? <> · <span className="blind-star">★ {t.rating.toFixed(1)}</span></> : null}</p>
+          <p className="cover-line blind-rise r3">{cover.cover}</p>
+          {b.step === 'reveal' ? (
+            <div className="blind-after blind-rise r4">
+              <button className="cta" onClick={() => leave(() => ctl.blindAfter('keep'))}>{last ? 'See how you did' : 'Next story'}</button>
+              <div className="row-btns">
+                <button className="opt" onClick={() => ctl.blindAfter('seen')}>Seen it</button>
+                <button className="opt" onClick={() => leave(() => ctl.blindAfter('flip'))}>Changed my mind</button>
+              </div>
+            </div>
+          ) : (
+            <div key="seen" className="blind-after blind-rise">
+              <p className="seen-q">How was it?</p>
+              <div className="seen-btns three">
+                <button onClick={() => leave(() => ctl.blindSeen('loved'))}>Loved it</button>
+                <button onClick={() => leave(() => ctl.blindSeen('liked'))}>It was OK</button>
+                <button onClick={() => leave(() => ctl.blindSeen('disliked'))}>Not for me</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

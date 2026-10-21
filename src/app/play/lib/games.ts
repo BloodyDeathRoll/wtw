@@ -3,9 +3,10 @@
  * Blind Taste Test, The Other Side of the Story, Higher or Lower. All three
  * run on real catalogue data only — nothing is written or invented:
  *
- *   - Blind Taste Test: the TMDB plot retold without names or giveaways
- *     (data/plot-rewrites.json — re-worded and blurred, nothing added; Eran
- *     2026-10-18). Would you watch it? Then: which movie is it?
+ *   - Blind Taste Test, "book cover" edition (Eran 2026-10-21): the story
+ *     told without what people judge on sight (it's animated, a series, old,
+ *     not in English, a true story), from data/blind-covers.json. Would you
+ *     watch it? Then the cover is revealed, and they answer again.
  *   - The Other Side of the Story: five side characters each tell the story
  *     in their own words, hardest first (data/other-clues.json; real details
  *     from the film, not only TMDB's plot — Eran 2026-10-19, no big twists).
@@ -18,21 +19,29 @@
  * that game in Games (Eran's rule).
  */
 import { isBlocked, type PlayState, type Title } from './brain'
-import type { GameTitle, SideClue } from './scales'
+import type { BlindCover, GameTitle, SideClue } from './scales'
 
 export type GameKind = 'blind' | 'other' | 'hilo'
 
 // ── Levels ─────────────────────────────────────────────────────────
 
-export interface GameLevel { label: string; size: number; kind?: 'movie' | 'tv'; deep?: boolean; mode?: 'rating' | 'year' }
+export interface GameLevel {
+  label: string; size: number; kind?: 'movie' | 'tv'; deep?: boolean; mode?: 'rating' | 'year'
+  /** Blind Taste Test: which kind of cover the level hides (`BlindCover.level`). */
+  cover?: BlindCover['level']
+  /** Deal from the whole pool, famous and lesser-known alike. */
+  any?: boolean
+}
 
 export const LEVELS: Record<GameKind, GameLevel[]> = {
+  // Blind Taste Test (Eran 2026-10-21): five stories a round, each level
+  // hiding a different kind of cover. Level 1 opens the season's step.
   blind: [
-    { label: '6 plots', size: 6 },
-    { label: '8 plots', size: 8 },
-    { label: 'Series plots', size: 6, kind: 'tv' },
-    { label: 'Deep cuts', size: 8, deep: true },
-    { label: '10 plots', size: 10, deep: true },
+    { label: 'Not who you think', size: 5, cover: 1 },
+    { label: 'Longer than you think', size: 5, cover: 2, kind: 'tv', any: true },
+    { label: 'Older than it sounds', size: 5, cover: 3, any: true },
+    { label: 'Not in English', size: 5, cover: 4, any: true },
+    { label: 'Never heard of it', size: 5, cover: 5, any: true },
   ],
   other: [
     { label: '3 stories', size: 3 },
@@ -81,7 +90,7 @@ function poolFor(S: PlayState, T: Title[], g: GameKind, lv: GameLevel): Title[] 
 function byFame(pool: Title[], lv: GameLevel, rand: () => number, S?: PlayState): Title[] {
   const ok = pool.filter(t => !t.groups?.some(g => (S?.groupLean?.[g] ?? 0) <= -2))
   const famous = ok.filter(t => (lv.deep ? t.pop < 0.6 : t.pop >= 0.55))
-  const ordered = shuffle(famous.length >= lv.size * 2 ? famous : ok, rand)
+  const ordered = shuffle(!lv.any && famous.length >= lv.size * 2 ? famous : ok, rand)
   const out: Title[] = [], series = new Set<string>(), groups = new Set<string>()
   for (const t of ordered) {
     if (t.collection && series.has(t.collection)) continue
@@ -105,66 +114,48 @@ export function options(T: Title[], answer: Title, rand = Math.random): Title[] 
 
 // ── Blind Taste Test ──────────────────────────────────────────────────
 
-const STOP = new Set(['the', 'and', 'for', 'with', 'from', 'that', 'this', 'into', 'over', 'part', 'show', 'story', 'life', 'man', 'men', 'world', 'game', 'love', 'house', 'night', 'day', 'black', 'white', 'king', 'last', 'first', 'new', 'old', 'big', 'little', 'great', 'good', 'dark', 'war', 'time', 'one', 'two', 'three'])
-
 /**
- * Words to black out, each with whether case matters. Character names (full
- * and their parts) only match as Names, so "Nova Prime" hides "Prime" but not
- * "the prime target", and an "Agent Rhodes" leaves "an FBI agent" alone.
- * Title words match in any case: "interstellar" gives Interstellar away.
+ * Attach each title's Blind Taste Test cover (`GameTitle.cover`): the story
+ * told without what people judge on sight, and the line that reveals it.
  */
-function secretWords(t: Title): { w: string; exact: boolean }[] {
-  const words = new Map<string, boolean>()
-  const add = (w: string, exact: boolean) => words.set(w, (words.get(w) ?? true) && exact)
-  for (const c of t.characters) {
-    const clean = c.replace(/["'“”‘’]/g, ' ').replace(/\s+/g, ' ').trim()
-    if (clean.length >= 3) add(clean, true)
-    for (const part of clean.split(/[\s.,/-]+/)) if (part.length >= 3 && /^[A-Z]/.test(part) && !STOP.has(part.toLowerCase())) add(part, true)
-  }
-  for (const part of t.title.split(/[\s:,.!?'-]+/)) if (part.length >= 4 && !STOP.has(part.toLowerCase())) add(part, false)
-  for (const w of t.aliases ?? []) if (!STOP.has(w.toLowerCase())) add(w, false)
-  // A keyword the plot uses as a Name ("Batman") is a giveaway too.
-  for (const k of t.keywords ?? []) {
-    const cap = k[0].toUpperCase() + k.slice(1)
-    if (!STOP.has(k.toLowerCase()) && new RegExp(`\\b${escape(cap)}\\b`).test(t.overview)) add(cap, true)
-  }
-  return [...words].map(([w, exact]) => ({ w, exact })).sort((a, b) => b.w.length - a.w.length)
+export function withBlindCovers<T extends GameTitle>(titles: T[], covers: Record<string, BlindCover>): T[] {
+  return titles.map(t => (covers[t.id] ? { ...t, cover: covers[t.id] } : t))
 }
 
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-/** Below this a retold plot says too little to judge (e.g. "The early life of a boy genius."). */
-const MIN_BLIND = 45
-
-/**
- * Attach each title's retold plot (`GameTitle.blind`) — only where TMDB's
- * plot is still the one the rewrite was made from, so a changed plot falls
- * back to the blacked-out original instead of showing stale text.
- */
-export function withBlindPlots<T extends GameTitle>(titles: T[], rewrites: Record<string, { src: string; text: string }>): T[] {
-  return titles.map(t => (rewrites[t.id]?.src === t.overview ? { ...t, blind: rewrites[t.id].text } : t))
-}
-
-/** The plot a Blind Taste Test card shows: the retold one, else the original with names blacked out. */
-export const blindPlot = (t: Title): string => t.blind ?? redact(t)
-
-/**
- * The plot with names blacked out. Returns text with ▇ blocks in place of
- * each secret word ("▇▇▇▇'s" keeps a possessive readable). Nothing is
- * rewritten or added — the rest is TMDB's own overview.
- */
-export function redact(t: Title): string {
-  let text = t.overview
-  for (const { w, exact } of secretWords(t)) {
-    text = text.replace(new RegExp(`\\b${escape(w)}\\b`, exact ? 'g' : 'gi'), m => '▇'.repeat(Math.min(6, Math.max(3, Math.round(m.length / 2)))))
-  }
-  return text
-}
-
-export function blindDeck(S: PlayState, T: Title[], lv: GameLevel, rand = Math.random): Title[] {
-  // A plot needs to say something once the names are gone.
-  const pool = poolFor(S, T, 'blind', lv).filter(t => t.blind ? t.blind.length >= MIN_BLIND : t.overview.length >= 90 && redact(t).replace(/▇+/g, '').length >= 70)
+/** Stories at one Blind level, varied like the other decks. */
+function coverDeck(S: PlayState, T: Title[], lv: GameLevel, rand: () => number): Title[] {
+  const pool = poolFor(S, T, 'blind', lv).filter(t => t.cover?.level === lv.cover)
   return byFame(pool, lv, rand, S).slice(0, lv.size)
+}
+
+/**
+ * A round of Blind Taste Test at `level` (0-based). A level whose stories have
+ * run out hands over to the next one that still has a full round, so a keen
+ * player keeps playing until every level is spent.
+ */
+export function blindDeck(S: PlayState, T: Title[], level: number, rand = Math.random): { deck: Title[]; level: number } {
+  const levels = LEVELS.blind
+  for (let k = 0; k < levels.length; k++) {
+    const at = (level + k) % levels.length
+    const deck = coverDeck(S, T, levels[at], rand)
+    if (deck.length >= MIN_BLIND_ROUND) return { deck, level: at }
+  }
+  return { deck: [], level }
+}
+
+/** Fewer stories than this left at every level: Blind has run out for now. */
+const MIN_BLIND_ROUND = 3
+
+/**
+ * What the story card may show under the story without giving the cover
+ * away: nothing at all on "Longer than you think" (its cover is being a
+ * series), else movie or series and a movie's running time. Never a year,
+ * a genre or "animated".
+ */
+export function blindChips(t: Title): string[] {
+  if (t.cover?.level === 2) return []
+  if (t.type === 'tv') return ['Series']
+  return t.runtime ? ['Movie', `${Math.floor(t.runtime / 60)}h ${String(t.runtime % 60).padStart(2, '0')}m`] : ['Movie']
 }
 
 // ── The Other Side of the Story ───────────────────────────────────────
