@@ -31,7 +31,7 @@
     "@ai-sdk/react": "^4.0.136",
     "@ducanh2912/next-pwa": "^10",
     "@google/genai": "^2.6.0",
-    "@supabase/ssr": "^0.6",
+    "@supabase/ssr": "^0.12",
     "@supabase/supabase-js": "^2",
     "@upstash/redis": "^1",
     "ai": "^7.0.126",
