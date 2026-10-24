@@ -9,7 +9,7 @@ import {
 } from '../lib/brain'
 import { BLOCKS, PICKS_PER_BLOCK, ROUND_NAMES, genreName, isGameStep, seasonDone, type Cup } from '../lib/blocks'
 import type { Ctl } from './types'
-import { AxisRow, Icon, Poster, SaveRibbon, TopBar } from './ui'
+import { AxisRow, Icon, Marked, Poster, SaveRibbon, TopBar } from './ui'
 import { GAMES, GameScreen, GamesLobby } from './games'
 import Picks from './Picks'
 import { FinaleCard, FinaleScreen, SeasonBar, ShowdownScreen } from './season'
@@ -392,11 +392,6 @@ function ChampionScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
 }
 
 // ── end of a block ───────────────────────────────────────────────
-
-/** Renders `*word*` markers as highlighted words. */
-function Marked({ text }: { text: string }) {
-  return <>{text.split('*').map((part, i) => (i % 2 ? <em key={i}>{part}</em> : part))}</>
-}
 
 /**
  * The block's posters as a hand of cards. Up to 8 fit one fan; more (only

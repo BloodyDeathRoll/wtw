@@ -17,6 +17,11 @@ import type { Ctl } from './types'
  * docs/prototypes/watchlist/w1-styles.jpg). Its parent must be position:relative;
  * it sits beside the pick button, never inside it, so saving never picks.
  */
+/** Renders `*word*` markers as highlighted words. */
+export function Marked({ text }: { text: string }) {
+  return <>{text.split('*').map((part, i) => (i % 2 ? <em key={i}>{part}</em> : part))}</>
+}
+
 export function SaveRibbon({ ctl, t, from }: { ctl: Ctl; t: Title; from: SaveSource }) {
   const on = ctl.isSaved(t.id)
   return (
