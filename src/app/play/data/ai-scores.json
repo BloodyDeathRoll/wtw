@@ -5124,5 +5124,4908 @@
   "confirmed": [
    "horror"
   ]
+ },
+ "movie:115": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": -3,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:207": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:2048": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 2,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:161": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:562": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:36657": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 1,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:561": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:854": {
+  "tone": 4,
+  "energy": 3,
+  "pace": 3,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:127380": {
+  "tone": -3,
+  "energy": 2,
+  "pace": 2,
+  "dark": -4,
+  "complex": 0,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:37797": {
+  "tone": -3,
+  "energy": -4,
+  "pace": -3,
+  "dark": -5,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:2359": {
+  "tone": 0,
+  "energy": -3,
+  "pace": -2,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": -3,
+  "confirmed": []
+ },
+ "movie:152532": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:510": {
+  "tone": -4,
+  "energy": -4,
+  "pace": -3,
+  "dark": -3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:601": {
+  "tone": -2,
+  "energy": 0,
+  "pace": 0,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:18": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 4,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:110415": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 3,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:93456": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 2,
+  "dark": -4,
+  "complex": -2,
+  "fantastic": 3,
+  "humor": -2,
+  "confirmed": []
+ },
+ "movie:1359": {
+  "tone": 1,
+  "energy": -1,
+  "pace": 0,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:38757": {
+  "tone": 0,
+  "energy": 2,
+  "pace": 3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:23483": {
+  "tone": 0,
+  "energy": 4,
+  "pace": 4,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:196": {
+  "tone": 3,
+  "energy": 2,
+  "pace": 3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:670": {
+  "tone": -4,
+  "energy": -1,
+  "pace": 1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:310": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": 3,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:8358": {
+  "tone": -3,
+  "energy": 0,
+  "pace": -2,
+  "dark": -4,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:119450": {
+  "tone": -2,
+  "energy": 2,
+  "pace": 2,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:242582": {
+  "tone": -3,
+  "energy": 0,
+  "pace": 3,
+  "dark": 4,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:49530": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 5,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:604": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 1,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:530385": {
+  "tone": -1,
+  "energy": -2,
+  "pace": 1,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:453": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -1,
+  "dark": -2,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:508442": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 2,
+  "dark": -2,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:198375": {
+  "tone": -2,
+  "energy": -1,
+  "pace": -1,
+  "dark": -4,
+  "complex": 1,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:680058": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 3,
+  "dark": 2,
+  "complex": 0,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:314365": {
+  "tone": -4,
+  "energy": -3,
+  "pace": 1,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:621": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": -1,
+  "humor": -1,
+  "confirmed": []
+ },
+ "movie:679": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 5,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:629": {
+  "tone": -1,
+  "energy": 2,
+  "pace": 4,
+  "dark": 3,
+  "complex": 5,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:664413": {
+  "tone": -1,
+  "energy": -2,
+  "pace": 1,
+  "dark": 5,
+  "complex": 0,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:45243": {
+  "tone": 5,
+  "energy": 4,
+  "pace": 5,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": -2,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:1949": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 3,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:8681": {
+  "tone": -3,
+  "energy": 0,
+  "pace": 3,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:75612": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:458723": {
+  "tone": -2,
+  "energy": -1,
+  "pace": 2,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:266856": {
+  "tone": -5,
+  "energy": -3,
+  "pace": -2,
+  "dark": 1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:62211": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 2,
+  "dark": -2,
+  "complex": -2,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:38142": {
+  "tone": -3,
+  "energy": -4,
+  "pace": -3,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:377462": {
+  "tone": -4,
+  "energy": -2,
+  "pace": 1,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:487558": {
+  "tone": 3,
+  "energy": 0,
+  "pace": 2,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:762": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 3,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": 5,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:87": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:8844": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 4,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:598": {
+  "tone": -4,
+  "energy": 1,
+  "pace": 3,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:346698": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 2,
+  "dark": -3,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:458156": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:36557": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:4232": {
+  "tone": -1,
+  "energy": 2,
+  "pace": 3,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:19913": {
+  "tone": 3,
+  "energy": -2,
+  "pace": 0,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:211672": {
+  "tone": 4,
+  "energy": 3,
+  "pace": 3,
+  "dark": -2,
+  "complex": 0,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:125521": {
+  "tone": 4,
+  "energy": 2,
+  "pace": 3,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:627070": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 1,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:14574": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -3,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:948": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 0,
+  "dark": 5,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:620": {
+  "tone": 5,
+  "energy": 3,
+  "pace": 4,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:10020": {
+  "tone": 0,
+  "energy": -2,
+  "pace": 0,
+  "dark": -4,
+  "complex": -1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:619264": {
+  "tone": -2,
+  "energy": -1,
+  "pace": 3,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:787": {
+  "tone": 2,
+  "energy": 4,
+  "pace": 5,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:291805": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 5,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1091": {
+  "tone": -3,
+  "energy": -2,
+  "pace": 1,
+  "dark": 5,
+  "complex": 5,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:420817": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 3,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:502356": {
+  "tone": 4,
+  "energy": 4,
+  "pace": 5,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:420818": {
+  "tone": -1,
+  "energy": -2,
+  "pace": 0,
+  "dark": -2,
+  "complex": -2,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:149871": {
+  "tone": -3,
+  "energy": -4,
+  "pace": -3,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": 0,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:438446": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -1,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:616": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 1,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:583": {
+  "tone": 5,
+  "energy": 0,
+  "pace": 2,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": -4,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:106": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 4,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:602": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 2,
+  "complex": 0,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:8329": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 2,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:343668": {
+  "tone": 3,
+  "energy": 4,
+  "pace": 4,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 2,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:395992": {
+  "tone": -2,
+  "energy": -2,
+  "pace": 0,
+  "dark": 3,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:18239": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 1,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:301528": {
+  "tone": 3,
+  "energy": 2,
+  "pace": 2,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:242828": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -4,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:753230": {
+  "tone": -4,
+  "energy": 0,
+  "pace": 2,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:398978": {
+  "tone": -5,
+  "energy": -1,
+  "pace": -2,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:9659": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:268": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 4,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:10674": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 2,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:152584": {
+  "tone": -2,
+  "energy": -3,
+  "pace": -2,
+  "dark": -3,
+  "complex": 4,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:310131": {
+  "tone": -1,
+  "energy": -2,
+  "pace": 1,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:50620": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 0,
+  "dark": 1,
+  "complex": 1,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:82702": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 2,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:83389": {
+  "tone": -2,
+  "energy": -1,
+  "pace": -1,
+  "dark": -2,
+  "complex": 0,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:12237": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:3131": {
+  "tone": -4,
+  "energy": 1,
+  "pace": 2,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1367": {
+  "tone": -3,
+  "energy": 2,
+  "pace": 3,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:2108": {
+  "tone": 3,
+  "energy": 0,
+  "pace": 1,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:627": {
+  "tone": -4,
+  "energy": 0,
+  "pace": 1,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:11216": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -2,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:282035": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:50646": {
+  "tone": 3,
+  "energy": -1,
+  "pace": 1,
+  "dark": -2,
+  "complex": -2,
+  "fantastic": -4,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:9479": {
+  "tone": 0,
+  "energy": 0,
+  "pace": 1,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:18491": {
+  "tone": -4,
+  "energy": 0,
+  "pace": -1,
+  "dark": 5,
+  "complex": 5,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:962697": {
+  "tone": -3,
+  "energy": -3,
+  "pace": -2,
+  "dark": 4,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:676": {
+  "tone": -4,
+  "energy": 2,
+  "pace": 3,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:840": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 0,
+  "dark": -2,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:4011": {
+  "tone": 4,
+  "energy": 0,
+  "pace": 2,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:564": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:520763": {
+  "tone": -5,
+  "energy": 4,
+  "pace": 5,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:122906": {
+  "tone": -2,
+  "energy": -2,
+  "pace": 0,
+  "dark": -3,
+  "complex": 3,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:950": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": 3,
+  "humor": -2,
+  "confirmed": []
+ },
+ "movie:916224": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:17204": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -1,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:7446": {
+  "tone": 5,
+  "energy": 3,
+  "pace": 4,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": -2,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:11886": {
+  "tone": 0,
+  "energy": 2,
+  "pace": 2,
+  "dark": -2,
+  "complex": -3,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:10144": {
+  "tone": 0,
+  "energy": 0,
+  "pace": 1,
+  "dark": -1,
+  "complex": -2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:954": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:2668": {
+  "tone": -2,
+  "energy": 1,
+  "pace": 2,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:50619": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 4,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:330457": {
+  "tone": 3,
+  "energy": 2,
+  "pace": 2,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": 4,
+  "humor": 1,
+  "confirmed": []
+ },
+ "movie:810693": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 1,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:381028": {
+  "tone": -4,
+  "energy": 2,
+  "pace": 3,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:53182": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 3,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:7340": {
+  "tone": -2,
+  "energy": 1,
+  "pace": 2,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:380": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -1,
+  "dark": -2,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:49018": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:24021": {
+  "tone": -1,
+  "energy": 2,
+  "pace": 2,
+  "dark": 1,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:504253": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1261924": {
+  "tone": -5,
+  "energy": -3,
+  "pace": -2,
+  "dark": 5,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:80278": {
+  "tone": -4,
+  "energy": 3,
+  "pace": 4,
+  "dark": 4,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1924": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 2,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:927": {
+  "tone": 3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:1933": {
+  "tone": -4,
+  "energy": -2,
+  "pace": 1,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:55931": {
+  "tone": -3,
+  "energy": 2,
+  "pace": 3,
+  "dark": 1,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:682587": {
+  "tone": -4,
+  "energy": 1,
+  "pace": 0,
+  "dark": -3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:1579": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 5,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:11778": {
+  "tone": -5,
+  "energy": -3,
+  "pace": -2,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1368": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 4,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:439079": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 2,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:347201": {
+  "tone": 4,
+  "energy": 3,
+  "pace": 3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:473415": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:855": {
+  "tone": -4,
+  "energy": 5,
+  "pace": 5,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:829": {
+  "tone": -2,
+  "energy": -1,
+  "pace": 1,
+  "dark": 5,
+  "complex": 5,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:235": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 1,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:381283": {
+  "tone": -1,
+  "energy": -2,
+  "pace": 0,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:126963": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1229958": {
+  "tone": -4,
+  "energy": -1,
+  "pace": 0,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:12162": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 4,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:703": {
+  "tone": 5,
+  "energy": -3,
+  "pace": 1,
+  "dark": -2,
+  "complex": 4,
+  "fantastic": -5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:88": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 0,
+  "dark": -3,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:315465": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 2,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:259910": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": -4,
+  "complex": 0,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:117": {
+  "tone": -4,
+  "energy": 1,
+  "pace": 3,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:252": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": 3,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:10228": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1061117": {
+  "tone": -2,
+  "energy": -3,
+  "pace": 1,
+  "dark": 4,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:568": {
+  "tone": -4,
+  "energy": 2,
+  "pace": 4,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:30497": {
+  "tone": -3,
+  "energy": 0,
+  "pace": 1,
+  "dark": 5,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:13398": {
+  "tone": 2,
+  "energy": 0,
+  "pace": 1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:1662317": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 0,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:375262": {
+  "tone": 0,
+  "energy": -2,
+  "pace": -1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": -3,
+  "confirmed": []
+ },
+ "movie:3034": {
+  "tone": 4,
+  "energy": 0,
+  "pace": 2,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": 3,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:37933": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 0,
+  "dark": 1,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:810731": {
+  "tone": -4,
+  "energy": -1,
+  "pace": 1,
+  "dark": 4,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:968": {
+  "tone": -3,
+  "energy": 2,
+  "pace": 4,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:667520": {
+  "tone": 0,
+  "energy": -3,
+  "pace": -2,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:850329": {
+  "tone": -4,
+  "energy": 0,
+  "pace": 1,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:13223": {
+  "tone": -5,
+  "energy": -3,
+  "pace": -2,
+  "dark": 3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:411": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:51876": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:338952": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 4,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:2080": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 1,
+  "complex": 0,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:497698": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 0,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:577922": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 4,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:580489": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:206647": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 4,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 0,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:84892": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:293167": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 1,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:9799": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:36658": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:361743": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 4,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 0,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:294254": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:64688": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 2,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": 0,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:41154": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 2,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:641": {
+  "tone": -5,
+  "energy": -1,
+  "pace": -2,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": 0,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:359940": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 0,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:791373": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 5,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:1593": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": 4,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:58574": {
+  "tone": -2,
+  "energy": 2,
+  "pace": 2,
+  "dark": 3,
+  "complex": 3,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:59967": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:495764": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 4,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:181812": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 3,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:605": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:337339": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 5,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:56292": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:399566": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:608": {
+  "tone": 4,
+  "energy": 3,
+  "pace": 3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 3,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:1402": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -1,
+  "dark": -4,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:36668": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 2,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:453395": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:392044": {
+  "tone": -2,
+  "energy": -1,
+  "pace": 0,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:566525": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:13475": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 4,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:283366": {
+  "tone": 0,
+  "energy": 1,
+  "pace": 2,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:454626": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 4,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:262500": {
+  "tone": -4,
+  "energy": 2,
+  "pace": 3,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:17654": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:70": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -1,
+  "dark": 2,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:76170": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 4,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:568124": {
+  "tone": 2,
+  "energy": 0,
+  "pace": 1,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:8960": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 1,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:287947": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 2,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:337404": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:5915": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -3,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:2501": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:591": {
+  "tone": -2,
+  "energy": -1,
+  "pace": 1,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:399579": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 4,
+  "dark": 3,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:316029": {
+  "tone": -1,
+  "energy": -2,
+  "pace": 0,
+  "dark": -4,
+  "complex": -1,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:107": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 3,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": -2,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:13183": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 4,
+  "complex": 4,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:550988": {
+  "tone": 5,
+  "energy": 3,
+  "pace": 4,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:9738": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:156022": {
+  "tone": -4,
+  "energy": 4,
+  "pace": 5,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:9741": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:180": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 3,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:318846": {
+  "tone": 3,
+  "energy": 0,
+  "pace": 1,
+  "dark": -3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:810": {
+  "tone": 4,
+  "energy": 2,
+  "pace": 2,
+  "dark": -3,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:9487": {
+  "tone": 5,
+  "energy": 3,
+  "pace": 3,
+  "dark": -4,
+  "complex": 0,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:124905": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 5,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:273481": {
+  "tone": -4,
+  "energy": 3,
+  "pace": 4,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:177677": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 5,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:436969": {
+  "tone": 2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:264644": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:54138": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:68724": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 3,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:646380": {
+  "tone": 3,
+  "energy": 1,
+  "pace": 2,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": 3,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:138832": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:10625": {
+  "tone": 4,
+  "energy": -2,
+  "pace": 1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": 1,
+  "confirmed": []
+ },
+ "movie:512200": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 4,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:330": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:348350": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 2,
+  "dark": 1,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:524434": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 2,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:74": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 3,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:109439": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 3,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": -2,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:39254": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:63": {
+  "tone": -2,
+  "energy": 1,
+  "pace": 2,
+  "dark": 3,
+  "complex": 5,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:47971": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 5,
+  "dark": 1,
+  "complex": 0,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:8373": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:275": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 1,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:76492": {
+  "tone": 3,
+  "energy": 0,
+  "pace": 1,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:45612": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:353081": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 5,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 0,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:464052": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:450465": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:50014": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -1,
+  "dark": -2,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:315162": {
+  "tone": 4,
+  "energy": 2,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": 5,
+  "humor": 1,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:14836": {
+  "tone": -2,
+  "energy": -1,
+  "pace": 1,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:114": {
+  "tone": 5,
+  "energy": -3,
+  "pace": 1,
+  "dark": -4,
+  "complex": -3,
+  "fantastic": -4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:217": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 4,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:254128": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:391713": {
+  "tone": 0,
+  "energy": -2,
+  "pace": -1,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": -5,
+  "humor": -3,
+  "confirmed": []
+ },
+ "movie:4951": {
+  "tone": 2,
+  "energy": 0,
+  "pace": 0,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": -1,
+  "confirmed": []
+ },
+ "movie:137": {
+  "tone": 3,
+  "energy": -1,
+  "pace": -2,
+  "dark": -4,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:38356": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 4,
+  "dark": 2,
+  "complex": 0,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:508943": {
+  "tone": 1,
+  "energy": 0,
+  "pace": 1,
+  "dark": -2,
+  "complex": 0,
+  "fantastic": 4,
+  "humor": 0,
+  "confirmed": []
+ },
+ "movie:87101": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:68734": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:569094": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:187": {
+  "tone": -2,
+  "energy": 1,
+  "pace": 2,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:435": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 4,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": [
+   "action"
+  ]
+ },
+ "movie:8355": {
+  "tone": 3,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": 4,
+  "humor": -2,
+  "confirmed": []
+ },
+ "movie:616037": {
+  "tone": 2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:533535": {
+  "tone": 4,
+  "energy": 5,
+  "pace": 4,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 3,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:402900": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 3,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": -4,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:38700": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:4348": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": -2,
+  "complex": 0,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:91314": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:594": {
+  "tone": 1,
+  "energy": -2,
+  "pace": 1,
+  "dark": -3,
+  "complex": -1,
+  "fantastic": -4,
+  "humor": 1,
+  "confirmed": []
+ },
+ "movie:95": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:466282": {
+  "tone": 4,
+  "energy": -1,
+  "pace": 1,
+  "dark": -4,
+  "complex": -2,
+  "fantastic": -4,
+  "humor": 1,
+  "confirmed": []
+ },
+ "movie:290250": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -3,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:22538": {
+  "tone": 4,
+  "energy": 2,
+  "pace": 3,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:447365": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 4,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:315837": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 2,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:10764": {
+  "tone": -4,
+  "energy": 4,
+  "pace": 5,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:35": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": 4,
+  "humor": 2,
+  "confirmed": []
+ },
+ "movie:187017": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 1,
+  "fantastic": -3,
+  "humor": 4,
+  "confirmed": []
+ },
+ "movie:615457": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 5,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:254": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:949": {
+  "tone": -3,
+  "energy": 5,
+  "pace": 5,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:137106": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 3,
+  "dark": -4,
+  "complex": -2,
+  "fantastic": 4,
+  "humor": -2,
+  "confirmed": []
+ },
+ "movie:328111": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -5,
+  "complex": -3,
+  "fantastic": 3,
+  "humor": -1,
+  "confirmed": []
+ },
+ "movie:49013": {
+  "tone": 3,
+  "energy": 2,
+  "pace": 3,
+  "dark": -4,
+  "complex": -2,
+  "fantastic": 3,
+  "humor": 0,
+  "confirmed": []
+ },
+ "movie:537915": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:278927": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 2,
+  "dark": -3,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:339846": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 4,
+  "dark": 0,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": 1,
+  "confirmed": []
+ },
+ "movie:198184": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 4,
+  "dark": 3,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "movie:335797": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -5,
+  "complex": -2,
+  "fantastic": 4,
+  "humor": 0,
+  "confirmed": []
+ },
+ "movie:2105": {
+  "tone": 5,
+  "energy": 0,
+  "pace": 1,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "movie:1979": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 4,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1981": {
+  "tone": 0,
+  "energy": -1,
+  "pace": -1,
+  "dark": -2,
+  "complex": -2,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:72844": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:110316": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1438": {
+  "tone": -5,
+  "energy": -2,
+  "pace": 0,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:95396": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 2,
+  "complex": 5,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:62127": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 2,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:61374": {
+  "tone": -4,
+  "energy": 0,
+  "pace": 1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:45782": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:4194": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 4,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:70881": {
+  "tone": 3,
+  "energy": 3,
+  "pace": 3,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:32608": {
+  "tone": -1,
+  "energy": -2,
+  "pace": -1,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:71789": {
+  "tone": -4,
+  "energy": 5,
+  "pace": 5,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:47": {
+  "tone": 5,
+  "energy": -3,
+  "pace": 2,
+  "dark": -5,
+  "complex": -2,
+  "fantastic": -5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:1400": {
+  "tone": 5,
+  "energy": -4,
+  "pace": 1,
+  "dark": -3,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": 5,
+  "confirmed": []
+ },
+ "tv:1920": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 0,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:96677": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 4,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:92783": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": 4,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:95057": {
+  "tone": -3,
+  "energy": 0,
+  "pace": -1,
+  "dark": -2,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:90802": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:153312": {
+  "tone": -1,
+  "energy": 2,
+  "pace": 3,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:107113": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:38472": {
+  "tone": -1,
+  "energy": 2,
+  "pace": 1,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:47640": {
+  "tone": -2,
+  "energy": 2,
+  "pace": 3,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:10545": {
+  "tone": 0,
+  "energy": 0,
+  "pace": 1,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:1433": {
+  "tone": 5,
+  "energy": 0,
+  "pace": 1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -3,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:31911": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:77601": {
+  "tone": -1,
+  "energy": -1,
+  "pace": -2,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1104": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -1,
+  "dark": 1,
+  "complex": 4,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:7842": {
+  "tone": 5,
+  "energy": -2,
+  "pace": 0,
+  "dark": -5,
+  "complex": -2,
+  "fantastic": -4,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:655": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 2,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1892": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 3,
+  "dark": -4,
+  "complex": -3,
+  "fantastic": -5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:62455": {
+  "tone": -4,
+  "energy": -2,
+  "pace": 2,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:97546": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": -5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:62710": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 4,
+  "dark": 1,
+  "complex": 5,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:58841": {
+  "tone": -4,
+  "energy": -1,
+  "pace": 1,
+  "dark": 2,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:693": {
+  "tone": 3,
+  "energy": -3,
+  "pace": 1,
+  "dark": 0,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:62046": {
+  "tone": 2,
+  "energy": 1,
+  "pace": 3,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 1,
+  "humor": 4,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:45950": {
+  "tone": 4,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:31132": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 4,
+  "dark": -2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:120089": {
+  "tone": 5,
+  "energy": 4,
+  "pace": 4,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:90": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -3,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:83100": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 2,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1781": {
+  "tone": -3,
+  "energy": -1,
+  "pace": -2,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:57706": {
+  "tone": 4,
+  "energy": 2,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": 3,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:60572": {
+  "tone": -1,
+  "energy": 2,
+  "pace": 2,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:4614": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 1,
+  "dark": 0,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:62264": {
+  "tone": 3,
+  "energy": 4,
+  "pace": 4,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 3,
+  "humor": 4,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:89641": {
+  "tone": 0,
+  "energy": -3,
+  "pace": -1,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:95594": {
+  "tone": 0,
+  "energy": 5,
+  "pace": 5,
+  "dark": -1,
+  "complex": -2,
+  "fantastic": -2,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:114410": {
+  "tone": 0,
+  "energy": 4,
+  "pace": 4,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:209167": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": 5,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1621": {
+  "tone": -3,
+  "energy": 0,
+  "pace": 1,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": [
+   "war"
+  ]
+ },
+ "tv:2207": {
+  "tone": 5,
+  "energy": -2,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": -5,
+  "humor": -3,
+  "confirmed": []
+ },
+ "tv:42444": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 2,
+  "dark": 0,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:105": {
+  "tone": 3,
+  "energy": -1,
+  "pace": 1,
+  "dark": -1,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:84661": {
+  "tone": -4,
+  "energy": 0,
+  "pace": 1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": 1,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:90260": {
+  "tone": 1,
+  "energy": -2,
+  "pace": 1,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": 4,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:93741": {
+  "tone": 0,
+  "energy": 4,
+  "pace": 3,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:73223": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:79126": {
+  "tone": -3,
+  "energy": 0,
+  "pace": -1,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:113962": {
+  "tone": -3,
+  "energy": 0,
+  "pace": 1,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:873": {
+  "tone": -2,
+  "energy": -1,
+  "pace": 0,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:2384": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:890": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -1,
+  "dark": 5,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:45790": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:76121": {
+  "tone": 0,
+  "energy": 1,
+  "pace": 2,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:63401": {
+  "tone": 4,
+  "energy": 0,
+  "pace": 1,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:204284": {
+  "tone": 5,
+  "energy": -3,
+  "pace": 2,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:80307": {
+  "tone": -2,
+  "energy": 1,
+  "pace": 2,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:918": {
+  "tone": 3,
+  "energy": 0,
+  "pace": 1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:4658": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 3,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": 3,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:12697": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 5,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:200875": {
+  "tone": -4,
+  "energy": 0,
+  "pace": 1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": -1,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:100883": {
+  "tone": 3,
+  "energy": -3,
+  "pace": 1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -3,
+  "humor": 3,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:2098": {
+  "tone": -3,
+  "energy": 3,
+  "pace": 4,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:34014": {
+  "tone": 5,
+  "energy": -2,
+  "pace": 0,
+  "dark": -4,
+  "complex": -1,
+  "fantastic": -3,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:6040": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 5,
+  "dark": 0,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "war"
+  ]
+ },
+ "tv:9160": {
+  "tone": -2,
+  "energy": -3,
+  "pace": -1,
+  "dark": -4,
+  "complex": 0,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:4239": {
+  "tone": 5,
+  "energy": 2,
+  "pace": 3,
+  "dark": -2,
+  "complex": -3,
+  "fantastic": -2,
+  "humor": 1,
+  "confirmed": []
+ },
+ "tv:95": {
+  "tone": 2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:42671": {
+  "tone": -4,
+  "energy": 0,
+  "pace": -1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:16420": {
+  "tone": 3,
+  "energy": -3,
+  "pace": 0,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": -4,
+  "humor": 4,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:4686": {
+  "tone": 4,
+  "energy": 3,
+  "pace": 4,
+  "dark": -3,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:70824": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 0,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:67026": {
+  "tone": -2,
+  "energy": 2,
+  "pace": 3,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -3,
+  "humor": null,
+  "confirmed": [
+   "thriller"
+  ]
+ },
+ "tv:57911": {
+  "tone": 4,
+  "energy": 2,
+  "pace": 3,
+  "dark": -2,
+  "complex": 1,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:4313": {
+  "tone": 5,
+  "energy": -4,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": -4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:30991": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 4,
+  "dark": 1,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:61459": {
+  "tone": -2,
+  "energy": 2,
+  "pace": 2,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": [
+   "horror",
+   "thriller"
+  ]
+ },
+ "tv:117581": {
+  "tone": 2,
+  "energy": -2,
+  "pace": 1,
+  "dark": 0,
+  "complex": 0,
+  "fantastic": -4,
+  "humor": 2,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:92685": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": 5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:26101": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -1,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:116135": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 4,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:19649": {
+  "tone": -5,
+  "energy": -3,
+  "pace": -2,
+  "dark": 3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1988": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 3,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:4629": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:109958": {
+  "tone": -2,
+  "energy": -3,
+  "pace": -1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:21421": {
+  "tone": -3,
+  "energy": -2,
+  "pace": 0,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:88803": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 3,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:16118": {
+  "tone": -1,
+  "energy": -2,
+  "pace": -2,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:1516": {
+  "tone": 3,
+  "energy": 4,
+  "pace": 3,
+  "dark": -2,
+  "complex": -1,
+  "fantastic": -1,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:2085": {
+  "tone": 1,
+  "energy": 0,
+  "pace": -1,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:76307": {
+  "tone": -4,
+  "energy": -2,
+  "pace": 0,
+  "dark": 4,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:87917": {
+  "tone": -3,
+  "energy": 2,
+  "pace": 2,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:648": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:4500": {
+  "tone": 4,
+  "energy": -3,
+  "pace": 0,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": -5,
+  "humor": 1,
+  "confirmed": []
+ },
+ "tv:4709": {
+  "tone": -5,
+  "energy": 4,
+  "pace": 5,
+  "dark": -1,
+  "complex": -3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:4331": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": -2,
+  "complex": 0,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:2391": {
+  "tone": 0,
+  "energy": -1,
+  "pace": 1,
+  "dark": 5,
+  "complex": 4,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": [
+   "horror"
+  ]
+ },
+ "tv:1639": {
+  "tone": -1,
+  "energy": 2,
+  "pace": 2,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:39272": {
+  "tone": -1,
+  "energy": 0,
+  "pace": -2,
+  "dark": -3,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:62643": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1437": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:71914": {
+  "tone": -3,
+  "energy": 0,
+  "pace": -1,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:44006": {
+  "tone": -4,
+  "energy": 1,
+  "pace": 1,
+  "dark": -1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:65494": {
+  "tone": -5,
+  "energy": -3,
+  "pace": -2,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:71915": {
+  "tone": 3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:68421": {
+  "tone": -2,
+  "energy": 2,
+  "pace": 2,
+  "dark": 3,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:102903": {
+  "tone": -3,
+  "energy": -2,
+  "pace": 0,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1395": {
+  "tone": -2,
+  "energy": -4,
+  "pace": -3,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:92830": {
+  "tone": -2,
+  "energy": 0,
+  "pace": 1,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:125988": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": 4,
+  "complex": 4,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:30984": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 2,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:46298": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 0,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:11250": {
+  "tone": -4,
+  "energy": -3,
+  "pace": -2,
+  "dark": 3,
+  "complex": 1,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:18347": {
+  "tone": 5,
+  "energy": -3,
+  "pace": 2,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": -4,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:1419": {
+  "tone": -1,
+  "energy": 1,
+  "pace": 1,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": -4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:83867": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 3,
+  "dark": 3,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:67198": {
+  "tone": -2,
+  "energy": 2,
+  "pace": 1,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1411": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:62126": {
+  "tone": 0,
+  "energy": 3,
+  "pace": 2,
+  "dark": -1,
+  "complex": 1,
+  "fantastic": 2,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:74428": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 1,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:90239": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 3,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:61550": {
+  "tone": -2,
+  "energy": 1,
+  "pace": 1,
+  "dark": -2,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:66573": {
+  "tone": 4,
+  "energy": 0,
+  "pace": 2,
+  "dark": -1,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:60573": {
+  "tone": 5,
+  "energy": -2,
+  "pace": 1,
+  "dark": -5,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:2038": {
+  "tone": 5,
+  "energy": -3,
+  "pace": 0,
+  "dark": -4,
+  "complex": -2,
+  "fantastic": -5,
+  "humor": 1,
+  "confirmed": []
+ },
+ "tv:31586": {
+  "tone": -4,
+  "energy": -2,
+  "pace": 1,
+  "dark": 5,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:68507": {
+  "tone": -1,
+  "energy": 3,
+  "pace": 2,
+  "dark": 3,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:67070": {
+  "tone": 3,
+  "energy": 0,
+  "pace": 2,
+  "dark": 1,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": 5,
+  "confirmed": []
+ },
+ "tv:61664": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 1,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:75758": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:85949": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 0,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1606": {
+  "tone": -4,
+  "energy": -1,
+  "pace": 0,
+  "dark": 1,
+  "complex": 1,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:114868": {
+  "tone": -2,
+  "energy": 4,
+  "pace": 5,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:8592": {
+  "tone": 5,
+  "energy": -3,
+  "pace": 1,
+  "dark": -4,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:32798": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 4,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1415": {
+  "tone": -3,
+  "energy": -2,
+  "pace": 0,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:105248": {
+  "tone": -1,
+  "energy": 5,
+  "pace": 5,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:73375": {
+  "tone": -3,
+  "energy": 4,
+  "pace": 5,
+  "dark": 3,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:46639": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 1,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:127532": {
+  "tone": -2,
+  "energy": 5,
+  "pace": 4,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:79696": {
+  "tone": -3,
+  "energy": 0,
+  "pace": 2,
+  "dark": 1,
+  "complex": 3,
+  "fantastic": 4,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:111110": {
+  "tone": 0,
+  "energy": 4,
+  "pace": 3,
+  "dark": -1,
+  "complex": 2,
+  "fantastic": 3,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:12926": {
+  "tone": -4,
+  "energy": -1,
+  "pace": -2,
+  "dark": -3,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1972": {
+  "tone": -2,
+  "energy": 3,
+  "pace": 3,
+  "dark": 4,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:46786": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -1,
+  "dark": 5,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:61617": {
+  "tone": 1,
+  "energy": 0,
+  "pace": 1,
+  "dark": 3,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:61056": {
+  "tone": -2,
+  "energy": 1,
+  "pace": 2,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:85723": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:1973": {
+  "tone": -3,
+  "energy": 0,
+  "pace": 5,
+  "dark": 2,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:136315": {
+  "tone": 0,
+  "energy": -3,
+  "pace": 3,
+  "dark": 1,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:64464": {
+  "tone": -4,
+  "energy": -2,
+  "pace": 1,
+  "dark": 4,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:77606": {
+  "tone": 4,
+  "energy": 1,
+  "pace": 2,
+  "dark": -2,
+  "complex": -2,
+  "fantastic": 4,
+  "humor": -1,
+  "confirmed": []
+ },
+ "tv:37606": {
+  "tone": 3,
+  "energy": -1,
+  "pace": 1,
+  "dark": -3,
+  "complex": -1,
+  "fantastic": 5,
+  "humor": 5,
+  "confirmed": []
+ },
+ "tv:39340": {
+  "tone": 5,
+  "energy": -4,
+  "pace": 2,
+  "dark": -4,
+  "complex": -3,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:66292": {
+  "tone": -2,
+  "energy": -3,
+  "pace": 0,
+  "dark": 4,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:93740": {
+  "tone": -3,
+  "energy": 1,
+  "pace": 2,
+  "dark": 3,
+  "complex": 5,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:31251": {
+  "tone": 4,
+  "energy": -2,
+  "pace": 1,
+  "dark": -4,
+  "complex": -2,
+  "fantastic": -3,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:124834": {
+  "tone": -1,
+  "energy": -4,
+  "pace": -2,
+  "dark": -3,
+  "complex": -1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": [
+   "romance"
+  ]
+ },
+ "tv:115004": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -3,
+  "dark": 0,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:76331": {
+  "tone": 0,
+  "energy": -1,
+  "pace": 0,
+  "dark": 3,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": 3,
+  "confirmed": []
+ },
+ "tv:1620": {
+  "tone": -3,
+  "energy": -1,
+  "pace": 0,
+  "dark": 1,
+  "complex": 0,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:64432": {
+  "tone": -2,
+  "energy": 0,
+  "pace": 1,
+  "dark": 2,
+  "complex": 4,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:80743": {
+  "tone": -1,
+  "energy": 0,
+  "pace": 1,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": 4,
+  "confirmed": []
+ },
+ "tv:1420": {
+  "tone": 5,
+  "energy": 1,
+  "pace": 2,
+  "dark": -3,
+  "complex": -2,
+  "fantastic": -5,
+  "humor": 2,
+  "confirmed": []
+ },
+ "tv:8358": {
+  "tone": -3,
+  "energy": -2,
+  "pace": -1,
+  "dark": 2,
+  "complex": 1,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:4589": {
+  "tone": 1,
+  "energy": 0,
+  "pace": 1,
+  "dark": 3,
+  "complex": 3,
+  "fantastic": -5,
+  "humor": 5,
+  "confirmed": []
+ },
+ "tv:86430": {
+  "tone": -4,
+  "energy": -2,
+  "pace": -2,
+  "dark": 4,
+  "complex": 2,
+  "fantastic": -5,
+  "humor": null,
+  "confirmed": []
+ },
+ "tv:62285": {
+  "tone": -1,
+  "energy": 4,
+  "pace": 4,
+  "dark": 2,
+  "complex": 2,
+  "fantastic": 5,
+  "humor": null,
+  "confirmed": []
  }
 }
