@@ -34,6 +34,8 @@ import { LEVELS, blindDeck, otherDeck, hiloNext as hiloChallenger, hiloValue, ma
 import type { SavedPlay } from '../lib/server'
 import { readLocal, usePersistence } from './persist'
 import { demoStateAt } from '../lib/demo'
+import { markSixServed, sixDeal, type SixChain } from '../lib/six'
+import sixChains from '../data/six-chains.json'
 import { SAVED_FROM, loadAccountWatchlist, saveTitle, savedIds, unsaveTitle, type SaveSource } from '../lib/watchlist'
 import type { BlindRun, Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
 import { GAMES } from './games'
@@ -361,6 +363,14 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     }, [])
   }
 
+  /** Six Degrees: the next chain on a fresh board, or back to the lobby when every chain has been played. */
+  function sixDealRun(g: GameRun): GameRun | null {
+    const chain = sixDeal(S, sixChains as SixChain[], T)
+    if (!chain) { toast('You\'ve played every chain for now. More are coming.'); return null }
+    markSixServed(S, chain)
+    return { ...g, phase: 'play', six: { chain, deal: (g.six?.deal ?? 0) + 1 } }
+  }
+
   /** A season game is over: close the step (path) or show the game's result (Games). */
   function finishGame(g: GameRun, result: { big: string; headline: string; lines: string[]; score: number; cleared: boolean; posters: Title[] }, events: PlayEvent[]) {
     const id = g.id as GameKind
@@ -632,6 +642,27 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       void leave('/?stage=recommendations')
     },
 
+    sixNext() {
+      const g = ui.game
+      if (!g) return
+      const next = sixDealRun(g)
+      if (next) set({ game: next }); else set({ game: null, screen: 'games' })
+      commit()
+    },
+    sixLog(kind, payload) {
+      const six = ui.game?.six
+      if (six) commit([{ kind, item_key: six.chain.id, payload: { chain: six.chain.id, ...payload } }])
+    },
+    sixFinish(r) {
+      const six = ui.game?.six
+      if (!six) return
+      const gp = (S.games.six ??= { level: 0, plays: 0 })
+      gp.plays++
+      S.gamePlays++
+      if (r.solved) (S.gameBest ??= {}).six = Math.max(S.gameBest?.six ?? 0, r.points)
+      note(S, `Six Degrees: ${six.chain.actors[0].name} to ${six.chain.actors[5].name}, ${r.solved ? `solved for ${r.points} of 5` : 'out of tries'}`)
+      commit([{ kind: 'six_done', item_key: six.chain.id, payload: { chain: six.chain.id, ...r } }])
+    },
     blindWatch(yes) {
       const g = ui.game, b = g?.blind
       if (!g || !b) return
@@ -747,6 +778,12 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     beginGame() {
       const g = ui.game
       if (!g) return
+      if (g.id === 'six') {
+        const next = sixDealRun(g)
+        if (next) set({ game: next })
+        commit()
+        return
+      }
       const lv = (S.games[g.id] ??= { level: 0, plays: 0 }).level
       if (g.id === 'blind' || g.id === 'other' || g.id === 'hilo') {
         const run = initGame(g.id, Math.min(lv, 4), false)

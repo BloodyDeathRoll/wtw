@@ -978,3 +978,100 @@
   .wtw-play .blind-story,.wtw-play .blind-leave,.wtw-play .blind-unveil,.wtw-play .blind-rise{animation:none}
   .wtw-play .blind-dots i::after{transition:none}
 }
+
+/* Six Degrees (2026-10-24; prototype docs/prototypes/six-degrees/play.html). The chain is a stack of
+   fixed slots that rows glide between; the ending is style C, the timeline Eran picked. */
+.wtw-play .six{--six-acc:#4fc3f7;--six-acc-soft:rgba(79,195,247,.10);--six-acc-line:rgba(79,195,247,.42);--six-good:#3ddc97;--six-good-soft:rgba(61,220,151,.13);--six-card:#161618;--six-card2:#1f1f24;--six-line:rgba(255,255,255,.09);
+  align-items:stretch;gap:12px;padding-top:6px}
+.wtw-play .six-goal{margin:0;font-size:15px;line-height:1.4;color:#cfcfd5;text-wrap:balance}
+.wtw-play .six-goal b{color:#fff}
+.wtw-play .six-status{min-height:22px;margin:0;font-size:15px;font-weight:600;color:var(--muted)}
+.wtw-play .six-status.good{color:var(--six-good)}.wtw-play .six-status.acc{color:var(--six-acc)}
+.wtw-play .six-result{display:flex;flex-direction:column;gap:2px}
+.wtw-play .six-result .big{font-family:var(--poster);font-size:38px;line-height:1;letter-spacing:.02em}
+.wtw-play .six-result .big.win{color:var(--six-good)}
+.wtw-play .six-result p{margin:0;color:var(--muted);font-size:15px}
+.wtw-play .six-hints{display:flex;flex-direction:column;gap:8px;background:var(--six-acc-soft);border:1px solid var(--six-acc-line);border-radius:14px;padding:10px 12px}
+.wtw-play .six-hints > small{font-size:11.5px;letter-spacing:.09em;font-weight:700;color:var(--six-acc);text-transform:uppercase}
+.wtw-play .six-tiles{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr))}
+.wtw-play .six-tile{display:flex;gap:10px;align-items:center;min-width:0;padding-right:10px;perspective:600px}
+.wtw-play .six-tile + .six-tile{border-left:1px solid var(--six-acc-line);padding-left:10px}
+.wtw-play .six-tiles.n3 .six-tile{flex-direction:column;align-items:flex-start;gap:6px}
+.wtw-play .six-tile img{width:40px;height:60px;border-radius:6px;object-fit:cover;flex:none;box-shadow:0 6px 18px rgba(0,0,0,.6)}
+.wtw-play .six-tile .tt{min-width:0}
+.wtw-play .six-tile b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:14.5px;line-height:1.2}
+.wtw-play .six-tile span{font-size:12.5px;color:var(--muted)}
+.wtw-play .six-chain{position:relative;transition:height .5s cubic-bezier(.22,1,.36,1)}
+.wtw-play .six-chain.end::before{content:"";position:absolute;left:14px;top:20px;bottom:20px;width:2px;background:rgba(61,220,151,.4)}
+.wtw-play .six-row{position:absolute;left:0;right:0;height:52px;display:flex;align-items:center;gap:10px;padding:0 10px 0 7px;
+  background:var(--six-card);border:1px solid var(--six-line);border-radius:16px;user-select:none;-webkit-user-select:none;
+  transition:top .38s cubic-bezier(.22,1,.36,1),height .38s cubic-bezier(.22,1,.36,1),background .3s,border-color .3s,box-shadow .3s}
+.wtw-play .six-row img,.wtw-play .six-row .noimg{width:38px;height:38px;border-radius:50%;object-fit:cover;object-position:center 20%;flex:none;pointer-events:none;background:var(--six-card2)}
+.wtw-play .six-row .nm{flex:1;min-width:0;font-size:17px;font-weight:600;line-height:1.15}
+.wtw-play .six-row .as{display:flex;gap:10px;margin-top:2px;overflow:hidden;white-space:nowrap;min-width:0}
+.wtw-play .six-row .as i{font-style:normal;font-size:12px;font-weight:500;color:#b4b4bb;overflow:hidden;text-overflow:ellipsis;min-width:3.6em;flex:0 1 auto}
+.wtw-play .six-row .as i b{color:var(--six-acc);font-weight:800;margin-right:3px}
+.wtw-play .six-row .tag{font-size:11px;letter-spacing:.1em;font-weight:700;color:var(--six-acc)}
+.wtw-play .six-row .grip{width:12px;display:grid;grid-template-columns:repeat(2,4px);gap:4px;justify-content:center}
+.wtw-play .six-row .grip i{width:4px;height:4px;border-radius:50%;background:var(--dim)}
+.wtw-play .six-row.move{cursor:grab;touch-action:none}
+.wtw-play .six-row:focus-visible{outline:2px solid var(--six-acc);outline-offset:2px}
+.wtw-play .six-row.is-end{background:#0e0e11;border-color:var(--six-acc-line)}
+.wtw-play .six-row.right{background:var(--six-good-soft);border-color:var(--six-good)}
+.wtw-play .six-row.right .who::after{content:"✓";margin-left:8px;color:var(--six-good);font-weight:800}
+.wtw-play .six-row.dragging{transition:background .3s,border-color .3s,box-shadow .2s;z-index:5;box-shadow:0 14px 34px rgba(0,0,0,.6);border-color:rgba(255,255,255,.35);transform:scale(1.03);cursor:grabbing}
+.wtw-play .six-row.flip{animation:six-flip .38s ease-in-out}
+.wtw-play .six-row.glow{animation:six-glow 1.1s ease-out}
+.wtw-play .six-row.missed{border-color:var(--six-acc-line)}
+.wtw-play .six-chain.end .six-row{height:40px;border-radius:12px;padding:0 12px 0 0;gap:10px;background:transparent;border-color:transparent}
+.wtw-play .six-chain.end .six-row img{width:30px;height:30px;position:relative;box-shadow:0 0 0 3px var(--bg)}
+.wtw-play .six-chain.end .six-row .nm{font-size:15.5px}
+.wtw-play .six-chain.shake{animation:six-shake .4s ease}
+.wtw-play .six-film{position:absolute;left:40px;right:0;height:50px;display:flex;align-items:center;gap:12px;padding:0 6px 0 10px;border-radius:12px;background:var(--six-good-soft);animation:six-slide .5s cubic-bezier(.22,1,.36,1) both}
+.wtw-play .six-film.lose{background:var(--six-acc-soft)}
+.wtw-play .six-film img{width:30px;height:45px;border-radius:5px;object-fit:cover;flex:none}
+.wtw-play .six-film .ft{flex:1;min-width:0}
+.wtw-play .six-film b{display:block;font-size:15.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtw-play .six-film .ft span{font-size:13px;color:var(--muted)}
+.wtw-play .six-rib{position:relative;width:36px;height:44px;flex:none}
+.wtw-play .six-tries{display:flex;justify-content:center;align-items:center;gap:7px;font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.wtw-play .six-tries i{width:10px;height:10px;border-radius:50%;background:var(--six-acc);transition:background .4s,transform .4s}
+.wtw-play .six-tries i.off{background:#2b2b31;transform:scale(.8)}
+/* Pinned so three film hints can't push the buttons off screen. No backdrop: the screen's gradient shows through. */
+.wtw-play .six-foot{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));margin-top:auto;display:flex;flex-direction:column;gap:10px;padding-top:10px;z-index:6}
+.wtw-play .six-actions{display:grid;grid-template-columns:1fr 1.5fr;gap:10px}
+.wtw-play .six-actions .opt{height:56px;border-radius:999px;font-size:18px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+.wtw-play .six-actions .cta{max-width:none;height:56px}
+.wtw-play .six-actions button:disabled{opacity:.35}
+.wtw-play .six-actions .count{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:rgba(255,255,255,.12);font-size:13px}
+.wtw-play .six-next{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));margin-top:auto;padding-top:10px;z-index:6}
+.wtw-play .six .drop{animation:six-drop .5s cubic-bezier(.22,1,.36,1) both}
+.wtw-play .six .six-tile.drop img{animation:six-turn .7s .15s cubic-bezier(.22,1,.36,1) both}
+.wtw-play .six .rise{animation:six-rise .5s cubic-bezier(.22,1,.36,1) both}
+@keyframes six-flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+@keyframes six-glow{0%{box-shadow:0 0 0 0 rgba(61,220,151,.75)}100%{box-shadow:0 0 0 14px rgba(61,220,151,0)}}
+@keyframes six-shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+@keyframes six-slide{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+@keyframes six-drop{from{opacity:0;transform:translateY(-16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes six-turn{from{transform:rotateY(90deg)}to{transform:none}}
+@keyframes six-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .wtw-play .six *,.wtw-play .six{animation:none!important;transition:none!important}
+}
+.wtw-play .six-rib .rib{right:2px;top:2px}
+
+/* One button look across every game (Eran, 2026-10-24: "make sure all the buttons are the same").
+   Every button on a game screen is a 56px pill with 18px text: primary in the orange gradient,
+   secondary in the same dark pill. Answer lists (.choice) and The Bet's stars keep their own shape. */
+.wtw-play .screen.game-screen :is(.cta,.opt,.ghost,.seen-btns button){height:56px;min-height:56px;border-radius:999px;font-size:18px;line-height:1.1;padding:0 16px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border:0}
+.wtw-play .screen.game-screen :is(.cta,.opt.primary){font-weight:700}
+.wtw-play .screen.game-screen :is(.opt:not(.primary),.ghost,.seen-btns button){background:var(--pill-dark);color:#fff;font-weight:600}
+.wtw-play .screen.game-screen .cta{width:100%;max-width:none}
+.wtw-play .screen.game-screen .row-btns{width:100%;gap:12px}
+.wtw-play .screen.game-screen .row-btns > *{flex:1;min-width:0}
+.wtw-play .screen.game-screen .seen-btns.three button{padding:0 8px}
+.wtw-play .screen.game-screen .actions{width:100%;padding-left:22px;padding-right:22px}
+.wtw-play .screen.game-screen .actions > *{flex:1}
+.wtw-play .learned-box em{font-style:normal;font-weight:700;color:#fff}
+.wtw-play .screen.game-screen .gover > .cta{margin-top:auto}

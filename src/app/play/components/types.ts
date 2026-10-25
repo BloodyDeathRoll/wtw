@@ -4,6 +4,7 @@ import type { GameGenre } from '../lib/genres'
 import type { Scale } from '../lib/scales'
 import type { Format, Huh, HuhAnswer, Hunch, Pair, PickReaction, PlayState, Title, UnlockId } from '../lib/brain'
 import type { BlockType, Cup, SpecialType } from '../lib/blocks'
+import type { SixChain } from '../lib/six'
 
 export type Screen =
   | 'intro' | 'setup' | 'duel' | 'hunch' | 'huh'
@@ -68,7 +69,7 @@ export interface MindRun {
   pair: Pair | null; guess: 'a' | 'b'; sure: boolean
 }
 
-export type GameId = 'bet' | 'mind' | 'blind' | 'other' | 'hilo'
+export type GameId = 'bet' | 'mind' | 'blind' | 'other' | 'hilo' | 'six'
 
 /**
  * Blind Taste Test: the story without its cover → would you watch it? → the
@@ -119,6 +120,8 @@ export interface GameRun {
   bet?: BetRun
   mind?: MindRun
   blind?: BlindRun
+  /** Six Degrees: the chain on the board; `deal` keys the screen so each chain starts fresh. */
+  six?: { chain: SixChain; deal: number }
   other?: OtherRun
   hilo?: HiloRun
   summary?: Summary
@@ -209,6 +212,10 @@ export interface Ctl {
   blindAfter(v: 'keep' | 'flip' | 'seen'): void
   blindSeen(r: 'loved' | 'liked' | 'disliked'): void
   /** `typed`: named from memory rather than picked from the four answers — a stronger sign of having seen it. */
+  /** Six Degrees: deal the next chain, record a check or hint, close a chain. */
+  sixNext(): void
+  sixLog(kind: 'six_check' | 'six_hint', payload: Record<string, unknown>): void
+  sixFinish(r: { solved: boolean; checks: number; hints: number; points: number }): void
   otherGuess(t: Title, typed?: boolean): void
   otherClue(): void
   otherSeen(v: 'me' | 'kids' | 'both' | 'no'): void
