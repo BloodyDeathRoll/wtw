@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(
           cookiesToSet: { name: string; value: string; options: CookieOptions }[],
-          headers: Record<string, string>
+          headers?: Record<string, string>
         ) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
           // @supabase/ssr >= 0.12 hands over Cache-Control/Expires/Pragma with
           // the auth cookies: a response that sets a session token must never
           // be cached by a CDN, or one user's token could be served to another.
-          Object.entries(headers).forEach(([key, value]) =>
+          Object.entries(headers ?? {}).forEach(([key, value]) =>
             supabaseResponse.headers.set(key, value)
           );
         },
