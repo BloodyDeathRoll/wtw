@@ -28,7 +28,7 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 3. **Skip** is available after the genres (confirm sheet) and lands on recommendations. Skipped players see a "Finish calibration" card every 15 recommendations.
 4. **Finishing the season opens the app's real recommendations.** The games' own picks screen (`Picks.tsx`) can no longer be reached.
 5. **Blind Taste Test is the "book cover" game** (2026-10-21): the story told without what you'd judge on sight, then the reveal and "still in?". Five levels by kind of cover; content in `data/blind-covers.json`.
-6. **Six Degrees** (2026-10-24): a new Games-tab game — order six actors into a chain; characters with ↑↓, film hints, timeline ending. 12 chains at launch (strict variety rules); more need the wider title set. Chains: `npm run build-six-chains`.
+6. **Six Degrees** (2026-10-24): a new Games-tab game — order six actors into a chain; characters with ↑↓, film hints, timeline ending. 38 chains since the 980-title set (strict variety rules). Chains: `npm run build-six-chains`.
 7. **Games tab** (home's Games button, menu "Play" → `/play?tab=games`): Blind Taste Test, The Other Side, Higher or Lower (always open, 5 levels each); The Bet and Mind Reader (after the season); "Soon": Choose the Ending, Movie Night Planner, Upgrade, Recast. **Restart calibration** is here too.
 8. **Watchlist ribbon** on every poster saves into the app's one synced watchlist; a save counts as a taste signal.
 

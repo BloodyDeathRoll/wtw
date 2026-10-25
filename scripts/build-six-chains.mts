@@ -38,10 +38,13 @@ const SKIP = new Set([
   'Chiwetel Ejiofor', 'Stanley Tucci', 'Sonoya Mizuno', 'Jon Favreau', 'Wes Bentley', 'Domhnall Gleeson', 'Jeffrey Wright',
   'Gwendoline Christie', 'Kelly Macdonald', 'Jaimie Alexander', 'Pom Klementieff', 'Danai Gurira', 'Bonnie Wright',
   'Evanna Lynch', 'Katie Leung', 'Carmen Ejogo', 'Ron Perlman', 'Benedict Wong',
+  // 2026-10-25, the 980-title set
+  'Michael Stuhlbarg', 'Richard Armitage', 'Elizabeth Reaser', 'Scoot McNairy', 'Harry Lennix', 'Harold Perrineau',
+  'Henry Thomas', 'David Wenham', 'Demián Bichir', 'Melissa Leo', 'Patricia Clarkson', 'Philip Stone', 'Brion James', 'William Atherton',
 ])
 /** Variety (Eran, 2026-10-24: "Tyler/Marla, the Red and White Queens, all on repeat"): a link once, a film twice, a face three times. */
-/** Launch with the 12 best of the 25 strict chains (Eran, 2026-10-24); the rest wait for later. */
-const WALKS = 120_000, CHECK_TOP = 3_500, KEEP = 12, MAX_PER_ACTOR = 3, MAX_PER_FILM = 2, MIN_WOMEN = 2
+/** Launched with the 12 best of 25 (2026-10-24); on the 980-title set every strict chain goes in (Eran, 2026-10-25). */
+const WALKS = 120_000, CHECK_TOP = 3_500, KEEP = 200, MAX_PER_ACTOR = 3, MAX_PER_FILM = 2, MIN_WOMEN = 2
 
 interface GameTitle { id: string; tmdb_id: string; type: 'movie' | 'tv'; title: string; year: number; poster_path: string | null; votes: number; collection: string | null; groups?: string[] }
 interface Cast { id: number; name: string; img: string | null; role: string }

@@ -10,6 +10,7 @@
  *   npm run build-play-titles -- --batches 2      # score only 2 batches (a trial), then assemble what exists
  *   npm run build-play-titles                     # everything
  *   npm run build-play-titles -- --reselect       # pick a fresh set (new titles get scored)
+ *   npm run build-play-titles -- --grow 500       # keep the scored set, add 500 more (gap-weighted)
  *
  * The set is PINNED once scored: a re-run keeps exactly the titles already in
  * ai-scores.json (the nightly catalogue growth would otherwise shuffle the
@@ -57,6 +58,8 @@ function intEnv(name: string, def: number): number {
 const args = process.argv.slice(2)
 const SELECT_ONLY = args.includes('--select-only')
 const RESELECT = args.includes('--reselect')
+/** --grow N: keep every scored title and add N more, weighted toward what the set lacks (Eran, 2026-10-24). */
+const GROW = args.includes('--grow') ? Number(args[args.indexOf('--grow') + 1]) || 0 : 0
 const BATCH_LIMIT = (() => { const i = args.indexOf('--batches'); return i >= 0 ? parseInt(args[i + 1], 10) : Infinity })()
 
 const TOTAL = { movie: intEnv('MOVIES', 320), tv: intEnv('SERIES', 180) }
@@ -437,10 +440,39 @@ async function main() {
   ).map(c => cands.find(x => x.id === c.id)!)
   const cached = await readJSON<Record<string, AIScore>>(SCORES_FILE, {})
   const pinned = !RESELECT && Object.keys(cached).length > 0
-  const set = pinned
+  let set = pinned
     ? [...movies, ...series].filter(c => cached[c.id])
     : [...pick(movies, 'movie'), ...pick(series, 'tv')]
   if (pinned) console.log(`[play-titles] set pinned to the ${set.length} already-scored titles (--reselect to start over)`)
+  if (GROW && pinned) {
+    // The first 500 are mostly recent blockbusters: no 80s, 90s, comedy or drama chains for Six Degrees,
+    // 20 non-English titles for Blind's level 4. Older decades and other languages get their own quota
+    // here, on top of the usual per-genre quota, and are picked most-voted first like everything else.
+    const BUCKETS = ['era:pre-1980', 'era:1980s', 'era:1990s', 'lang:other'] as const
+    const bucketsOf = (c: Candidate): string[] => [
+      ...(c.release_year && c.release_year < 1980 ? ['era:pre-1980'] : []),
+      ...(c.release_year && c.release_year >= 1980 && c.release_year < 1990 ? ['era:1980s'] : []),
+      ...(c.release_year && c.release_year >= 1990 && c.release_year < 2000 ? ['era:1990s'] : []),
+      ...(c.original_language && c.original_language !== 'en' ? ['lang:other'] : []),
+    ]
+    const have = new Set(set.map(c => c.id))
+    const grow = (cands: Candidate[], type: 'movie' | 'tv') => {
+      const share = Math.round(GROW * TOTAL[type] / (TOTAL.movie + TOTAL.tv))
+      return selectBalanced(
+        cands.filter(c => !have.has(c.id)).map(c => ({ ...c, genres: [...c.genres_all, ...bucketsOf(c)] as GameGenre[] })),
+        { perGenre: Math.ceil(PER_GENRE[type] * 0.8), total: share, genres: [...GAME_GENRE_IDS, ...BUCKETS] as unknown as GameGenre[] },
+      ).map(c => cands.find(x => x.id === c.id)!)
+    }
+    const added = [...grow(movies, 'movie'), ...grow(series, 'tv')]
+    const era = (c: Candidate) => (c.release_year ?? 2000) < 1980 ? 'pre-1980' : (c.release_year ?? 2000) < 1990 ? '1980s' : (c.release_year ?? 2000) < 2000 ? '1990s' : (c.release_year ?? 2000) < 2010 ? '2000s' : '2010+'
+    const tally = (xs: Candidate[], f: (c: Candidate) => string) => Object.entries(xs.reduce<Record<string, number>>((m, c) => ({ ...m, [f(c)]: (m[f(c)] ?? 0) + 1 }), {})).sort().map(([k, v]) => `${k} ${v}`).join(' · ')
+    console.log(`[play-titles] growing by ${added.length}: ${added.filter(c => c.type === 'movie').length} movies, ${added.filter(c => c.type === 'tv').length} series`)
+    console.log(`  decades before: ${tally(set, era)}\n  decades added:  ${tally(added, era)}`)
+    console.log(`  non-English before: ${set.filter(c => c.original_language !== 'en').length} · added: ${added.filter(c => c.original_language !== 'en').length}`)
+    genreReport('added movies', added.filter(c => c.type === 'movie').map(c => ({ genres: c.genres_all })))
+    genreReport('added series', added.filter(c => c.type === 'tv').map(c => ({ genres: c.genres_all })))
+    set = [...set, ...added]
+  }
 
   console.log('[play-titles] selected, by possible genre (keyword/adventure hints not yet confirmed):')
   genreReport('movies', set.filter(c => c.type === 'movie').map(c => ({ genres: c.genres_all })))
