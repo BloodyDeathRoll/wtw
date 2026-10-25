@@ -48,7 +48,7 @@ export function SixPlay({ ctl }: { ctl: Ctl }) {
     setDrag({ k, y0: e.clientY, top0: topOf(pos), y: e.clientY })
   }
   function move(e: React.PointerEvent) {
-    if (!drag) return
+    if (!drag || busy) return   // a check or hint started mid-drag: its green spots must not take a swap
     setDrag({ ...drag, y: e.clientY })
     const top = drag.top0 + e.clientY - drag.y0, to = Math.round(top / (ROW + GAP))
     setBoard(b => {
@@ -58,6 +58,16 @@ export function SixPlay({ ctl }: { ctl: Ctl }) {
     })
   }
   const drop = () => setDrag(null)
+  // Keyboard: ↑/↓ on a focused row swaps it with the nearest free slot that way (the drag, without a pointer).
+  function nudge(k: number, dir: -1 | 1) {
+    const pos = board.indexOf(k)
+    if (!movable(pos)) return
+    let to = pos + dir
+    while (to >= 1 && to <= 4 && right.has(to)) to += dir
+    if (to < 1 || to > 4) return
+    const next = board.slice(); [next[pos], next[to]] = [next[to], next[pos]]
+    setBoard(next)
+  }
 
   // ── check: the middle rows flip one after another and land green when they're in the right spot ──
   async function check() {
@@ -168,7 +178,13 @@ export function SixPlay({ ctl }: { ctl: Ctl }) {
             movable(pos) ? 'move' : '', drag?.k === k ? 'dragging' : '', flip === pos ? 'flip' : '', glow === pos ? 'glow' : '', missed.has(pos) ? 'missed' : ''].filter(Boolean).join(' ')
           return (
             <div key={a.id} className={cls} style={{ top }}
-              onPointerDown={e => grab(e, k)} onPointerMove={move} onPointerUp={drop} onPointerCancel={drop}>
+              onPointerDown={e => grab(e, k)} onPointerMove={move} onPointerUp={drop} onPointerCancel={drop}
+              {...(movable(pos) ? {
+                tabIndex: 0, role: 'button', 'aria-label': `${a.name}, place ${pos + 1} of 6. Arrow up or down to move.`,
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); nudge(k, e.key === 'ArrowUp' ? -1 : 1) }
+                },
+              } : {})}>
               {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
               {a.img ? <img src={`${IMG}w185${a.img}`} alt="" /> : <span className="noimg" />}
               <span className="nm">

@@ -1015,6 +1015,7 @@
 .wtw-play .six-row .grip{width:12px;display:grid;grid-template-columns:repeat(2,4px);gap:4px;justify-content:center}
 .wtw-play .six-row .grip i{width:4px;height:4px;border-radius:50%;background:var(--dim)}
 .wtw-play .six-row.move{cursor:grab;touch-action:none}
+.wtw-play .six-row:focus-visible{outline:2px solid var(--six-acc);outline-offset:2px}
 .wtw-play .six-row.is-end{background:#0e0e11;border-color:var(--six-acc-line)}
 .wtw-play .six-row.right{background:var(--six-good-soft);border-color:var(--six-good)}
 .wtw-play .six-row.right .who::after{content:"✓";margin-left:8px;color:var(--six-good);font-weight:800}
