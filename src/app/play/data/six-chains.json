@@ -1,0 +1,1070 @@
+[
+ {
+  "id": "six:74568-524-25072-3-2975-9273",
+  "actors": [
+   {
+    "id": 74568,
+    "name": "Chris Hemsworth",
+    "img": "/piQGdoIQOF3C1EI5cbYZLAW1gfj.jpg",
+    "roles": [
+     "Thor"
+    ]
+   },
+   {
+    "id": 524,
+    "name": "Natalie Portman",
+    "img": "/edPU5HxncLWa1YkgRPNkSd68ONG.jpg",
+    "roles": [
+     "Jane Foster",
+     "Lena"
+    ]
+   },
+   {
+    "id": 25072,
+    "name": "Oscar Isaac",
+    "img": "/dW5U5yrIIPmMjRThR9KT2xH6nTz.jpg",
+    "roles": [
+     "Kane",
+     "Poe Dameron"
+    ]
+   },
+   {
+    "id": 3,
+    "name": "Harrison Ford",
+    "img": "/pjBMJVPpcZK23Vt1nzr1zEBTWrP.jpg",
+    "roles": [
+     "Han Solo",
+     "Colonel"
+    ]
+   },
+   {
+    "id": 2975,
+    "name": "Laurence Fishburne",
+    "img": "/2GbXERENPpl5MmlqOLlPVaVtifD.jpg",
+    "roles": [
+     "Tyrone 'Clean' Miller",
+     "Perry White"
+    ]
+   },
+   {
+    "id": 9273,
+    "name": "Amy Adams",
+    "img": "/gn0K6c6d1L6qQrRc86iL8uyIqiF.jpg",
+    "roles": [
+     "Lois"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:10195",
+    "title": "Thor",
+    "year": 2011,
+    "poster": "/prSfAi1xGrhLQNxVSUFh61xQ4Qy.jpg"
+   },
+   {
+    "id": "movie:300668",
+    "title": "Annihilation",
+    "year": 2018,
+    "poster": "/4YRplSk6BhH6PRuE9gfyw9byUJ6.jpg"
+   },
+   {
+    "id": "movie:140607",
+    "title": "Star Wars: The Force Awakens",
+    "year": 2015,
+    "poster": "/wqnLdwVXoBjKibFRR5U3y0aDUhs.jpg"
+   },
+   {
+    "id": "movie:28",
+    "title": "Apocalypse Now",
+    "year": 1979,
+    "poster": "/gQB8Y5RCMkv2zwzFHbUJX3kAhvA.jpg"
+   },
+   {
+    "id": "movie:209112",
+    "title": "Batman v Superman: Dawn of Justice",
+    "year": 2016,
+    "poster": "/5UsK3grJvtQrtzEgqNlDljJW96w.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:1037-2231-6193-287-1283-1813",
+  "actors": [
+   {
+    "id": 1037,
+    "name": "Harvey Keitel",
+    "img": "/7P30hza1neYWW3r7rSQOC736K2Z.jpg",
+    "roles": [
+     "The Wolf"
+    ]
+   },
+   {
+    "id": 2231,
+    "name": "Samuel L. Jackson",
+    "img": "/AiAYAqwpM5xmiFrAIeQvUXDCVvo.jpg",
+    "roles": [
+     "Jules Winnfield",
+     "Stephen"
+    ]
+   },
+   {
+    "id": 6193,
+    "name": "Leonardo DiCaprio",
+    "img": "/wo2hJpn04vbtmh0B9utCFdsQhxM.jpg",
+    "roles": [
+     "Calvin J. Candie",
+     "Rick Dalton"
+    ]
+   },
+   {
+    "id": 287,
+    "name": "Brad Pitt",
+    "img": "/ajNaPmXVVMJFg9GWmu6MJzTaXdV.jpg",
+    "roles": [
+     "Cliff Booth",
+     "Tyler Durden"
+    ]
+   },
+   {
+    "id": 1283,
+    "name": "Helena Bonham Carter",
+    "img": "/hJMbNSPJ2PCahsP3rNEU39C8GWU.jpg",
+    "roles": [
+     "Marla Singer",
+     "Iracebeth / Red Queen"
+    ]
+   },
+   {
+    "id": 1813,
+    "name": "Anne Hathaway",
+    "img": "/s6tflSD20MGz04ZR2R1lZvhmC4Y.jpg",
+    "roles": [
+     "Mirana / White Queen"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:680",
+    "title": "Pulp Fiction",
+    "year": 1994,
+    "poster": "/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg"
+   },
+   {
+    "id": "movie:68718",
+    "title": "Django Unchained",
+    "year": 2012,
+    "poster": "/7oWY8VDWW7thTzWh3OKYRkWUlD5.jpg"
+   },
+   {
+    "id": "movie:466272",
+    "title": "Once Upon a Time... in Hollywood",
+    "year": 2019,
+    "poster": "/8j58iEBw9pOXFD2L0nt0ZXeHviB.jpg"
+   },
+   {
+    "id": "movie:550",
+    "title": "Fight Club",
+    "year": 1999,
+    "poster": "/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg"
+   },
+   {
+    "id": "movie:12155",
+    "title": "Alice in Wonderland",
+    "year": 2010,
+    "poster": "/o0kre9wRCZz3jjSjaru7QU0UtFz.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:10980-10990-3061-524-91606-1245",
+  "actors": [
+   {
+    "id": 10980,
+    "name": "Daniel Radcliffe",
+    "img": "/uUFfo8RANo7tuckB6AZAnESne55.jpg",
+    "roles": [
+     "Harry Potter"
+    ]
+   },
+   {
+    "id": 10990,
+    "name": "Emma Watson",
+    "img": "/mf0OANvWYSzU1d8yggrhyw8IbIz.jpg",
+    "roles": [
+     "Hermione Granger",
+     "Belle"
+    ]
+   },
+   {
+    "id": 3061,
+    "name": "Ewan McGregor",
+    "img": "/q2UDxfwWnmXTB7khOUF3J9puBVP.jpg",
+    "roles": [
+     "Lumière",
+     "Obi-Wan Kenobi"
+    ]
+   },
+   {
+    "id": 524,
+    "name": "Natalie Portman",
+    "img": "/edPU5HxncLWa1YkgRPNkSd68ONG.jpg",
+    "roles": [
+     "Padmé Amidala",
+     "Jane Foster"
+    ]
+   },
+   {
+    "id": 91606,
+    "name": "Tom Hiddleston",
+    "img": "/mclHxMm8aPlCPKptP67257F5GPo.jpg",
+    "roles": [
+     "Loki",
+     "Loki"
+    ]
+   },
+   {
+    "id": 1245,
+    "name": "Scarlett Johansson",
+    "img": "/tgxYh3jMs5bY2Ub4d2dcp9iaz1R.jpg",
+    "roles": [
+     "Natasha Romanoff / Black Widow"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:671",
+    "title": "Harry Potter and the Philosopher's Stone",
+    "year": 2001,
+    "poster": "/wuMc08IPKEatf9rnMNXvIDxqP4W.jpg"
+   },
+   {
+    "id": "movie:321612",
+    "title": "Beauty and the Beast",
+    "year": 2017,
+    "poster": "/hKegSKIDep2ewJWPUQD7u0KqFIp.jpg"
+   },
+   {
+    "id": "movie:1893",
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "year": 1999,
+    "poster": "/6wkfovpn7Eq8dYNKaG5PY3q2oq6.jpg"
+   },
+   {
+    "id": "movie:10195",
+    "title": "Thor",
+    "year": 2011,
+    "poster": "/prSfAi1xGrhLQNxVSUFh61xQ4Qy.jpg"
+   },
+   {
+    "id": "movie:24428",
+    "title": "The Avengers",
+    "year": 2012,
+    "poster": "/RYMX2wcKCBAr24UyPD7xwmjaTn.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:103-6193-9273-17604-71580-1267329",
+  "actors": [
+   {
+    "id": 103,
+    "name": "Mark Ruffalo",
+    "img": "/5GilHMOt5PAQh6rlUKZzGmaKEI7.jpg",
+    "roles": [
+     "Chuck Aule"
+    ]
+   },
+   {
+    "id": 6193,
+    "name": "Leonardo DiCaprio",
+    "img": "/wo2hJpn04vbtmh0B9utCFdsQhxM.jpg",
+    "roles": [
+     "Teddy Daniels",
+     "Frank Abagnale Jr."
+    ]
+   },
+   {
+    "id": 9273,
+    "name": "Amy Adams",
+    "img": "/gn0K6c6d1L6qQrRc86iL8uyIqiF.jpg",
+    "roles": [
+     "Brenda Strong",
+     "Louise Banks"
+    ]
+   },
+   {
+    "id": 17604,
+    "name": "Jeremy Renner",
+    "img": "/yB84D1neTYXfWBaV0QOE9RF2VCu.jpg",
+    "roles": [
+     "Ian Donnelly",
+     "Clint Barton / Hawkeye"
+    ]
+   },
+   {
+    "id": 71580,
+    "name": "Benedict Cumberbatch",
+    "img": "/wz3MRiMmoz6b5X3oSzMRC9nLxY1.jpg",
+    "roles": [
+     "Doctor Strange",
+     "William Ford"
+    ]
+   },
+   {
+    "id": 1267329,
+    "name": "Lupita Nyong'o",
+    "img": "/y40Wu1T742kynOqtwXASc5Qgm49.jpg",
+    "roles": [
+     "Patsey"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:11324",
+    "title": "Shutter Island",
+    "year": 2010,
+    "poster": "/nrmXQ0zcZUL8jFLrakWc90IR8z9.jpg"
+   },
+   {
+    "id": "movie:640",
+    "title": "Catch Me If You Can",
+    "year": 2002,
+    "poster": "/ctjEj2xM32OvBXCq8zAdK3ZrsAj.jpg"
+   },
+   {
+    "id": "movie:329865",
+    "title": "Arrival",
+    "year": 2016,
+    "poster": "/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg"
+   },
+   {
+    "id": "movie:299534",
+    "title": "Avengers: Endgame",
+    "year": 2019,
+    "poster": "/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg"
+   },
+   {
+    "id": "movie:76203",
+    "title": "12 Years a Slave",
+    "year": 2013,
+    "poster": "/xdANQijuNrJaw1HA61rDccME4Tm.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:37625-54693-57755-3895-64-524",
+  "actors": [
+   {
+    "id": 37625,
+    "name": "Andrew Garfield",
+    "img": "/5ydZ6TluPtxlz5G8nlWMB7SGmow.jpg",
+    "roles": [
+     "Spider-Man / Peter Parker"
+    ]
+   },
+   {
+    "id": 54693,
+    "name": "Emma Stone",
+    "img": "/mstXxlDqhoK0s0molsNpskJ1wLH.jpg",
+    "roles": [
+     "Gwen Stacy",
+     "Wichita"
+    ]
+   },
+   {
+    "id": 57755,
+    "name": "Woody Harrelson",
+    "img": "/igxYDQBbTEdAqaJxaW6ffqswmUU.jpg",
+    "roles": [
+     "Tallahassee",
+     "Merritt McKinney"
+    ]
+   },
+   {
+    "id": 3895,
+    "name": "Michael Caine",
+    "img": "/bVZRMlpjTAO2pJK6v90buFgVbSW.jpg",
+    "roles": [
+     "Arthur Tressler",
+     "Alfred"
+    ]
+   },
+   {
+    "id": 64,
+    "name": "Gary Oldman",
+    "img": "/yhaSM5habNNI1Tf4ALRwRk3VvSZ.jpg",
+    "roles": [
+     "Gordon",
+     "Norman Stansfield"
+    ]
+   },
+   {
+    "id": 524,
+    "name": "Natalie Portman",
+    "img": "/edPU5HxncLWa1YkgRPNkSd68ONG.jpg",
+    "roles": [
+     "Mathilda Lando"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:1930",
+    "title": "The Amazing Spider-Man",
+    "year": 2012,
+    "poster": "/jexoNYnPd6vVrmygwF6QZmWPFdu.jpg"
+   },
+   {
+    "id": "movie:19908",
+    "title": "Zombieland",
+    "year": 2009,
+    "poster": "/dUkAmAyPVqubSBNRjRqCgHggZcK.jpg"
+   },
+   {
+    "id": "movie:75656",
+    "title": "Now You See Me",
+    "year": 2013,
+    "poster": "/tWsNYbrqy1p1w6K9zRk0mSchztT.jpg"
+   },
+   {
+    "id": "movie:155",
+    "title": "The Dark Knight",
+    "year": 2008,
+    "poster": "/qJ2tW6WMUDux911r6m7haRef0WH.jpg"
+   },
+   {
+    "id": "movie:101",
+    "title": "Léon: The Professional",
+    "year": 1994,
+    "poster": "/bxB2q91nKYp8JNzqE7t7TWBVupB.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:27972-72129-17288-71580-53714-57755",
+  "actors": [
+   {
+    "id": 27972,
+    "name": "Josh Hutcherson",
+    "img": "/GqIyK5mCJXFUXW4FwLM3Zj7UtK.jpg",
+    "roles": [
+     "Peeta Mellark"
+    ]
+   },
+   {
+    "id": 72129,
+    "name": "Jennifer Lawrence",
+    "img": "/6WTY6HjXMGxnHilJRVC3eLnu43F.jpg",
+    "roles": [
+     "Katniss Everdeen",
+     "Raven / Mystique"
+    ]
+   },
+   {
+    "id": 17288,
+    "name": "Michael Fassbender",
+    "img": "/xvbnUiB2ZBR3QIt595OzNy657Vw.jpg",
+    "roles": [
+     "Erik Lehnsherr",
+     "Edwin Epps"
+    ]
+   },
+   {
+    "id": 71580,
+    "name": "Benedict Cumberbatch",
+    "img": "/wz3MRiMmoz6b5X3oSzMRC9nLxY1.jpg",
+    "roles": [
+     "William Ford",
+     "Dr. Stephen Strange"
+    ]
+   },
+   {
+    "id": 53714,
+    "name": "Rachel McAdams",
+    "img": "/2DPh6KoNg0p57vvGc6N468zr3ct.jpg",
+    "roles": [
+     "Dr. Christine Palmer",
+     "Antigone 'Ani' Bezzerides"
+    ]
+   },
+   {
+    "id": 57755,
+    "name": "Woody Harrelson",
+    "img": "/igxYDQBbTEdAqaJxaW6ffqswmUU.jpg",
+    "roles": [
+     "Martin Hart"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:70160",
+    "title": "The Hunger Games",
+    "year": 2012,
+    "poster": "/yXCbOiVDCxO71zI7cuwBRXdftq8.jpg"
+   },
+   {
+    "id": "movie:127585",
+    "title": "X-Men: Days of Future Past",
+    "year": 2014,
+    "poster": "/tYfijzolzgoMOtegh1Y7j2Enorg.jpg"
+   },
+   {
+    "id": "movie:76203",
+    "title": "12 Years a Slave",
+    "year": 2013,
+    "poster": "/xdANQijuNrJaw1HA61rDccME4Tm.jpg"
+   },
+   {
+    "id": "movie:284052",
+    "title": "Doctor Strange",
+    "year": 2016,
+    "poster": "/xf8PbyQcR5ucXErmZNzdKR0s8ya.jpg"
+   },
+   {
+    "id": "tv:46648",
+    "title": "True Detective",
+    "year": 2014,
+    "poster": "/dC7jkj2g1aU8sxKqM6D4g44xA6w.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:205-103-44735-57755-72129-5530",
+  "actors": [
+   {
+    "id": 205,
+    "name": "Kirsten Dunst",
+    "img": "/yhLKGjuiMMdbGnFrR8AREkCZcVF.jpg",
+    "roles": [
+     "Mary"
+    ]
+   },
+   {
+    "id": 103,
+    "name": "Mark Ruffalo",
+    "img": "/5GilHMOt5PAQh6rlUKZzGmaKEI7.jpg",
+    "roles": [
+     "Stan",
+     "Dylan Rhodes"
+    ]
+   },
+   {
+    "id": 44735,
+    "name": "Jesse Eisenberg",
+    "img": "/2ojZrkt5rdkUi857WSeCatxXdGS.jpg",
+    "roles": [
+     "J. Daniel Atlas",
+     "Columbus"
+    ]
+   },
+   {
+    "id": 57755,
+    "name": "Woody Harrelson",
+    "img": "/igxYDQBbTEdAqaJxaW6ffqswmUU.jpg",
+    "roles": [
+     "Tallahassee",
+     "Haymitch Abernathy"
+    ]
+   },
+   {
+    "id": 72129,
+    "name": "Jennifer Lawrence",
+    "img": "/6WTY6HjXMGxnHilJRVC3eLnu43F.jpg",
+    "roles": [
+     "Katniss Everdeen",
+     "Raven / Mystique"
+    ]
+   },
+   {
+    "id": 5530,
+    "name": "James McAvoy",
+    "img": "/u4REKbm3zhFI2J5tVyqRovGRYUJ.jpg",
+    "roles": [
+     "Charles Xavier"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:38",
+    "title": "Eternal Sunshine of the Spotless Mind",
+    "year": 2004,
+    "poster": "/5MwkWH9tYHv3mV9OdYTMR5qreIz.jpg"
+   },
+   {
+    "id": "movie:75656",
+    "title": "Now You See Me",
+    "year": 2013,
+    "poster": "/tWsNYbrqy1p1w6K9zRk0mSchztT.jpg"
+   },
+   {
+    "id": "movie:19908",
+    "title": "Zombieland",
+    "year": 2009,
+    "poster": "/dUkAmAyPVqubSBNRjRqCgHggZcK.jpg"
+   },
+   {
+    "id": "movie:70160",
+    "title": "The Hunger Games",
+    "year": 2012,
+    "poster": "/yXCbOiVDCxO71zI7cuwBRXdftq8.jpg"
+   },
+   {
+    "id": "movie:127585",
+    "title": "X-Men: Days of Future Past",
+    "year": 2014,
+    "poster": "/tYfijzolzgoMOtegh1Y7j2Enorg.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:19034-114-287-192-1813-3895",
+  "actors": [
+   {
+    "id": 19034,
+    "name": "Evangeline Lilly",
+    "img": "/pJHX2jd7ytre3NQbF9nlyWUqxH3.jpg",
+    "roles": [
+     "Tauriel"
+    ]
+   },
+   {
+    "id": 114,
+    "name": "Orlando Bloom",
+    "img": "/lwQoA0qJTCZ6l2FH6PjmhRQjiaB.jpg",
+    "roles": [
+     "Legolas",
+     "Paris"
+    ]
+   },
+   {
+    "id": 287,
+    "name": "Brad Pitt",
+    "img": "/ajNaPmXVVMJFg9GWmu6MJzTaXdV.jpg",
+    "roles": [
+     "Achilles",
+     "Mills"
+    ]
+   },
+   {
+    "id": 192,
+    "name": "Morgan Freeman",
+    "img": "/905k0RFzH0Kd6gx8oSxRdnr6FL.jpg",
+    "roles": [
+     "Somerset",
+     "Fox"
+    ]
+   },
+   {
+    "id": 1813,
+    "name": "Anne Hathaway",
+    "img": "/s6tflSD20MGz04ZR2R1lZvhmC4Y.jpg",
+    "roles": [
+     "Selina",
+     "Brand"
+    ]
+   },
+   {
+    "id": 3895,
+    "name": "Michael Caine",
+    "img": "/bVZRMlpjTAO2pJK6v90buFgVbSW.jpg",
+    "roles": [
+     "Professor Brand"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:122917",
+    "title": "The Hobbit: The Battle of the Five Armies",
+    "year": 2014,
+    "poster": "/xT98tLqatZPQApyRmlPL12LtiWp.jpg"
+   },
+   {
+    "id": "movie:652",
+    "title": "Troy",
+    "year": 2004,
+    "poster": "/a07wLy4ONfpsjnBqMwhlWTJTcm.jpg"
+   },
+   {
+    "id": "movie:807",
+    "title": "Se7en",
+    "year": 1995,
+    "poster": "/191nKfP0ehp3uIvWqgPbFmI4lv9.jpg"
+   },
+   {
+    "id": "movie:49026",
+    "title": "The Dark Knight Rises",
+    "year": 2012,
+    "poster": "/hr0L2aueqlP2BYUblTTjmtn0hw4.jpg"
+   },
+   {
+    "id": "movie:157336",
+    "title": "Interstellar",
+    "year": 2014,
+    "poster": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:1283-85-116-71580-72095-543261",
+  "actors": [
+   {
+    "id": 1283,
+    "name": "Helena Bonham Carter",
+    "img": "/hJMbNSPJ2PCahsP3rNEU39C8GWU.jpg",
+    "roles": [
+     "Mrs. Bucket"
+    ]
+   },
+   {
+    "id": 85,
+    "name": "Johnny Depp",
+    "img": "/k2xt6EUxQDwYRKIyI4IBdZxfs8n.jpg",
+    "roles": [
+     "Willy Wonka",
+     "Jack Sparrow"
+    ]
+   },
+   {
+    "id": 116,
+    "name": "Keira Knightley",
+    "img": "/bRC1B2VwV0wK3ElciFAK6QZf2wD.jpg",
+    "roles": [
+     "Elizabeth Swann",
+     "Joan Clarke"
+    ]
+   },
+   {
+    "id": 71580,
+    "name": "Benedict Cumberbatch",
+    "img": "/wz3MRiMmoz6b5X3oSzMRC9nLxY1.jpg",
+    "roles": [
+     "Alan Turing",
+     "Smaug / Sauron"
+    ]
+   },
+   {
+    "id": 72095,
+    "name": "Lee Pace",
+    "img": "/eeTc0d2AX1vFYVxZ6Qw7qZpg4Tz.jpg",
+    "roles": [
+     "King Thranduil",
+     "Ronan"
+    ]
+   },
+   {
+    "id": 543261,
+    "name": "Karen Gillan",
+    "img": "/qYx8CflXVq48nGKX1IJsDrAj0sT.jpg",
+    "roles": [
+     "Nebula"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:118",
+    "title": "Charlie and the Chocolate Factory",
+    "year": 2005,
+    "poster": "/iKP6wg3c6COUe8gYutoGG7qcPnO.jpg"
+   },
+   {
+    "id": "movie:22",
+    "title": "Pirates of the Caribbean: The Curse of the Black Pearl",
+    "year": 2003,
+    "poster": "/poHwCZeWzJCShH7tOjg8RIoyjcw.jpg"
+   },
+   {
+    "id": "movie:205596",
+    "title": "The Imitation Game",
+    "year": 2014,
+    "poster": "/zSqJ1qFq8NXFfi7JeIYMlzyR0dx.jpg"
+   },
+   {
+    "id": "movie:57158",
+    "title": "The Hobbit: The Desolation of Smaug",
+    "year": 2013,
+    "poster": "/xQYiXsheRCDBA39DOrmaw1aSpbk.jpg"
+   },
+   {
+    "id": "movie:118340",
+    "title": "Guardians of the Galaxy",
+    "year": 2014,
+    "poster": "/r7vmZjiyZw9rpJMQJdXpjgiCOk9.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:117642-9273-72873-53714-3223-2037",
+  "actors": [
+   {
+    "id": 117642,
+    "name": "Jason Momoa",
+    "img": "/3troAR6QbSb6nUFMDu61YCCWLKa.jpg",
+    "roles": [
+     "Aquaman / Arthur Curry"
+    ]
+   },
+   {
+    "id": 9273,
+    "name": "Amy Adams",
+    "img": "/gn0K6c6d1L6qQrRc86iL8uyIqiF.jpg",
+    "roles": [
+     "Lois Lane",
+     "Louise Banks"
+    ]
+   },
+   {
+    "id": 72873,
+    "name": "Michael Stuhlbarg",
+    "img": "/aYB3SQm3h6ZyAdlbGyiNfakjx56.jpg",
+    "roles": [
+     "Agent Halpern",
+     "Dr. Nicodemus West"
+    ]
+   },
+   {
+    "id": 53714,
+    "name": "Rachel McAdams",
+    "img": "/2DPh6KoNg0p57vvGc6N468zr3ct.jpg",
+    "roles": [
+     "Dr. Christine Palmer",
+     "Irene Adler"
+    ]
+   },
+   {
+    "id": 3223,
+    "name": "Robert Downey Jr.",
+    "img": "/5qHNjhtjMD4YWH3UP0rm4tKwxCL.jpg",
+    "roles": [
+     "Sherlock Holmes",
+     "Lewis Strauss"
+    ]
+   },
+   {
+    "id": 2037,
+    "name": "Cillian Murphy",
+    "img": "/2lKs67r7FI4bPu0AXxMUJZxmUXn.jpg",
+    "roles": [
+     "J. Robert Oppenheimer"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:141052",
+    "title": "Justice League",
+    "year": 2017,
+    "poster": "/eifGNCSDuxJeS1loAXil5bIGgvC.jpg"
+   },
+   {
+    "id": "movie:329865",
+    "title": "Arrival",
+    "year": 2016,
+    "poster": "/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg"
+   },
+   {
+    "id": "movie:284052",
+    "title": "Doctor Strange",
+    "year": 2016,
+    "poster": "/xf8PbyQcR5ucXErmZNzdKR0s8ya.jpg"
+   },
+   {
+    "id": "movie:10528",
+    "title": "Sherlock Holmes",
+    "year": 2009,
+    "poster": "/momkKuWburNTqKBF6ez7rvhYVhE.jpg"
+   },
+   {
+    "id": "movie:872585",
+    "title": "Oppenheimer",
+    "year": 2023,
+    "poster": "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:1267329-25072-72129-73457-14592-17838",
+  "actors": [
+   {
+    "id": 1267329,
+    "name": "Lupita Nyong'o",
+    "img": "/y40Wu1T742kynOqtwXASc5Qgm49.jpg",
+    "roles": [
+     "Maz Kanata"
+    ]
+   },
+   {
+    "id": 25072,
+    "name": "Oscar Isaac",
+    "img": "/dW5U5yrIIPmMjRThR9KT2xH6nTz.jpg",
+    "roles": [
+     "Poe Dameron",
+     "En Sabah Nur / Apocalypse"
+    ]
+   },
+   {
+    "id": 72129,
+    "name": "Jennifer Lawrence",
+    "img": "/6WTY6HjXMGxnHilJRVC3eLnu43F.jpg",
+    "roles": [
+     "Raven / Mystique",
+     "Aurora Lane"
+    ]
+   },
+   {
+    "id": 73457,
+    "name": "Chris Pratt",
+    "img": "/cRH6HPAQ98PlOwwEvhYO4CM9lwu.jpg",
+    "roles": [
+     "Jim Preston",
+     "Owen"
+    ]
+   },
+   {
+    "id": 14592,
+    "name": "BD Wong",
+    "img": "/w7Hs9m6ocS2qlibvrLOvmyCKbAN.jpg",
+    "roles": [
+     "Dr. Henry Wu",
+     "Whiterose"
+    ]
+   },
+   {
+    "id": 17838,
+    "name": "Rami Malek",
+    "img": "/8ykTeTRSYd2MKF5uLBvD93X5KMJ.jpg",
+    "roles": [
+     "Elliot Alderson"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:140607",
+    "title": "Star Wars: The Force Awakens",
+    "year": 2015,
+    "poster": "/wqnLdwVXoBjKibFRR5U3y0aDUhs.jpg"
+   },
+   {
+    "id": "movie:246655",
+    "title": "X-Men: Apocalypse",
+    "year": 2016,
+    "poster": "/ikA8UhYdTGpqbatFa93nIf6noSr.jpg"
+   },
+   {
+    "id": "movie:274870",
+    "title": "Passengers",
+    "year": 2016,
+    "poster": "/jK9S6HANSf2no64v1x1HxfcpmcA.jpg"
+   },
+   {
+    "id": "movie:135397",
+    "title": "Jurassic World",
+    "year": 2015,
+    "poster": "/rhr4y79GpxQF9IsfJItRXVaoGs4.jpg"
+   },
+   {
+    "id": "tv:62560",
+    "title": "Mr. Robot",
+    "year": 2015,
+    "poster": "/kv1nRqgebSsREnd7vdC2pSGjpLo.jpg"
+   }
+  ]
+ },
+ {
+  "id": "six:6193-31-32-932967-53714-2983",
+  "actors": [
+   {
+    "id": 6193,
+    "name": "Leonardo DiCaprio",
+    "img": "/wo2hJpn04vbtmh0B9utCFdsQhxM.jpg",
+    "roles": [
+     "Frank Abagnale Jr."
+    ]
+   },
+   {
+    "id": 31,
+    "name": "Tom Hanks",
+    "img": "/oFvZoKI6lvU03n4YoNGAll9rkas.jpg",
+    "roles": [
+     "Carl Hanratty",
+     "Forrest Gump"
+    ]
+   },
+   {
+    "id": 32,
+    "name": "Robin Wright",
+    "img": "/d3rIv0y2p0jMsQ7ViR7O1606NZa.jpg",
+    "roles": [
+     "Jenny Curran",
+     "Claire Underwood"
+    ]
+   },
+   {
+    "id": 932967,
+    "name": "Mahershala Ali",
+    "img": "/9ZmSejm5lnUVY5IJ1iNx2QEjnHb.jpg",
+    "roles": [
+     "Remy Danton",
+     "Wayne Hays"
+    ]
+   },
+   {
+    "id": 53714,
+    "name": "Rachel McAdams",
+    "img": "/2DPh6KoNg0p57vvGc6N468zr3ct.jpg",
+    "roles": [
+     "Antigone 'Ani' Bezzerides",
+     "Irene Adler"
+    ]
+   },
+   {
+    "id": 2983,
+    "name": "Mark Strong",
+    "img": "/3cNmatYsoifytg7TfQhI1EHow3v.jpg",
+    "roles": [
+     "Lord Henry Blackwood"
+    ]
+   }
+  ],
+  "films": [
+   {
+    "id": "movie:640",
+    "title": "Catch Me If You Can",
+    "year": 2002,
+    "poster": "/ctjEj2xM32OvBXCq8zAdK3ZrsAj.jpg"
+   },
+   {
+    "id": "movie:13",
+    "title": "Forrest Gump",
+    "year": 1994,
+    "poster": "/Cw4hIUIAmSYfK9QfaUW5igp9La.jpg"
+   },
+   {
+    "id": "tv:1425",
+    "title": "House of Cards",
+    "year": 2013,
+    "poster": "/hKWxWjFwnMvkWQawbhvC0Y7ygQ8.jpg"
+   },
+   {
+    "id": "tv:46648",
+    "title": "True Detective",
+    "year": 2014,
+    "poster": "/dC7jkj2g1aU8sxKqM6D4g44xA6w.jpg"
+   },
+   {
+    "id": "movie:10528",
+    "title": "Sherlock Holmes",
+    "year": 2009,
+    "poster": "/momkKuWburNTqKBF6ez7rvhYVhE.jpg"
+   }
+  ]
+ }
+]

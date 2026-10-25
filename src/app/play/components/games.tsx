@@ -5,8 +5,9 @@ import { accuracy, isUnlocked } from '../lib/brain'
 import { SEASON_LENGTH, seasonDone } from '../lib/blocks'
 import { LEVELS } from '../lib/games'
 import type { Ctl, GameId } from './types'
-import { Icon, Poster, SaveRibbon, Stars, TopBar } from './ui'
+import { Icon, Marked, Poster, SaveRibbon, Stars, TopBar } from './ui'
 import { BlindPlay, HiloPlay, OtherPlay } from './gameplay'
+import { SixPlay } from './six'
 import { SeasonBar } from './season'
 
 interface GameDef {
@@ -37,6 +38,11 @@ export const GAMES: (GameDef & { id: GameId | string })[] = [
     rules: ['Two titles. Which one has the higher TMDB rating?', 'Right: the winner stays and a new challenger arrives.', 'One wrong answer ends the run.', 'Reach the level\'s streak to clear it.'],
     levels: LEVELS.hilo.map(l => l.label),
     teach: 'A game first. It also shows where their sense of quality meets the crowd\'s.' },
+  // A pure fun game (Eran, 2026-10-24): no levels yet; themed levels wait for a wider title set.
+  { id: 'six', name: 'Six Degrees', icon: '6', acc: '#4fc3f7', blurb: 'Six actors, five films. Put the chain in order.',
+    rules: ['Get from the first actor to the last. Each one was in a film with the next.', 'Drag the four in the middle into order. Under each name: who they played, ↑ in the film with the actor above, ↓ below.', 'Check turns everyone in the right spot green. You have 4 tries.', 'Stuck? Hints show films from the chain, then put one actor in place.'],
+    levels: [],
+    teach: 'Just for fun. A film saved from the chain still counts as a taste signal.' },
   // Games where WTW guesses: they need a tested brain, so they open with the season's finale.
   { id: 'bet', name: 'The Bet', kind: 'test', icon: 'B', acc: '#7b8cff', blurb: 'I guess your rating before you give it.',
     rules: ['I secretly lock in how many stars I think you\'d give a title.', 'You rate it. Haven\'t seen it? Skip, no points.', 'If I nail your exact rating, I score. If I miss, you score.', 'First to the target wins the match.'],
@@ -104,7 +110,10 @@ export function GamesLobby({ ctl }: { ctl: Ctl }) {
             <span style={{ minWidth: 0 }}>
               <b>{d.name}{d.kind === 'test' && <span className="gkind">I GUESS YOU</span>}</b>
               <span className="d">{d.blurb}</span>
-              {!d.soon && (
+              {!d.soon && !d.levels.length && (
+                <span className="pips"><span>{gp.plays ? `${gp.plays} ${gp.plays === 1 ? 'chain' : 'chains'} played${best ? ` · best ${best} of 5` : ''}` : 'New'}</span></span>
+              )}
+              {!d.soon && d.levels.length > 0 && (
                 <span className="pips">
                   {[0, 1, 2, 3, 4].map(i => <i key={i} className={i < gp.level ? 'on' : ''} />)}
                   <span>Level {Math.min(5, gp.level + 1)} of 5{best ? ` · best ${best}` : ''}</span>
@@ -140,7 +149,9 @@ function GameTop({ ctl, d }: { ctl: Ctl; d: GameDef }) {
         <div className="gtitle">{d.name}</div>
         <button className="hb r" onClick={() => setRules(true)} aria-label="How to play">{Icon.q}</button>
       </div>
-      <div className="glevel">LEVEL <b>{Math.min(5, lv + 1)}</b> · {d.levels[Math.min(4, lv)]}</div>
+      {d.levels.length
+        ? <div className="glevel">LEVEL <b>{Math.min(5, lv + 1)}</b> · {d.levels[Math.min(4, lv)]}</div>
+        : <div className="glevel">CHAIN <b>{ctl.S.served?.[d.id]?.length || 1}</b></div>}
     </>
   )
 }
@@ -157,14 +168,14 @@ export function GameScreen({ ctl }: { ctl: Ctl }) {
         <div className="gbadge">{d.icon}</div>
         <h2>{d.blurb}</h2>
         <ol className="rules">{d.rules!.map(r => <li key={r}>{r}</li>)}</ol>
-        <div className="lvl-list">
+        {d.levels.length > 0 && <div className="lvl-list">
           {d.levels.map((l, i) => (
             <div key={l} className={i === Math.min(4, lv) ? 'now' : ''}>
               <span>Level {i + 1}</span><span>{l}{i < lv ? ' ✓' : i === Math.min(4, lv) ? ' · next' : ''}</span>
             </div>
           ))}
-        </div>
-        <button className="cta" onClick={ctl.beginGame}>Start level {Math.min(5, lv + 1)}</button>
+        </div>}
+        <button className="cta" onClick={ctl.beginGame}>{d.levels.length ? `Start level ${Math.min(5, lv + 1)}` : 'Start'}</button>
       </div>
     )
   } else if (g.phase === 'over' && g.summary) {
@@ -174,13 +185,11 @@ export function GameScreen({ ctl }: { ctl: Ctl }) {
       <div className="gover">
         {sm.big && <div className="bigscore">{sm.big}</div>}
         <h2>{sm.headline}</h2>
-        <div className="learned-box"><h4>What I learned about you</h4><ul>{sm.lines.map(l => <li key={l}>{l}</li>)}</ul></div>
+        <div className="learned-box"><h4>What I learned about you</h4><ul>{sm.lines.map(l => <li key={l}><span><Marked text={l} /></span></li>)}</ul></div>
         {acc.n >= 10 && <div className="delta">Lately I call <b>{Math.round(acc.rate * 100)}%</b> of your picks before you make them.</div>}
         {g.newLevel && <div className="newlvl">Level {lv + 1} unlocked: <b>{g.newLevel}</b></div>}
-        <div className="row-btns" style={{ width: '100%' }}>
-          <button className="opt primary" onClick={() => ctl.startGame(g.id)}>{g.newLevel ? 'Next level' : 'Play again'}</button>
-          <button className="opt" onClick={ctl.backToLobby}>Back to games</button>
-        </div>
+        {/* One button: the ✕ at the top already goes back to the games (Eran, 2026-10-24). */}
+        <button className="cta" onClick={() => ctl.startGame(g.id)}>{g.newLevel ? 'Next level' : 'Play again'}</button>
       </div>
     )
   } else if (g.id === 'bet' && g.bet) {
@@ -191,11 +200,12 @@ export function GameScreen({ ctl }: { ctl: Ctl }) {
   if (g.phase === 'play' && g.id === 'blind' && g.blind) body = <BlindPlay ctl={ctl} />
   if (g.phase === 'play' && g.id === 'other' && g.other) body = <OtherPlay ctl={ctl} />
   if (g.phase === 'play' && g.id === 'hilo' && g.hilo) body = <HiloPlay ctl={ctl} />
+  if (g.phase === 'play' && g.id === 'six' && g.six) body = <SixPlay key={g.six.deal} ctl={ctl} />
   // On the season path a game is a step: the training's top bar and progress, no exit button.
   const top = g.inPath
     ? <><TopBar ctl={ctl} /><SeasonBar ctl={ctl} /><div className="glevel" style={{ marginTop: 6 }}><b>{d.name}</b> · Level 1</div></>
     : <GameTop ctl={ctl} d={d} />
-  return <div className="screen">{top}{body}</div>
+  return <div className="screen game-screen">{top}{body}</div>
 }
 
 function Bet({ ctl }: { ctl: Ctl }) {
