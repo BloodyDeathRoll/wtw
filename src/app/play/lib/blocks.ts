@@ -60,7 +60,7 @@ export const BLOCKS: Record<BlockType, { name: string; icon: string; desc: (genr
     teach: 'What you like in a story, and what puts you off before you read a word.' },
   other: { name: 'The Other Side of the Story', icon: 'O', accent: '#ff5fa2',
     desc: () => 'Three famous stories, told only by their side characters. Name it on the first clue for 5 points.',
-    teach: 'Recognising a title early means you know it well. "Watched it with the kids" keeps family viewing out of your taste.' },
+    teach: 'Recognising a title early means you know it well. How you rate it tells me what you liked.' },
   hilo: { name: 'Higher or Lower', icon: '↕', accent: '#ffd23d',
     desc: () => 'Which one has the higher rating? Get 5 in a row.',
     teach: 'A game first. It also shows where your sense of quality meets the crowd\'s.' },

@@ -180,6 +180,10 @@
   line-height: 1;
   color: var(--rv-white-70);
 }
+/* Emoji icons at full strength — the 70% colour above would fade them. */
+.tabEmoji {
+  color: var(--rv-white);
+}
 .tabCount {
   font-size: 33.5px;
   font-weight: 700;
@@ -349,6 +353,8 @@
 .pickIcon {
   font-size: var(--rv-labels);
   line-height: 1.2;
+  /* Opaque so the emoji keeps full colour (a 70% text colour fades it too). */
+  color: var(--rv-white);
 }
 
 /* ─── Expanded: Removed → Restore ─── */

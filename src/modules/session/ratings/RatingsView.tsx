@@ -289,7 +289,7 @@ export default function RatingsView({
                   }}
                 >
                   <span className={styles.tabTop}>
-                    <span className={styles.tabIcon} aria-hidden>
+                    <span className={`${styles.tabIcon} ${t !== "removed" ? styles.tabEmoji : ""}`} aria-hidden>
                       {m.icon}
                     </span>
                     <span className={styles.tabCount}>{counts[t]}</span>

@@ -1417,7 +1417,7 @@ function FeedbackRow({
               aria-label={r.aria}
               title={r.aria}
             >
-              <span aria-hidden>{r.emoji}</span>
+              <span className={styles.chipEmoji} aria-hidden>{r.emoji}</span>
               <span>{r.label}</span>
             </button>
           ))}
@@ -1445,7 +1445,7 @@ function FeedbackRow({
           aria-label={r.aria}
           title={r.aria}
         >
-          <span className={styles.reactionEmoji}>{r.emoji}</span>
+          <span className={`${styles.reactionEmoji} ${styles.chipEmoji}`}>{r.emoji}</span>
           <span className={styles.reactionLabel}>{r.label}</span>
         </button>
       ))}

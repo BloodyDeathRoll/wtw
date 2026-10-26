@@ -712,12 +712,15 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       if (!g || !o) return
       set({ game: { ...g, other: o.clue >= 5 ? { ...o, step: 'reveal', last: { correct: false, points: 0 } } : { ...o, clue: o.clue + 1 } } })
     },
-    otherSeen(v) {
+    otherNext(r) {
       const g = ui.game, o = g?.other
       if (!g || !o) return
       const t = o.deck[o.i]
-      ;(S.seenWith ??= {})[t.id] = v
-      const events: PlayEvent[] = [{ kind: 'seen_with', item_key: t.id, payload: { title: t.id, seen: v } }]
+      const events: PlayEvent[] = []
+      if (r) {
+        reactToPickBrain(S, t, r, 'The Other Side of the Story')
+        events.push({ kind: 'other_seen', item_key: t.id, payload: { title: t.id, reaction: r } })
+      }
       if (o.i + 1 < o.deck.length) {
         set({ game: { ...g, other: { ...o, i: o.i + 1, clue: 1, wrong: [], step: 'guess', opts: options(T, o.deck[o.i + 1]), last: null } } })
         commit(events)

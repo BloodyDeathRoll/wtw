@@ -10,7 +10,7 @@
  *   - The Other Side of the Story: five side characters each tell the story
  *     in their own words, hardest first (data/other-clues.json; real details
  *     from the film, not only TMDB's plot — Eran 2026-10-19, no big twists).
- *     Guess early, score more; "Haven't seen it" ends a story at any clue.
+ *     Guess early, score more; the reveal asks how it was, like the feed card.
  *   - Higher or Lower: which of two has the higher TMDB rating (or came out
  *     first)? Keep a streak going.
  *

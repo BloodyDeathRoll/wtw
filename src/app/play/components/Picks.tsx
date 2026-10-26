@@ -69,7 +69,7 @@ function WatchlistButton({ ctl, t, block }: { ctl: Ctl; t: Title; block?: boolea
 const REACTIONS: { value: Exclude<PickReaction, 'removed'>; emoji: string; label: string; aria: string }[] = [
   { value: 'loved', emoji: '❤️', label: 'Loved', aria: 'Loved it' },
   { value: 'liked', emoji: '👍', label: 'Liked', aria: 'Liked it' },
-  { value: 'disliked', emoji: '👎', label: 'Dislike', aria: 'Watched it, didn\'t like it' },
+  { value: 'disliked', emoji: '👎', label: 'Disliked', aria: 'Watched it, didn\'t like it' },
 ]
 const RATED_MESSAGE: Record<PickReaction, string> = {
   loved: 'Loved — weighted strongly into your taste',
@@ -84,7 +84,7 @@ function ReactionRow({ t, rated, onReact, compact }: { t: Title; rated: PickReac
     <div className={`${styles.feedback} ${compact ? styles.feedbackCompact : ''}`}>
       {REACTIONS.map(r => (
         <button key={r.value} type="button" className={styles.reactionBtn} onClick={() => onReact(r.value)} aria-label={`${r.aria}: ${t.title}`} title={r.aria}>
-          <span className={styles.reactionEmoji}>{r.emoji}</span>
+          <span className={`${styles.reactionEmoji} ${styles.chipEmoji}`}>{r.emoji}</span>
           <span className={styles.reactionLabel}>{r.label}</span>
         </button>
       ))}
