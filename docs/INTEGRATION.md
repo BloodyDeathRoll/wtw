@@ -176,6 +176,14 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-26 — New feed card, and "Both" in the picker (`feat/rec-card-layout`)
+- **Card (Eran picked layout C, `docs/prototypes/rec-card/g-final-*.jpg`):** the poster is the top of the card, cropped from the top. On it: where to watch (top left), the match ring (top right), and title + details + a round play button over the poster's fade. Below: the explanation (4 lines), "Why it's a match ›" (a link, not a button; "Why this pick ›" when there is no score; tapping the text opens the Why page too), a full-width orange-gradient "Add to Watchlist", then "Seen it? Tell me how it was" over Loved / Liked / Disliked / ✕. No trailer, no play button. The full-screen view keeps its old card.
+- **Match ring:** 58px with smaller figures everywhere it appears, so "79%" has air.
+- **"Both"** (the word the games use) is the third option in the header picker, on home and on the feed. It sends `type=all`, which the engine already built and cached as its own mixed batch (`titleTypeFor('all')` = no type filter). Stored as `all` in `wtw:contentType`; the home warm-up warms whichever list is stored.
+- `src/modules/session/` is A1's (Shahar); changed with Eran's OK.
+- **Local dev:** the Upstash host in `.env.local` no longer resolves (NXDOMAIN), so the feed 503s on `next dev`. The card was checked at phone size with stubbed feed data. Production is unaffected; refresh the local Redis URL/token.
+- **Open, separate session:** the explanation text flips between the short template and the AI-written version (the AI text lands ~30s after a batch goes live), and the AI text invents facts. Diagnosed, no fix yet.
+
 ### 2026-10-25 — The games' title set grows to 980 (`feat/play-titles-1000`)
 - **Why (Eran):** not "1,000 for the number" but more options: Six Degrees had 25 strict chains and no themes; Blind's level 4 had 20 titles.
 - **How:** `npm run build-play-titles -- --grow 500` (new mode) keeps every scored title and adds more, with extra quotas for before 1980, the 1980s, the 1990s and non-English titles on top of the per-genre quota. 480 added (two Mistral batches came back off-schema and were skipped), 50 Mistral calls. Added: pre-1980 9→42, 80s 21→54, 90s 45→90, non-English 66→138, +80 comedy and +106 drama movies. Rank-based measures (pop, modern, indie, commit) are re-spread over the 980, so they shift slightly for the first 500.
