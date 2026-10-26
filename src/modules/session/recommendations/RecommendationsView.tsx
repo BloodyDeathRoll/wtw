@@ -60,14 +60,15 @@ import {
 } from "@/lib/watchlist";
 import { addToRegretQueue } from "@/lib/regret-queue";
 import { shareApp } from "@/lib/share";
+import type { ContentType } from "@/lib/content-type";
 
 type Mode = "recommendations" | "learning" | "watchlist";
 
 interface Props {
   onBack: () => void;
-  contentType: "movies" | "series";
-  /** When provided, the header title becomes the Movies/Series picker. */
-  setContentType?: (c: "movies" | "series") => void;
+  contentType: ContentType;
+  /** When provided, the header title becomes the Movies/Series/Both picker. */
+  setContentType?: (c: ContentType) => void;
   /**
    * "recommendations" = curated for-you feed (default).
    * "learning"        = rapid taste-training stream; identical UI but the
@@ -174,13 +175,16 @@ function WherePill({ where }: { where: string | null }) {
   );
 }
 
-const CONTENT_TYPE_LABEL: Record<"movies" | "series", string> = {
+// "Both" ('all') mixes movies and series in one batch — the word the taste
+// games use for the same choice.
+const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
   movies: "Movies",
   series: "Series",
+  all: "Both",
 };
 
 /**
- * The header title is the Movies/Series picker, same as the home screen's
+ * The header title is the Movies/Series/Both picker, same as the home screen's
  * (2026-08-29). The trigger shows the CURRENT type rather than the screen
  * name, so the list you are on is visible without opening the menu — the
  * screen name would leave Movies and Series looking identical.
@@ -193,8 +197,8 @@ function TypePicker({
   contentType,
   setContentType,
 }: {
-  contentType: "movies" | "series";
-  setContentType: (c: "movies" | "series") => void;
+  contentType: ContentType;
+  setContentType: (c: ContentType) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -223,7 +227,7 @@ function TypePicker({
       </button>
       {open && (
         <div className={styles.typeMenu} role="menu">
-          {(["movies", "series"] as const).map((c) => (
+          {(["movies", "series", "all"] as const).map((c) => (
             <button
               key={c}
               type="button"
@@ -867,41 +871,78 @@ function CompactCard({
   onToggleWatchlist: (rec: Recommendation) => void;
 }) {
   return (
-    <article className={styles.card}>
-      {/* Row 1 — title + meta | match ring */}
-      <div className={styles.cardTop}>
-        <div className={styles.cardTitleBlock}>
-          <h3 className={styles.cardTitle}>{rec.title}</h3>
-          <MetaRow rec={rec} />
-        </div>
-        <MatchRing match={rec.match} />
-      </div>
-
-      {/* Row 2 — provider | trailer; Why pill | watchlist CTA */}
-      <CtaBlock
-        rec={rec}
-        onWhy={onWhy}
-        saved={saved}
-        onToggleWatchlist={onToggleWatchlist}
-      />
-
-      {/* Row 3 — poster | fingerprint text */}
-      <div className={styles.cardMid}>
-        <PosterTile rec={rec} size="md" />
-        <div className={styles.cardReason}>
-          <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-          <span><Emphasis text={rec.reason} /></span>
+    <article className={`${styles.card} ${styles.heroCard}`}>
+      {/* The poster is the card's top half (2026-10-26, Eran picked layout C,
+          docs/prototypes/rec-card/g-final-*.jpg): where to watch and the
+          match on top, title + trailer over the poster's fade. */}
+      <div className={styles.hero}>
+        <PosterTile rec={rec} size="hero" />
+        <div className={styles.heroShade} aria-hidden />
+        <WhereBadge where={rec.where} />
+        <MatchRing match={rec.match} className={styles.heroRing} />
+        <div className={styles.heroFoot}>
+          <div className={styles.cardTitleBlock}>
+            <h3 className={styles.heroTitle}>{rec.title}</h3>
+            <MetaRow rec={rec} />
+          </div>
+          <TrailerCircle rec={rec} />
         </div>
       </div>
 
-      {/* Row 4 — the four reactions */}
-      <FeedbackRow
-        rec={rec}
-        rated={rated}
-        onFeedback={onFeedback}
-        onRemove={onRemove}
-      />
+      <div className={styles.heroBody}>
+        {/* The text is the teaser; the Why page is the full answer. The text
+            opens it too — the link is the control a keyboard reaches. */}
+        <p className={styles.heroReason} onClick={() => onWhy(rec)}>
+          <Emphasis text={rec.reason} />
+        </p>
+        <button
+          type="button"
+          className={styles.whyLink}
+          onClick={() => onWhy(rec)}
+          aria-label={`Why ${rec.title} is a match`}
+        >
+          {/* No score, no "match" claim (taste-game saves, cold start). */}
+          <span>{rec.match > 0 ? "Why it\u2019s a match" : "Why this pick"}</span>
+          <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
+        </button>
+        <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
+        <FeedbackRow
+          rec={rec}
+          rated={rated}
+          onFeedback={onFeedback}
+          onRemove={onRemove}
+          chips
+        />
+      </div>
     </article>
+  );
+}
+
+/** Streaming service as a glass pill on the poster. Hidden when unknown. */
+function WhereBadge({ where }: { where: string | null }) {
+  if (!where) return null;
+  const { key, label } = canonicalProvider(where);
+  return (
+    <div className={styles.whereBadge}>
+      <ProviderIcon providerKey={key} className={styles.whereIcon} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+/** Round glass play button on the poster. Absent when there is no trailer. */
+function TrailerCircle({ rec }: { rec: Recommendation }) {
+  if (!rec.trailer_url) return null;
+  return (
+    <button
+      type="button"
+      className={styles.trailerCircle}
+      onClick={() => window.open(rec.trailer_url!, "_blank", "noopener,noreferrer")}
+      aria-label={`Play ${rec.title} trailer`}
+      title="Play trailer"
+    >
+      <Play size={20} fill="currentColor" strokeWidth={0} aria-hidden />
+    </button>
   );
 }
 
@@ -987,16 +1028,19 @@ function WatchlistButton({
   rec,
   saved,
   onToggle,
+  primary = false,
 }: {
   rec: Recommendation;
   saved: boolean;
   onToggle: (rec: Recommendation) => void;
+  /** The feed card's look: full width, the app's orange gradient. */
+  primary?: boolean;
 }) {
   const label = saved ? "Remove from watchlist" : "Add to Watchlist";
   return (
     <button
       type="button"
-      className={`${styles.watchlistBtn} ${saved ? styles.watchlistBtnSaved : ""}`}
+      className={`${styles.watchlistBtn} ${primary ? styles.watchlistBtnPrimary : ""} ${saved ? styles.watchlistBtnSaved : ""}`}
       onClick={() => onToggle(rec)}
       aria-pressed={saved}
       aria-label={`${label}: ${rec.title}`}
@@ -1345,15 +1389,49 @@ function FeedbackRow({
   rated,
   onFeedback,
   onRemove,
+  chips = false,
 }: {
   rec: Recommendation;
   rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
+  /** The feed card's look: a "Seen it?" prompt over one row of pills. */
+  chips?: boolean;
 }) {
   if (rated) {
     return (
       <div className={styles.feedbackAcked}>{RATED_MESSAGE[rated]}</div>
+    );
+  }
+  if (chips) {
+    return (
+      <div className={styles.seenIt}>
+        <span className={styles.seenItPrompt}>Seen it? Tell me how it was</span>
+        <div className={styles.seenItRow}>
+          {REACTIONS.map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              className={styles.seenChip}
+              onClick={() => onFeedback(rec, r.value)}
+              aria-label={r.aria}
+              title={r.aria}
+            >
+              <span aria-hidden>{r.emoji}</span>
+              <span>{r.label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`${styles.seenChip} ${styles.seenChipRemove}`}
+            onClick={() => onRemove(rec)}
+            aria-label="Remove — never recommend this again"
+            title="Never recommend this again"
+          >
+            <X size={18} strokeWidth={1.8} aria-hidden />
+          </button>
+        </div>
+      </div>
     );
   }
   return (
@@ -1610,7 +1688,7 @@ function PosterTile({
   size,
 }: {
   rec: Recommendation;
-  size: "md" | "lg";
+  size: "lg" | "hero";
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   // Fade the poster in once it has actually loaded, rather than letting it
@@ -1646,16 +1724,9 @@ function PosterTile({
           onError={() => setImgFailed(true)}
         />
       ) : (
-        <>
-          <Motif kind={rec.motif} fg={fg} />
-          {/* Title-on-poster only in the compact view; the full view
-              renders the title in the content overlay below. */}
-          {size === "md" && (
-            <div className={styles.posterTitle} style={{ color: fg }}>
-              {rec.title}
-            </div>
-          )}
-        </>
+        // Both views print the title over the poster's fade, so the motif
+        // carries no title of its own.
+        <Motif kind={rec.motif} fg={fg} />
       )}
     </div>
   );

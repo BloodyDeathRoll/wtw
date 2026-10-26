@@ -50,6 +50,7 @@ import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { shareApp } from "@/lib/share";
+import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./WTWApp.module.css";
 
@@ -61,10 +62,11 @@ const RECOMMEND_AFTER_TURNS = 2;
 // leads into the taste games (2026-10-20; the words live with the recording
 // in voice/intro-copy.ts).
 
-type ContentType = "movies" | "series";
+// "Both" is the word the taste games use for the same choice (/play setup).
 const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
   movies: "Movies",
   series: "Series",
+  all: "Both",
 };
 
 /** A plain text chat message in the AI SDK's parts shape. */
@@ -556,7 +558,7 @@ export default function WTWApp({
   // (window check happens only here). Brief race on first paint is fine.
   useEffect(() => {
     const c = window.localStorage.getItem("wtw:contentType");
-    if (c === "movies" || c === "series") setContentType(c);
+    if (isContentType(c)) setContentType(c);
     const v = window.localStorage.getItem("wtw:voice");
     if (isVoice(v)) setVoice(v);
   }, []);
@@ -614,14 +616,14 @@ export default function WTWApp({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // Warm the list the user will actually open — batches are cached
-          // per content type, so warming 'all' warms a key nothing reads.
+          // per content type ('all' is the "Both" list).
           // Read storage directly: this effect runs on mount, before the
           // effect that hydrates `contentType` from the same key.
           body: JSON.stringify({
-            content_type:
-              window.localStorage.getItem("wtw:contentType") === "series"
-                ? "series"
-                : "movies",
+            content_type: (() => {
+              const c = window.localStorage.getItem("wtw:contentType");
+              return isContentType(c) ? c : "movies";
+            })(),
           }),
         });
       } catch {}

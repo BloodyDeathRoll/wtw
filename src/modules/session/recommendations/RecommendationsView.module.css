@@ -361,12 +361,189 @@
   border-radius: 16.5px;
   animation: cardIn 0.25s var(--ease-out) both;
 }
-/* Row 1: title + meta | match ring */
-.cardTop {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+/* ─── Feed card: the poster is the top half (layout C, 2026-10-26) ─── */
+.heroCard {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #141416;
 }
+.hero {
+  position: relative;
+  /* 343 × 400 on a 375px phone; scales with the card's width. */
+  aspect-ratio: 6 / 7;
+  overflow: hidden;
+}
+/* Scoped by .hero: .poster (position: relative) comes later in this file. */
+.hero .poster_hero {
+  position: absolute;
+  inset: 0;
+}
+/* Faces and the poster's own art sit high; keep them in frame. */
+.poster_hero .posterImg {
+  object-position: center 15%;
+}
+.heroShade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0) 22%,
+    rgba(0, 0, 0, 0) 45%,
+    rgba(20, 20, 22, 0.92) 85%,
+    #141416 100%
+  );
+}
+.whereBadge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 110px);
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+}
+.whereBadge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.heroRing {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.heroFoot {
+  position: absolute;
+  left: 20px;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.heroTitle {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.trailerCircle {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0 0 0 2px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.trailerCircle:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.heroBody {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 20px 22px;
+}
+.heroReason {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 15.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+}
+.heroReason em {
+  color: #fff;
+}
+/* "Why it's a match ›" — a link, not a button (it reads as "more of the text
+   above"); the padding makes it a full finger-height target. */
+.whyLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--rv-yellow);
+  cursor: pointer;
+}
+.heroBody .feedbackAcked {
+  margin-top: 28px;
+}
+.seenIt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 28px;
+}
+.seenItPrompt {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.seenItRow {
+  display: flex;
+  gap: 6px;
+}
+.seenChip {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rv-white-10);
+  color: var(--rv-white-70);
+  font-family: inherit;
+  font-size: 13.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.seenChip:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.seenChipRemove {
+  flex: 0 0 44px;
+}
+.seenChipRemove:hover {
+  background: rgba(255, 68, 0, 0.16);
+  color: var(--rv-orange);
+}
+
 .cardTitleBlock {
   flex: 1;
   min-width: 0;
@@ -401,11 +578,12 @@
   flex-shrink: 0;
 }
 
-/* Match ring badge: gold ring + glow around a dark radial disc. */
+/* Match ring badge: gold ring + glow around a dark radial disc. 58px with
+   smaller figures so "79%" has air inside the ring (Eran, 2026-10-26). */
 .matchRing {
   flex-shrink: 0;
-  width: 50px;
-  height: 50px;
+  width: 58px;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -414,8 +592,8 @@
   box-shadow: 0 0 13.5px var(--rv-yellow);
 }
 .matchRingInner {
-  width: 46px;
-  height: 46px;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -433,11 +611,14 @@
   line-height: 1.3;
 }
 .matchRingPct {
-  font-size: 20px;
+  font-size: 17px;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 .matchRingSign {
-  font-size: 13.5px;
+  margin-left: 1px;
+  font-size: 10.5px;
+  opacity: 0.85;
 }
 
 /* Rows 2–3: provider | trailer, then Why | watchlist */
@@ -560,22 +741,20 @@
   background: var(--rv-yellow);
   color: var(--rv-dark-50);
 }
+/* The feed card's watchlist CTA: full width in the app's orange gradient
+   (the games' primary). Saved keeps the solid yellow above. */
+.watchlistBtnPrimary:not(.watchlistBtnSaved) {
+  background: linear-gradient(90deg, #ffa900 0%, #ff7a00 55%, #ff4400 100%);
+}
+.watchlistBtnPrimary:not(.watchlistBtnSaved):hover {
+  background: linear-gradient(90deg, #ffb31f 0%, #ff8a1f 55%, #ff5a1f 100%);
+}
+.watchlistBtnPrimary {
+  width: 100%;
+  height: 50px;
+  font-weight: 700;
+}
 
-/* Row 4: poster | fingerprint text. Poster has a fixed 9:16 frame. */
-.cardMid {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 16px;
-  align-items: start;
-}
-.cardReason {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: #fff;
-  font-size: 16px;
-  line-height: 1.4;
-}
 .reasonEyebrow {
   font-size: 13.5px;
   line-height: normal;
@@ -653,12 +832,6 @@
   overflow: hidden;
   flex-shrink: 0;
 }
-.poster_md {
-  /* Fixed 2:3 poster frame; the image covers + crops. */
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  border-radius: 3.5px;
-}
 .poster_lg {
   /* Full-bleed poster fills the entire .fullCard container — content
      overlays on top via a dark gradient. */
@@ -689,17 +862,6 @@
   display: block;
   opacity: 0.65;
 }
-.posterTitle {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  right: 8px;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.15;
-  z-index: 1;
-}
-
 /* ─── Full-screen ("max") view ─── */
 .full {
   flex: 1;
