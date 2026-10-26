@@ -370,7 +370,7 @@
 .wtw-play .clue small{font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:600}
 .wtw-play .clue p{margin:3px 0 0;font-size:16px;color:#ececf0}
 .wtw-play .clue.locked{border-style:dashed;color:var(--dim);font-size:14.5px;text-align:center;padding:9px}
-/* Other Side: earlier clues step back so the newest clue, the answers and "Haven't seen it" stay on screen */
+/* Other Side: earlier clues step back so the newest clue, the answers and "Next clue" stay on screen */
 .wtw-play .clue.past{padding:7px 12px;animation:none}
 .wtw-play .clue.past p{font-size:14.5px;color:var(--muted)}
 .wtw-play .guess{display:flex;gap:8px;width:100%}
@@ -1075,3 +1075,27 @@
 .wtw-play .screen.game-screen .actions > *{flex:1}
 .wtw-play .learned-box em{font-style:normal;font-weight:700;color:#fff}
 .wtw-play .screen.game-screen .gover > .cta{margin-top:auto}
+
+/* "Seen it" rating row, exactly the feed card's (.seenIt / .seenChip in RecommendationsView.module.css;
+   Eran, 2026-10-27): 13px prompt at 50% white, 8px to 36px pills 6px apart, 13.5px regular label at 70%
+   white. These chips are the one exception to the games' 56px buttons. The emoji gets its own opaque
+   colour so it stays full colour (a 70% text colour fades emojis too). */
+.wtw-play .seen-it{width:100%;display:flex;flex-direction:column;gap:8px}
+.wtw-play .seen-it .seen-prompt{margin:0;font-size:13px;color:rgba(255,255,255,.5);text-align:left;font-weight:400}
+.wtw-play .screen.game-screen .seen-it .seen-btns.three{gap:6px}
+.wtw-play .screen.game-screen .seen-btns button.seen-chip{height:36px;min-height:36px;font-size:13.5px;font-weight:400;color:rgba(255,255,255,.7);background:rgba(255,255,255,.1);gap:5px;padding:0 6px;border-radius:999px;transition:background .15s ease,color .15s ease}
+.wtw-play .screen.game-screen .seen-btns button.seen-chip:hover{background:rgba(255,255,255,.16);color:#fff}
+.wtw-play .seen-emoji{color:#fff}
+/* Other Side reveal: poster, title, then the rating row and Next story pinned to the bottom,
+   28px apart like the feed card's orange button and prompt.
+   Title first gives way, then the poster: 26px, 22px past 22 characters, so most titles sit on one
+   line and the poster keeps its full 190px; it only shrinks for the very longest. */
+.wtw-play .other-reveal h2{font-size:26px;line-height:1.25;margin-bottom:24px;flex:none;text-wrap:balance}
+.wtw-play .other-reveal h2.long{font-size:22px}
+/* The longest titles still wrap: then the poster gives up height (down to 150px) instead of pushing
+   Next story off the screen. Its width follows from the 2:3 shape. */
+.wtw-play .gstage.other-done,.wtw-play .other-reveal{min-height:0}
+.wtw-play .other-reveal > :not(.reveal-poster){flex:none}
+.wtw-play .other-reveal .reveal-poster{flex:0 1 285px;min-height:150px;width:auto;aspect-ratio:2/3;max-width:190px}
+.wtw-play .other-reveal .reveal-poster .poster{width:100%;height:100%}
+.wtw-play .other-after{margin-top:auto;width:100%;display:flex;flex-direction:column;gap:28px}

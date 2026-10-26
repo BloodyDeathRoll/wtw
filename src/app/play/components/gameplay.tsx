@@ -63,16 +63,33 @@ export function BlindPlay({ ctl }: { ctl: Ctl }) {
             </div>
           ) : (
             <div key="seen" className="blind-after blind-rise">
-              <p className="seen-q">How was it?</p>
-              <div className="seen-btns three">
-                <button onClick={() => leave(() => ctl.blindSeen('loved'))}>Loved it</button>
-                <button onClick={() => leave(() => ctl.blindSeen('liked'))}>It was OK</button>
-                <button onClick={() => leave(() => ctl.blindSeen('disliked'))}>Not for me</button>
-              </div>
+              <SeenChips prompt="How was it?" onPick={r => leave(() => ctl.blindSeen(r))} />
             </div>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/** "How was it?" — the feed card's words and emojis, in every game (Eran, 2026-10-27). */
+const SEEN = [
+  { value: 'loved', emoji: '❤️', label: 'Loved', aria: 'Loved it' },
+  { value: 'liked', emoji: '👍', label: 'Liked', aria: 'Liked it' },
+  { value: 'disliked', emoji: '👎', label: 'Disliked', aria: 'Watched it, didn\'t like it' },
+] as const
+
+function SeenChips({ prompt, onPick }: { prompt: string; onPick: (r: 'loved' | 'liked' | 'disliked') => void }) {
+  return (
+    <div className="seen-it">
+      <p className="seen-prompt">{prompt}</p>
+      <div className="seen-btns three">
+        {SEEN.map(s => (
+          <button key={s.value} className="seen-chip" aria-label={s.aria} onClick={() => onPick(s.value)}>
+            <span className="seen-emoji" aria-hidden>{s.emoji}</span>{s.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -116,7 +133,7 @@ export function OtherPlay({ ctl }: { ctl: Ctl }) {
     if (el && now) el.scrollTo({ top: now.offsetTop, behavior: 'smooth' })
   }, [o.clue, o.i])
   return (
-    <div className={`gstage${o.step === 'guess' ? ' other-play' : ''}`}>
+    <div className={`gstage ${o.step === 'guess' ? 'other-play' : 'other-done'}`}>
       <div className="ptsrow"><span>Story {o.i + 1} of {o.deck.length}</span><span>Points <b>{o.points}</b></span></div>
       {o.step === 'guess' ? (
         <>
@@ -144,22 +161,20 @@ export function OtherPlay({ ctl }: { ctl: Ctl }) {
             </div>
           ) : null}
           <div className="row-btns">
+            {/* No "Haven't seen it": missing the title is part of the game, and the reveal is the point (2026-10-27). */}
             <button className="ghost" onClick={ctl.otherClue}>{o.clue >= Math.min(5, cl.length) ? 'I give up' : 'Next clue'}</button>
-            <button className="ghost" onClick={() => ctl.otherSeen('no')}>Haven&apos;t seen it</button>
           </div>
         </>
       ) : o.last && (
-        <div className="reveal-card">
+        <div className="reveal-card other-reveal">
           <div className={`verdict-tag ${o.last.correct ? 'ok' : 'no'}`}>{o.last.correct ? `✓ +${o.last.points} points` : '✗ It was…'}</div>
           <div className="reveal-poster"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="other" /></div>
-          <h2>{t.title}</h2>
-          <p className="q">{t.year} · told by {cl.slice(0, o.clue).map(c => c.who.toLowerCase()).join(', ')}</p>
-          <div className="seen-q">Have you seen it?</div>
-          <div className="seen-btns">
-            <button onClick={() => ctl.otherSeen('me')}>For me</button>
-            <button onClick={() => ctl.otherSeen('kids')}>With the kids</button>
-            <button onClick={() => ctl.otherSeen('both')}>Both</button>
-            <button onClick={() => ctl.otherSeen('no')}>Not seen</button>
+          <h2 className={t.title.length > 22 ? 'long' : undefined}>{t.title}</h2>
+          {/* Just the title under the poster: the game is over, no year or tellers (Eran, 2026-10-27). */}
+          {/* Like the feed card: rate it if you've seen it, or move on. Saving is the poster's ribbon. */}
+          <div className="other-after">
+            <SeenChips prompt="Seen it? Tell me how it was" onPick={r => ctl.otherNext(r)} />
+            <button className="cta" onClick={() => ctl.otherNext()}>{o.i + 1 < o.deck.length ? 'Next story' : 'See how you did'}</button>
           </div>
         </div>
       )}

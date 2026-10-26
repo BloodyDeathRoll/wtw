@@ -218,7 +218,8 @@ export interface Ctl {
   sixFinish(r: { solved: boolean; checks: number; hints: number; points: number }): void
   otherGuess(t: Title, typed?: boolean): void
   otherClue(): void
-  otherSeen(v: 'me' | 'kids' | 'both' | 'no'): void
+  /** Next story, with a rating when they've seen it. */
+  otherNext(r?: 'loved' | 'liked' | 'disliked'): void
   hiloPick(guess: 'higher' | 'lower'): void
   hiloNext(): void
   openUnlock(id: UnlockId): void

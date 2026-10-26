@@ -70,7 +70,7 @@ export interface PlayState {
   served?: Record<string, string[]>
   /** Per game: best score so far ("personal best"). */
   gameBest?: Record<string, number>
-  /** The Other Side: "watched it for me / with the kids / both". Kids-only counts as seen, not taste. */
+  /** Old Other Side answers ("watched it for me / with the kids / both"); no longer asked since 2026-10-27, kept for saved games. */
   seenWith?: Record<string, 'me' | 'kids' | 'both' | 'no'>
   /** The last "Clearest so far" shown on a closing screen, so it isn't repeated. */
   lastClearest?: string
