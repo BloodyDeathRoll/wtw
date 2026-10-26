@@ -727,8 +727,9 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
         return
       }
       const max = o.deck.length * 5
+      // No score target: finishing a level always unlocks the next one, like Blind Taste Test (Eran, 2026-10-27).
       finishGame(g, {
-        big: `${o.points} of ${max} points`, score: o.points, cleared: o.points >= Math.ceil(max / 2),
+        big: `${o.points} of ${max} points`, score: o.points, cleared: true,
         headline: o.points >= max * 0.8 ? 'You know your side characters.' : o.points >= max / 2 ? 'Nicely done.' : 'The side characters kept their secrets.',
         lines: [`You scored *${o.points} of ${max}* points.`, `You named ${o.knewEarly} of ${o.deck.length} on the first two clues.`],
         posters: o.deck,

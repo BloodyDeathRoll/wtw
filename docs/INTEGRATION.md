@@ -176,6 +176,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-27 — Other Side: every finished level unlocks the next (`fix/other-side-levels`)
+- The Other Side used to need half the points to level up (8 of 15 on level 1) and replayed the same level otherwise, without saying so; Eran kept landing back on level 1. Now finishing a level always unlocks the next, like Blind Taste Test, The Bet and Mind Reader. Points still show and count toward the personal best. Higher or Lower keeps its stated streak target.
+
 ### 2026-10-27 — Other Side reveal, and one "Seen it" chip everywhere (`fix/other-side-reveal`)
 - **Other Side, clues:** "Haven't seen it" is gone (missing the title is part of the game; "Next clue" → "I give up" still ends a story, now always through the reveal). "Next clue" stays a dark pill, like Six Degrees' Hint: orange is for the action that answers, and here that's picking a typed title.
 - **Other Side, reveal:** "for me / with the kids / both / not seen" (`seen_with`, which nothing read) is replaced by the feed card's "Seen it? Tell me how it was" + Loved / Liked / Disliked (rates via `reactToPick`, event `other_seen`, then next story) and an orange "Next story". Saving stays the poster's ribbon. Under the poster only the title (26px, 22px past 22 characters); no year or "told by" line. Every title in the deck fits a 375×812 screen with the poster at its full 190px (the longest wrap to two lines); the poster can still shrink as a safety net. Intro rules updated.
