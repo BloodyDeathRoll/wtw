@@ -1,7 +1,7 @@
-# Taste Games — handoff (updated 2026-10-25)
+# Taste Games — handoff (updated 2026-10-27)
 
 > Read this first in a games session, then `CLAUDE.md` and the latest entries in
-> `docs/INTEGRATION.md` (2026-10-14 → 2026-10-25 are the build log).
+> `docs/INTEGRATION.md` (2026-10-14 → 2026-10-27 are the build log).
 > **One session per game.** The opening prompt for a new game session is at the bottom.
 
 ## Who you're working with
@@ -18,10 +18,10 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 - `gh` is at `~/.local/bin/gh` (signed in as eran-manor). Eran's account can push and merge but **is not admin** of the repo: secrets, branch protection and the review bot's token (`CLAUDE_CODE_OAUTH_TOKEN`) are Shahar's (owner `BloodyDeathRoll`).
 - When he disputes something ("did we agree?"), check what was actually said and say so plainly. Don't claim agreement that wasn't given.
 
-## Where things stand (2026-10-25)
+## Where things stand (2026-10-27)
 
 - The games are **the app's onboarding, live for every user** (#130). `/` redirects to `/play` until the season is finished or skipped.
-- **#136** Blind Taste Test rebuilt as the "book cover" game. **#145** Six Degrees, a new game, plus one button style for all games. **#146** title set 500 → 980, Blind 274 → 535 stories, Six Degrees 12 → 38 chains. All merged and live.
+- **#136** Blind Taste Test rebuilt as the "book cover" game. **#145** Six Degrees, a new game, plus one button style for all games. **#146** title set 500 → 980, Blind 274 → 535 stories, Six Degrees 12 → 38 chains. **#149** The Other Side's reveal rebuilt like the feed card, and one "Seen it" chip across the app. **#150** finishing a level always unlocks the next. All merged and live.
 - Progress saves to `play_state`; every answer goes to `play_events`. Only a few people play: judge games by playing, not stats.
 
 ## What a player experiences now
@@ -31,7 +31,7 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 3. **Skip** after the genres; skipped players get a "Finish calibration" card every 15 recommendations. Finishing opens the app's real recommendations.
 4. **Games tab** (`/play?tab=games`):
    - **Blind Taste Test** — the story told without what you'd judge on sight ("I'd watch it" / Pass), then the cover is revealed (poster, trailer, where to watch, the cover line) → Next story / Seen it / Changed my mind. Five levels by kind of cover: Not who you think (animated, animals) · Longer than you think (series) · Older than it sounds (before 2000) · Not in English · Never heard of it (mostly true crime). `data/blind-covers.json`.
-   - **The Other Side of the Story** — side characters tell the story, five clues, type to guess.
+   - **The Other Side of the Story** — side characters tell the story, five clues (5 → 1 points), type to guess; four options from clue 4; "Next clue", then "I give up" on the last. The reveal: points tag, poster with ribbon, the title only (26px, 22px when long), "Seen it? Tell me how it was" + Loved / Liked / Disliked (rates the title, moves on), orange "Next story". Five levels: 3 stories · 4 stories · Series edition · Deep cuts · 5 stories.
    - **Higher or Lower** — TMDB rating (or year) streaks.
    - **Six Degrees** — order six actors from a start to an end; each was in a film with the next. Characters with ↑ (film with the actor above) / ↓ (below) / ↕ (same role in both), Check (4 tries, right spots turn green, Wordle-style flip), 💡 Hint ×4 (three films side by side, then one actor placed), points out of 5, timeline ending with the five films and watchlist ribbons. Keyboard ↑↓ moves rows too. No levels yet. `data/six-chains.json`.
    - **The Bet**, **Mind Reader** — after the season.
@@ -40,7 +40,7 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 
 ## The games teach the real app (Slice 2 — landed 2026-10-21)
 
-What "Behind the curtain" shows is what the live taste DNA registers: the scale beliefs, the genre chips (and "Never"), the creators they trust. It happens on the server after a save, at milestones, and each sync replaces what the previous one wrote. Details: `docs/INTEGRATION.md` (2026-10-21) and `docs/DNA-CONTRACT.md` ("The taste games as a writer"). Game reactions on single titles (`pickReactions`, Blind's "Seen it") are not written as title signals, by design.
+What "Behind the curtain" shows is what the live taste DNA registers: the scale beliefs, the genre chips (and "Never"), the creators they trust. It happens on the server after a save, at milestones, and each sync replaces what the previous one wrote. Details: `docs/INTEGRATION.md` (2026-10-21) and `docs/DNA-CONTRACT.md` ("The taste games as a writer"). Game reactions on single titles (`pickReactions`: Blind's "Seen it", The Other Side's ratings) are not written as title signals, by design.
 
 ## Rules Eran set (do not re-litigate)
 
@@ -49,12 +49,17 @@ What "Behind the curtain" shows is what the live taste DNA registers: the scale 
 - **Never repeat** a served item in a game (`S.served`), even across Games ↔ season step.
 - **Memory, not guessing** (Six Degrees): hints jog memory (films, characters); a game must not be solvable by brute force alone.
 - **Variety beats volume.** In Six Degrees a pair-and-film link appears once in the whole set, a film in ≤2 chains, a face in ≤3; Eran noticed repeats after six chains. Two+ women per chain; a hand list of faces too few would know.
+- **Levels: finishing a level unlocks the next, whatever the score** (Eran, 2026-10-27, #150). No hidden score bars. A target only where it *is* the game and the end screen says it (Higher or Lower's streak).
 - **Season games are always open.** No teaser picks, no meters or % on training screens. Confetti only when earned, dropped once.
 - Eran dislikes jargon, meters that mean nothing, endless aimless loops, fake claims, and anything that looks "AI-generated".
 
 ## UI conventions for every game (Eran, 2026-10-24)
 
 - **One button look:** every button on a game screen is a 56px pill with 18px text — orange gradient for the main action (`.cta` / `.opt.primary`), the same dark pill for the rest (`.opt`, `.ghost`). One rule under `.screen.game-screen` in `play.css` enforces it; render new games inside `GameScreen` and never add per-game button sizes.
+- **Orange = the one action that answers or moves on** (Check, Next story, Start). Helpers and fallbacks (💡 Hint, Next clue) stay dark, even when they're the only button on screen.
+- **"Seen it" ratings, app-wide (2026-10-27):** ❤️ Loved / 👍 Liked / 👎 Disliked, exactly the feed card's row: 13px prompt at 50% white, 8px, 36px pills 6px apart, 13.5px regular label at 70% white, emoji in its own opaque span (a 70% text colour fades emojis). The one exception to the 56px buttons. In games use `SeenChips` (`gameplay.tsx`).
+- **Reusing a pattern from the app means matching it exactly.** Measure both in the running app (height, width, font size, weight, colours, gaps) and compare the numbers before calling it "the same". Mocks are full fidelity: real posters, fonts, buttons.
+- **Every screen fits 375×812 with the longest content.** Check the longest title/text, not just a typical one; shrink the text before the poster.
 - **End screens have one button** (Play again / Next level / Next chain). Never "Back to games": the ✕ at the top does that.
 - **Pinned bottom buttons get no backdrop** (the screen has a gradient; a dark fade reads as a black box).
 - `.game` is an old card class — don't reuse it. Highlights in summary lines: `*word*` via `Marked` (`ui.tsx`).
@@ -92,8 +97,8 @@ What "Behind the curtain" shows is what the live taste DNA registers: the scale 
 
 - **Six Degrees themed levels** — the data exists (see above); needs Eran's choice of themes and a face pass.
 - **Blind stories' fact check** — extend `check-play-plots.mts` to `blind-covers.json`.
-- **A stray change** in `PlayApp.tsx` (unknown game id → default accent) sat uncommitted in Eran's checkout on 2026-10-25, author unknown; ask Shahar.
-- **Review bot** (`claude-review`): it failed instantly on 2026-10-24 (likely an expired token) and worked again once Shahar re-ran it.
+- **A stray change** in `PlayApp.tsx` (unknown game id → default accent) still sits uncommitted in Eran's checkout (seen 2026-10-25 and 2026-10-27), author unknown; leave it out of commits and ask Shahar.
+- **Review bot** (`claude-review`): it failed instantly on 2026-10-24 (likely an expired token) and worked again once Shahar re-ran it. On #149 and #150 (2026-10-27) it passed in 3–8 seconds and posted nothing: it isn't really reviewing. Review the diff yourself and run `npx vitest run` before merging; ask Shahar to look at the bot.
 
 ## Ideas on the shelf (from Eran, not built)
 
