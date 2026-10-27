@@ -1,4 +1,4 @@
-"""Builds play.html, the playable Credit Check prototype (a private Artifact page).
+"""Builds play.html, the playable Cast Call prototype (was "Credit Check") (a private Artifact page).
 Reads deck.json (build-deck.py), downloads each poster/face once (OS temp folder),
 shrinks them with sips and embeds them as data URIs. The app's real play.css is
 inlined, so the screens match the live games.
@@ -40,7 +40,7 @@ game_js = open(os.path.join(ROOT, 'play.js.part')).read()
 slim = [{'id': d['id'], 'name': d['name'], 'f': 'f' + d['img'], 'tier': d['tier'],
          'cells': [{'t': c['t'], 'p': 'p' + c['p'], 'r': c['r']} for c in d['cells']]} for d in deck]
 
-html = f'''<title>Credit Check</title>
+html = f'''<title>Cast Call</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap">
 <style>{play_css}</style>
 <style>{game_css}</style>

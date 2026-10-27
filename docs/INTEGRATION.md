@@ -176,9 +176,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
-### 2026-10-27 — Credit Check, a new game: prototype approved (no branch yet)
-- Eran's idea: a face and nine posters, tap the ones they were in, 60 seconds. Mock-ups (three rounds) and a playable prototype (three rounds) in `docs/prototypes/credit-check/`; the full design and the live-build rules are in `docs/taste-games-handoff.md` ("In progress: Credit Check"). Not built into `src/app/play/` yet.
-- **Measured on the live catalog (read-only):** 34,941 titles, 6,739 well-known, 1,570 actors who can fill a 4-right grid; 467 well-known English-language faces (147 women) → ~50 runs before a face repeats. `titles.crew.cast` has billing order but no character names or voice flags.
+### 2026-10-27 — Cast Call, a new game: prototype approved (`docs/credit-check-prototype`)
+- Eran's idea: a face and nine posters, tap the four they were in, 10 faces in 60 seconds. Named Cast Call (working name was Credit Check). Mock-ups (three rounds) and a playable prototype (three rounds) in `docs/prototypes/credit-check/`; the full design and the live-build rules are in `docs/taste-games-handoff.md` ("In progress: Cast Call"). Not built into `src/app/play/` yet.
+- **Measured on the live catalog (read-only):** 34,941 titles, 6,739 well-known, 1,570 actors who can fill a 4-right grid; 467 well-known English-language faces (147 women) → ~47 runs of 10 faces before a face repeats. `titles.crew.cast` has billing order but no character names or voice flags.
 
 ### 2026-10-27 — Other Side: every finished level unlocks the next (`fix/other-side-levels`)
 - The Other Side used to need half the points to level up (8 of 15 on level 1) and replayed the same level otherwise, without saying so; Eran kept landing back on level 1. Now finishing a level always unlocks the next, like Blind Taste Test, The Bet and Mind Reader. Points still show and count toward the personal best. Higher or Lower keeps its stated streak target.

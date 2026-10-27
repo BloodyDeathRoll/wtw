@@ -1,5 +1,6 @@
-// Credit Check prototype. One run = 60 seconds; each face is a 3x3 grid.
+// Cast Call prototype (was "Credit Check"). One run = 10 faces in 60 seconds; each face is a 3x3 grid.
 const TOTAL = 60000, BONUS = 3000, LOW = 10000, PICKS = 4   // always 4 right (Eran, 2026-10-27)
+const CAP = 10   // faces a run; the run ends at the 10th or at the buzzer (Eran, 2026-10-27)
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches
 const $ = (s, el = document) => el.querySelector(s)
 const scr = $('#scr')
@@ -13,9 +14,9 @@ const Q = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wid
 const RULES = ['You get a face and nine posters. Four of them are movies or shows they were in. Tap those four, then Check.',
   'Each right one wins you a point. Each wrong one loses a point.',
   'Get all four right and you win 3 extra seconds.',
-  'You have one minute. Beat your best score.']
+  'Ten faces, one minute. Beat your best score.']
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
-const topBar = level => `<div class="topbar"><button class="hb" id="quit" aria-label="Exit game">${X}</button><div class="gtitle">Credit Check</div><button class="hb r" id="help" aria-label="How to play">${Q}</button></div><div class="glevel" id="lvl">${level}</div>`
+const topBar = level => `<div class="topbar"><button class="hb" id="quit" aria-label="Exit game">${X}</button><div class="gtitle">Cast Call</div><button class="hb r" id="help" aria-label="How to play">${Q}</button></div><div class="glevel" id="lvl">${level}</div>`
 
 // ── a run: easy faces first, then medium, then hard; never a face twice ──
 function dealRun() {
@@ -26,14 +27,14 @@ function dealRun() {
     if (pool.length < n) { tier(t).forEach(d => served.delete(d.id)); pool = tier(t).filter(d => !served.has(d.id)) }  // prototype: a spent tier starts over
     return pool.sort(() => Math.random() - .5).slice(0, n)
   }
-  return [...take('easy', 3), ...take('medium', 5), ...take('hard', 7)]
+  return [...take('easy', 3), ...take('medium', 3), ...take('hard', 4)]
 }
 
 let R = null   // the run
 let G = null   // the grid on screen
 
 function newRun() {
-  R = { faces: dealRun(), i: 0, score: 0, right: 0, wrong: 0, missed: 0, grids: 0, left: TOTAL, running: false, last: 0, seen: [], log: [], over: false }
+  R = { faces: dealRun(), i: 0, score: 0, right: 0, wrong: 0, missed: 0, grids: 0, left: TOTAL, used: 0, done: false, running: false, last: 0, seen: [], log: [], over: false }
 }
 
 // ── intro ──
@@ -50,16 +51,16 @@ function intro() {
   $('#start').onclick = () => { newRun(); play() }
   $('#j10').onclick = () => { newRun(); R.left = 12000; R.score = 14; R.right = 16; R.wrong = 2; R.missed = 4; R.grids = 5; R.i = 5; play() }
   $('#jend').onclick = () => {
-    newRun(); R.seen = R.faces.slice(0, 8)
-    const hits = [4, 3, 4, 2, 3, 4, 2, 1]   // the last one cut short by the buzzer
+    newRun(); R.seen = R.faces.slice(0, CAP)
+    const hits = [4, 3, 4, 2, 3, 4, 2, 3, 4, 3]   // all ten done, 9 seconds to spare
     R.log = R.seen.map((f, k) => ({ f: f.f, hit: hits[k], perfect: hits[k] === 4 }))
-    Object.assign(R, { right: 23, wrong: 5, missed: 9, grids: 8, score: 18 }); end()
+    Object.assign(R, { right: 32, wrong: 8, missed: 8, grids: CAP, score: 24, done: true, used: 51000 }); end()
   }
 }
 
 // ── play ──
 function play() {
-  scr.innerHTML = topBar(`SCORE <b id="score">${R.score}</b>`) +
+  scr.innerHTML = topBar(`FACE <b id="fn">${R.i + 1}</b> OF ${CAP} · SCORE <b id="score">${R.score}</b>`) +
     `<div class="cc" id="cc">
       <div class="ask" id="ask"><img class="face" id="face" alt=""><div class="q" id="q"></div>
         <div class="clock" id="clock"><svg viewBox="0 0 54 54"><circle class="trk" cx="27" cy="27" r="23"/><circle class="arc" id="arc" cx="27" cy="27" r="23"/></svg><span id="sec">60</span><b class="pause"><s></s><s></s></b></div></div>
@@ -86,8 +87,8 @@ function fit() {
 }
 
 function showFace(first) {
-  if (R.i >= R.faces.length) { R.faces.push(...dealRun()) }   // a very fast player: deal more
   const face = R.faces[R.i]
+  $('#fn').textContent = R.i + 1
   G = { face, sel: new Set(), phase: 'pick' }
   R.seen.push(face)
   store.set('served', [...new Set([...store.get('served', []), face.id])])   // seen = shown, not dealt
@@ -143,7 +144,7 @@ function drawClock(ms) {
 }
 function tick(now) {
   if (!R || !R.running) return
-  R.left -= now - R.last; R.last = now
+  R.left -= now - R.last; R.used += now - R.last; R.last = now
   if (R.left <= 0) { R.left = 0; R.running = false; R.over = true; drawClock(0); timeUp(); return }
   drawClock(R.left)
   requestAnimationFrame(tick)
@@ -191,6 +192,7 @@ async function check(buzzer) {
   if (buzzer) return
   if (perfect) await bonus()
   G.phase = 'result'
+  if (R.i + 1 >= CAP) { R.done = true; R.over = true; setAct('See my score', false); return }   // the 10th face: the run is over
   setAct('Next', false)
 }
 
@@ -232,6 +234,7 @@ async function bonus() {
 }
 
 async function next() {
+  if (R.done) return end()
   G.phase = 'leaving'
   setAct('Check', true)
   const grid = $('#grid'); grid.classList.remove('in'); grid.classList.add('out')
@@ -264,7 +267,8 @@ function end() {
   if (isBest) store.set('best', R.score)
   const posters = R.seen.flatMap(f => f.cells.filter(c => c.r !== null).map(c => c.p))
   let wall = [...new Set(posters)]; while (wall.length && wall.length < 30) wall = wall.concat(wall); wall = wall.slice(0, 30)
-  const n = R.grids, title = `${n} ${n === 1 ? 'face' : 'faces'} in a minute`
+  // all ten before the buzzer: the time is the brag; otherwise how far you got
+  const n = R.grids, title = R.done ? `${CAP} faces in ${clockText(R.used)}` : n >= CAP ? `Time's up on face ${CAP}` : `${n} of ${CAP} faces`
   // the counts as a quiet line (not tiles: tiles under the score tiles read as a dashboard), then a divider
   const counts = `<div class="stats"><div><b class="g">${R.right}</b><span>right</span></div><i></i><div><b class="r">${R.wrong}</b><span>wrong</span></div><i></i><div><b class="m">${R.missed}</b><span>missed</span></div></div><div class="rule"></div>`
   const faces = `<div class="facesbox"><h2>${title}</h2><div class="faces">${R.log.map((l, k) => `<div class="${l.perfect ? 'perfect' : ''}" style="animation-delay:${0.45 + k * 0.04}s"><img src="${IMG[l.f]}" alt=""><i>${l.hit}/4</i></div>`).join('')}</div></div>`
@@ -292,6 +296,8 @@ function end() {
   const step = now => { const k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3); big.textContent = Math.round(to * e); if (k < 1) requestAnimationFrame(step) }
   requestAnimationFrame(step)
 }
+
+function clockText(ms) { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
 // Faces as big as the space allows: 3 a row up to 12 (4 rows), then 4 a row, then smaller (Eran)
 function fitFaces() {
