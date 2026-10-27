@@ -36,6 +36,7 @@ import { readLocal, usePersistence } from './persist'
 import { demoStateAt } from '../lib/demo'
 import { markSixServed, sixDeal, type SixChain } from '../lib/six'
 import sixChains from '../data/six-chains.json'
+import { castDeal, castShown, type CastData } from '../lib/cast'
 import { SAVED_FROM, loadAccountWatchlist, saveTitle, savedIds, unsaveTitle, type SaveSource } from '../lib/watchlist'
 import type { BlindRun, Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
 import { GAMES } from './games'
@@ -114,6 +115,8 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
   }
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const undoRef = useRef<(() => void) | null>(null)
+  /** Cast Call's faces (~400 KB): loaded the first time the game starts, not with /play. */
+  const castData = useRef<CastData | null>(null)
   const [savedSet, setSaved] = useState<Set<string>>(() => new Set())
   useEffect(() => {
     setSaved(savedIds())   // the device's copy first, then the account's list for signed-in players
@@ -369,6 +372,14 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     if (!chain) { toast('You\'ve played every chain for now. More are coming.'); return null }
     markSixServed(S, chain)
     return { ...g, phase: 'play', six: { chain, deal: (g.six?.deal ?? 0) + 1 } }
+  }
+
+  /** Cast Call: a new round of ten faces. Its data loads on first use. */
+  async function castDealRun(g: GameRun): Promise<GameRun | null> {
+    castData.current ??= (await import('../data/cast-call.json')).default as CastData
+    const faces = castDeal(S, castData.current)
+    if (!faces.length) { toast('No faces left for your genres right now.'); return null }
+    return { ...g, phase: 'play', cast: { faces, deal: (g.cast?.deal ?? 0) + 1 } }
   }
 
   /** A season game is over: close the step (path) or show the game's result (Games). */
@@ -649,6 +660,28 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       if (next) set({ game: next }); else set({ game: null, screen: 'games' })
       commit()
     },
+    async castNext() {
+      const g = ui.game
+      if (!g) return
+      const next = await castDealRun(g)
+      if (next) set({ game: next }); else set({ game: null, screen: 'games' })
+      commit()
+    },
+    castShown(faceId) {
+      const f = castData.current?.faces.find(x => x.id === faceId)
+      if (f) castShown(S, f)
+    },
+    castLog(payload) {
+      commit([{ kind: 'cast_grid', item_key: String(payload.face), payload: { ...payload } }])
+    },
+    castFinish(r) {
+      const gp = (S.games.cast ??= { level: 0, plays: 0 })
+      gp.plays++
+      S.gamePlays++
+      if (r.score > 0) (S.gameBest ??= {}).cast = Math.max(S.gameBest?.cast ?? 0, r.score)
+      note(S, `Cast Call: ${r.score} points, ${r.done ? `all ${r.faces} faces` : `${r.faces} faces`}`)
+      commit([{ kind: 'cast_done', payload: { ...r } }])
+    },
     sixLog(kind, payload) {
       const six = ui.game?.six
       if (six) commit([{ kind, item_key: six.chain.id, payload: { chain: six.chain.id, ...payload } }])
@@ -786,6 +819,10 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
         const next = sixDealRun(g)
         if (next) set({ game: next })
         commit()
+        return
+      }
+      if (g.id === 'cast') {
+        void castDealRun(g).then(next => { if (next) set({ game: next }); commit() })
         return
       }
       const lv = (S.games[g.id] ??= { level: 0, plays: 0 }).level
