@@ -93,6 +93,18 @@ What "Behind the curtain" shows is what the live taste DNA registers: the scale 
 
 **Working tips:** large data files go through Python one-off scripts in the session scratchpad; TMDB key in `.env.local` (`TMDB_API_KEY`) — never print it. If another branch needs a fix while uncommitted work sits in the checkout, use a `git worktree` in the scratchpad (symlink `node_modules` and `.env.local`), then remove it.
 
+## In progress: Credit Check (prototype approved 2026-10-27, not built)
+
+A fast, easy game, the "select all the traffic lights" captcha with posters. A face and nine posters; **always 4 right** ("Select 4 titles with ●●●●"), Check lights up at 4, a fifth tap shakes until you untap one. 60 seconds a run; right +1, wrong −1; all four right = +3 seconds (pops big over the grid, flies into the clock). Check flips the posters (Wordle flip): hit = green inside stroke + character, wrong = red + dimmed, missed = dashed green + **title** + character, the rest fade. The clock pauses; the orange button becomes **Next**. Last 10 s: red clock. Time's up: a red flash, the grid is checked as it stands, "Time's up · What you tapped still counts" → See my score. End screen (version A of three, then Eran's notes): SCORE and BEST tiles (NEW BEST tag + "was N"); right / wrong / missed as a quiet line, not tiles (tiles under tiles read as a dashboard), then a divider; "N faces in a minute" right above the run's faces with x/4 (green at 4/4), as big as the space allows (3 a row up to 12, then 4, then smaller; the screen never scrolls); a faded drifting wall of the run's posters; one button "Next round". Mock-ups and the playable page: `docs/prototypes/credit-check/` (`build-deck.py` → `deck.json`, `build-play.py` + `play.js.part` / `play.css.part` → `play.html`, a private Artifact: https://claude.ai/artifact/LgYV6KZNzqhehvmFFZXLgp). Name "Credit Check" is a working name.
+
+**Rules for the live build (Eran):**
+- **English-language only, well-known faces and well-known titles.** Every poster in a grid from the same language as the face's titles (no Korean actor in Bollywood titles). 30–35% women is fine.
+- **At most 2 posters from one franchise per grid**, right and wrong together. TMDB's series are too narrow ("X-Men" vs "Wolverine", "Iron Man" vs "Avengers"), so franchises are grouped by hand (`FRANCHISE` in `build-deck.py`: Marvel, X-Men, DC, Batman, Middle-earth, Wizarding World, Spider-Man, Star Wars). Faces that can't fill a grid under it drop out (Radcliffe, Grint, Hemsworth…).
+- **Repeats:** none in the first 5 rounds; after that at most 1–2 returning faces a round, each at least 2–3 rounds after it last appeared, with new posters where possible. Target: 25–30 good rounds.
+- Right = top-6 billed, not voice / self / uncredited; wrong = **no credit at all** on the actor's full TMDB credits. Easy → hard inside a run (3 easy, 5 medium, then hard; tiers split separately for women and men, or one fame list puts nearly every woman in "hard"). Hard faces get co-stars' films as wrong posters.
+
+**Measured on the live catalog (2026-10-27, read-only):** 34,941 titles; 6,739 "known" (English ≥1,000 TMDB votes, others ≥300); 1,570 actors can fill a grid. By total votes on their known titles: ≥40k → 467 English faces (147 women: Blake Lively, Jon Hamm, Dev Patel…), ≥30k → 624 (203 women; the 30–40k band needs a hand pass). ~9 faces a run → ~50 fresh runs at the 40k line. The catalog's `crew.cast` has billing order but no character names or voice flags: fetch those from TMDB in the build.
+
 ## Open items
 
 - **Six Degrees themed levels** — the data exists (see above); needs Eran's choice of themes and a face pass.

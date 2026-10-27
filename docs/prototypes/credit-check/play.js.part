@@ -1,0 +1,333 @@
+// Credit Check prototype. One run = 60 seconds; each face is a 3x3 grid.
+const TOTAL = 60000, BONUS = 3000, LOW = 10000, PICKS = 4   // always 4 right (Eran, 2026-10-27)
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches
+const $ = (s, el = document) => el.querySelector(s)
+const scr = $('#scr')
+const wait = ms => new Promise(r => setTimeout(r, RM ? 0 : ms))
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('cc-' + k); return v == null ? d : JSON.parse(v) } catch { return d } },
+  set(k, v) { try { localStorage.setItem('cc-' + k, JSON.stringify(v)) } catch {} },
+}
+const X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+const Q = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"/></svg>'
+const RULES = ['You get a face and nine posters. Four of them are movies or shows they were in. Tap those four, then Check.',
+  'Each right one wins you a point. Each wrong one loses a point.',
+  'Get all four right and you win 3 extra seconds.',
+  'You have one minute. Beat your best score.']
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const topBar = level => `<div class="topbar"><button class="hb" id="quit" aria-label="Exit game">${X}</button><div class="gtitle">Credit Check</div><button class="hb r" id="help" aria-label="How to play">${Q}</button></div><div class="glevel" id="lvl">${level}</div>`
+
+// ── a run: easy faces first, then medium, then hard; never a face twice ──
+function dealRun() {
+  let served = new Set(store.get('served', []))
+  const tier = t => DECK.filter(d => d.tier === t)
+  const take = (t, n) => {
+    let pool = tier(t).filter(d => !served.has(d.id))
+    if (pool.length < n) { tier(t).forEach(d => served.delete(d.id)); pool = tier(t).filter(d => !served.has(d.id)) }  // prototype: a spent tier starts over
+    return pool.sort(() => Math.random() - .5).slice(0, n)
+  }
+  return [...take('easy', 3), ...take('medium', 5), ...take('hard', 7)]
+}
+
+let R = null   // the run
+let G = null   // the grid on screen
+
+function newRun() {
+  R = { faces: dealRun(), i: 0, score: 0, right: 0, wrong: 0, missed: 0, grids: 0, left: TOTAL, running: false, last: 0, seen: [], log: [], over: false }
+}
+
+// ── intro ──
+function intro() {
+  R = null
+  const best = store.get('best', 0)
+  scr.innerHTML = topBar(best ? `BEST <b>${best}</b>` : 'NEW') +
+    `<div class="gintro"><div class="gbadge">✓</div><h2>Prove you're a fan. Beat the clock.</h2>
+     <ol class="rules">${RULES.map(r => `<li>${r}</li>`).join('')}</ol>
+     <button class="cta" id="start">Start</button>
+     <div class="proto">Prototype: <button id="j10">start at 0:12</button><button id="jend">see the end screen</button></div></div>`
+  $('#quit').onclick = intro
+  $('#help').onclick = intro
+  $('#start').onclick = () => { newRun(); play() }
+  $('#j10').onclick = () => { newRun(); R.left = 12000; R.score = 14; R.right = 16; R.wrong = 2; R.missed = 4; R.grids = 5; R.i = 5; play() }
+  $('#jend').onclick = () => {
+    newRun(); R.seen = R.faces.slice(0, 8)
+    const hits = [4, 3, 4, 2, 3, 4, 2, 1]   // the last one cut short by the buzzer
+    R.log = R.seen.map((f, k) => ({ f: f.f, hit: hits[k], perfect: hits[k] === 4 }))
+    Object.assign(R, { right: 23, wrong: 5, missed: 9, grids: 8, score: 18 }); end()
+  }
+}
+
+// ── play ──
+function play() {
+  scr.innerHTML = topBar(`SCORE <b id="score">${R.score}</b>`) +
+    `<div class="cc" id="cc">
+      <div class="ask" id="ask"><img class="face" id="face" alt=""><div class="q" id="q"></div>
+        <div class="clock" id="clock"><svg viewBox="0 0 54 54"><circle class="trk" cx="27" cy="27" r="23"/><circle class="arc" id="arc" cx="27" cy="27" r="23"/></svg><span id="sec">60</span><b class="pause"><s></s><s></s></b></div></div>
+      <div class="grid" id="grid"></div>
+      <div class="tally" id="tally"></div>
+      <button class="cta off" id="act">Check</button>
+    </div>`
+  $('#quit').onclick = () => { R.running = false; intro() }
+  $('#help').onclick = rulesSheet
+  $('#act').onclick = act
+  addEventListener('resize', fit)
+  showFace(true)
+  R.running = true; R.last = performance.now(); requestAnimationFrame(tick)
+}
+
+function fit() {
+  const cc = $('#cc'), grid = $('#grid'); if (!cc || !grid) return
+  const cs = getComputedStyle(cc)
+  const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+  const others = $('#ask').offsetHeight + $('#tally').offsetHeight + $('#act').offsetHeight + 3 * 10 + 6
+  const h = cc.clientHeight - pad - others
+  const w = Math.min(cc.clientWidth - 32, (h - 16) / 1.5 + 16)
+  grid.style.width = Math.max(200, w) + 'px'
+}
+
+function showFace(first) {
+  if (R.i >= R.faces.length) { R.faces.push(...dealRun()) }   // a very fast player: deal more
+  const face = R.faces[R.i]
+  G = { face, sel: new Set(), phase: 'pick' }
+  R.seen.push(face)
+  store.set('served', [...new Set([...store.get('served', []), face.id])])   // seen = shown, not dealt
+  $('#face').src = IMG[face.f]
+  const q = $('#q'); q.innerHTML = `<span class="ql">Select ${PICKS} titles with<span class="dots" id="dots">${'<i></i>'.repeat(PICKS)}</span></span><b>${esc(face.name)}</b>`; q.classList.remove('swap'); void q.offsetWidth; q.classList.add('swap')
+  const grid = $('#grid')
+  grid.className = 'grid'
+  grid.innerHTML = face.cells.map((c, i) =>
+    `<button class="tile" data-i="${i}" aria-pressed="false" aria-label="${esc(c.t)}" style="animation-delay:${RM ? 0 : i * 35}ms"><img class="art" src="${IMG[c.p]}" alt="" draggable="false"></button>`).join('')
+  void grid.offsetWidth; grid.classList.add('in')
+  grid.querySelectorAll('.tile').forEach(t => t.onclick = () => toggle(+t.dataset.i))
+  const tally = $('#tally'); tally.classList.remove('on'); tally.innerHTML = ''
+  setAct('Check', true)
+  $('#clock').classList.remove('paused')
+  fit()
+}
+
+function toggle(i) {
+  if (G.phase !== 'pick' || !R.running) return
+  const t = $(`#grid .tile[data-i="${i}"]`)
+  if (G.sel.has(i)) { G.sel.delete(i); t.classList.remove('sel'); t.querySelector('.tick')?.remove() }
+  else if (G.sel.size >= PICKS) { nudge(t); return }          // a fifth tap: untap one first
+  else { G.sel.add(i); t.classList.add('sel'); t.insertAdjacentHTML('beforeend', '<div class="tick">✓</div>') }
+  t.setAttribute('aria-pressed', G.sel.has(i))
+  drawDots()
+  setAct('Check', G.sel.size !== PICKS)
+}
+
+function drawDots() {
+  $('#dots')?.querySelectorAll('i').forEach((d, k) => d.classList.toggle('on', k < G.sel.size))
+}
+function nudge(t) {
+  if (RM) return
+  for (const el of [t, $('#dots')]) { el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope') }
+}
+
+function setAct(label, off) { const b = $('#act'); b.textContent = label; b.classList.toggle('off', off) }
+
+function act() {
+  if (G.phase === 'pick' && G.sel.size === PICKS) check(false)
+  else if (G.phase === 'result') next()
+}
+
+// ── the clock ──
+function drawClock(ms) {
+  const arc = $('#arc'); if (!arc) return
+  const circ = 2 * Math.PI * 23, f = Math.max(0, Math.min(1, ms / TOTAL))
+  arc.setAttribute('stroke-dasharray', `${(circ * f).toFixed(1)} ${circ.toFixed(1)}`)
+  $('#sec').textContent = Math.ceil(Math.max(0, ms) / 1000)
+  const low = ms <= LOW && ms > 0 || (ms <= 0 && R.over)
+  $('#clock').classList.toggle('low', low && !$('#clock').classList.contains('gain'))
+  $('#ask').classList.toggle('low', low)
+}
+function tick(now) {
+  if (!R || !R.running) return
+  R.left -= now - R.last; R.last = now
+  if (R.left <= 0) { R.left = 0; R.running = false; R.over = true; drawClock(0); timeUp(); return }
+  drawClock(R.left)
+  requestAnimationFrame(tick)
+}
+function pause() { R.running = false; $('#clock')?.classList.add('paused') }
+function resume() { $('#clock')?.classList.remove('paused'); R.running = true; R.last = performance.now(); requestAnimationFrame(tick) }
+
+// ── check: flip the posters one by one ──
+async function check(buzzer) {
+  G.phase = 'checking'
+  if (!buzzer) pause()
+  setAct('Check', true)
+  const cells = G.face.cells, tiles = [...document.querySelectorAll('#grid .tile')]
+  let hit = 0, wrong = 0, miss = 0
+  const nRight = cells.filter(c => c.r !== null).length
+  for (let i = 0; i < 9; i++) {
+    const c = cells[i], t = tiles[i], picked = G.sel.has(i), right = c.r !== null
+    const kind = picked && right ? 'hit' : picked ? 'wrong' : right ? 'miss' : 'pass'
+    if (kind === 'hit') hit++; else if (kind === 'wrong') wrong++; else if (kind === 'miss') miss++
+    t.classList.add('done')
+    const swap = () => {
+      t.classList.remove('sel'); t.querySelector('.tick')?.remove(); t.classList.add(kind)
+      const long = c.r && c.r.length > 13 ? ' long' : ''
+      if (kind === 'hit') t.insertAdjacentHTML('beforeend', `<div class="tick">✓</div>${c.r ? `<div class="role${long}">${esc(c.r)}</div>` : ''}`)
+      if (kind === 'wrong') t.insertAdjacentHTML('beforeend', '<div class="tick">✕</div>')
+      if (kind === 'miss') t.insertAdjacentHTML('beforeend', `<div class="role mt"><small>MISSED</small><span class="ttl">${esc(c.t)}</span>${c.r ? `<span class="ch">${esc(c.r)}</span>` : ''}</div>`)
+    }
+    if (RM) { swap(); continue }
+    ;(async () => { t.classList.add('flip'); await wait(160); swap(); t.style.transition = 'transform .2s ease-out'; t.classList.remove('flip'); await wait(220); t.style.transition = '' })()
+    await wait(85)
+  }
+  await wait(380)
+  const perfect = hit === nRight && wrong === 0
+  R.right += hit; R.wrong += wrong; R.missed += miss; R.grids++
+  R.log.push({ f: G.face.f, hit, perfect })
+  countScore(R.score, R.score + hit - wrong); R.score += hit - wrong
+  const q = $('#q')
+  q.innerHTML = `${esc(G.face.name)}<b>${perfect ? 'Perfect grid!' : `${hit} of ${nRight}`}</b>`
+  q.classList.remove('swap'); void q.offsetWidth; q.classList.add('swap')
+  const parts = [`<span class="g"><b>${hit}</b> right</span>`]
+  if (wrong) parts.push(`<span class="r"><b>${wrong}</b> wrong</span>`)
+  if (miss > wrong) parts.push(`<span class="m"><b>${miss}</b> missed</span>`)   // only when the buzzer cut a grid short
+  if (perfect && !buzzer) parts.push('<span class="g"><b>+3</b> seconds</span>')
+  const tally = $('#tally'); tally.innerHTML = parts.join('<i>·</i>'); tally.classList.add('on')
+  if (buzzer) return
+  if (perfect) await bonus()
+  G.phase = 'result'
+  setAct('Next', false)
+}
+
+function countScore(from, to) {
+  const el = $('#score'); if (!el) return
+  if (RM || from === to) { el.textContent = to; return }
+  const t0 = performance.now(), d = 420
+  const step = now => { const k = Math.min(1, (now - t0) / d); el.textContent = Math.round(from + (to - from) * k); if (k < 1) requestAnimationFrame(step) }
+  requestAnimationFrame(step)
+}
+
+// +3s pops big over the grid, flies into the clock, and the ring sweeps forward
+async function bonus() {
+  const cc = $('#cc'), clock = $('#clock'), grid = $('#grid')
+  const from = R.left, to = Math.min(TOTAL, R.left + BONUS)
+  if (RM) { R.left = to; drawClock(to); return }
+  const b = document.createElement('div'); b.className = 'bonus'; b.textContent = '+3s'
+  cc.appendChild(b)
+  const base = cc.getBoundingClientRect(), gr = grid.getBoundingClientRect(), cr = clock.getBoundingClientRect()
+  const bw = b.offsetWidth, bh = b.offsetHeight
+  const sx = gr.left - base.left + gr.width / 2 - bw / 2, sy = gr.top - base.top + gr.height / 2 - bh / 2
+  const ex = cr.left - base.left + cr.width / 2 - bw / 2, ey = cr.top - base.top + cr.height / 2 - bh / 2
+  b.style.left = sx + 'px'; b.style.top = sy + 'px'
+  await b.animate([
+    { transform: 'translate(0,0) scale(.2)', opacity: 0 },
+    { transform: 'translate(0,0) scale(1.15)', opacity: 1, offset: .22 },
+    { transform: 'translate(0,0) scale(1)', opacity: 1, offset: .5 },
+    { transform: `translate(${ex - sx}px,${ey - sy}px) scale(.3)`, opacity: .85 },
+  ], { duration: 1300, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' }).finished
+  b.remove()
+  clock.classList.add('gain')
+  const t0 = performance.now(), d = 650
+  await new Promise(res => {
+    const step = now => { const k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3); R.left = from + (to - from) * e; drawClock(R.left); k < 1 ? requestAnimationFrame(step) : res() }
+    requestAnimationFrame(step)
+  })
+  await wait(250)
+  clock.classList.remove('gain'); drawClock(R.left)
+}
+
+async function next() {
+  G.phase = 'leaving'
+  setAct('Check', true)
+  const grid = $('#grid'); grid.classList.remove('in'); grid.classList.add('out')
+  await wait(240)
+  R.i++
+  showFace(false)
+  resume()
+}
+
+// ── the buzzer: what's tapped still counts ──
+async function timeUp() {
+  if (G && G.phase === 'pick') {
+    const cc = $('#cc'); const f = document.createElement('div'); f.className = 'flash'; cc.appendChild(f); setTimeout(() => f.remove(), 600)
+    await check(true)
+  } else if (G && G.phase === 'checking') { while (G.phase === 'checking') await wait(100) }
+  await wait(400)
+  const o = document.createElement('div'); o.className = 'over'
+  o.innerHTML = `<div class="big">Time's up</div><p>What you tapped still counts.</p><button class="cta" id="seescore">See my score</button>`
+  $('#cc').appendChild(o)
+  $('#seescore').onclick = end
+}
+
+// ── end screen ──
+// END = which end screen. 'a' is the pick (2026-10-27): score + best tiles, the three counts, the faces.
+// 'b' (no faces) and 'c' (one big score) were the other two versions compared.
+let END = 'a'
+function end() {
+  removeEventListener('resize', fit)
+  const prev = store.get('best', 0), isBest = R.score > prev
+  if (isBest) store.set('best', R.score)
+  const posters = R.seen.flatMap(f => f.cells.filter(c => c.r !== null).map(c => c.p))
+  let wall = [...new Set(posters)]; while (wall.length && wall.length < 30) wall = wall.concat(wall); wall = wall.slice(0, 30)
+  const n = R.grids, title = `${n} ${n === 1 ? 'face' : 'faces'} in a minute`
+  // the counts as a quiet line (not tiles: tiles under the score tiles read as a dashboard), then a divider
+  const counts = `<div class="stats"><div><b class="g">${R.right}</b><span>right</span></div><i></i><div><b class="r">${R.wrong}</b><span>wrong</span></div><i></i><div><b class="m">${R.missed}</b><span>missed</span></div></div><div class="rule"></div>`
+  const faces = `<div class="facesbox"><h2>${title}</h2><div class="faces">${R.log.map((l, k) => `<div class="${l.perfect ? 'perfect' : ''}" style="animation-delay:${0.45 + k * 0.04}s"><img src="${IMG[l.f]}" alt=""><i>${l.hit}/4</i></div>`).join('')}</div></div>`
+  const bestTile = isBest
+    ? `<div class="sc bt new"><span>BEST</span><b>${R.score}</b>${prev ? `<small>was ${prev}</small>` : ''}<em>${prev ? 'NEW BEST' : 'FIRST ROUND'}</em></div>`
+    : `<div class="sc bt"><span>BEST</span><b>${prev}</b></div>`
+  let body
+  if (END === 'c') {
+    body = `<div class="bigscore" id="big">0</div>
+      <div class="bestline${isBest ? ' new' : ''}">${isBest ? 'NEW BEST' : `BEST <b>${prev}</b>`}</div>
+      <h2>${title}</h2>${counts}`
+  } else {
+    body = `<div class="scores"><div class="sc"><span>SCORE</span><b id="big">0</b></div>${bestTile}</div>
+      ${counts}${END === 'a' ? faces : `<h2>${title}</h2>`}`
+  }
+  scr.innerHTML = `<div class="wall"><div>${wall.map(p => `<img src="${IMG[p]}" alt="">`).join('')}</div></div>` + topBar(END === 'c' ? 'FINAL SCORE' : '') +
+    `<div class="gover end-${END}">${body}<button class="cta" id="again">Next round</button></div>`
+  $('#quit').onclick = intro
+  $('#help').onclick = intro
+  $('#again').onclick = () => { newRun(); play() }
+  fitFaces()
+  const big = $('#big'), to = R.score
+  if (RM || to <= 0) { big.textContent = to; return }
+  const t0 = performance.now(), d = 900
+  const step = now => { const k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3); big.textContent = Math.round(to * e); if (k < 1) requestAnimationFrame(step) }
+  requestAnimationFrame(step)
+}
+
+// Faces as big as the space allows: 3 a row up to 12 (4 rows), then 4 a row, then smaller (Eran)
+function fitFaces() {
+  const box = $('.facesbox'), grid = $('.faces'); if (!box || !grid) return
+  const n = grid.children.length, W = grid.clientWidth, H = box.clientHeight - box.querySelector('h2').offsetHeight - 14 - 9   // 9: the x/4 badge hangs below the last row
+  const gapX = 10, gapY = 18
+  // the fewest columns whose faces still come out big enough (3 a row up to 12 faces, then 4, then smaller)
+  const options = n <= 12 ? [[3, 64], [4, 54], [5, 44], [6, 36], [7, 30]] : [[4, 54], [5, 44], [6, 36], [7, 30]]
+  for (const [cols, least] of options) {
+    const rows = Math.ceil(n / cols)
+    const byW = Math.floor((W - (cols - 1) * gapX) / cols) - 6, byH = Math.floor((H - (rows - 1) * gapY) / rows)
+    const size = Math.min(cols === 3 ? 92 : 76, byW, byH)
+    if (size >= least || cols === 7) {
+      grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`
+      grid.style.setProperty('--fs', Math.max(28, size) + 'px')
+      grid.classList.toggle('small', size < 56)
+      return
+    }
+  }
+}
+
+// ── the ? button: rules, clock paused ──
+function rulesSheet() {
+  const wasRunning = R.running
+  if (wasRunning) pause()
+  const s = document.createElement('div'); s.className = 'sheetcc'
+  s.innerHTML = `<h3>How to play</h3><ol class="rules">${RULES.map(r => `<li>${r}</li>`).join('')}</ol><button class="cta" id="back">Back to the game</button>`
+  $('#cc').appendChild(s)
+  $('#back').onclick = () => { s.remove(); if (wasRunning) resume() }
+}
+
+// keyboard: 1–9 tap a poster (number pad order), Enter = Check / Next
+addEventListener('keydown', e => {
+  if (!G || !R || $('.sheetcc')) return
+  if (/^[1-9]$/.test(e.key) && G.phase === 'pick') toggle(+e.key - 1)
+  if (e.key === 'Enter' && document.activeElement?.id !== 'seescore') { e.preventDefault(); act() }
+})
+
+intro()
