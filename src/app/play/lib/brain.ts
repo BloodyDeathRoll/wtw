@@ -10,6 +10,7 @@
  * without a browser. Functions that change the state mutate the object they
  * are given; the caller owns copying it for React.
  */
+import type { CastHistory } from './cast'
 import { GAME_GENRES, type GameGenre } from './genres'
 import { CORE_SCALES, EXTRA_SCALES, SCALE_LABELS, SCALE_WORDS, type CoreScale, type GameTitle, type Scale } from './scales'
 
@@ -70,6 +71,8 @@ export interface PlayState {
   served?: Record<string, string[]>
   /** Per game: best score so far ("personal best"). */
   gameBest?: Record<string, number>
+  /** Cast Call: rounds started and when each face was last on screen (lib/cast.ts decides repeats). */
+  cast?: CastHistory
   /** Old Other Side answers ("watched it for me / with the kids / both"); no longer asked since 2026-10-27, kept for saved games. */
   seenWith?: Record<string, 'me' | 'kids' | 'both' | 'no'>
   /** The last "Clearest so far" shown on a closing screen, so it isn't repeated. */

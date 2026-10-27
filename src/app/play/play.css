@@ -1099,3 +1099,117 @@
 .wtw-play .other-reveal .reveal-poster{flex:0 1 285px;min-height:150px;width:auto;aspect-ratio:2/3;max-width:190px}
 .wtw-play .other-reveal .reveal-poster .poster{width:100%;height:100%}
 .wtw-play .other-after{margin-top:auto;width:100%;display:flex;flex-direction:column;gap:28px}
+
+/* ── Cast Call (2026-10-27, docs/prototypes/credit-check/): a face, nine posters, 4 right, ten faces a minute ── */
+.wtw-play .cast{--good-cc:#00c48c;--bad-cc:#ff4d4d;--low:#ff3b30;flex:1;display:flex;flex-direction:column;gap:10px;padding:8px 16px 22px;min-height:0;position:relative}
+.wtw-play .cast-ask{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) 54px;gap:12px;align-items:center;padding:9px 10px 9px 9px;border-radius:16px;background:var(--gacc);color:#fff;
+  box-shadow:0 8px 30px color-mix(in srgb,var(--gacc) 35%,transparent);flex-shrink:0}
+.wtw-play .cast-ask.low{background:linear-gradient(90deg,var(--gacc) 55%,#c8242b)}
+.wtw-play .cast-ask .face{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:center 20%;box-shadow:0 0 0 2px rgba(255,255,255,.85);background:#223}
+.wtw-play .cast-ask .q{font-size:13.5px;line-height:1.2;color:rgba(255,255,255,.85);min-width:0;animation:cast-rise .35s ease both}
+.wtw-play .cast-ask .q b{display:block;font-size:21px;line-height:1.15;color:#fff;font-weight:700;letter-spacing:-.01em;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wtw-play .cast-ask .ql{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.wtw-play .cast-dots{display:inline-flex;gap:4px}
+.wtw-play .cast-dots i{width:8px;height:8px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.85);transition:background .15s,transform .15s}
+.wtw-play .cast-dots i.on{background:#fff;transform:scale(1.1)}
+.wtw-play .cast-clock{position:relative;width:54px;height:54px;transition:transform .25s}
+.wtw-play .cast-clock svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.wtw-play .cast-clock .trk{fill:none;stroke:rgba(0,0,0,.25);stroke-width:5}
+.wtw-play .cast-clock .arc{fill:none;stroke:#fff;stroke-width:5;stroke-linecap:round;transition:stroke .3s}
+.wtw-play .cast-clock span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--poster);font-size:25px;line-height:1;padding-top:2px;color:#fff;font-variant-numeric:tabular-nums}
+.wtw-play .cast-clock .pause{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;background:#000;display:none;gap:2px;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--gacc)}
+.wtw-play .cast-clock .pause s{display:block;width:3px;height:8px;border-radius:1px;background:#fff}
+.wtw-play .cast-clock.paused .pause{display:flex}
+.wtw-play .cast-clock.low .arc{stroke:var(--low)}
+.wtw-play .cast-clock.low{animation:cast-throb 1s ease-in-out infinite}
+.wtw-play .cast-clock.gain .arc{stroke:var(--good-cc)}
+.wtw-play .cast-clock.gain{transform:scale(1.18)}
+.wtw-play .cast-fx{position:absolute;inset:0;pointer-events:none;z-index:6}
+.wtw-play .cast-bonus{position:absolute;font-family:var(--poster);font-size:64px;line-height:1;color:#fff;background:var(--good-cc);border-radius:999px;padding:12px 26px 6px;
+  box-shadow:0 0 0 4px #000,0 10px 50px rgba(0,196,140,.75)}
+
+.wtw-play .cast-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin:0 auto;flex-shrink:0}
+.wtw-play .cast-tile{position:relative;aspect-ratio:2/3;border:0;padding:0;border-radius:9px;background:#141418;cursor:pointer;transition:transform .16s ease-in;-webkit-tap-highlight-color:transparent;max-width:100%}
+.wtw-play .cast-tile .art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:9px;transition:transform .15s,opacity .3s,filter .3s;user-select:none;-webkit-user-drag:none}
+.wtw-play .cast-tile:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.wtw-play .cast-tile.sel{background:color-mix(in srgb,var(--gacc) 30%,#0b0b10)}
+.wtw-play .cast-tile.sel .art{transform:scale(.84);border-radius:6px}
+.wtw-play .cast-tile .tick{position:absolute;z-index:3;top:5px;left:5px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;background:var(--gacc);box-shadow:0 0 0 2px #000;animation:cast-pop .22s cubic-bezier(.2,1.6,.4,1)}
+.wtw-play .cast-tile::after{content:"";position:absolute;inset:0;z-index:2;border-radius:9px;pointer-events:none}
+.wtw-play .cast-tile.hit::after{box-shadow:inset 0 0 0 3px var(--good-cc)}
+.wtw-play .cast-tile.wrong::after{box-shadow:inset 0 0 0 3px var(--bad-cc)}
+.wtw-play .cast-tile.miss::after{border:3px dashed var(--good-cc)}
+.wtw-play .cast-tile.hit .tick,.wtw-play .cast-tile.wrong .tick{left:auto;top:8px;right:8px;width:28px;height:28px;font-size:16px;box-shadow:0 0 0 3px #000;animation:none}
+.wtw-play .cast-tile.hit .tick{background:var(--good-cc)}
+.wtw-play .cast-tile.wrong .tick{background:var(--bad-cc)}
+.wtw-play .cast-tile.wrong .art{filter:grayscale(.5) brightness(.5)}
+.wtw-play .cast-tile.pass .art{opacity:.22;filter:grayscale(1)}
+.wtw-play .cast-tile.flip{transform:perspective(600px) rotateY(90deg)}
+.wtw-play .cast-tile.locked{cursor:default}
+.wtw-play .cast-tile .role{position:absolute;z-index:1;left:0;right:0;bottom:0;padding:30px 8px 10px;border-radius:0 0 9px 9px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.88) 55%);
+  font-size:15px;font-weight:700;line-height:1.15;color:#fff;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.8);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.wtw-play .cast-tile .role.long{font-size:13.5px}
+.wtw-play .cast-tile .role small{display:block;font-size:11px;letter-spacing:.08em;font-weight:800;color:var(--good-cc);margin-bottom:3px}
+.wtw-play .cast-tile .role.mt{-webkit-line-clamp:unset;display:block;padding-bottom:8px}
+.wtw-play .cast-tile .role.mt .ttl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;line-height:1.15}
+.wtw-play .cast-tile .role.mt .ch{display:block;margin-top:2px;font-size:12px;font-weight:500;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtw-play .cast-grid.in .cast-tile{animation:cast-in .34s cubic-bezier(.2,.8,.3,1) both}
+.wtw-play .cast-grid.out .cast-tile{transition:transform .22s ease-in,opacity .22s ease-in;transform:translateX(-36px);opacity:0}
+
+.wtw-play .cast-tally{height:22px;margin-top:auto;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;color:#d8d8dc;opacity:0;transition:opacity .25s;flex-shrink:0}
+.wtw-play .cast-tally.on{opacity:1}
+.wtw-play .cast-tally b{font-weight:700}
+.wtw-play .cast-tally i{font-style:normal;color:#5e5e62}
+.wtw-play .cast-tally .g{color:var(--good-cc)} .wtw-play .cast-tally .r{color:#ff6b6b} .wtw-play .cast-tally .m{color:#b9b9bf}
+.wtw-play .screen.game-screen .cast > .cta{flex-shrink:0;transition:opacity .2s}
+.wtw-play .screen.game-screen .cast > .cta.off{opacity:.35;cursor:default}
+
+.wtw-play .cast-over{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,.8);text-align:center;isolation:isolate;animation:cast-fade .3s ease both}
+.wtw-play .cast-over::before{content:"";position:absolute;left:-16px;right:-16px;top:50%;height:260px;transform:translateY(-50%);z-index:-1;background:radial-gradient(closest-side,rgba(0,0,0,.85) 70%,transparent)}
+.wtw-play .cast-over .big{font-family:var(--poster);font-size:88px;line-height:.9;color:var(--low);letter-spacing:.02em;text-shadow:0 0 40px rgba(255,59,48,.6);animation:cast-slam .45s cubic-bezier(.2,1.5,.4,1) both}
+.wtw-play .cast-over p{margin:0;font-size:17px;color:#e8e8ea}
+.wtw-play .screen.game-screen .cast-over .cta{position:absolute;left:16px;right:16px;bottom:22px;width:auto}
+.wtw-play .cast-flash{position:absolute;inset:0;z-index:8;pointer-events:none;background:var(--low);animation:cast-flash .5s ease-out both}
+
+/* end screen: score + best tiles, the counts as a line, the round's faces, a faded wall of its posters */
+.wtw-play .cast-wall{position:absolute;inset:0;overflow:hidden;z-index:-1;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.35) 0%,#000 30%,#000 62%,transparent 92%);mask-image:linear-gradient(180deg,rgba(0,0,0,.35) 0%,#000 30%,#000 62%,transparent 92%)}
+.wtw-play .cast-wall > div{position:absolute;left:-70px;right:-70px;top:-40px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;transform:rotate(-9deg);opacity:.2;animation:cast-drift 40s linear infinite alternate}
+.wtw-play .cast-wall img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px}
+.wtw-play .cast-end{--good-cc:#00c48c;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:10px 22px 26px;position:relative;isolation:isolate}
+.wtw-play .cast-end::before{content:"";position:absolute;left:-40px;right:-40px;top:-20px;bottom:0;z-index:-1;background:radial-gradient(90% 55% at 50% 32%,rgba(0,0,0,.82) 40%,rgba(0,0,0,.35) 75%,transparent)}
+.wtw-play .cast-end > *{animation:cast-rise .45s ease both}
+.wtw-play .cast-end > :nth-child(2){animation-delay:.08s} .wtw-play .cast-end > :nth-child(3){animation-delay:.16s} .wtw-play .cast-end > :nth-child(4){animation-delay:.24s}
+.wtw-play .cast-scores{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.wtw-play .cast-sc{position:relative;border-radius:20px;padding:14px 10px 12px;background:rgba(18,18,26,.78);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;gap:4px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.wtw-play .cast-sc span{font-size:12.5px;letter-spacing:.16em;color:var(--muted);font-weight:700}
+.wtw-play .cast-sc b{font-family:var(--poster);font-size:68px;line-height:.92;color:var(--gacc);font-weight:400}
+.wtw-play .cast-sc.bt b{color:#fff}
+.wtw-play .cast-sc.bt.new{border-color:var(--gacc);box-shadow:0 0 34px color-mix(in srgb,var(--gacc) 40%,transparent)}
+.wtw-play .cast-sc small{font-size:12.5px;color:var(--muted);margin-top:-2px}
+.wtw-play .cast-sc em{position:absolute;top:-11px;left:50%;translate:-50% 0;font-style:normal;font-size:11.5px;font-weight:800;letter-spacing:.12em;white-space:nowrap;color:#0b0820;background:var(--gacc);border-radius:999px;padding:4px 10px;animation:cast-pop .4s .6s cubic-bezier(.2,1.6,.4,1) both}
+.wtw-play .cast-stats{display:flex;justify-content:center;align-items:center;gap:16px;width:100%;margin-top:2px}
+.wtw-play .cast-stats div{display:flex;align-items:baseline;gap:6px}
+.wtw-play .cast-stats b{font-family:var(--poster);font-size:32px;line-height:1;font-weight:400}
+.wtw-play .cast-stats b.g{color:var(--good-cc)} .wtw-play .cast-stats b.r{color:#ff6b6b} .wtw-play .cast-stats b.m{color:#e2e2e6}
+.wtw-play .cast-stats span{font-size:15px;color:#cfcfd4}
+.wtw-play .cast-stats > i{width:1px;height:20px;background:rgba(255,255,255,.2)}
+.wtw-play .cast-rule{width:100%;height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28) 20%,rgba(255,255,255,.28) 80%,transparent);margin:2px 0 0}
+.wtw-play .cast-facesbox{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;overflow:hidden}
+.wtw-play .cast-facesbox h2{margin:0;font-size:22px;font-weight:700}
+.wtw-play .cast-faces{--fs:76px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));row-gap:18px;column-gap:10px;justify-items:center;width:100%;margin-top:2px}
+.wtw-play .cast-faces div{position:relative;display:flex;justify-content:center;animation:cast-pop .35s cubic-bezier(.2,1.6,.4,1) both}
+.wtw-play .cast-faces img{width:var(--fs);height:var(--fs);border-radius:50%;object-fit:cover;object-position:center 20%;box-shadow:0 0 0 2px rgba(255,255,255,.22)}
+.wtw-play .cast-faces .perfect img{box-shadow:0 0 0 3px var(--good-cc)}
+.wtw-play .cast-faces i{position:absolute;bottom:-7px;left:50%;translate:-50% 0;font-style:normal;font-size:clamp(10px,calc(var(--fs) * .15),13px);font-weight:800;color:#fff;background:#16161c;border-radius:999px;padding:2px 7px;box-shadow:0 0 0 1.5px rgba(255,255,255,.25)}
+.wtw-play .cast-faces .perfect i{background:var(--good-cc);color:#00140c;box-shadow:none}
+.wtw-play .screen.game-screen .cast-end > .cta{flex-shrink:0}
+
+@keyframes cast-pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+@keyframes cast-in{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes cast-rise{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+@keyframes cast-fade{from{opacity:0}to{opacity:1}}
+@keyframes cast-slam{from{transform:scale(1.8);opacity:0}to{transform:none;opacity:1}}
+@keyframes cast-flash{from{opacity:.45}to{opacity:0}}
+@keyframes cast-throb{0%,100%{filter:drop-shadow(0 0 4px rgba(255,59,48,.6))}50%{filter:drop-shadow(0 0 14px rgba(255,59,48,1))}}
+@keyframes cast-drift{from{transform:rotate(-9deg) translateY(0)}to{transform:rotate(-9deg) translateY(-120px)}}

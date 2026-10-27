@@ -21,7 +21,7 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
 ## Where things stand (2026-10-27)
 
 - The games are **the app's onboarding, live for every user** (#130). `/` redirects to `/play` until the season is finished or skipped.
-- **#136** Blind Taste Test rebuilt as the "book cover" game. **#145** Six Degrees, a new game, plus one button style for all games. **#146** title set 500 → 980, Blind 274 → 535 stories, Six Degrees 12 → 38 chains. **#149** The Other Side's reveal rebuilt like the feed card, and one "Seen it" chip across the app. **#150** finishing a level always unlocks the next. All merged and live.
+- **#136** Blind Taste Test rebuilt as the "book cover" game. **#145** Six Degrees, a new game, plus one button style for all games. **#146** title set 500 → 980, Blind 274 → 535 stories, Six Degrees 12 → 38 chains. **#149** The Other Side's reveal rebuilt like the feed card, and one "Seen it" chip across the app. **#150** finishing a level always unlocks the next. All merged and live. **Cast Call** (a new game, this branch `feat/cast-call`) built on the live catalogue; see its section below.
 - Progress saves to `play_state`; every answer goes to `play_events`. Only a few people play: judge games by playing, not stats.
 
 ## What a player experiences now
@@ -34,6 +34,7 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
    - **The Other Side of the Story** — side characters tell the story, five clues (5 → 1 points), type to guess; four options from clue 4; "Next clue", then "I give up" on the last. The reveal: points tag, poster with ribbon, the title only (26px, 22px when long), "Seen it? Tell me how it was" + Loved / Liked / Disliked (rates the title, moves on), orange "Next story". Five levels: 3 stories · 4 stories · Series edition · Deep cuts · 5 stories.
    - **Higher or Lower** — TMDB rating (or year) streaks.
    - **Six Degrees** — order six actors from a start to an end; each was in a film with the next. Characters with ↑ (film with the actor above) / ↓ (below) / ↕ (same role in both), Check (4 tries, right spots turn green, Wordle-style flip), 💡 Hint ×4 (three films side by side, then one actor placed), points out of 5, timeline ending with the five films and watchlist ribbons. Keyboard ↑↓ moves rows too. No levels yet. `data/six-chains.json`.
+   - **Cast Call** — the captcha with posters: a face and nine posters, "Select 4 titles with ●●●●", Check flips them (hit / wrong / missed with the title / faded), Next. Ten faces in 60 seconds, +1 right / −1 wrong, +3 s for a perfect grid. 470 faces from the live catalogue. `data/cast-call.json`.
    - **The Bet**, **Mind Reader** — after the season.
    - **Soon:** Choose the Ending, Movie Night Planner, Upgrade, Recast.
 5. **Watchlist ribbon** on every poster saves into the app's one synced watchlist; a save counts as a taste signal.
@@ -74,24 +75,40 @@ What "Behind the curtain" shows is what the live taste DNA registers: the scale 
 | `lib/blocks.ts` | `SEASON` order, step texts and colours, Knockout |
 | `lib/games.ts` | Blind (cover levels, `blindDeck`, `blindChips`) / Other Side / Higher or Lower: content, levels, decks, served tracking |
 | `lib/six.ts` | Six Degrees: deal (never twice, spaced faces/films), start board, right spots, hint order, place hint, points, ↑↓ role tags |
+| `lib/cast.ts` | Cast Call: deal a round (10 faces, easy → hard, repeats only after round 5, ≤2 returning, 3+ rounds apart, next grid each time, Never genres skipped), points |
 | `lib/reveal.ts`, `lib/watchlist.ts`, `lib/demo.ts` | Season reveal; watchlist bridge (`SaveSource` per game); dev demo player |
 | `lib/server.ts`, `lib/events.ts`, `components/persist.ts` | Saving to `play_state` / `play_events` |
 | `components/PlayApp.tsx` | Controller: every action, screen flow, saving, game runs (`sixDealRun`, `blindAdvance`…) |
 | `components/games.tsx` | Games tab (`GAMES` list), intro / over screens, `GameScreen` |
-| `components/gameplay.tsx`, `six.tsx` | Play screens (Blind, Other Side, Higher or Lower; Six Degrees) |
+| `components/gameplay.tsx`, `six.tsx`, `cast.tsx` | Play screens (Blind, Other Side, Higher or Lower; Six Degrees; Cast Call incl. its clock and end screen) |
 | `components/Screens.tsx`, `season.tsx`, `watchlist.tsx`, `ui.tsx` | Season screens, watchlist, shared bits (`Poster`, `SaveRibbon`, `Marked`) |
 | `play.css` | All styles, scoped under `.wtw-play` |
 | `data/titles.json`, `ai-scores.json` | 980 pinned titles and their model scores |
-| `data/blind-covers.json`, `six-chains.json`, `other-clues.json`, `plot-rewrites.json` | Game content |
+| `data/blind-covers.json`, `six-chains.json`, `cast-call.json`, `other-clues.json`, `plot-rewrites.json` | Game content (`cast-call.json`, ~570 KB, loads only when Cast Call starts) |
 
 **Scripts:**
 - `npm run build-play-titles` — title set (read-only on Supabase; Mistral for scales). `-- --grow N` adds N gap-weighted titles and keeps the rest; `--select-only` is a dry run.
 - `npm run build-six-chains` — Six Degrees chains from TMDB casts (cached in the OS temp folder). `KEEP`, `MAX_PER_*` and the `SKIP` face list are at the top. Searching inside a theme (restrict links to titles of a decade or genre) found 21 classics / 17 drama / 13 pre-2000 / 13 crime / 7 comedy chains on the 980 — themed levels are possible but need a face pass first.
+- `npm run build-cast-call` — Cast Call faces and grids from the live catalogue (read-only) + TMDB person credits and movie series (cached in the OS temp folder). Thresholds, the hand `FRANCHISE` groups, `KNOWN_ALIAS` names and a `SKIP` face list are at the top; it re-checks every rule as it writes.
 - `scripts/check-play-plots.mts` — AI fact check of `plot-rewrites.json` (Groq free tier). It does not cover `blind-covers.json` stories yet.
 
-**Tests:** `tests/unit/play-brain`, `play-titles` (data checks incl. Blind covers), `play-six` (logic + chain data), `play-watchlist`; `tests/component/SixPlay.test.tsx`. Dev demo: `localhost:3000/play?demo=1` (`&jump=16` finished season, `&jump=14` final round, `&new=1` brand-new user). First load after a restart compiles for ~30 s.
+**Tests:** `tests/unit/play-brain`, `play-titles` (data checks incl. Blind covers), `play-six` (logic + chain data), `play-cast` (grid data + round rules), `play-watchlist`; `tests/component/SixPlay.test.tsx`. Dev demo: `localhost:3000/play?demo=1` (`&jump=16` finished season, `&jump=14` final round, `&new=1` brand-new user). First load after a restart compiles for ~30 s.
 
 **Working tips:** large data files go through Python one-off scripts in the session scratchpad; TMDB key in `.env.local` (`TMDB_API_KEY`) — never print it. If another branch needs a fix while uncommitted work sits in the checkout, use a `git worktree` in the scratchpad (symlink `node_modules` and `.env.local`), then remove it.
+
+## Cast Call (built 2026-10-27 on `feat/cast-call`)
+
+A fast, easy game, the "select all the traffic lights" captcha with posters. A face and nine posters; **10 faces a run** (the run ends at the 10th face or at the buzzer: a finish line, and no point mashing through faces); **always 4 right** ("Select 4 titles with ●●●●"), Check lights up at 4, a fifth tap shakes until you untap one. 60 seconds; right +1, wrong −1; all four right = +3 seconds (pops big over the grid, flies into the clock). Check flips the posters (Wordle flip): hit = green inside stroke + character, wrong = red + dimmed, missed = dashed green + **title** + character, the rest fade. The clock pauses; the orange button becomes **Next** ("See my score" after the 10th). Top line: "FACE 3 OF 10 · SCORE 7". Last 10 s: red clock. Time's up: a red flash, the grid is checked as it stands, "Time's up · What you tapped still counts" → See my score. End screen (version A of three, then Eran's notes): SCORE and BEST tiles (NEW BEST tag + "was N"; "FIRST ROUND" on a first run); right / wrong / missed as a quiet line, not tiles (tiles under tiles read as a dashboard), then a divider; the heading right above the run's faces ("10 faces in 0:51" when all ten beat the clock, else "7 of 10 faces") with x/4 (green at 4/4), as big as the space allows (3 a row, up to 4 rows); a faded drifting wall of the run's posters; one button "Next round". Mock-ups and the playable page: `docs/prototypes/credit-check/` (`build-deck.py` → `deck.json`, `build-play.py` + `play.js.part` / `play.css.part` → `play.html`, a private Artifact: https://claude.ai/artifact/LgYV6KZNzqhehvmFFZXLgp). Named **Cast Call** (Eran, 2026-10-27; was "Credit Check", which the prototype folder keeps).
+
+**Rules for the live build (Eran):**
+- **English-language only, well-known faces and well-known titles.** Every poster in a grid from the same language as the face's titles (no Korean actor in Bollywood titles). 30–35% women is fine.
+- **At most 2 posters from one franchise per grid**, right and wrong together. TMDB's series are too narrow ("X-Men" vs "Wolverine", "Iron Man" vs "Avengers"), so franchises are grouped by hand (`FRANCHISE` in `scripts/build-cast-call.mts`, first in the prototype's `build-deck.py`: Marvel, X-Men, DC, Batman, Middle-earth, Wizarding World, Spider-Man, Star Wars). Faces that can't fill a grid under it drop out (Radcliffe, Grint, Hemsworth…).
+- **Repeats:** none in the first 5 rounds; after that at most 1–2 returning faces a round, each at least 2–3 rounds after it last appeared, with new posters where possible. Target: 25–30 good rounds.
+- Right = top-6 billed, not voice / self / uncredited; wrong = **no credit at all** on the actor's full TMDB credits. Easy → hard inside a run (3 easy, 3 medium, 4 hard; tiers split separately for women and men, or one fame list puts nearly every woman in "hard"). Hard faces get co-stars' films as wrong posters.
+
+**As built:** `npm run build-cast-call` → 470 faces (150 women, 32%), 1,068 grids (most faces have 2–3), 2,939 titles. A Cast Call card in the Games tab (no levels; "N rounds played · best X"), intro with BEST / NEW, then `CastPlay` draws its own line "FACE 3 OF 10 · SCORE 7". Events: `cast_grid` (face, grid, picks, hits, wrong, perfect, buzzer) and `cast_done` (score, right, wrong, missed, faces, done, ms); best in `gameBest.cast`, round history in `PlayState.cast`. "How to play" pauses the clock (`RULES_EVENT`). The clock only counts drawn frames (≤250 ms each), so a player who switches apps doesn't come back to a lost round. Not done yet: a hand pass on the faces (`SKIP`), and the 30–40k-vote band of faces.
+
+**Measured on the live catalog (2026-10-27, read-only):** 34,941 titles; 6,739 "known" (English ≥1,000 TMDB votes, others ≥300); 1,570 actors can fill a grid. By total votes on their known titles: ≥40k → 467 English faces (147 women: Blake Lively, Jon Hamm, Dev Patel…), ≥30k → 624 (203 women; the 30–40k band needs a hand pass). 10 faces a run → ~47 fresh runs at the 40k line. The catalog's `crew.cast` has billing order but no character names or voice flags: fetch those from TMDB in the build.
 
 ## Open items
 
