@@ -99,7 +99,7 @@ interface Props {
   onCalibrate?: () => void;
 }
 
-/** One calibration nudge per this many recommendations (list view). */
+/** One calibration nudge per this many recommendations (feed). */
 const NUDGE_EVERY = 15;
 
 const PAGE_FETCH_LIMIT = 50; // hard cap — one engine batch
@@ -259,8 +259,9 @@ export default function RecommendationsView({
   const [error, setError] = useState<string | null>(null);
   // The card whose "Why this?" detail overlay is open (null = closed).
   const [detail, setDetail] = useState<Recommendation | null>(null);
-  // Once a card has been judged we swap its buttons for the outcome tag. Seeded from the watchlist so a saved card's
-  // tag survives leaving and re-opening the view.
+  // Once a card has been judged we swap its buttons for the outcome tag.
+  // Seeded from the watchlist so a saved card's tag survives leaving and
+  // re-opening the view.
   const [feedbackGiven, setFeedbackGiven] = useState<
     Record<string, WatchlistRating>
   >({});
@@ -650,7 +651,7 @@ export default function RecommendationsView({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Compact (list) view
+// Feed
 // ─────────────────────────────────────────────────────────────
 
 function CompactList({

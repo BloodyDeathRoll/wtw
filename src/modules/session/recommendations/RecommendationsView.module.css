@@ -213,7 +213,7 @@
   background: var(--rv-yellow-20);
 }
 
-/* Wraps whichever list view is showing. Unpositioned on purpose — the Why
+/* Wraps the feed. Unpositioned on purpose — the Why
    overlay and the app drawer resolve to .shell, past this box. */
 .content {
   flex: 1;
@@ -228,7 +228,7 @@
   pointer-events: none;
 }
 
-/* ─── Compact list view ─── */
+/* ─── Feed ─── */
 .list {
   flex: 1;
   overflow-y: auto;
