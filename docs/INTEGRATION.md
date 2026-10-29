@@ -176,6 +176,11 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-29 — Feed only: the swipe view is gone (`fix/rec-feed-only`)
+- The feed cards are full-screen now, so the header's maximise toggle and the left/right swipe view behind it (`FullSwiper` / `FullCard` and their CSS) are removed. Recommendations and the watchlist show only the vertical feed.
+- The "Saved to your taste" / "Loved — …" / "Noted — …" tag that replaces the reactions after a rating no longer has a grey box; the text sits on the card's dark gradient.
+- `src/modules/session/` is A1's (Shahar). Type-check clean; checked on `next dev`.
+
 ### 2026-10-27 — Cast Call, a new game (`feat/cast-call`)
 - Eran's idea: a face and nine posters, tap the four they were in, 10 faces in 60 seconds. Named Cast Call (working name was Credit Check). Mock-ups (three rounds) and a playable prototype (three rounds) in `docs/prototypes/credit-check/`; the full design and the live-build rules are in `docs/taste-games-handoff.md` ("Cast Call").
 - **Built:** `scripts/build-cast-call.mts` (`npm run build-cast-call`) reads the live catalogue read-only plus TMDB person credits → `src/app/play/data/cast-call.json`: 470 well-known English-language faces (150 women), 1,068 grids, every wrong poster checked against the actor's full credits, ≤2 posters per franchise. `lib/cast.ts` deals rounds (easy → hard, Eran's repeat rules, Never genres skipped); `components/cast.tsx` is the game; the data loads only when the game starts. New `PlayState.cast` (round history) and events `cast_grid` / `cast_done`. Tests: `tests/unit/play-cast.test.ts`. Checked at phone size in the running app (perfect grid + bonus, wrong picks, the buzzer mid-grid, end screen, lobby card, events saved).
@@ -257,7 +262,7 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - Migration 0024 was run live on 2026-10-19 and verified (play_state, play_events, RLS). #129 merged + deployed.
 - Home: input bar gone; chat is the top-left icon. Bottom: Picks · Watchlist · Games (blue / yellow / orange). Games opens `/play?tab=games`.
 - `/play` now renders in AppShell (gradient + particles) with AppMenu. Curtain (behind the curtain) not rendered on mobile. No intro screen; season bar is fill-only; steps open straight to their intro (no path map up front).
-- Skip (from the first screen after the genres) with a confirm sheet → `PlayState.skipped`; skipped + unfinished players get a "Finish calibration" card every 15 recs (list view only, not the full-screen swiper).
+- Skip (from the first screen after the genres) with a confirm sheet → `PlayState.skipped`; skipped + unfinished players get a "Finish calibration" card every 15 recs (in the feed).
 - Restart calibration (confirm sheet) in Games: fresh `PlayState`, back to genres. Does NOT touch the DNA (games don't write it yet).
 - Duels prefer familiar titles (`familiar()` in brain.ts: pop ≥ 0.35 when the pool has 60+).
 - Font sizes in play.css raised (+2px up to 16px, +3px up to 24px).
