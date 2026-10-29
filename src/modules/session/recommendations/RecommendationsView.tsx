@@ -1,10 +1,8 @@
 "use client";
 
 // Recommendations surface — opens when the user taps the "Recommendations
-// Ready" pill. Two view modes:
-//
-//   • compact (list)     small cards, infinite-scroll, descending match%
-//   • full   (one-up)    big card per recommendation, swipe-to-next
+// Ready" pill. One vertical feed of full-screen cards, infinite-scroll,
+// descending match%.
 //
 // Every card carries two feedback actions ("Seen & Liked" / "Don't Like")
 // that POST to /api/recommendations/feedback. That feedback stream is the
@@ -31,8 +29,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Maximize2,
-  Minimize2,
   Play,
   Share2,
   Star,
@@ -73,7 +69,7 @@ interface Props {
    * "recommendations" = curated for-you feed (default).
    * "learning"        = rapid taste-training stream; identical UI but the
    *                     header label changes and the user is encouraged to
-   *                     skip-without-rating (swipe in full view).
+   *                     skip-without-rating.
    * "watchlist"       = the user's saved cards, read from localStorage instead
    *                     of the API. Identical layout. Rating a card feeds the
    *                     fingerprint through the same call the feed uses but
@@ -91,7 +87,7 @@ interface Props {
   /** Watchlist mode only — action on the empty state that opens the rec feed. */
   onBrowse?: () => void;
   /**
-   * Rendered at the far right of the header, after this view's own control.
+   * Rendered at the far right of the header.
    * The app menu goes here so it sits in the same spot on every screen
    * (decided 2026-08-29).
    */
@@ -105,8 +101,6 @@ interface Props {
 
 /** One calibration nudge per this many recommendations (list view). */
 const NUDGE_EVERY = 15;
-
-type ViewMode = "compact" | "full";
 
 const PAGE_FETCH_LIMIT = 50; // hard cap — one engine batch
 const WATCHLIST_PAGE_SIZE = 6; // matches the API's page size so scrolling feels the same
@@ -258,17 +252,14 @@ export default function RecommendationsView({
   headerRight,
   onCalibrate,
 }: Props) {
-  const [view, setView] = useState<ViewMode>("compact");
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fullIndex, setFullIndex] = useState(0);
   // The card whose "Why this?" detail overlay is open (null = closed).
   const [detail, setDetail] = useState<Recommendation | null>(null);
-  // Once a card has been judged we swap its buttons for the outcome tag (and in
-  // the full view, we auto-advance). Seeded from the watchlist so a saved card's
+  // Once a card has been judged we swap its buttons for the outcome tag. Seeded from the watchlist so a saved card's
   // tag survives leaving and re-opening the view.
   const [feedbackGiven, setFeedbackGiven] = useState<
     Record<string, WatchlistRating>
@@ -381,7 +372,6 @@ export default function RecommendationsView({
   useEffect(() => {
     setRecs([]);
     setHasMore(true);
-    setFullIndex(0);
     offsetRef.current = 0;
     hasMoreRef.current = true;
     loadingRef.current = false;
@@ -475,7 +465,6 @@ export default function RecommendationsView({
   // this surface: removed from the feed, or unsaved from the watchlist.
   function dropCard(rec: Recommendation) {
     setRecs((prev) => prev.filter((r) => r.id !== rec.id));
-    setFullIndex((i) => Math.max(0, Math.min(i, recs.length - 2)));
   }
 
   async function handleFeedback(rec: Recommendation, rating: FeedbackRating) {
@@ -545,11 +534,6 @@ export default function RecommendationsView({
         setError("That rating didn't save — try again.");
       }
     });
-    // In full view, advance to next after feedback. Not in watchlist mode: the
-    // card stays put with its tag, so the user should stay on it too.
-    if (view === "full" && mode !== "watchlist") {
-      setFullIndex((i) => Math.min(i + 1, recs.length - 1));
-    }
   }
 
   // "Remove" — suppress this title so it's never recommended again. Optimistic:
@@ -605,18 +589,6 @@ export default function RecommendationsView({
           </span>
         )}
         <div className={styles.headerRight}>
-          <button
-            type="button"
-            className={styles.headerBtn}
-            onClick={() => setView((v) => (v === "compact" ? "full" : "compact"))}
-            aria-label={view === "compact" ? "switch to full view" : "switch to list view"}
-          >
-            {view === "compact" ? (
-              <Maximize2 size={30} strokeWidth={1.5} aria-hidden />
-            ) : (
-              <Minimize2 size={30} strokeWidth={1.5} aria-hidden />
-            )}
-          </button>
           {headerRight}
         </div>
       </div>
@@ -634,7 +606,6 @@ export default function RecommendationsView({
       )}
 
       <div className={`${styles.content} ${sortOpen ? styles.contentDimmed : ""}`}>
-      {view === "compact" ? (
         <CompactList
           recs={recs}
           loading={loading}
@@ -657,22 +628,6 @@ export default function RecommendationsView({
           onBrowse={mode === "watchlist" ? onBrowse : undefined}
           onCalibrate={mode === "recommendations" ? onCalibrate : undefined}
         />
-      ) : (
-        <FullSwiper
-          recs={recs}
-          index={fullIndex}
-          setIndex={setFullIndex}
-          loading={loading}
-          hasMore={hasMore}
-          feedbackGiven={feedbackGiven}
-          onLoadMore={loadMore}
-          onFeedback={handleFeedback}
-          onRemove={handleRemove}
-          onWhy={setDetail}
-          saved={saved}
-          onToggleWatchlist={toggleWatchlist}
-        />
-      )}
       </div>
 
       {detail && (
@@ -1081,306 +1036,6 @@ function TrailerButton({ rec }: { rec: Recommendation }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Full-screen card view
-// ─────────────────────────────────────────────────────────────
-
-// Snap easing for the release animation — a soft ease-out so the card glides
-// to rest instead of stopping abruptly.
-const SLIDE_TRANSITION = "transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1)";
-
-function FullSwiper({
-  recs,
-  index,
-  setIndex,
-  loading,
-  hasMore,
-  feedbackGiven,
-  onLoadMore,
-  onFeedback,
-  onRemove,
-  onWhy,
-  saved,
-  onToggleWatchlist,
-}: {
-  recs: Recommendation[];
-  index: number;
-  setIndex: (i: number | ((p: number) => number)) => void;
-  loading: boolean;
-  hasMore: boolean;
-  feedbackGiven: Record<string, WatchlistRating>;
-  onLoadMore: () => void;
-  onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
-  onRemove: (rec: Recommendation) => void;
-  onWhy: (rec: Recommendation) => void;
-  saved: Set<string>;
-  onToggleWatchlist: (rec: Recommendation) => void;
-}) {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const startX = useRef<number | null>(null);
-  const widthRef = useRef(0);
-  const SWIPE_THRESHOLD = 60;
-
-  // Live drag: dragX is the current horizontal offset in px (null when idle);
-  // dir is which neighbour is being revealed (+1 next via left-drag, -1 prev
-  // via right-drag), kept for the whole release animation; settling flips a
-  // CSS transition on so the card glides to its snap target on release.
-  const [dragX, setDragX] = useState<number | null>(null);
-  const [dir, setDir] = useState<0 | 1 | -1>(0);
-  const [settling, setSettling] = useState(false);
-
-  // Entrance animation for programmatic (feedback-driven) advances only — a
-  // manual drag-commit already animated the card into place, so we suppress
-  // the keyframe in that case (dragCommit).
-  const [slideDir, setSlideDir] = useState<"left" | "right">("right");
-  const lastIndexRef = useRef(index);
-  const dragCommit = useRef(false);
-  useEffect(() => {
-    if (index > lastIndexRef.current) setSlideDir("right");
-    else if (index < lastIndexRef.current) setSlideDir("left");
-    lastIndexRef.current = index;
-    dragCommit.current = false; // consumed by this render
-  }, [index]);
-
-  // Prefetch the next page when the user is two cards from the end.
-  useEffect(() => {
-    if (!loading && hasMore && recs.length > 0 && index >= recs.length - 2) {
-      onLoadMore();
-    }
-  }, [index, recs.length, loading, hasMore, onLoadMore]);
-
-  const rec = recs[index];
-  const nextRec = recs[index + 1];
-  const prevRec = recs[index - 1];
-
-  // Pointer events handle touch + mouse drag in one path. Buttons inside the
-  // card receive their own clicks first (we bail when the gesture starts on
-  // one), so tapping a reaction never reads as a swipe.
-  function handlePointerDown(e: React.PointerEvent) {
-    if ((e.target as HTMLElement).closest("button")) return;
-    if (settling) return;
-    widthRef.current = stageRef.current?.clientWidth ?? 0;
-    startX.current = e.clientX;
-    setDragX(0);
-    setDir(0);
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      /* capture unsupported — pointerup on the element still fires */
-    }
-  }
-  function handlePointerMove(e: React.PointerEvent) {
-    if (startX.current == null || settling) return;
-    let dx = e.clientX - startX.current;
-    // Rubber-band at the ends where there's no neighbour to reveal.
-    if ((dx > 0 && !prevRec) || (dx < 0 && !nextRec)) dx = dx / 3;
-    setDragX(dx);
-    setDir(dx < 0 ? 1 : dx > 0 ? -1 : 0);
-  }
-  function handlePointerUp() {
-    if (startX.current == null) return;
-    startX.current = null;
-    const dx = dragX ?? 0;
-    const W = widthRef.current || 1;
-    const goNext = dx <= -SWIPE_THRESHOLD && !!nextRec;
-    const goPrev = dx >= SWIPE_THRESHOLD && !!prevRec;
-    // Glide to the snap target: fully off-screen to commit, or back to 0.
-    setSettling(true);
-    setDragX(goNext ? -W : goPrev ? W : 0);
-    window.setTimeout(() => {
-      setSettling(false);
-      setDragX(null);
-      setDir(0);
-      if (goNext) {
-        dragCommit.current = true;
-        setIndex((i) => i + 1);
-      } else if (goPrev) {
-        dragCommit.current = true;
-        setIndex((i) => i - 1);
-      }
-    }, 340);
-  }
-
-  // Chevron nav: run the same cross-slide the drag uses, driven by code. Render
-  // the pair at rest first (dragX 0), then flip the transition on and animate to
-  // the snap target on the next frame so the browser has a start state to move
-  // from. `direction` is +1 (next) or -1 (prev).
-  function slideTo(direction: 1 | -1) {
-    if (settling || dragX !== null) return;
-    if (direction === 1 ? !nextRec : !prevRec) return;
-    const W = stageRef.current?.clientWidth ?? 0;
-    widthRef.current = W;
-    setDir(direction);
-    setDragX(0);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        setSettling(true);
-        setDragX(direction === 1 ? -W : W);
-        window.setTimeout(() => {
-          setSettling(false);
-          setDragX(null);
-          setDir(0);
-          dragCommit.current = true;
-          setIndex((i) => Math.min(Math.max(i + direction, 0), recs.length - 1));
-        }, 340);
-      }),
-    );
-  }
-
-  if (!rec) {
-    return (
-      <div className={styles.fullEmpty}>
-        {loading ? "Loading…" : "Nothing to recommend yet."}
-      </div>
-    );
-  }
-
-  const dragging = dragX !== null;
-  const W = widthRef.current;
-  const trans = settling ? SLIDE_TRANSITION : "none";
-  const entranceClass =
-    dragging || dragCommit.current
-      ? ""
-      : slideDir === "right"
-        ? styles.slideRight
-        : styles.slideLeft;
-
-  const shared = { onFeedback, onRemove, onWhy, onToggleWatchlist };
-
-  return (
-    <div
-      className={styles.full}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-    >
-      <div className={styles.fullProgress}>
-        {recs.map((_, i) => (
-          <span
-            key={i}
-            className={`${styles.fullProgressDot} ${
-              i === index ? styles.fullProgressDotActive : ""
-            }`}
-          />
-        ))}
-      </div>
-
-      <div className={styles.fullStage} ref={stageRef}>
-        {/* Incoming neighbour, revealed as the current card is dragged aside. */}
-        {dragging && dir === 1 && nextRec && (
-          <FullCard
-            key={nextRec.id}
-            rec={nextRec}
-            rated={feedbackGiven[nextRec.id]}
-            saved={saved.has(nextRec.id)}
-            style={{ transform: `translateX(${(dragX ?? 0) + W}px)`, transition: trans }}
-            {...shared}
-          />
-        )}
-        {dragging && dir === -1 && prevRec && (
-          <FullCard
-            key={prevRec.id}
-            rec={prevRec}
-            rated={feedbackGiven[prevRec.id]}
-            saved={saved.has(prevRec.id)}
-            style={{ transform: `translateX(${(dragX ?? 0) - W}px)`, transition: trans }}
-            {...shared}
-          />
-        )}
-        <FullCard
-          key={rec.id}
-          rec={rec}
-          rated={feedbackGiven[rec.id]}
-          saved={saved.has(rec.id)}
-          className={entranceClass}
-          style={
-            dragging ? { transform: `translateX(${dragX ?? 0}px)`, transition: trans } : undefined
-          }
-          {...shared}
-        />
-
-        {/* Edge chevrons — animate to the neighbour with the same slide. */}
-        {prevRec && (
-          <button
-            type="button"
-            className={`${styles.fullNav} ${styles.fullNavLeft}`}
-            onClick={() => slideTo(-1)}
-            aria-label="Previous recommendation"
-          >
-            <ChevronLeft size={22} strokeWidth={2} aria-hidden />
-          </button>
-        )}
-        {nextRec && (
-          <button
-            type="button"
-            className={`${styles.fullNav} ${styles.fullNavRight}`}
-            onClick={() => slideTo(1)}
-            aria-label="Next recommendation"
-          >
-            <ChevronRight size={22} strokeWidth={2} aria-hidden />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// One full-bleed card: poster background, gradient scrim, a circular match
-// badge (matching the "Why this?" detail hero), and the bottom content column
-// with a "Why this pick?" pill under the title/meta and the reaction row.
-function FullCard({
-  rec,
-  rated,
-  onFeedback,
-  onRemove,
-  onWhy,
-  saved,
-  onToggleWatchlist,
-  className = "",
-  style,
-}: {
-  rec: Recommendation;
-  rated: WatchlistRating | undefined;
-  onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
-  onRemove: (rec: Recommendation) => void;
-  onWhy: (rec: Recommendation) => void;
-  saved: boolean;
-  onToggleWatchlist: (rec: Recommendation) => void;
-  className?: string;
-  style?: CSSProperties;
-}) {
-  return (
-    <div className={`${styles.fullCard} ${className}`} style={style}>
-      <PosterTile rec={rec} size="lg" />
-      <div className={styles.fullGradient} />
-      <MatchRing match={rec.match} className={styles.fullRing} />
-      <div className={styles.fullContent}>
-        <div className={styles.cardTitleBlock}>
-          <h2 className={styles.fullTitle}>{rec.title}</h2>
-          <MetaRow rec={rec} />
-        </div>
-        <CtaBlock
-          rec={rec}
-          onWhy={onWhy}
-          saved={saved}
-          onToggleWatchlist={onToggleWatchlist}
-        />
-        <div className={styles.fullReason}>
-          <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-          <span><Emphasis text={rec.reason} /></span>
-        </div>
-        <FeedbackRow
-          rec={rec}
-          rated={rated}
-          onFeedback={onFeedback}
-          onRemove={onRemove}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
 // Shared bits — poster (img with motif fallback), feedback row
 // ─────────────────────────────────────────────────────────────
 
@@ -1688,7 +1343,7 @@ function PosterTile({
   size,
 }: {
   rec: Recommendation;
-  size: "lg" | "hero";
+  size: "hero";
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   // Fade the poster in once it has actually loaded, rather than letting it

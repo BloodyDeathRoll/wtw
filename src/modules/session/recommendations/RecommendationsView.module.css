@@ -21,7 +21,7 @@
   overflow: hidden;
 }
 
-/* ─── Sub-header (back / title / view toggle) ─── */
+/* ─── Sub-header (back / title / menu) ─── */
 .header {
   display: grid;
   /* Symmetric outer tracks so the middle is TRULY centred, matching the home
@@ -49,8 +49,7 @@
 .headerBtn:first-child {
   justify-self: start;
 }
-/* The view toggle sits to the LEFT of the app menu, which is anchored at the
-   far right on every screen. */
+/* The app menu is anchored at the far right on every screen. */
 .headerRight {
   display: inline-flex;
   align-items: center;
@@ -825,8 +824,6 @@
   text-align: center;
   font-size: 13.5px;
   color: var(--rv-white-70);
-  background: var(--rv-white-10);
-  border-radius: 6.5px;
   animation: cardIn 0.18s var(--ease-out) both;
 }
 
@@ -835,15 +832,6 @@
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
-}
-.poster_lg {
-  /* Full-bleed poster fills the entire .fullCard container — content
-     overlays on top via a dark gradient. */
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
 }
 .posterImg {
   position: absolute;
@@ -866,164 +854,6 @@
   display: block;
   opacity: 0.65;
 }
-/* ─── Full-screen ("max") view ─── */
-.full {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: 0 16px 16px;
-  overflow: hidden;
-  touch-action: pan-y;
-}
-.fullProgress {
-  display: flex;
-  gap: 4px;
-  padding: 0 0 16px;
-  flex-shrink: 0;
-}
-.fullProgressDot {
-  flex: 1;
-  height: 1.5px;
-  background: var(--rv-dark-50);
-  transition: background 0.15s ease;
-}
-.fullProgressDotActive {
-  background: var(--rv-yellow-20);
-}
-/* Stage — the swipe viewport. Cards are absolutely-positioned layers inside
-   it so the outgoing card and the incoming neighbour can slide across it
-   together during a drag. */
-.fullStage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  touch-action: pan-y;
-  /* Swipes shouldn't select the card's text. */
-  user-select: none;
-  -webkit-user-select: none;
-}
-/* Each card fills the stage; the full-bleed poster, gradient scrim, match
-   ring and bottom content all position against it. */
-.fullCard {
-  position: absolute;
-  inset: 0;
-  border-radius: 16.5px;
-  overflow: hidden;
-  background: var(--rv-dark-50);
-  isolation: isolate;
-  will-change: transform;
-}
-.fullCard.slideRight {
-  animation: slideFromRight 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.fullCard.slideLeft {
-  animation: slideFromLeft 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-@keyframes slideFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(36px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-@keyframes slideFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-36px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-.fullGradient {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: linear-gradient(
-    180deg,
-    rgba(14, 13, 11, 0) 22.7%,
-    rgba(14, 13, 11, 0.8) 61.3%,
-    var(--rv-dark-50) 100%
-  );
-  pointer-events: none;
-}
-.fullRing {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 3;
-}
-.fullContent {
-  position: absolute;
-  inset: auto 0 0 0;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  color: #fff;
-}
-/* Edge nav chevrons — vertically centred over the card, above the content. */
-.fullNav {
-  position: absolute;
-  /* Fixed offset into the poster art: the title / action stack is
-     bottom-anchored and grows upward with the reason text, so a % position
-     lands on it. */
-  top: 150px;
-  transform: translateY(-50%);
-  z-index: 5;
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.42);
-  color: #fff;
-  cursor: pointer;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: background 0.15s ease;
-}
-.fullNav:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-.fullNavLeft {
-  left: 10px;
-}
-.fullNavRight {
-  right: 10px;
-}
-.fullTitle {
-  margin: 0;
-  font-size: 23px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.fullReason {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: #fff;
-  font-size: 16px;
-  line-height: 1.3;
-}
-.fullEmpty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--rv-white-70);
-  font-size: 16px;
-}
-
 /* ─── "Why this pick?" detail overlay (confined to the phone frame) ─── */
 .whyOverlay {
   position: absolute;
