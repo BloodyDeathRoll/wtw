@@ -607,7 +607,7 @@ export default function RecommendationsView({
       )}
 
       <div className={`${styles.content} ${sortOpen ? styles.contentDimmed : ""}`}>
-        <CompactList
+        <Feed
           recs={recs}
           loading={loading}
           hasMore={hasMore}
@@ -654,7 +654,7 @@ export default function RecommendationsView({
 // Feed
 // ─────────────────────────────────────────────────────────────
 
-function CompactList({
+function Feed({
   recs,
   loading,
   hasMore,
