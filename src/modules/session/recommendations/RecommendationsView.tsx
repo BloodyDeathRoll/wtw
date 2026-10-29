@@ -149,7 +149,7 @@ function sortEntries(entries: WatchlistEntry[], key: SortKey): WatchlistEntry[] 
 
 /**
  * Streaming service — brand icon + name only, under the year/runtime/rating
- * meta on every card (compact, full, watchlist, and the Why detail). Hidden
+ * meta on every card (feed, watchlist, and the Why detail). Hidden
  * entirely when `where` is null (never checked, or not streaming in this
  * region), so no empty affordance. See migration 0017 and grow-catalog.mts §3c.
  *
@@ -755,7 +755,7 @@ function Feed({
     <div ref={listRef} className={styles.list}>
       {recs.map((rec, i) => (
         <Fragment key={rec.id}>
-          <CompactCard
+          <FeedCard
             rec={rec}
             rated={feedbackGiven[rec.id]}
             onFeedback={onFeedback}
@@ -809,7 +809,7 @@ function CalibrateNudge({ onClick }: { onClick: () => void }) {
   );
 }
 
-function CompactCard({
+function FeedCard({
   rec,
   rated,
   onFeedback,

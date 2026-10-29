@@ -1,5 +1,5 @@
 /* Recommendations / watchlist surface.
-   Figma redesign 2026-10 (nodes 28:2900 card view, 28:2770 max view,
+   Figma redesign 2026-10 (nodes 28:2900 card view, 28:2770 max view — since removed,
    28:3288 why-this-pick, 29:3716 / 29:4262 watchlist). Design frames are
    945px wide = phone at ~2.4x; every design px here is ÷2.4. */
 
@@ -349,7 +349,7 @@
   font-size: 13.5px;
 }
 
-/* ─── Card (compact) — Figma "Card" 33:427 ─── */
+/* ─── Feed card — Figma "Card" 33:427 ─── */
 .card {
   flex-shrink: 0;
   display: flex;
