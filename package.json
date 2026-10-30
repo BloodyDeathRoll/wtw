@@ -37,7 +37,7 @@
     "@supabase/ssr": "^0.12",
     "@supabase/supabase-js": "^2",
     "@upstash/redis": "^1",
-    "ai": "^7.0.126",
+    "ai": "^7.0.151",
     "class-variance-authority": "^0.7",
     "clsx": "^2",
     "framer-motion": "^14",
