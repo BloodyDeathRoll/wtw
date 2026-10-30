@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { freshState } from '@/app/play/lib/brain'
-import { CAST_FACES, CAST_PICKS, castClock, castDeal, castPoints, castShown, type CastData } from '@/app/play/lib/cast'
+import { CAST_FACES, CAST_PICKS, castClock, castDeal, castPoints, castRulesUpdate, castShown, castTimeBonus, type CastData } from '@/app/play/lib/cast'
 import data from '@/app/play/data/cast-call.json'
 
 const D = data as CastData
@@ -8,7 +8,7 @@ const D = data as CastData
 function seeded(seed = 7) {
   return () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648
 }
-/** A whole round: deal ten faces and show every one of them. */
+/** A whole round: deal seven faces and show every one of them. */
 function playRound(S: ReturnType<typeof freshState>, d: CastData, rand: () => number) {
   const faces = castDeal(S, d, rand)
   for (const f of faces) castShown(S, f.face)
@@ -52,13 +52,13 @@ describe('Cast Call data', () => {
 })
 
 describe('Cast Call rounds', () => {
-  it('deals ten different faces, easy first and hard last', () => {
+  it('deals seven different faces, easy first and hard last', () => {
     const S = freshState()
     const faces = castDeal(S, D, seeded())
     expect(faces).toHaveLength(CAST_FACES)
     expect(new Set(faces.map(f => f.face.id)).size).toBe(CAST_FACES)
-    expect(faces.slice(0, 3).every(f => f.face.tier === 'easy')).toBe(true)
-    expect(faces.slice(6).every(f => f.face.tier === 'hard')).toBe(true)
+    expect(faces.slice(0, 2).every(f => f.face.tier === 'easy')).toBe(true)
+    expect(faces.slice(4).every(f => f.face.tier === 'hard')).toBe(true)
     expect(S.cast?.runs).toBe(1)
   })
   it('no face twice in the first five rounds', () => {
@@ -84,7 +84,8 @@ describe('Cast Call rounds', () => {
       const faces = playRound(S, small, rand)
       const back = faces.filter(f => before.has(f.face.id))
       if (run <= 5) expect(back).toHaveLength(0)
-      if (faces.some(f => !before.has(f.face.id))) expect(back.length).toBeLessThanOrEqual(2)
+      // the cap holds while there are enough fresh faces to fill the round; past that, more have to come back
+      if (small.faces.filter(f => !before.has(f.id)).length >= CAST_FACES - 2) expect(back.length).toBeLessThanOrEqual(2)
       for (const f of back) {
         expect(run - lastSeen.get(f.face.id)!).toBeGreaterThanOrEqual(3)
         expect(f.grid).toBe((times.get(f.face.id) ?? 0) % f.face.grids.length)   // the next grid, round and round
@@ -101,11 +102,27 @@ describe('Cast Call rounds', () => {
       }
     }
   })
-  it('points: +1 a right poster, −1 a wrong one; m:ss for the finish time', () => {
-    expect(castPoints(4, 0)).toBe(4)
+  it('points: +1 a right poster, −1 a wrong one, +2 more for a perfect grid; m:ss for the finish time', () => {
+    expect(castPoints(4, 0)).toBe(6)
     expect(castPoints(3, 1)).toBe(2)
     expect(castPoints(0, 4)).toBe(-4)
     expect(castClock(51_400)).toBe('0:51')
     expect(castClock(60_000)).toBe('1:00')
+  })
+  it('time bonus: a point per 2 seconds left, only for all seven done with 21+ right', () => {
+    expect(castTimeBonus(true, 21, 18_500)).toBe(9)
+    expect(castTimeBonus(true, 28, 1_900)).toBe(0)
+    expect(castTimeBonus(true, 20, 30_000)).toBe(0)    // random tapping can't earn it
+    expect(castTimeBonus(false, 28, 30_000)).toBe(0)   // the buzzer ended the round
+  })
+  it('a best from the old rules is cleared once, a new best is kept', () => {
+    const S = freshState()
+    S.gameBest = { cast: 31, six: 4 }
+    S.cast = { runs: 6, seen: {} }
+    castRulesUpdate(S)
+    expect(S.gameBest).toEqual({ six: 4 })
+    S.gameBest.cast = 12
+    castRulesUpdate(S)
+    expect(S.gameBest.cast).toBe(12)
   })
 })

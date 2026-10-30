@@ -1,7 +1,7 @@
 'use client'
-/* Cast Call: ten faces, nine posters each, one minute. Logic: lib/cast.ts; prototype: docs/prototypes/credit-check/play.html. */
+/* Cast Call: seven faces, nine posters each, one minute. Logic: lib/cast.ts; prototype: docs/prototypes/credit-check/play.html. */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { CAST_BONUS, CAST_FACES, CAST_LOW, CAST_PICKS, CAST_TIME, RULES_EVENT, castClock, castPoints } from '../lib/cast'
+import { CAST_BONUS, CAST_FACES, CAST_LOW, CAST_PERFECT_POINTS, CAST_PICKS, CAST_TIME, CAST_TIME_MIN_RIGHT, RULES_EVENT, castClock, castPoints, castTimeBonus } from '../lib/cast'
 import type { Ctl } from './types'
 
 const IMG = 'https://image.tmdb.org/t/p/'
@@ -9,9 +9,10 @@ const ARC = 2 * Math.PI * 23
 type Mark = 'hit' | 'wrong' | 'miss' | 'pass'
 type Phase = 'pick' | 'checking' | 'result' | 'leaving'
 interface Tally { hit: number; wrong: number; miss: number; perfect: boolean; buzzer: boolean }
-interface Done { score: number; prev: number; first: boolean; right: number; wrong: number; missed: number; faces: number; done: boolean; ms: number; log: { id: number; img: string; hit: number }[] }
+interface Done { score: number; prev: number; first: boolean; right: number; wrong: number; missed: number; faces: number; done: boolean; ms: number; posters: number; perfect: number; time: number; timeMissed: boolean; log: { id: number; img: string; hit: number }[] }
 
-export function CastPlay({ ctl }: { ctl: Ctl }) {
+/** `top`: the game's top bar (✕, title, How to play), drawn here so the title can be the live counter. */
+export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode) => React.ReactNode }) {
   const deals = ctl.ui.game!.cast!.faces
   const total = Math.min(CAST_FACES, deals.length)
   const [i, setI] = useState(0)
@@ -92,6 +93,8 @@ export function CastPlay({ ctl }: { ctl: Ctl }) {
   }, [end])
 
   // The grid as big as the screen allows: three across, 2:3 posters, nothing scrolls.
+  // Runs for every face: each face gets a fresh grid (key={i}), and an unsized one is full width,
+  // which on a wide, short phone pushes Check below the screen (Eran's Pixel, 2026-10-30).
   useLayoutEffect(() => {
     const cc = ccRef.current, grid = gridRef.current
     if (!cc || !grid) return
@@ -106,7 +109,7 @@ export function CastPlay({ ctl }: { ctl: Ctl }) {
     const ro = new ResizeObserver(fit)
     ro.observe(cc)
     return () => ro.disconnect()
-  }, [end])
+  }, [end, i])
 
   function toggle(k: number) {
     if (phaseRef.current !== 'pick' || !R.current.running) return
@@ -219,8 +222,14 @@ export function CastPlay({ ctl }: { ctl: Ctl }) {
   function finish() {
     const r = R.current
     const prev = ctl.S.gameBest?.cast ?? 0, first = !ctl.S.games.cast?.plays
-    ctl.castFinish({ score: r.score, right: r.right, wrong: r.wrong, missed: r.missed, faces: r.grids, done: r.done, ms: Math.round(r.used) })
-    setEnd({ score: r.score, prev, first, right: r.right, wrong: r.wrong, missed: r.missed, faces: r.grids, done: r.done, ms: r.used, log: r.log })
+    // The score so far already holds the perfect-grid points; the time bonus joins it now.
+    const perfect = r.log.filter(l => l.hit === CAST_PICKS).length * CAST_PERFECT_POINTS
+    const time = castTimeBonus(r.done, r.right, r.left)
+    const posters = r.score - perfect
+    r.score += time
+    const timeMissed = r.done && !time && r.left >= 2000   // finished early but under 21 right: say why there's no time bonus
+    ctl.castFinish({ score: r.score, right: r.right, wrong: r.wrong, missed: r.missed, faces: r.grids, done: r.done, ms: Math.round(r.used), posters, perfect, time })
+    setEnd({ score: r.score, prev, first, right: r.right, wrong: r.wrong, missed: r.missed, faces: r.grids, done: r.done, ms: r.used, posters, perfect, time, timeMissed, log: r.log })
     if (still() || r.score <= 0) { setBig(r.score); return }
     const t0 = performance.now()
     const step = (now: number) => { const k = Math.min(1, (now - t0) / 900); setBig(Math.round(r.score * (1 - Math.pow(1 - k, 3)))); if (k < 1 && alive.current) requestAnimationFrame(step) }
@@ -270,6 +279,7 @@ export function CastPlay({ ctl }: { ctl: Ctl }) {
       <>
         {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
         <div className="cast-wall" aria-hidden="true"><div>{tiles30.map((p, k) => <img key={k} src={`${IMG}w185${p}`} alt="" />)}</div></div>
+        {top()}
         <div className="cast-end">
           <div className="cast-scores">
             <div className="cast-sc"><span>SCORE</span><b>{big}</b></div>
@@ -279,6 +289,14 @@ export function CastPlay({ ctl }: { ctl: Ctl }) {
               {best && <em>{end.first ? 'FIRST ROUND' : 'NEW BEST'}</em>}
             </div>
           </div>
+          {(end.perfect > 0 || end.time > 0 || end.timeMissed) && (
+            <p className="cast-sum">
+              {end.posters} from posters
+              {end.perfect > 0 && <> · <b>+{end.perfect}</b> perfect {end.perfect === CAST_PERFECT_POINTS ? 'grid' : 'grids'}</>}
+              {end.time > 0 && <> · <b>+{end.time}</b> time</>}
+              {end.timeMissed && <> · time bonus needs {CAST_TIME_MIN_RIGHT} right</>}
+            </p>
+          )}
           <div className="cast-stats">
             <div><b className="g">{end.right}</b><span>right</span></div><i />
             <div><b className="r">{end.wrong}</b><span>wrong</span></div><i />
@@ -310,14 +328,17 @@ export function CastPlay({ ctl }: { ctl: Ctl }) {
   const canAct = phase === 'result' || (phase === 'pick' && sel.length === CAST_PICKS)
   return (
     <>
-      <div className="glevel">FACE <b>{i + 1}</b> OF {total} · SCORE <b>{score}</b></div>
+      {top(<>FACE {i + 1} OF {total} · SCORE {score}</>)}
       <div className="cast" ref={ccRef}>
         <div className={`cast-ask${low ? ' low' : ''}`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
           <img className="face" src={`${IMG}w185${d.face.img}`} alt="" />
           <div className="q" key={`${i}${result ? 'r' : 'p'}`} aria-live="polite">
+            {/* The banner carries the result (no tally line under the grid: its space went to the posters). */}
             {result && tally
-              ? <>{d.face.name}<b>{perfect ? 'Perfect grid!' : `${tally.hit} of ${CAST_PICKS}`}</b></>
+              ? perfect
+                ? <>{d.face.name} · +{CAST_PERFECT_POINTS} points<b>Perfect grid!</b></>
+                : <>{d.face.name}<b>{tally.hit} of {CAST_PICKS}{tally.wrong > 0 && ` · ${tally.wrong} wrong`}{tally.miss > tally.wrong && ` · ${tally.miss} missed`}</b></>
               : <><span className="ql">Select {CAST_PICKS} titles with<span className="cast-dots" ref={dotsRef}>{Array.from({ length: CAST_PICKS }, (_, k) => <i key={k} className={k < sel.length ? 'on' : ''} />)}</span></span><b>{d.face.name}</b></>}
           </div>
           <div className={`cast-clock${low && !gain ? ' low' : ''}${gain ? ' gain' : ''}${paused ? ' paused' : ''}`} ref={clockRef} role="timer" aria-label={`${secs} seconds left`}>
@@ -342,15 +363,8 @@ export function CastPlay({ ctl }: { ctl: Ctl }) {
             )
           })}
         </div>
-        <div className={`cast-tally${tally ? ' on' : ''}`}>
-          {tally && <>
-            <span className="g"><b>{tally.hit}</b> right</span>
-            {tally.wrong > 0 && <><i>·</i><span className="r"><b>{tally.wrong}</b> wrong</span></>}
-            {tally.miss > tally.wrong && <><i>·</i><span className="m"><b>{tally.miss}</b> missed</span></>}
-            {perfect && <><i>·</i><span className="g"><b>+3</b> seconds</span></>}
-          </>}
-        </div>
-        <button className={`cta${canAct ? '' : ' off'}`} onClick={act} aria-disabled={!canAct}>{label}</button>
+        {/* Once time is up, the overlay's own button is the only one: Check hides (keeping its space, so the grid doesn't jump). */}
+        <button className={`cta${canAct ? '' : ' off'}${timesUp ? ' gone' : ''}`} onClick={act} aria-disabled={!canAct} tabIndex={timesUp ? -1 : 0}>{label}</button>
         <div className="cast-fx" ref={fxRef} />
         {flash > 0 && <div className="cast-flash" key={flash} />}
         {timesUp && (

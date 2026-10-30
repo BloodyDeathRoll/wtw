@@ -45,12 +45,12 @@ export const GAMES: (GameDef & { id: GameId | string })[] = [
     rules: ['Get from the first actor to the last. Each one was in a film with the next.', 'Drag the four in the middle into order. Under each name: who they played, ↑ in the film with the actor above, ↓ below.', 'Check turns everyone in the right spot green. You have 4 tries.', 'Stuck? Hints show films from the chain, then put one actor in place.'],
     levels: [],
     teach: 'Just for fun. A film saved from the chain still counts as a taste signal.' },
-  // Fast and easy (Eran, 2026-10-27): the captcha, with posters. Ten faces a round, no levels.
-  { id: 'cast', name: 'Cast Call', icon: '✓', acc: '#4d8dff', blurb: 'A face, nine posters, one minute. Find the four they were in.',
-    rules: ['You get a face and nine posters. Four of them are movies or shows they were in. Tap those four, then Check.',
+  // Fast and easy (Eran, 2026-10-27): the captcha, with posters. Seven faces a round (ten was out of reach, 2026-10-30), no levels.
+  { id: 'cast', name: 'Cast Call', icon: '✓', acc: '#4d8dff', blurb: 'Seven actors, one minute. For each one, find the four titles they were in.',
+    rules: ['Each actor comes with nine titles. Four are movies or shows they were in: tap those four, then Check.',
       'Each right one wins you a point. Each wrong one loses a point.',
-      'Get all four right and you win 3 extra seconds.',
-      'Ten faces, one minute. Beat your best score.'],
+      'Get all four right: 2 more points and 3 extra seconds.',
+      'Finish all seven with at least 21 right, and every 2 seconds left on the clock is a point.'],
     levels: [],
     teach: 'Just for fun.' },
   // Games where WTW guesses: they need a tested brain, so they open with the season's finale.
@@ -143,7 +143,8 @@ export function GamesLobby({ ctl }: { ctl: Ctl }) {
   )
 }
 
-function GameTop({ ctl, d }: { ctl: Ctl; d: GameDef }) {
+/** `title`: in place of the game's name (Cast Call shows "FACE 3 OF 7 · SCORE 7" there while playing). */
+function GameTop({ ctl, d, title }: { ctl: Ctl; d: GameDef; title?: React.ReactNode }) {
   const lv = ctl.S.games[d.id]?.level ?? 0
   const [rules, setOpen] = useState(false)
   // Cast Call pauses its clock while the rules are open.
@@ -162,11 +163,11 @@ function GameTop({ ctl, d }: { ctl: Ctl; d: GameDef }) {
       )}
       <div className="topbar">
         <button className="hb" onClick={ctl.exitGame} aria-label="Exit game">{Icon.x}</button>
-        <div className="gtitle">{d.name}</div>
+        <div className={`gtitle${title ? ' live' : ''}`}>{title ?? d.name}</div>
         <button className="hb r" onClick={() => setRules(true)} aria-label="How to play">{Icon.q}</button>
       </div>
       {d.id === 'cast'
-        // Cast Call draws its own line in play ("FACE 3 OF 10 · SCORE 7"); the intro shows the best.
+        // Cast Call draws its own line in play ("FACE 3 OF 7 · SCORE 7"); the intro shows the best.
         ? ctl.ui.game?.phase === 'intro' && <div className="glevel">{ctl.S.gameBest?.cast ? <>BEST <b>{ctl.S.gameBest.cast}</b></> : 'NEW'}</div>
         : d.levels.length
           ? <div className="glevel">LEVEL <b>{Math.min(5, lv + 1)}</b> · {d.levels[Math.min(4, lv)]}</div>
@@ -220,9 +221,11 @@ export function GameScreen({ ctl }: { ctl: Ctl }) {
   if (g.phase === 'play' && g.id === 'other' && g.other) body = <OtherPlay ctl={ctl} />
   if (g.phase === 'play' && g.id === 'hilo' && g.hilo) body = <HiloPlay ctl={ctl} />
   if (g.phase === 'play' && g.id === 'six' && g.six) body = <SixPlay key={g.six.deal} ctl={ctl} />
-  if (g.phase === 'play' && g.id === 'cast' && g.cast) body = <CastPlay key={g.cast.deal} ctl={ctl} />
+  // Cast Call draws the top bar itself, with its live counter as the title (layout B, Eran, 2026-10-30).
+  const castPlay = g.phase === 'play' && g.id === 'cast' && g.cast
+  if (castPlay) body = <CastPlay key={g.cast!.deal} ctl={ctl} top={title => <GameTop ctl={ctl} d={d} title={title} />} />
   // On the season path a game is a step: the training's top bar and progress, no exit button.
-  const top = g.inPath
+  const top = castPlay ? null : g.inPath
     ? <><TopBar ctl={ctl} /><SeasonBar ctl={ctl} /><div className="glevel" style={{ marginTop: 6 }}><b>{d.name}</b> · Level 1</div></>
     : <GameTop ctl={ctl} d={d} />
   return <div className="screen game-screen">{top}{body}</div>

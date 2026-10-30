@@ -176,6 +176,13 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-10-30 — Cast Call: 7 faces, posters sized on every face, plain-words intro (`fix/cast-call-intro`)
+- **7 faces a round** (Eran: a strong player stayed far from 10 for 5+ rounds): 2 easy, 2 medium, 3 hard; ~67 fresh rounds on the 470 faces.
+- **Bug, Eran's Pixel 10 Pro:** from face 2 the Check button sat below the screen. Each face gets a fresh grid and only the first was sized, so the rest went full width, too tall for a wide, short screen. The sizing now runs for every face (checked at 412×772: same 322px grid on faces 1 and 2, Check in view). Not seen at 375×812, where full width still fits: check wide-and-short sizes too.
+- **Intro copy:** "Seven actors, one minute. For each one, find the four titles they were in." (no "face", no "posters").
+- **Bonuses:** +2 points per perfect grid; a time bonus (a point per 2 seconds left) for all seven done with 21+ of 28 right; the end screen's breakdown line; old bests cleared once.
+- **Layout B** (Eran picked it from `docs/prototypes/cast-call-layout/`): the counter is the top bar's title, the tally line is gone; posters 116px instead of 102 on 412×772 (93 on 375×667, 109 on 375×812), Check pinned to the bottom and hidden at Time's up.
+
 ### 2026-10-29 — Feed only: the swipe view is gone (`fix/rec-feed-only`)
 - The feed cards are full-screen now, so the header's maximise toggle and the left/right swipe view behind it (`FullSwiper` / `FullCard` and their CSS) are removed. Recommendations and the watchlist show only the vertical feed.
 - The "Saved to your taste" / "Loved — …" / "Noted — …" tag that replaces the reactions after a rating no longer has a grey box; the text sits on the card's dark gradient.
