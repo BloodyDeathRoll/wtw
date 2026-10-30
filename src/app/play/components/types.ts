@@ -4,7 +4,7 @@ import type { GameGenre } from '../lib/genres'
 import type { Scale } from '../lib/scales'
 import type { Format, Huh, HuhAnswer, Hunch, Pair, PickReaction, PlayState, Title, UnlockId } from '../lib/brain'
 import type { BlockType, Cup, SpecialType } from '../lib/blocks'
-import type { CastDeal } from '../lib/cast'
+import type { CastAsk } from '../lib/cast'
 import type { SixChain } from '../lib/six'
 
 export type Screen =
@@ -70,7 +70,7 @@ export interface MindRun {
   pair: Pair | null; guess: 'a' | 'b'; sure: boolean
 }
 
-export type GameId = 'bet' | 'mind' | 'blind' | 'other' | 'hilo' | 'six' | 'cast'
+export type GameId = 'bet' | 'mind' | 'blind' | 'other' | 'hilo' | 'six' | 'cast' | 'lineup'
 
 /**
  * Blind Taste Test: the story without its cover → would you watch it? → the
@@ -123,8 +123,8 @@ export interface GameRun {
   blind?: BlindRun
   /** Six Degrees: the chain on the board; `deal` keys the screen so each chain starts fresh. */
   six?: { chain: SixChain; deal: number }
-  /** Cast Call: the round's seven faces; `deal` keys the screen so each round starts fresh. */
-  cast?: { faces: CastDeal[]; deal: number }
+  /** Cast Call and Line-up: the round's seven grids (faces, or posters); `deal` keys the screen so each round starts fresh. */
+  cast?: { asks: CastAsk[]; deal: number }
   other?: OtherRun
   hilo?: HiloRun
   summary?: Summary
@@ -219,8 +219,8 @@ export interface Ctl {
   sixNext(): void
   sixLog(kind: 'six_check' | 'six_hint', payload: Record<string, unknown>): void
   sixFinish(r: { solved: boolean; checks: number; hints: number; points: number }): void
-  /** Cast Call: a face is on screen, a grid was checked, the round is over, the next round. */
-  castShown(faceId: number): void
+  /** Cast Call and Line-up: a face (poster) is on screen, a grid was checked, the round is over, the next round. */
+  castShown(ask: CastAsk): void
   castLog(payload: CastGridLog): void
   castFinish(r: CastResult): void
   castNext(): void
@@ -257,7 +257,7 @@ export interface Ctl {
   removeSaved(id: string, title: string): void
 }
 
-/** One checked Cast Call grid, as logged to play_events (`cast_grid`). */
-export interface CastGridLog { face: number; grid: number; picks: string[]; hits: number; wrong: number; perfect: boolean; buzzer: boolean }
-/** A finished Cast Call round (`cast_done`). `done`: all seven faces before the buzzer. */
-export interface CastResult { score: number; right: number; wrong: number; missed: number; faces: number; done: boolean; ms: number; posters: number; perfect: number; time: number }
+/** One checked grid, as logged to play_events (`cast_grid` / `lineup_grid`). `ask`: the face's id (the poster's key); `picks`: the tapped cells' keys. */
+export interface CastGridLog { ask: string; grid: number; picks: string[]; hits: number; wrong: number; perfect: boolean; buzzer: boolean }
+/** A finished round (`cast_done` / `lineup_done`). `grids`: grids checked; `done`: all seven before the buzzer; `base`: the points before bonuses. */
+export interface CastResult { score: number; right: number; wrong: number; missed: number; grids: number; done: boolean; ms: number; base: number; perfect: number; time: number }

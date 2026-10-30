@@ -36,7 +36,8 @@ import { readLocal, usePersistence } from './persist'
 import { demoStateAt } from '../lib/demo'
 import { markSixServed, sixDeal, type SixChain } from '../lib/six'
 import sixChains from '../data/six-chains.json'
-import { castDeal, castRulesUpdate, castShown, type CastData } from '../lib/cast'
+import { castAsk, castDeal, castRulesUpdate, castShown, type CastData } from '../lib/cast'
+import { lineupDeal, lineupShown, type LineupData } from '../lib/lineup'
 import { SAVED_FROM, loadAccountWatchlist, saveTitle, savedIds, unsaveTitle, type SaveSource } from '../lib/watchlist'
 import type { BlindRun, Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
 import { GAMES } from './games'
@@ -117,6 +118,8 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
   const undoRef = useRef<(() => void) | null>(null)
   /** Cast Call's faces (~400 KB): loaded the first time the game starts, not with /play. */
   const castData = useRef<CastData | null>(null)
+  /** Line-up's posters (~200 KB): the same, loaded when Line-up first starts. */
+  const lineupData = useRef<LineupData | null>(null)
   const [savedSet, setSaved] = useState<Set<string>>(() => new Set())
   useEffect(() => {
     setSaved(savedIds())   // the device's copy first, then the account's list for signed-in players
@@ -375,12 +378,18 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     return { ...g, phase: 'play', six: { chain, deal: (g.six?.deal ?? 0) + 1 } }
   }
 
-  /** Cast Call: a new round of seven faces. Its data loads on first use. */
+  /** Cast Call (seven faces) or Line-up (seven posters): a new round. Its data loads on first use. */
   async function castDealRun(g: GameRun): Promise<GameRun | null> {
-    castData.current ??= (await import('../data/cast-call.json')).default as CastData
-    const faces = castDeal(S, castData.current)
-    if (!faces.length) { toast('No faces left for your genres right now.'); return null }
-    return { ...g, phase: 'play', cast: { faces, deal: (g.cast?.deal ?? 0) + 1 } }
+    let asks
+    if (g.id === 'lineup') {
+      lineupData.current ??= (await import('../data/line-up.json')).default as LineupData
+      asks = lineupDeal(S, lineupData.current)
+    } else {
+      castData.current ??= (await import('../data/cast-call.json')).default as CastData
+      asks = castDeal(S, castData.current).map(castAsk)
+    }
+    if (!asks.length) { toast(`No ${g.id === 'lineup' ? 'posters' : 'faces'} left for your genres right now.`); return null }
+    return { ...g, phase: 'play', cast: { asks, deal: (g.cast?.deal ?? 0) + 1 } }
   }
 
   /** A season game is over: close the step (path) or show the game's result (Games). */
@@ -668,20 +677,29 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       if (next) set({ game: next }); else set({ game: null, screen: 'games' })
       commit()
     },
-    castShown(faceId) {
-      const f = castData.current?.faces.find(x => x.id === faceId)
+    castShown(ask) {
+      if (ui.game?.id === 'lineup') { lineupShown(S, ask.key); return }
+      const f = castData.current?.faces.find(x => x.id === ask.id)
       if (f) castShown(S, f)
     },
-    castLog(payload) {
-      commit([{ kind: 'cast_grid', item_key: String(payload.face), payload: { ...payload } }])
+    castLog({ ask, ...rest }) {
+      // Cast Call's events keep their first shape (a face id); Line-up's name the poster.
+      if (ui.game?.id === 'lineup') commit([{ kind: 'lineup_grid', item_key: ask, payload: { title: ask, ...rest } }])
+      else commit([{ kind: 'cast_grid', item_key: ask, payload: { face: Number(ask), ...rest } }])
     },
-    castFinish(r) {
-      const gp = (S.games.cast ??= { level: 0, plays: 0 })
+    castFinish({ grids, base, ...r }) {
+      const id = ui.game?.id === 'lineup' ? 'lineup' : 'cast'
+      const gp = (S.games[id] ??= { level: 0, plays: 0 })
       gp.plays++
       S.gamePlays++
-      if (r.score > 0) (S.gameBest ??= {}).cast = Math.max(S.gameBest?.cast ?? 0, r.score)
-      note(S, `Cast Call: ${r.score} points, ${r.done ? `all ${r.faces} faces` : `${r.faces} faces`}`)
-      commit([{ kind: 'cast_done', payload: { ...r } }])
+      if (r.score > 0) (S.gameBest ??= {})[id] = Math.max(S.gameBest?.[id] ?? 0, r.score)
+      if (id === 'lineup') {
+        note(S, `Line-up: ${r.score} points, ${r.done ? `all ${grids} posters` : `${grids} posters`}`)
+        commit([{ kind: 'lineup_done', payload: { ...r, posters: grids, base } }])
+      } else {
+        note(S, `Cast Call: ${r.score} points, ${r.done ? `all ${grids} faces` : `${grids} faces`}`)
+        commit([{ kind: 'cast_done', payload: { ...r, faces: grids, posters: base } }])
+      }
     },
     sixLog(kind, payload) {
       const six = ui.game?.six
@@ -822,7 +840,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
         commit()
         return
       }
-      if (g.id === 'cast') {
+      if (g.id === 'cast' || g.id === 'lineup') {
         void castDealRun(g).then(next => { if (next) set({ game: next }); commit() })
         return
       }

@@ -25,7 +25,8 @@
     "record-intro": "node --env-file=.env.local --import tsx scripts/record-intro.mts",
     "build-play-titles": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-play-titles.mts",
     "build-six-chains": "node --env-file=.env.local --import tsx scripts/build-six-chains.mts",
-    "build-cast-call": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-cast-call.mts"
+    "build-cast-call": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-cast-call.mts",
+    "build-line-up": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-line-up.mts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^4.0.58",
