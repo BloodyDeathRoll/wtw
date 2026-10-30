@@ -1,4 +1,4 @@
-# Taste Games — handoff (updated 2026-10-27)
+# Taste Games — handoff (updated 2026-10-30)
 
 > Read this first in a games session, then `CLAUDE.md` and the latest entries in
 > `docs/INTEGRATION.md` (2026-10-14 → 2026-10-27 are the build log).
@@ -35,6 +35,7 @@ Eran is a PM with a UX specialty, **not a developer**. Plain product language; e
    - **Higher or Lower** — TMDB rating (or year) streaks.
    - **Six Degrees** — order six actors from a start to an end; each was in a film with the next. Characters with ↑ (film with the actor above) / ↓ (below) / ↕ (same role in both), Check (4 tries, right spots turn green, Wordle-style flip), 💡 Hint ×4 (three films side by side, then one actor placed), points out of 5, timeline ending with the five films and watchlist ribbons. Keyboard ↑↓ moves rows too. No levels yet. `data/six-chains.json`.
    - **Cast Call** — the captcha with posters: a face and nine posters, "Select 4 titles with ●●●●", Check flips them (hit / wrong / missed with the title / faded), Next. Seven faces in 60 seconds, +1 right / −1 wrong, +3 s for a perfect grid. 470 faces from the live catalogue. `data/cast-call.json`.
+   - **Line-up** — Cast Call reversed: a poster and nine faces with their names, "Select 4 actors in ●●●●", the same clock, points, bonuses and end screen (the round's posters with x/4). 315 well-known posters (4,500+ TMDB votes) from the live catalogue. `data/line-up.json`.
    - **The Bet**, **Mind Reader** — after the season.
    - **Soon:** Choose the Ending, Movie Night Planner, Upgrade, Recast.
 5. **Watchlist ribbon** on every poster saves into the app's one synced watchlist; a save counts as a taste signal.
@@ -75,24 +76,26 @@ What "Behind the curtain" shows is what the live taste DNA registers: the scale 
 | `lib/blocks.ts` | `SEASON` order, step texts and colours, Knockout |
 | `lib/games.ts` | Blind (cover levels, `blindDeck`, `blindChips`) / Other Side / Higher or Lower: content, levels, decks, served tracking |
 | `lib/six.ts` | Six Degrees: deal (never twice, spaced faces/films), start board, right spots, hint order, place hint, points, ↑↓ role tags |
-| `lib/cast.ts` | Cast Call: deal a round (7 faces, easy → hard, repeats only after round 5, ≤2 returning, 3+ rounds apart, next grid each time, Never genres skipped), points |
+| `lib/cast.ts` | Cast Call: deal a round (7 faces, easy → hard, repeats only after round 5, ≤2 returning, 3+ rounds apart, next grid each time, Never genres skipped), points; `pickRound` (the repeat rules, shared with Line-up) and `CastAsk` (one grid as the play screen draws it, for both games) |
+| `lib/lineup.ts` | Line-up: deal a round of 7 posters with `pickRound` (one poster per franchise, no face on more than 2 posters, Never genres skipped); its own history `PlayState.lineup` |
 | `lib/reveal.ts`, `lib/watchlist.ts`, `lib/demo.ts` | Season reveal; watchlist bridge (`SaveSource` per game); dev demo player |
 | `lib/server.ts`, `lib/events.ts`, `components/persist.ts` | Saving to `play_state` / `play_events` |
 | `components/PlayApp.tsx` | Controller: every action, screen flow, saving, game runs (`sixDealRun`, `blindAdvance`…) |
 | `components/games.tsx` | Games tab (`GAMES` list), intro / over screens, `GameScreen` |
-| `components/gameplay.tsx`, `six.tsx`, `cast.tsx` | Play screens (Blind, Other Side, Higher or Lower; Six Degrees; Cast Call incl. its clock and end screen) |
+| `components/gameplay.tsx`, `six.tsx`, `cast.tsx` | Play screens (Blind, Other Side, Higher or Lower; Six Degrees; Cast Call and Line-up — one screen, `lu` switches what's asked and what's tapped — incl. the clock and end screen) |
 | `components/Screens.tsx`, `season.tsx`, `watchlist.tsx`, `ui.tsx` | Season screens, watchlist, shared bits (`Poster`, `SaveRibbon`, `Marked`) |
 | `play.css` | All styles, scoped under `.wtw-play` |
 | `data/titles.json`, `ai-scores.json` | 980 pinned titles and their model scores |
-| `data/blind-covers.json`, `six-chains.json`, `cast-call.json`, `other-clues.json`, `plot-rewrites.json` | Game content (`cast-call.json`, ~570 KB, loads only when Cast Call starts) |
+| `data/blind-covers.json`, `six-chains.json`, `cast-call.json`, `line-up.json`, `other-clues.json`, `plot-rewrites.json` | Game content (`cast-call.json`, ~570 KB, and `line-up.json`, ~200 KB, load only when their game starts) |
 
 **Scripts:**
 - `npm run build-play-titles` — title set (read-only on Supabase; Mistral for scales). `-- --grow N` adds N gap-weighted titles and keeps the rest; `--select-only` is a dry run.
 - `npm run build-six-chains` — Six Degrees chains from TMDB casts (cached in the OS temp folder). `KEEP`, `MAX_PER_*` and the `SKIP` face list are at the top. Searching inside a theme (restrict links to titles of a decade or genre) found 21 classics / 17 drama / 13 pre-2000 / 13 crime / 7 comedy chains on the 980 — themed levels are possible but need a face pass first.
 - `npm run build-cast-call` — Cast Call faces and grids from the live catalogue (read-only) + TMDB person credits and movie series (cached in the OS temp folder). Thresholds, the hand `FRANCHISE` groups, `KNOWN_ALIAS` names and a `SKIP` face list are at the top; it re-checks every rule as it writes.
+- `npm run build-line-up` — Line-up posters and grids from the live catalogue (read-only), Cast Call's 470 faces and the TMDB cache `build-cast-call` keeps (run that first; it fetches only faces missing from the cache). `SKIP` (posters) at the top.
 - `scripts/check-play-plots.mts` — AI fact check of `plot-rewrites.json` (Groq free tier). It does not cover `blind-covers.json` stories yet.
 
-**Tests:** `tests/unit/play-brain`, `play-titles` (data checks incl. Blind covers), `play-six` (logic + chain data), `play-cast` (grid data + round rules), `play-watchlist`; `tests/component/SixPlay.test.tsx`. Dev demo: `localhost:3000/play?demo=1` (`&jump=16` finished season, `&jump=14` final round, `&new=1` brand-new user). First load after a restart compiles for ~30 s.
+**Tests:** `tests/unit/play-brain`, `play-titles` (data checks incl. Blind covers), `play-six` (logic + chain data), `play-cast` (grid data + round rules), `play-lineup` (grid data + round rules), `play-watchlist`; `tests/component/SixPlay.test.tsx`. Dev demo: `localhost:3000/play?demo=1` (`&jump=16` finished season, `&jump=14` final round, `&new=1` brand-new user). First load after a restart compiles for ~30 s.
 
 **Working tips:** large data files go through Python one-off scripts in the session scratchpad; TMDB key in `.env.local` (`TMDB_API_KEY`) — never print it. If another branch needs a fix while uncommitted work sits in the checkout, use a `git worktree` in the scratchpad (symlink `node_modules` and `.env.local`), then remove it.
 
@@ -111,6 +114,18 @@ A fast, easy game, the "select all the traffic lights" captcha with posters. A f
 **As built:** `npm run build-cast-call` → 470 faces (150 women, 32%), 1,068 grids (most faces have 2–3), 2,939 titles. A Cast Call card in the Games tab (no levels; "N rounds played · best X"), intro with BEST / NEW, then `CastPlay` draws its own line "FACE 3 OF 7 · SCORE 7". Events: `cast_grid` (face, grid, picks, hits, wrong, perfect, buzzer) and `cast_done` (score, right, wrong, missed, faces, done, ms); best in `gameBest.cast`, round history in `PlayState.cast`. "How to play" pauses the clock (`RULES_EVENT`). The clock only counts drawn frames (≤250 ms each), so a player who switches apps doesn't come back to a lost round. Not done yet: a hand pass on the faces (`SKIP`), and the 30–40k-vote band of faces.
 
 **Measured on the live catalog (2026-10-27, read-only):** 34,941 titles; 6,739 "known" (English ≥1,000 TMDB votes, others ≥300); 1,570 actors can fill a grid. By total votes on their known titles: ≥40k → 467 English faces (147 women: Blake Lively, Jon Hamm, Dev Patel…), ≥30k → 624 (203 women; the 30–40k band needs a hand pass). 7 faces a run → ~67 fresh runs at the 40k line. The catalog's `crew.cast` has billing order but no character names or voice flags: fetch those from TMDB in the build.
+
+## Line-up (built 2026-10-30 on `feat/line-up`)
+
+Cast Call reversed (Eran liked "one poster, nine faces, tap who was in it"). **Its own card** in the Games tab next to Cast Call (Eran, 2026-10-30): its own best, "N rounds played · best X", teal (`#17b3a3`), icon "L". Card and intro: "Seven posters, one minute. Find the four actors in each." Mock-ups (the seven states he approved, plus 375×667): `docs/prototypes/line-up/` (`make-mocks.py`); poster sizes compared (today, +20/25/30/35%, and +35% checked): `make-poster-sizes.py`.
+
+**Same as Cast Call:** 7 a round (2 easy, 2 medium, 3 hard), 60 s, exactly 4 right of 9, +1 / −1, perfect grid +2 points and +3 s, time bonus at 21+ of 28, the counter in the top bar ("POSTER 3 OF 7 · SCORE 7"), Check pinned and hidden at Time's up, the repeat rules (none in the first 5 rounds, then ≤2 returning, 3+ rounds apart).
+
+**What's different on screen:** the banner holds the poster at 65×98 (first built at 48×72; Eran wanted it 35% bigger, the faces paying for it) and "Select 4 actors in ●●●●"; the title is the question, so it is never cut: 17–32 characters wrap to 2 lines at 18px, longer ones to 3 at 15px (all 315 titles checked at 375×667: none cut, the banner's height never changes). Each face carries the actor's name (Eran: names on, so it's about the film, not face recognition); the name shrinks with the face when tapped and with small tiles (12–14px). Checked: right = green + character, missed = dashed green + MISSED + name + character, wrong = red. End screen: the round's posters four a row with x/4 (green outline at 4/4), the drifting wall shows the right faces, "N from faces · +X perfect grids · +Y time". Faces 106px on 412×772, 83 on 375×667. The poster has its own class (`cast-poster`): the app's `.poster` card class adds 10px of padding.
+
+**Data rules (`scripts/build-line-up.mts`):** English-language, no animation / documentary / reality, and **4,500+ TMDB votes for a poster** (Eran, 2026-10-30: at 1,000+ about a quarter of the titles were unknown to him, and here an unknown title is pure luck, unlike Cast Call where you still know the actor; titles with 1,000+ votes still count for who worked with whom). A right face is one of Cast Call's 470 faces, billed in the top 8, a real on-screen part on their own TMDB credits (not voice, self, uncredited; series 5+ episodes), with a character name. A wrong face has no credit at all on the title (cast or crew) and isn't on its catalogue cast list; the wrong five match the right four's women/men mix (×5/4, rounded) and are known from the same years (±8, easy ±12); co-stars of the right four and same-genre faces are favoured on harder posters (easy posters get mostly random ones). Right faces rotate: less-used faces first, then billing order. **As built:** 315 posters (105 per tier by votes; the least-known: RED, Star Trek Beyond, Mamma Mia!, Ocean's Thirteen), one grid each (a second needs 8+ known faces, rare), 462 faces; ~45 fresh rounds. Floors compared: 5,000 → 290 posters, 8,000 → 185, 10,000 → 145. Events `lineup_grid` (title key, grid, picked face ids, hits, wrong, perfect, buzzer) and `lineup_done`; best in `gameBest.lineup`, history in `PlayState.lineup`.
+
+**Not done yet:** a hand pass on posters whose cast is printed on the poster itself (ensemble posters make easy grids easier; `SKIP`), and whether the top-billed lead should always be among the right four (now the less-used face wins, so Revolutionary Road came without DiCaprio).
 
 ## Open items
 

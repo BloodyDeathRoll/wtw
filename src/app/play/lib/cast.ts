@@ -22,7 +22,7 @@ export interface CastFace { id: number; name: string; img: string; tier: CastTie
 export interface CastData { built: string; titles: CastTitle[]; faces: CastFace[] }
 /** A face as dealt into a round: one of its grids, resolved. */
 export interface CastDeal { face: CastFace; grid: number; cells: { title: CastTitle; role: string | null }[] }
-/** Round history: rounds started, and per face [last round seen, times seen]. */
+/** Round history: rounds started, and per face (Line-up: per poster) [last round seen, times seen]. */
 /** `v`: the scoring rules the best score was made under (2 = 7 faces + bonuses, 2026-10-30). */
 export interface CastHistory { runs: number; seen: Record<string, [number, number]>; v?: number }
 
@@ -51,35 +51,50 @@ function gridFor(S: PlayState, data: CastData, f: CastFace): number {
   return -1
 }
 
-/** A new round: seven faces, easy first. Starts the round in the history. */
-export function castDeal(S: PlayState, data: CastData, rand = Math.random): CastDeal[] {
-  const H = history(S)
+/**
+ * Seven items easy → hard under the repeat rules above (Cast Call's faces, Line-up's posters).
+ * `usable`: has a grid this player can get; `fits`: goes with the ones already picked. Starts the round in `H`.
+ */
+export function pickRound<X extends { tier: CastTier }>(H: CastHistory, items: X[], key: (x: X) => string, usable: (x: X) => boolean,
+  rand = Math.random, fits: (x: X, picked: X[]) => boolean = () => true): X[] {
   const run = ++H.runs
-  const fresh = (f: CastFace) => !H.seen[f.id]
-  const back = (f: CastFace) => !fresh(f) && run > FRESH_RUNS && run - H.seen[f.id][0] >= GAP
-  const freshLeft = data.faces.some(f => fresh(f) && gridFor(S, data, f) >= 0)
-  const picked = new Set<number>()
-  const out: CastDeal[] = []
+  const fresh = (x: X) => !H.seen[key(x)]
+  const back = (x: X) => !fresh(x) && run > FRESH_RUNS && run - H.seen[key(x)][0] >= GAP
+  const freshLeft = items.some(x => fresh(x) && usable(x))
+  const picked: X[] = []
   let returning = 0
-  const take = (tier: CastTier, ok: (f: CastFace) => boolean) => {
+  const take = (tier: CastTier, ok: (x: X) => boolean) => {
     for (const t of NEAR[tier]) {
-      const xs = data.faces.filter(f => f.tier === t && !picked.has(f.id) && ok(f) && gridFor(S, data, f) >= 0)
+      const xs = items.filter(x => x.tier === t && !picked.includes(x) && ok(x) && usable(x) && fits(x, picked))
       if (xs.length) return xs[Math.floor(rand() * xs.length)]
     }
     return null
   }
   for (const tier of ORDER) {
-    let f = take(tier, fresh)
-    if (!f && (returning < MAX_BACK || !freshLeft)) { f = take(tier, back); if (f) returning++ }
-    if (!f) f = take(tier, back)              // not enough fresh faces: more of the ones seen 3+ rounds ago
-    if (!f) f = take(tier, x => !fresh(x))   // a tiny pool only: anyone not in this round
-    if (!f) break
-    picked.add(f.id)
-    const grid = gridFor(S, data, f)
-    out.push({ face: f, grid, cells: f.grids[grid].map(([i, role]) => ({ title: data.titles[i], role })) })
+    let x = take(tier, fresh)
+    if (!x && (returning < MAX_BACK || !freshLeft)) { x = take(tier, back); if (x) returning++ }
+    if (!x) x = take(tier, back)              // not enough fresh ones: more of those seen 3+ rounds ago
+    if (!x) x = take(tier, y => !fresh(y))   // a tiny pool only: anything not in this round
+    if (!x) break
+    picked.push(x)
   }
-  return out
+  return picked
 }
+
+/** A new round: seven faces, easy first. Starts the round in the history. */
+export function castDeal(S: PlayState, data: CastData, rand = Math.random): CastDeal[] {
+  return pickRound(history(S), data.faces, f => String(f.id), f => gridFor(S, data, f) >= 0, rand).map(face => {
+    const grid = gridFor(S, data, face)
+    return { face, grid, cells: face.grids[grid].map(([i, role]) => ({ title: data.titles[i], role })) }
+  })
+}
+
+/** One grid as the play screen draws it, for either game: what's asked (a face, or a poster) and nine answers. */
+export interface CastAsk { id: number; key: string; name: string; img: string; grid: number; cells: { k: string; name: string; img: string; role: string | null }[] }
+export const castAsk = (d: CastDeal): CastAsk => ({
+  id: d.face.id, key: String(d.face.id), name: d.face.name, img: d.face.img, grid: d.grid,
+  cells: d.cells.map(c => ({ k: c.title.k, name: c.title.t, img: c.title.p, role: c.role })),
+})
 
 /** A face counts as seen when it's on screen, not when it's dealt. */
 export function castShown(S: PlayState, f: CastFace) {

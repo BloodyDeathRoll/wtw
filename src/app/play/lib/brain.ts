@@ -73,6 +73,8 @@ export interface PlayState {
   gameBest?: Record<string, number>
   /** Cast Call: rounds started and when each face was last on screen (lib/cast.ts decides repeats). */
   cast?: CastHistory
+  /** Line-up: the same, per poster (lib/lineup.ts). */
+  lineup?: CastHistory
   /** Old Other Side answers ("watched it for me / with the kids / both"); no longer asked since 2026-10-27, kept for saved games. */
   seenWith?: Record<string, 'me' | 'kids' | 'both' | 'no'>
   /** The last "Clearest so far" shown on a closing screen, so it isn't repeated. */

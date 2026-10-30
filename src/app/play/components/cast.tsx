@@ -1,5 +1,6 @@
 'use client'
-/* Cast Call: seven faces, nine posters each, one minute. Logic: lib/cast.ts; prototype: docs/prototypes/credit-check/play.html. */
+/* Cast Call: seven faces, nine posters each, one minute. Logic: lib/cast.ts; prototype: docs/prototypes/credit-check/play.html.
+   Line-up, the same game reversed (seven posters, nine faces each): lib/lineup.ts; mock-ups: docs/prototypes/line-up/. */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { CAST_BONUS, CAST_FACES, CAST_LOW, CAST_PERFECT_POINTS, CAST_PICKS, CAST_TIME, CAST_TIME_MIN_RIGHT, RULES_EVENT, castClock, castPoints, castTimeBonus } from '../lib/cast'
 import type { Ctl } from './types'
@@ -9,11 +10,16 @@ const ARC = 2 * Math.PI * 23
 type Mark = 'hit' | 'wrong' | 'miss' | 'pass'
 type Phase = 'pick' | 'checking' | 'result' | 'leaving'
 interface Tally { hit: number; wrong: number; miss: number; perfect: boolean; buzzer: boolean }
-interface Done { score: number; prev: number; first: boolean; right: number; wrong: number; missed: number; faces: number; done: boolean; ms: number; posters: number; perfect: number; time: number; timeMissed: boolean; log: { id: number; img: string; hit: number }[] }
+interface Done { score: number; prev: number; first: boolean; right: number; wrong: number; missed: number; grids: number; done: boolean; ms: number; base: number; perfect: number; time: number; timeMissed: boolean; log: { key: string; img: string; hit: number }[] }
+
+/** A poster's title is the question, so it never gets cut: longer ones wrap onto 2 lines, the longest onto 3, smaller. */
+const titleFit = (t: string) => (t.length <= 16 ? undefined : t.length <= 32 ? 'wrap' : 'wrap xl')
 
 /** `top`: the game's top bar (✕, title, How to play), drawn here so the title can be the live counter. */
 export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode) => React.ReactNode }) {
-  const deals = ctl.ui.game!.cast!.faces
+  const deals = ctl.ui.game!.cast!.asks
+  const lu = ctl.ui.game!.id === 'lineup'   // Line-up: a poster asks, the answers are faces
+  const unit = lu ? 'poster' : 'face'
   const total = Math.min(CAST_FACES, deals.length)
   const [i, setI] = useState(0)
   const [sel, setSel] = useState<number[]>([])
@@ -73,10 +79,10 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
   // A face on screen: counted as seen, its clock running, the next face's posters on their way.
   useEffect(() => {
     if (end) return
-    if (!shown.current.has(i)) { shown.current.add(i); ctl.castShown(d.face.id) }
+    if (!shown.current.has(i)) { shown.current.add(i); ctl.castShown(d) }
     if (i === 0 && !R.current.running && R.current.left === CAST_TIME) resume()
     const next = deals[i + 1]
-    if (next) for (const src of [`${IMG}w185${next.face.img}`, ...next.cells.map(c => `${IMG}w342${c.title.p}`)]) new Image().src = src
+    if (next) for (const src of [`${IMG}w185${next.img}`, ...next.cells.map(c => `${IMG}w342${c.img}`)]) new Image().src = src
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per face
   }, [i])
 
@@ -155,10 +161,10 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
     }
     const r = R.current, perfect = hit === CAST_PICKS && wrong === 0
     r.right += hit; r.wrong += wrong; r.missed += miss; r.grids++
-    r.log.push({ id: d.face.id, img: d.face.img, hit })
+    r.log.push({ key: d.key, img: d.img, hit })
     countScore(r.score, r.score + castPoints(hit, wrong)); r.score += castPoints(hit, wrong)
     setTally({ hit, wrong, miss, perfect, buzzer })
-    ctl.castLog({ face: d.face.id, grid: d.grid, picks: [...picked].map(k => d.cells[k].title.k), hits: hit, wrong, perfect, buzzer })
+    ctl.castLog({ ask: d.key, grid: d.grid, picks: [...picked].map(k => d.cells[k].k), hits: hit, wrong, perfect, buzzer })
     if (buzzer) return
     if (perfect) await bonus()
     if (i + 1 >= total) r.done = true
@@ -221,15 +227,16 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
 
   function finish() {
     const r = R.current
-    const prev = ctl.S.gameBest?.cast ?? 0, first = !ctl.S.games.cast?.plays
+    const game = lu ? 'lineup' : 'cast'
+    const prev = ctl.S.gameBest?.[game] ?? 0, first = !ctl.S.games[game]?.plays
     // The score so far already holds the perfect-grid points; the time bonus joins it now.
     const perfect = r.log.filter(l => l.hit === CAST_PICKS).length * CAST_PERFECT_POINTS
     const time = castTimeBonus(r.done, r.right, r.left)
-    const posters = r.score - perfect
+    const base = r.score - perfect
     r.score += time
     const timeMissed = r.done && !time && r.left >= 2000   // finished early but under 21 right: say why there's no time bonus
-    ctl.castFinish({ score: r.score, right: r.right, wrong: r.wrong, missed: r.missed, faces: r.grids, done: r.done, ms: Math.round(r.used), posters, perfect, time })
-    setEnd({ score: r.score, prev, first, right: r.right, wrong: r.wrong, missed: r.missed, faces: r.grids, done: r.done, ms: r.used, posters, perfect, time, timeMissed, log: r.log })
+    ctl.castFinish({ score: r.score, right: r.right, wrong: r.wrong, missed: r.missed, grids: r.grids, done: r.done, ms: Math.round(r.used), base, perfect, time })
+    setEnd({ score: r.score, prev, first, right: r.right, wrong: r.wrong, missed: r.missed, grids: r.grids, done: r.done, ms: r.used, base, perfect, time, timeMissed, log: r.log })
     if (still() || r.score <= 0) { setBig(r.score); return }
     const t0 = performance.now()
     const step = (now: number) => { const k = Math.min(1, (now - t0) / 900); setBig(Math.round(r.score * (1 - Math.pow(1 - k, 3)))); if (k < 1 && alive.current) requestAnimationFrame(step) }
@@ -253,11 +260,17 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
   })
 
   // The end screen's faces: as big as the space allows (3 a row up to 12, then 4, then smaller; Eran).
+  // Line-up's posters: four a row, as tall as two rows allow.
   useLayoutEffect(() => {
     const box = facesBox.current, grid = facesGrid.current
     if (!end || !box || !grid) return
     const n = grid.children.length, W = grid.clientWidth
     const H = box.clientHeight - (box.querySelector('h2')?.offsetHeight ?? 0) - 14 - 9   // 9: the x/4 badge hangs below the last row
+    if (lu) {
+      const rows = Math.ceil(n / 4)
+      grid.style.setProperty('--pw', `${Math.floor(Math.min((W - 6 - 30) / 4, (H - (rows - 1) * 18) / rows / 1.5))}px`)
+      return
+    }
     const options: [number, number][] = n <= 12 ? [[3, 64], [4, 54], [5, 44], [6, 36], [7, 30]] : [[4, 54], [5, 44], [6, 36], [7, 30]]
     for (const [cols, least] of options) {
       const rows = Math.ceil(n / cols)
@@ -268,17 +281,17 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
         return
       }
     }
-  }, [end])
+  }, [end, lu])
 
   if (end) {
     const best = end.score > end.prev
-    const wall = [...new Set(end.log.flatMap(l => deals.find(x => x.face.id === l.id)!.cells.filter(c => c.role !== null).map(c => c.title.p)))]
+    const wall = [...new Set(end.log.flatMap(l => deals.find(x => x.key === l.key)!.cells.filter(c => c.role !== null).map(c => c.img)))]
     const tiles30 = wall.length ? Array.from({ length: 30 }, (_, k) => wall[k % wall.length]) : []
-    const title = end.done ? `${end.faces} faces in ${castClock(end.ms)}` : end.faces >= total ? `Time's up on face ${total}` : `${end.faces} of ${total} faces`
+    const title = end.done ? `${end.grids} ${unit}s in ${castClock(end.ms)}` : end.grids >= total ? `Time's up on ${unit} ${total}` : `${end.grids} of ${total} ${unit}s`
     return (
       <>
         {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
-        <div className="cast-wall" aria-hidden="true"><div>{tiles30.map((p, k) => <img key={k} src={`${IMG}w185${p}`} alt="" />)}</div></div>
+        <div className={`cast-wall${lu ? ' faces' : ''}`} aria-hidden="true"><div>{tiles30.map((p, k) => <img key={k} src={`${IMG}w185${p}`} alt="" />)}</div></div>
         {top()}
         <div className="cast-end">
           <div className="cast-scores">
@@ -291,7 +304,7 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
           </div>
           {(end.perfect > 0 || end.time > 0 || end.timeMissed) && (
             <p className="cast-sum">
-              {end.posters} from posters
+              {end.base} from {lu ? 'faces' : 'posters'}
               {end.perfect > 0 && <> · <b>+{end.perfect}</b> perfect {end.perfect === CAST_PERFECT_POINTS ? 'grid' : 'grids'}</>}
               {end.time > 0 && <> · <b>+{end.time}</b> time</>}
               {end.timeMissed && <> · time bonus needs {CAST_TIME_MIN_RIGHT} right</>}
@@ -305,9 +318,9 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
           <div className="cast-rule" />
           <div className="cast-facesbox" ref={facesBox}>
             <h2>{title}</h2>
-            <div className="cast-faces" ref={facesGrid}>
+            <div className={lu ? 'lu-posters' : 'cast-faces'} ref={facesGrid}>
               {end.log.map((l, k) => (
-                <div key={l.id} className={l.hit === CAST_PICKS ? 'perfect' : ''} style={{ animationDelay: `${0.45 + k * 0.04}s` }}>
+                <div key={l.key} className={l.hit === CAST_PICKS ? 'perfect' : ''} style={{ animationDelay: `${0.45 + k * 0.04}s` }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
                   <img src={`${IMG}w185${l.img}`} alt="" />
                   <i>{l.hit}/{CAST_PICKS}</i>
@@ -328,18 +341,18 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
   const canAct = phase === 'result' || (phase === 'pick' && sel.length === CAST_PICKS)
   return (
     <>
-      {top(<>FACE {i + 1} OF {total} · SCORE {score}</>)}
+      {top(<>{unit.toUpperCase()} {i + 1} OF {total} · SCORE {score}</>)}
       <div className="cast" ref={ccRef}>
-        <div className={`cast-ask${low ? ' low' : ''}`}>
+        <div className={`cast-ask${lu ? ' lu' : ''}${low ? ' low' : ''}`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
-          <img className="face" src={`${IMG}w185${d.face.img}`} alt="" />
+          <img className={lu ? 'cast-poster' : 'face'} src={`${IMG}w185${d.img}`} alt="" />
           <div className="q" key={`${i}${result ? 'r' : 'p'}`} aria-live="polite">
             {/* The banner carries the result (no tally line under the grid: its space went to the posters). */}
             {result && tally
               ? perfect
-                ? <>{d.face.name} · +{CAST_PERFECT_POINTS} points<b>Perfect grid!</b></>
-                : <>{d.face.name}<b>{tally.hit} of {CAST_PICKS}{tally.wrong > 0 && ` · ${tally.wrong} wrong`}{tally.miss > tally.wrong && ` · ${tally.miss} missed`}</b></>
-              : <><span className="ql">Select {CAST_PICKS} titles with<span className="cast-dots" ref={dotsRef}>{Array.from({ length: CAST_PICKS }, (_, k) => <i key={k} className={k < sel.length ? 'on' : ''} />)}</span></span><b>{d.face.name}</b></>}
+                ? <><span className="qn">{d.name} · +{CAST_PERFECT_POINTS} points</span><b>Perfect grid!</b></>
+                : <><span className="qn">{d.name}</span><b>{tally.hit} of {CAST_PICKS}{tally.wrong > 0 && ` · ${tally.wrong} wrong`}{tally.miss > tally.wrong && ` · ${tally.miss} missed`}</b></>
+              : <><span className="ql">Select {CAST_PICKS} {lu ? 'actors in' : 'titles with'}<span className="cast-dots" ref={dotsRef}>{Array.from({ length: CAST_PICKS }, (_, k) => <i key={k} className={k < sel.length ? 'on' : ''} />)}</span></span><b className={lu ? titleFit(d.name) : undefined}>{d.name}</b></>}
           </div>
           <div className={`cast-clock${low && !gain ? ' low' : ''}${gain ? ' gain' : ''}${paused ? ' paused' : ''}`} ref={clockRef} role="timer" aria-label={`${secs} seconds left`}>
             <svg viewBox="0 0 54 54" aria-hidden="true"><circle className="trk" cx="27" cy="27" r="23" /><circle className="arc" ref={arcRef} cx="27" cy="27" r="23" /></svg>
@@ -351,14 +364,21 @@ export function CastPlay({ ctl, top }: { ctl: Ctl; top: (title?: React.ReactNode
             const m = marks[k], picked = sel.includes(k)
             const cls = ['cast-tile', picked && !m ? 'sel' : '', m ?? '', flip.includes(k) ? 'flip' : '', m || phase !== 'pick' ? 'locked' : ''].filter(Boolean).join(' ')
             return (
-              <button key={c.title.k} ref={el => { tiles.current[k] = el }} className={cls} style={{ animationDelay: `${k * 35}ms` }}
-                onClick={() => toggle(k)} aria-pressed={picked} aria-label={c.title.t} tabIndex={phase === 'pick' ? 0 : -1}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
-                <img className="art" src={`${IMG}w342${c.title.p}`} alt="" draggable={false} />
+              <button key={c.k} ref={el => { tiles.current[k] = el }} className={cls} style={{ animationDelay: `${k * 35}ms` }}
+                onClick={() => toggle(k)} aria-pressed={picked} aria-label={c.name} tabIndex={phase === 'pick' ? 0 : -1}>
+                {lu
+                  // A face always carries its name; checked, a right one adds the character (Eran picked names on faces, 2026-10-30).
+                  ? <span className="pic">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx */}
+                      <img className="art" src={`${IMG}w342${c.img}`} alt="" draggable={false} />
+                      <span className="nm">{m === 'miss' && <small>MISSED</small>}{c.name}{(m === 'hit' || m === 'miss') && c.role && <span className="ch">{c.role}</span>}</span>
+                    </span>
+                  // eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP, as in ui.tsx
+                  : <img className="art" src={`${IMG}w342${c.img}`} alt="" draggable={false} />}
                 {picked && !m && <span className="tick">✓</span>}
-                {m === 'hit' && <><span className="tick">✓</span>{c.role && <span className={`role${c.role.length > 13 ? ' long' : ''}`}>{c.role}</span>}</>}
+                {m === 'hit' && <><span className="tick">✓</span>{!lu && c.role && <span className={`role${c.role.length > 13 ? ' long' : ''}`}>{c.role}</span>}</>}
                 {m === 'wrong' && <span className="tick">✕</span>}
-                {m === 'miss' && <span className="role mt"><small>MISSED</small><span className="ttl">{c.title.t}</span>{c.role && <span className="ch">{c.role}</span>}</span>}
+                {m === 'miss' && !lu && <span className="role mt"><small>MISSED</small><span className="ttl">{c.name}</span>{c.role && <span className="ch">{c.role}</span>}</span>}
               </button>
             )
           })}

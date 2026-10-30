@@ -1203,6 +1203,30 @@
 .wtw-play .cast-faces i{position:absolute;bottom:-7px;left:50%;translate:-50% 0;font-style:normal;font-size:clamp(10px,calc(var(--fs) * .15),13px);font-weight:800;color:#fff;background:#16161c;border-radius:999px;padding:2px 7px;box-shadow:0 0 0 1.5px rgba(255,255,255,.25)}
 .wtw-play .cast-faces .perfect i{background:var(--good-cc);color:#00140c;box-shadow:none}
 .wtw-play .screen.game-screen .cast-end > .cta{flex-shrink:0}
+/* Line-up (Cast Call reversed, mock-ups in docs/prototypes/line-up/): a small poster in the banner, faces with their names, posters on the end screen. */
+.wtw-play .cast-ask .q .qn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtw-play .cast-ask .q b.wrap{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:18px;line-height:1.15;text-wrap:balance}
+.wtw-play .cast-ask .q b.wrap.xl{font-size:15px;-webkit-line-clamp:3}
+.wtw-play .cast-ask.lu{grid-template-columns:65px minmax(0,1fr) 54px}   /* the poster 35% bigger than first built (Eran, 2026-10-30) */
+.wtw-play .cast-ask .cast-poster{width:65px;height:98px;border-radius:6px;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,.85);background:#223;justify-self:center}
+.wtw-play .cast-tile{container-type:inline-size}
+.wtw-play .cast-tile .pic{position:absolute;inset:0;border-radius:9px;overflow:hidden;transition:transform .15s}
+.wtw-play .cast-tile .pic .art{object-position:center 20%}
+.wtw-play .cast-tile.sel .pic{transform:scale(.84);border-radius:6px}
+.wtw-play .cast-tile.sel .pic .art{transform:none}
+.wtw-play .cast-tile .nm{position:absolute;z-index:1;left:0;right:0;bottom:0;padding:26px 6px 8px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.85) 60%);
+  font-size:clamp(12px,12.5cqw,14px);font-weight:700;line-height:1.15;color:#fff;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.8);transition:opacity .3s}
+.wtw-play .cast-tile .nm .ch{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px;font-size:clamp(11px,10.7cqw,12px);line-height:1.15;font-weight:500;color:rgba(255,255,255,.78)}
+.wtw-play .cast-tile .nm small{display:block;font-size:11px;letter-spacing:.08em;font-weight:800;color:var(--good-cc);margin-bottom:3px}
+.wtw-play .cast-tile.pass .nm{opacity:.35}
+.wtw-play .cast-tile.wrong .nm{color:rgba(255,255,255,.7)}
+.wtw-play .cast-wall.faces img{object-position:center 20%}
+.wtw-play .lu-posters{--pw:72px;display:flex;flex-wrap:wrap;justify-content:center;row-gap:18px;column-gap:10px;width:100%;padding:3px;box-sizing:border-box;margin-top:2px}
+.wtw-play .lu-posters div{position:relative;width:var(--pw);animation:cast-pop .35s cubic-bezier(.2,1.6,.4,1) both}
+.wtw-play .lu-posters img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px;box-shadow:0 0 0 2px rgba(255,255,255,.22)}
+.wtw-play .lu-posters .perfect img{box-shadow:0 0 0 3px var(--good-cc)}
+.wtw-play .lu-posters i{position:absolute;bottom:-8px;left:50%;translate:-50% 0;font-style:normal;font-size:13px;font-weight:800;color:#fff;background:#16161c;border-radius:999px;padding:2px 7px;box-shadow:0 0 0 1.5px rgba(255,255,255,.25)}
+.wtw-play .lu-posters .perfect i{background:var(--good-cc);color:#00140c;box-shadow:none}
 
 @keyframes cast-pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
 @keyframes cast-in{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
