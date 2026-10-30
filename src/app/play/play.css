@@ -1100,12 +1100,13 @@
 .wtw-play .other-reveal .reveal-poster .poster{width:100%;height:100%}
 .wtw-play .other-after{margin-top:auto;width:100%;display:flex;flex-direction:column;gap:28px}
 
-/* ── Cast Call (2026-10-27, docs/prototypes/credit-check/): a face, nine posters, 4 right, ten faces a minute ── */
+/* ── Cast Call (2026-10-27, docs/prototypes/credit-check/): a face, nine posters, 4 right, seven faces a minute ── */
 .wtw-play .cast{--good-cc:#00c48c;--bad-cc:#ff4d4d;--low:#ff3b30;flex:1;display:flex;flex-direction:column;gap:10px;padding:8px 16px 22px;min-height:0;position:relative}
 .wtw-play .cast-ask{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) 54px;gap:12px;align-items:center;padding:9px 10px 9px 9px;border-radius:16px;background:var(--gacc);color:#fff;
   box-shadow:0 8px 30px color-mix(in srgb,var(--gacc) 35%,transparent);flex-shrink:0}
 .wtw-play .cast-ask.low{background:linear-gradient(90deg,var(--gacc) 55%,#c8242b)}
 .wtw-play .cast-ask .face{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:center 20%;box-shadow:0 0 0 2px rgba(255,255,255,.85);background:#223}
+.wtw-play .gtitle.live{font-size:22px;letter-spacing:.04em}
 .wtw-play .cast-ask .q{font-size:13.5px;line-height:1.2;color:rgba(255,255,255,.85);min-width:0;animation:cast-rise .35s ease both}
 .wtw-play .cast-ask .q b{display:block;font-size:21px;line-height:1.15;color:#fff;font-weight:700;letter-spacing:-.01em;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wtw-play .cast-ask .ql{display:flex;align-items:center;gap:7px;white-space:nowrap}
@@ -1156,12 +1157,7 @@
 .wtw-play .cast-grid.in .cast-tile{animation:cast-in .34s cubic-bezier(.2,.8,.3,1) both}
 .wtw-play .cast-grid.out .cast-tile{transition:transform .22s ease-in,opacity .22s ease-in;transform:translateX(-36px);opacity:0}
 
-.wtw-play .cast-tally{height:22px;margin-top:auto;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;color:#d8d8dc;opacity:0;transition:opacity .25s;flex-shrink:0}
-.wtw-play .cast-tally.on{opacity:1}
-.wtw-play .cast-tally b{font-weight:700}
-.wtw-play .cast-tally i{font-style:normal;color:#5e5e62}
-.wtw-play .cast-tally .g{color:var(--good-cc)} .wtw-play .cast-tally .r{color:#ff6b6b} .wtw-play .cast-tally .m{color:#b9b9bf}
-.wtw-play .screen.game-screen .cast > .cta{flex-shrink:0;transition:opacity .2s}
+.wtw-play .screen.game-screen .cast > .cta{flex-shrink:0;margin-top:auto;transition:opacity .2s}   /* pinned to the bottom, whatever the posters' size */
 .wtw-play .screen.game-screen .cast > .cta.off{opacity:.35;cursor:default}
 
 .wtw-play .cast-over{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,.8);text-align:center;isolation:isolate;animation:cast-fade .3s ease both}
@@ -1169,6 +1165,7 @@
 .wtw-play .cast-over .big{font-family:var(--poster);font-size:88px;line-height:.9;color:var(--low);letter-spacing:.02em;text-shadow:0 0 40px rgba(255,59,48,.6);animation:cast-slam .45s cubic-bezier(.2,1.5,.4,1) both}
 .wtw-play .cast-over p{margin:0;font-size:17px;color:#e8e8ea}
 .wtw-play .screen.game-screen .cast-over .cta{position:absolute;left:16px;right:16px;bottom:22px;width:auto}
+.wtw-play .cast > .gone{visibility:hidden}
 .wtw-play .cast-flash{position:absolute;inset:0;z-index:8;pointer-events:none;background:var(--low);animation:cast-flash .5s ease-out both}
 
 /* end screen: score + best tiles, the counts as a line, the round's faces, a faded wall of its posters */
@@ -1188,6 +1185,8 @@
 .wtw-play .cast-sc.bt.new{border-color:var(--gacc);box-shadow:0 0 34px color-mix(in srgb,var(--gacc) 40%,transparent)}
 .wtw-play .cast-sc small{font-size:12.5px;color:var(--muted);margin-top:-2px}
 .wtw-play .cast-sc em{position:absolute;top:-11px;left:50%;translate:-50% 0;font-style:normal;font-size:11.5px;font-weight:800;letter-spacing:.12em;white-space:nowrap;color:#0b0820;background:var(--gacc);border-radius:999px;padding:4px 10px;animation:cast-pop .4s .6s cubic-bezier(.2,1.6,.4,1) both}
+.wtw-play .cast-sum{margin:-4px 0 0;font-size:14px;color:#b9b9c0}
+.wtw-play .cast-sum b{color:var(--good-cc);font-weight:700}
 .wtw-play .cast-stats{display:flex;justify-content:center;align-items:center;gap:16px;width:100%;margin-top:2px}
 .wtw-play .cast-stats div{display:flex;align-items:baseline;gap:6px}
 .wtw-play .cast-stats b{font-family:var(--poster);font-size:32px;line-height:1;font-weight:400}

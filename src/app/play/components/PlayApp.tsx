@@ -36,7 +36,7 @@ import { readLocal, usePersistence } from './persist'
 import { demoStateAt } from '../lib/demo'
 import { markSixServed, sixDeal, type SixChain } from '../lib/six'
 import sixChains from '../data/six-chains.json'
-import { castDeal, castShown, type CastData } from '../lib/cast'
+import { castDeal, castRulesUpdate, castShown, type CastData } from '../lib/cast'
 import { SAVED_FROM, loadAccountWatchlist, saveTitle, savedIds, unsaveTitle, type SaveSource } from '../lib/watchlist'
 import type { BlindRun, Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
 import { GAMES } from './games'
@@ -253,6 +253,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
       setReady(true)
     }
     const S = SRef.current
+    castRulesUpdate(S)   // a Cast Call best from the old rules (10 faces, no bonuses) is cleared once
     if (!S.sel) return   // genres first, whatever was asked for
     if (tab === 'games') { setUI(prev => ({ ...prev, screen: 'games' })); return }
     if (seasonDone(S)) { setUI(prev => ({ ...prev, screen: 'games' })); return }   // the picks live in the app now
@@ -374,7 +375,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
     return { ...g, phase: 'play', six: { chain, deal: (g.six?.deal ?? 0) + 1 } }
   }
 
-  /** Cast Call: a new round of ten faces. Its data loads on first use. */
+  /** Cast Call: a new round of seven faces. Its data loads on first use. */
   async function castDealRun(g: GameRun): Promise<GameRun | null> {
     castData.current ??= (await import('../data/cast-call.json')).default as CastData
     const faces = castDeal(S, castData.current)

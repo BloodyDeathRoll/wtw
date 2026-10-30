@@ -123,7 +123,7 @@ export interface GameRun {
   blind?: BlindRun
   /** Six Degrees: the chain on the board; `deal` keys the screen so each chain starts fresh. */
   six?: { chain: SixChain; deal: number }
-  /** Cast Call: the round's ten faces; `deal` keys the screen so each round starts fresh. */
+  /** Cast Call: the round's seven faces; `deal` keys the screen so each round starts fresh. */
   cast?: { faces: CastDeal[]; deal: number }
   other?: OtherRun
   hilo?: HiloRun
@@ -259,5 +259,5 @@ export interface Ctl {
 
 /** One checked Cast Call grid, as logged to play_events (`cast_grid`). */
 export interface CastGridLog { face: number; grid: number; picks: string[]; hits: number; wrong: number; perfect: boolean; buzzer: boolean }
-/** A finished Cast Call round (`cast_done`). `done`: all ten faces before the buzzer. */
-export interface CastResult { score: number; right: number; wrong: number; missed: number; faces: number; done: boolean; ms: number }
+/** A finished Cast Call round (`cast_done`). `done`: all seven faces before the buzzer. */
+export interface CastResult { score: number; right: number; wrong: number; missed: number; faces: number; done: boolean; ms: number; posters: number; perfect: number; time: number }
