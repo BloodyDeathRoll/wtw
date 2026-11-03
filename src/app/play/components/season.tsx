@@ -7,7 +7,7 @@
 import { BLOCKS, SEASON_LENGTH, seasonDone } from '../lib/blocks'
 import { factHeadline, revealOf } from '../lib/reveal'
 import type { Ctl } from './types'
-import { Poster, SaveRibbon, TopBar } from './ui'
+import { Poster, SaveRibbon, ShareButton, TopBar } from './ui'
 
 /**
  * The season's progress on every training screen: a bar that fills, no words
@@ -63,6 +63,7 @@ export function ShowdownScreen({ ctl }: { ctl: Ctl }) {
   const side = (k: 'a' | 'b') => (
     <div className="side">
       <SaveRibbon ctl={ctl} t={p[k]} from="final" />
+      <ShareButton ctl={ctl} t={p[k]} />
       <button className="pick" onClick={() => ctl.showdownPick(k)} aria-label={`Pick ${p[k].title}`}>
         <Poster t={p[k]} />
         <div><div className="nm">{p[k].title}</div><div className="yr">{p[k].year}</div></div>

@@ -459,6 +459,13 @@
 .trailerCircle:hover {
   background: rgba(255, 255, 255, 0.18);
 }
+/* Share (same circle) stacked on the trailer, so the title keeps its width. */
+.heroCircles {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .heroBody {
   display: flex;
   flex-direction: column;

@@ -755,6 +755,18 @@
 .wtw-play .rib.on{background:var(--gold);color:#0b0820;font-size:17px;font-weight:800;padding-top:9px}
 .wtw-play .rib:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .wtw-play .bet-poster[style] .rib{width:24px;height:32px;font-size:17px;padding-top:4px}
+/* The ribbon's white hairline (Eran, 2026-11-03), the share button's: down the sides and round the notch, open at the top where it hangs off the poster */
+.wtw-play .rib::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 44' preserveAspectRatio='none'%3E%3Cpath d='M.5 0V43.1L16 35.3l15.5 7.8V0' fill='none' stroke='rgba(255,255,255,.35)' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+/* Share (2026-11-03, docs/prototypes/share/v3): a round glass button on the poster's bottom-right, the corner opposite the ribbon */
+.wtw-play .shc{position:absolute;z-index:4;right:8px;bottom:8px;width:38px;height:38px;padding:0 1px 0 0;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff}
+.wtw-play .shc:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.wtw-play .bet-poster[style] .shc{width:28px;height:28px;right:4px;bottom:4px}
+.wtw-play .bet-poster[style] .shc svg{width:14px;height:14px}
+/* In a duel the poster is the top of .side (above the name): sit on the poster's bottom, 2:3 → 150% of the side's width down */
+.wtw-play .side{container-type:inline-size}
+.wtw-play .side > .shc{bottom:auto;top:calc(150cqw - 46px)}
 .wtw-play .toast.has-undo{display:flex;align-items:center;justify-content:space-between;gap:12px}
 /* Only Undo takes taps: the toast sits over the bottom buttons, which must stay usable under it. */
 .wtw-play .toast.has-undo button{pointer-events:auto}

@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap">
+<link rel="stylesheet" href="../../../src/app/play/play.css"><style>
+html,body{margin:0;width:375px;height:812px;overflow:hidden;background:#000}
+.wtw-play{--font-inter:"Inter";--font-bebas:"Bebas Neue";padding:0!important;position:absolute;inset:0;width:375px;height:812px}
+.app{position:absolute;inset:0;background:#000;isolation:isolate;--wtw-rgb:212,155,58}
+.app::before{content:"";position:absolute;inset:0;z-index:0;background:radial-gradient(120% 60% at 50% 115%,rgba(var(--wtw-rgb),.65) 0%,rgba(var(--wtw-rgb),.22) 35%,transparent 70%),linear-gradient(180deg,#000 50%,rgba(var(--wtw-rgb),.12) 100%)}
+.inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column}
+.wtw-play *,*::before,*::after{animation:none!important;transition:none!important}
+.wtw-play .poster img{opacity:1}
+/* SHARE option A: a second ribbon beside the watchlist one, same shape and colour */
+.wtw-play .rib.shr{right:44px;padding-top:9px}
+.wtw-play .bet-poster[style] .rib.shr{right:34px}
+/* SHARE option B: a round button on the poster's bottom-right, the Trailer pill's colour */
+.wtw-play .shc{position:absolute;z-index:3;right:8px;bottom:8px;width:36px;height:36px;border:0;border-radius:50%;display:grid;place-items:center;padding:0 0 1px;
+  background:rgba(0,0,0,.72);color:#fff;cursor:pointer}
+</style></head><body>
+<div class="wtw-play"><div class="app"><div class="inner"><div class="phone arcade" style="--gacc:#ff5fa2"><div class="screen game-screen">
+<div class="topbar"><button class="hb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="gtitle">The Other Side of the Story</div><button class="hb r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"/></svg></button></div><div class="glevel">LEVEL <b>2</b> · 4 stories</div><div class="gstage"><div class="ptsrow"><span>Story 2 of 4</span><span>Points <b>10</b></span></div><div class="reveal-card other-reveal"><div class="verdict-tag ok">✓ +5 points</div><div class="reveal-poster"><div class="poster real"><img src="https://image.tmdb.org/t/p/w342/5MwkWH9tYHv3mV9OdYTMR5qreIz.jpg" alt=""><button class="shc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg></button></div><button class="rib"><span>+</span></button></div><h2>Eternal Sunshine of the Spotless Mind</h2><div class="other-after"><div class="seen-it"><p class="seen-prompt">Seen it? Tell me how it was</p><div class="seen-btns three"><button class="seen-chip"><span class="seen-emoji">❤️</span>Loved</button><button class="seen-chip"><span class="seen-emoji">👍</span>Liked</button><button class="seen-chip"><span class="seen-emoji">👎</span>Disliked</button></div></div><button class="cta">Next story</button></div></div></div>
+</div></div></div></div></div></body></html>

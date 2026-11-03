@@ -30,7 +30,6 @@ import {
   ChevronRight,
   ChevronUp,
   Play,
-  Share2,
   Star,
   X,
 } from "lucide-react";
@@ -55,7 +54,8 @@ import {
   type WatchlistRating,
 } from "@/lib/watchlist";
 import { addToRegretQueue } from "@/lib/regret-queue";
-import { shareApp } from "@/lib/share";
+import { shareTitle } from "@/lib/share";
+import ShareIcon from "@/app/components/ShareIcon";
 import type { ContentType } from "@/lib/content-type";
 
 type Mode = "recommendations" | "learning" | "watchlist";
@@ -77,6 +77,9 @@ interface Props {
    *                     own "Remove from watchlist" button takes it off.
    */
   mode?: Mode;
+  /** The signed-in user's name: its first word rides in shared links, so the
+   *  friend's page can say who sent it (src/lib/share.ts). */
+  sharerName?: string | null;
   /**
    * When provided, a "Find more" CTA renders at the end of the list. It runs
    * this callback (session-end: fingerprint rebuild + fresh rec generation —
@@ -247,6 +250,7 @@ export default function RecommendationsView({
   contentType,
   setContentType,
   mode = "recommendations",
+  sharerName,
   onFindMore,
   onBrowse,
   headerRight,
@@ -617,6 +621,7 @@ export default function RecommendationsView({
           onFeedback={handleFeedback}
           onRemove={handleRemove}
           onWhy={setDetail}
+          onShare={(r) => void shareTitle(r, sharerName)}
           onFindMore={onFindMore ? handleFindMore : undefined}
           refreshing={refreshing}
           saved={saved}
@@ -643,6 +648,7 @@ export default function RecommendationsView({
             handleRemove(r);
           }}
           onClose={() => setDetail(null)}
+          onShare={(r) => void shareTitle(r, sharerName)}
           headerRight={headerRight}
         />
       )}
@@ -664,6 +670,7 @@ function Feed({
   onFeedback,
   onRemove,
   onWhy,
+  onShare,
   onFindMore,
   refreshing = false,
   saved,
@@ -681,6 +688,7 @@ function Feed({
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
+  onShare: (rec: Recommendation) => void;
   onFindMore?: () => void;
   refreshing?: boolean;
   saved: Set<string>;
@@ -761,6 +769,7 @@ function Feed({
             onFeedback={onFeedback}
             onRemove={onRemove}
             onWhy={onWhy}
+            onShare={onShare}
             saved={saved.has(rec.id)}
             onToggleWatchlist={onToggleWatchlist}
           />
@@ -815,6 +824,7 @@ function FeedCard({
   onFeedback,
   onRemove,
   onWhy,
+  onShare,
   saved,
   onToggleWatchlist,
 }: {
@@ -823,6 +833,7 @@ function FeedCard({
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
+  onShare: (rec: Recommendation) => void;
   saved: boolean;
   onToggleWatchlist: (rec: Recommendation) => void;
 }) {
@@ -841,7 +852,20 @@ function FeedCard({
             <h3 className={styles.heroTitle}>{rec.title}</h3>
             <MetaRow rec={rec} />
           </div>
-          <TrailerCircle rec={rec} />
+          {/* Share stacks on the trailer, far from "Add to Watchlist" so the
+              two are never mis-tapped (docs/prototypes/share/v3). */}
+          <div className={styles.heroCircles}>
+            <button
+              type="button"
+              className={styles.trailerCircle}
+              onClick={() => onShare(rec)}
+              aria-label={`Share ${rec.title}`}
+              title="Share"
+            >
+              <ShareIcon size={22} strokeWidth={1.7} />
+            </button>
+            <TrailerCircle rec={rec} />
+          </div>
         </div>
       </div>
 
@@ -1170,6 +1194,7 @@ function WhyDetailOverlay({
   onFeedback,
   onRemove,
   onClose,
+  onShare,
   headerRight,
 }: {
   rec: Recommendation;
@@ -1179,6 +1204,7 @@ function WhyDetailOverlay({
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
   onClose: () => void;
+  onShare: (rec: Recommendation) => void;
   headerRight?: ReactNode;
 }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
@@ -1269,8 +1295,8 @@ function WhyDetailOverlay({
         </button>
         <span />
         <div className={styles.headerRight}>
-          <button type="button" className={styles.headerBtn} onClick={shareApp} aria-label="share WTW">
-            <Share2 size={30} strokeWidth={1.5} aria-hidden />
+          <button type="button" className={styles.headerBtn} onClick={() => onShare(rec)} aria-label={`Share ${rec.title}`}>
+            <ShareIcon size={30} strokeWidth={1.5} />
           </button>
           {headerRight}
         </div>

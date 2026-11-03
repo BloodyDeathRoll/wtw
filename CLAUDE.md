@@ -13,6 +13,7 @@ WTW is an AI-powered film and TV recommendation engine that builds a continuousl
 | Full DNA field reference | `docs/master_dna_schema.json` |
 | Git workflow, branching, PRs, merge conflicts | `GITGUIDE.md` |
 | "What did each module already ship?" | `docs/SHIPPED.md` (history, not a to-do list) |
+| Ideas and loose ends we'll come back to | `docs/BACKLOG.md` |
 | Watchlist feature · trailer/RecCard · costs · team split | `docs/watchlist-plan.md` · `docs/trailer-reccard-handoff.md` · `docs/future-costs.md` · `docs/team-assignments.md` |
 
 ## Ownership — three assignments, one repo

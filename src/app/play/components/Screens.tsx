@@ -9,7 +9,7 @@ import {
 } from '../lib/brain'
 import { BLOCKS, PICKS_PER_BLOCK, ROUND_NAMES, genreName, isGameStep, seasonDone, type Cup } from '../lib/blocks'
 import type { Ctl } from './types'
-import { AxisRow, Icon, Marked, Poster, SaveRibbon, TopBar } from './ui'
+import { AxisRow, Icon, Marked, Poster, SaveRibbon, ShareButton, TopBar } from './ui'
 import { GAMES, GameScreen, GamesLobby } from './games'
 import Picks from './Picks'
 import { FinaleCard, FinaleScreen, SeasonBar, ShowdownScreen } from './season'
@@ -162,6 +162,7 @@ function Duel({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
     return (
       <div className="side">
         <SaveRibbon ctl={ctl} t={t} from="training" />
+        <ShareButton ctl={ctl} t={t} />
         <button className={`pick${cls}`} onClick={() => onPick(k)} aria-label={`Pick ${t.title}`}>
           <Poster t={t} dim={p.pitch} qm={p.pitch} />
           <div>
@@ -347,6 +348,7 @@ function Knockout({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
     return (
       <div className="side">
         <SaveRibbon ctl={ctl} t={t} from="knockout" />
+        <ShareButton ctl={ctl} t={t} />
         <button className={`pick${chosen === k ? ' chosen' : chosen ? ' lost' : ''}`} onClick={() => onPick(k)} aria-label={`${t.title} wins`}>
           <Poster t={t} dim={m.pitch} qm={m.pitch} />
           <div><div className="nm">{t.title}</div><div className="yr">{t.year}</div></div>
@@ -382,7 +384,7 @@ function ChampionScreen({ ctl, top }: { ctl: Ctl; top: React.ReactNode }) {
         <div className="rays" aria-hidden="true" />
         <div className="eyebrow">{c.name}</div>
         <div className="trophy" aria-hidden="true">🏆</div>
-        <div className="champion-poster"><Poster t={c.title} size="w500" /><SaveRibbon ctl={ctl} t={c.title} from="knockout" /></div>
+        <div className="champion-poster"><Poster t={c.title} size="w500" /><SaveRibbon ctl={ctl} t={c.title} from="knockout" /><ShareButton ctl={ctl} t={c.title} /></div>
         <h2>{c.title.title}</h2>
         <p>Your champion. Beat {c.runnerUp.title} in the final.</p>
         <button className="cta special-cta" onClick={ctl.championContinue}>Continue</button>

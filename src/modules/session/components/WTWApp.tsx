@@ -20,7 +20,6 @@ import {
   ChevronLeft,
   Gamepad2,
   MessageSquare,
-  Share2,
   Sparkles,
   Volume2,
 } from "lucide-react";
@@ -50,6 +49,7 @@ import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { shareApp } from "@/lib/share";
+import ShareIcon from "@/app/components/ShareIcon";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./WTWApp.module.css";
@@ -94,9 +94,8 @@ const I = {
   chevDown: <ChevronDown size={16.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   back: <ChevronLeft size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   message: <MessageSquare size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
-  // Android's share mark (three nodes, two arms) rather than the iOS
-  // box-and-arrow — this ships as a PWA and Android is the target surface.
-  share: <Share2 size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
+  // The forward arrow, the app's one share mark (Eran, 2026-11-03).
+  share: <ShareIcon size={30} strokeWidth={ICON_STROKE} />,
   // Home-screen circles. Sparkles = the fingerprint's picks; bookmark matches
   // the "Add to watchlist" CTA on the cards.
   sparkle: <Sparkles size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
@@ -967,6 +966,7 @@ export default function WTWApp({
             onBack={leaveCards}
             contentType={contentType}
             mode="recommendations"
+            sharerName={user.name}
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
             headerRight={appMenu}
@@ -979,6 +979,7 @@ export default function WTWApp({
             onBack={leaveCards}
             contentType={contentType}
             mode="watchlist"
+            sharerName={user.name}
             onBrowse={handleRecommend}
             headerRight={appMenu}
           />
@@ -989,6 +990,7 @@ export default function WTWApp({
             onBack={() => setStage("onboard")}
             contentType={contentType}
             mode="learning"
+            sharerName={user.name}
             setContentType={setContentType}
             headerRight={appMenu}
           />
