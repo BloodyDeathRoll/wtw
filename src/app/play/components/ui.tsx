@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { shareTitle } from '@/lib/share'
+import ShareIcon from '@/app/components/ShareIcon'
 import { AppMenu, VOICES, type MenuItem, type Voice } from '@/modules/session/components/AppMenu'
 import { seasonDone } from '../lib/blocks'
 import { SCALE_LABELS, type Scale } from '../lib/scales'
@@ -29,6 +31,24 @@ export function SaveRibbon({ ctl, t, from }: { ctl: Ctl; t: Title; from: SaveSou
       aria-label={on ? `Remove ${t.title} from your watchlist` : `Add ${t.title} to your watchlist`}
       onClick={e => { e.stopPropagation(); ctl.toggleSave(t, from) }}>
       <span aria-hidden="true">{on ? '✓' : '+'}</span>
+    </button>
+  )
+}
+
+/**
+ * Share, on the poster's bottom-right: the corner opposite the ribbon, so the
+ * two are never mis-tapped for each other (docs/prototypes/share/v3). Like the
+ * ribbon, its parent must be position:relative and it sits outside any pick
+ * button. Inside a duel's `.side` it lines up with the poster's bottom (play.css).
+ */
+export function ShareButton({ ctl, t }: { ctl: Ctl; t: Title }) {
+  return (
+    <button type="button" className="shc" aria-label={`Share ${t.title}`}
+      onClick={async e => {
+        e.stopPropagation()
+        if (await shareTitle(t, ctl.user.name) === 'copied') ctl.toast('Link copied')
+      }}>
+      <ShareIcon size={19} />
     </button>
   )
 }

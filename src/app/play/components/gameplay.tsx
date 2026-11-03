@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { LEVELS, OTHER_OPTIONS_FROM, blindChips, hiloValue, otherPoints, sideClues, titleSearch } from '../lib/games'
 import type { Ctl } from './types'
-import { Poster, SaveRibbon } from './ui'
+import { Poster, SaveRibbon, ShareButton } from './ui'
 
 /** How long a finished screen takes to leave before the next one comes in (play.css, .blind-leave). */
 const BLIND_LEAVE_MS = 260
@@ -47,7 +47,7 @@ export function BlindPlay({ ctl }: { ctl: Ctl }) {
       {b.step !== 'story' && (
         <div key={`r${b.i}`} className={`blind-screen reveal-card${leaving ? ' blind-leave' : ''}`}>
           <small className="blind-eyebrow">{b.first ? 'You\'d watch it. Here\'s the cover' : 'You passed. Here\'s the cover'}</small>
-          <div className="reveal-poster blind-unveil"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="blind" />
+          <div className="reveal-poster blind-unveil"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="blind" /><ShareButton ctl={ctl} t={t} />
             {trailer && <a className="blind-trailer" href={trailer} target="_blank" rel="noopener noreferrer">▶ Trailer</a>}
           </div>
           <h2 className="blind-rise r1">{t.title}</h2>
@@ -168,7 +168,7 @@ export function OtherPlay({ ctl }: { ctl: Ctl }) {
       ) : o.last && (
         <div className="reveal-card other-reveal">
           <div className={`verdict-tag ${o.last.correct ? 'ok' : 'no'}`}>{o.last.correct ? `✓ +${o.last.points} points` : '✗ It was…'}</div>
-          <div className="reveal-poster"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="other" /></div>
+          <div className="reveal-poster"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="other" /><ShareButton ctl={ctl} t={t} /></div>
           <h2 className={t.title.length > 22 ? 'long' : undefined}>{t.title}</h2>
           {/* Just the title under the poster: the game is over, no year or tellers (Eran, 2026-10-27). */}
           {/* Like the feed card: rate it if you've seen it, or move on. Saving is the poster's ribbon. */}
@@ -196,11 +196,13 @@ export function HiloPlay({ ctl }: { ctl: Ctl }) {
       <div className="duel" style={{ padding: 0, width: '100%' }}>
         <div className="side">
           <SaveRibbon ctl={ctl} t={h.a} from="hilo" />
+          <ShareButton ctl={ctl} t={h.a} />
           <div className="pick"><Poster t={h.a} /><div><div className="nm">{h.a.title}</div></div></div>
           <div className="hilo-val">{fmt(hiloValue(h.a, mode))}</div>
         </div>
         <div className="side">
           <SaveRibbon ctl={ctl} t={h.b} from="hilo" />
+          <ShareButton ctl={ctl} t={h.b} />
           <div className={`pick${shown ? (h.last?.correct ? ' chosen' : ' wrong') : ''}`}><Poster t={h.b} /><div><div className="nm">{h.b.title}</div></div></div>
           <div className="hilo-val">{shown ? fmt(hiloValue(h.b, mode)) : '?'}</div>
         </div>

@@ -17,7 +17,7 @@ import { ProviderIcon } from '@/app/components/ProviderIcon'
 import { canonicalProvider } from '@/lib/watch-providers'
 import { readsYou, recReason, whyPick, type PickReaction, type Rec, type Title } from '../lib/brain'
 import type { Ctl } from './types'
-import { SaveRibbon } from './ui'
+import { SaveRibbon, ShareButton } from './ui'
 
 const meta = (t: Title) =>
   t.type === 'tv'
@@ -125,6 +125,7 @@ function PickCard({ ctl, r, match, onWhy, rated, onReact }: { ctl: Ctl; r: Rec; 
           <SaveRibbon ctl={ctl} t={t} from="picks" />
           {/* eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, same as the live card */}
           {poster && <img src={poster} alt="" className={styles.posterImg} />}
+          <ShareButton ctl={ctl} t={t} />
         </div>
         <div className={styles.cardReason}>
           <span className={styles.reasonEyebrow}>FINGERPRINT</span>

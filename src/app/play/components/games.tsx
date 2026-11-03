@@ -5,7 +5,7 @@ import { accuracy, isUnlocked } from '../lib/brain'
 import { SEASON_LENGTH, seasonDone } from '../lib/blocks'
 import { LEVELS } from '../lib/games'
 import type { Ctl, GameId } from './types'
-import { Icon, Marked, Poster, SaveRibbon, Stars, TopBar } from './ui'
+import { Icon, Marked, Poster, SaveRibbon, ShareButton, Stars, TopBar } from './ui'
 import { BlindPlay, HiloPlay, OtherPlay } from './gameplay'
 import { SixPlay } from './six'
 import { CastPlay } from './cast'
@@ -252,7 +252,7 @@ function Bet({ ctl }: { ctl: Ctl }) {
       </div>
       {b.step === 'rate' ? (
         <div className="bet-stage">
-          <div className="bet-poster"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="bet" /></div>
+          <div className="bet-poster"><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="bet" /><ShareButton ctl={ctl} t={t} /></div>
           <h2>{t.title}</h2>
           <p className="q">{t.year}{t.type === 'tv' ? ' · Series' : ''}</p>
           <div className="envelope">🔒 My bet is locked in. How many stars would you give it?</div>
@@ -263,7 +263,7 @@ function Bet({ ctl }: { ctl: Ctl }) {
         </div>
       ) : b.res && (
         <div className="bet-stage">
-          <div className="bet-poster" style={{ width: 92 }}><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="bet" /></div>
+          <div className="bet-poster" style={{ width: 92 }}><Poster t={t} /><SaveRibbon ctl={ctl} t={t} from="bet" /><ShareButton ctl={ctl} t={t} /></div>
           <h2>{t.title}</h2>
           <div className="compare">
             <div><small>My bet</small><b><Stars n={b.res.pred} /></b></div>
@@ -289,6 +289,7 @@ function Mind({ ctl }: { ctl: Ctl }) {
   const side = (k: 'a' | 'b') => (
     <div className="side">
       <SaveRibbon ctl={ctl} t={p[k]} from="mind" />
+      <ShareButton ctl={ctl} t={p[k]} />
       <div className={`pick${shown && k === M.guess ? ' guessed' : ''}`}>
         <Poster t={p[k]} />
         <div>

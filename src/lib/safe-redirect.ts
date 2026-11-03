@@ -17,3 +17,8 @@ export function safeNextPath(next: string | null | undefined): string {
   if (next.includes("\\")) return "/";
   return next;
 }
+
+/** Where to land after an OAuth sign-in that started on a page other than the
+ *  login screen (a shared title's "Save"). Read by the auth callback when the
+ *  redirect carries no `next`, then cleared; always passed through safeNextPath. */
+export const RETURN_COOKIE = "wtw_return_to";
