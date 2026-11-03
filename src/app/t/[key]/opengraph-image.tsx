@@ -1,7 +1,6 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { ImageResponse } from "next/og";
 import { loadSharedTitle } from "./data";
+import { LOGO_DATA_URI } from "./logo";
 
 /**
  * The picture in a shared link's preview (WhatsApp, Messages…), as in
@@ -28,7 +27,6 @@ async function inter(weight: number): Promise<ArrayBuffer | null> {
 export default async function Image({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
   const shared = await loadSharedTitle(key);
-  const logo = `data:image/svg+xml;base64,${(await readFile(path.join(process.cwd(), "public/logo_vector.svg"))).toString("base64")}`;
   const rec = shared?.rec;
   const line = rec ? [rec.year || null, rec.type === "tv" ? "Series" : "Movie"].filter(Boolean).join(" · ") : "";
   const [regular, bold] = await Promise.all([inter(500), inter(800)]);
@@ -82,7 +80,7 @@ export default async function Image({ params }: { params: Promise<{ key: string 
             </div>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 64, fontSize: 40, fontWeight: 500, letterSpacing: 1 }}>
-            <img src={logo} alt="" width={84} height={84} style={{ margin: "-20px -16px" }} />
+            <img src={LOGO_DATA_URI} alt="" width={84} height={84} style={{ margin: "-20px -16px" }} />
             <span>WTW</span>
           </div>
         </div>
