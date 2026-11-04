@@ -1,0 +1,129 @@
+/* Menu → Search (docs/prototypes/search). The page reuses the feed's header,
+   list and card styles (RecommendationsView.module.css); only these are new.
+   The field and the suggestion list copy the Other Side game's
+   (src/app/play/play.css .tguess, with its "line 914" override). */
+
+.shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.box {
+  display: grid;
+  gap: 6px;
+  padding: 6px 16px 0;
+}
+
+.field {
+  position: relative;
+}
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  background: #1c1c1e;
+  border: 0;
+  border-radius: 16px;
+  padding: 20px 52px 20px 20px;
+  color: #f2f2f2;
+  font: inherit;
+  font-size: 20px;
+  outline: none;
+}
+.input::placeholder {
+  color: #8a8a8e;
+}
+/* The browser's own clear "x" — ours replaces it. */
+.input::-webkit-search-cancel-button {
+  display: none;
+}
+.clear {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #8a8a8e;
+  cursor: pointer;
+}
+
+.list {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 4px;
+  background: rgba(10, 8, 20, 0.92);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: transparent;
+  border: 0;
+  color: #f2f2f2;
+  font: inherit;
+  cursor: pointer;
+}
+.row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+/* Bigger than the game's 28×42: here the poster helps pick the right one (2026-11-04). */
+.thumb {
+  width: 40px;
+  height: 60px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #0e0e10;
+  flex: none;
+}
+.rowText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.row b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+}
+.row small {
+  font-size: 13.5px;
+  color: #8a8a8e;
+}
+.row .cast {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Searching…", "No title like that…" — the game's .tguess-none */
+.note {
+  margin: 6px 0 0;
+  font-size: 14.5px;
+  color: #5e5e62;
+  text-align: center;
+}
+
+/* The card sits in the feed's own list, a little further from the field. */
+.cardList {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+/* No "Why" link on these cards, so the text needs its own gap above the button. */
+.reasonGap {
+  margin-bottom: 16px !important;
+}
