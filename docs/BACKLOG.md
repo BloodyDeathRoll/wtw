@@ -4,6 +4,7 @@ Things we've decided to come back to. Newest first. When one gets picked up, mov
 
 | Added | Item | Notes |
 |---|---|---|
+| 2026-11-04 | **Strip "Why it's a match" down to the why** | Title, a little metadata, the reason, simple bars, plain "Label: value" lines and the names that matter to you. Nothing else: no buttons, no match ring, no weights or numbers, no blurred poster. Full task: [Why it's a match — task details](#why-its-a-match--task-details). |
 | 2026-11-04 | **Split the card into "Want it?" and "Seen it?", plus a new Seen section** | The X moves next to Add to Watchlist (accept or reject). Loved / Liked / Disliked only rate: the button stays highlighted, the card stays where it was, and the title goes to Seen, a new main section next to Recommendations, Watchlist, Play and Search. Full task: [Seen — task details](#seen--task-details). |
 | 2026-11-04 | **Search: adding a title teaches your taste** | Eran decided it should. The MVP only saves the card. Needs the DNA writer (A3) to take a "saved from search" signal. |
 | 2026-11-04 | **Search: match % and "Why it's a match"** | The MVP card has no score. Same missing piece as the shared page's match: the engine scoring one title on request (A2), plus an AI call for the reason (a 1–3s wait, free-tier limits). |
@@ -88,3 +89,52 @@ The X also means two things at once. Disliked means "I watched it and didn't lik
 - On the Watchlist, rating only adds to Seen. Only "Remove from Watchlist" removes.
 - Seen is in the main menu, lists every rated title with its reaction, and the reaction can be changed there.
 - Nothing leaves Recommendations or the Watchlist except by the X or "Remove from Watchlist".
+
+### Why it's a match — task details
+
+*Added 2026-11-04 · Status: not started · Mock first, then build*
+
+**Where it opens (checked in the code)**
+Only from a card on Recommendations or the Watchlist (the same screen in both). It always opens on top of the title you're looking at, never on its own: it has no address of its own and nothing links to it. Search cards don't have it, and neither does the shared-title page. The games have their own, smaller "Why this pick?" panel, which also uses the "FINGERPRINT" label (see the open questions).
+
+**Summary**
+You're already looking at the title. The only question this screen answers is "why did you think I'd like it?". Everything else goes.
+
+**What it shows**
+1. **Title**, plus a little metadata (year · length · ★ rating).
+2. **Why:** the written reason, as it is today, under a plain heading like "Why". No "FINGERPRINT" label.
+3. **Score breakdown:** the bars only. No weights (no "Crew 35%", no "Recency 5%") and no numbers on the right (no "85"). The bar says it. Labels:
+   - **Crew**, **Narrative** and **Recency** stay as they are.
+   - Visceral → **Mood & pace** (how it feels: its tone and speed).
+   - Ratings → **Reviews** (what critics and audiences think).
+4. **The story side:** one line per item, **"Label: value"**, showing the title's own value. For example, "Pacing: moderate", "Tone: warm, hopeful", "Genre: drama", "Language: English" (the full name, not "en"). No "drama → drama" arrows. **Drop "Format"** (movie or TV is obvious). Lay it out so label and value are easy to tell apart.
+5. **Crew:** the heading is just "Crew" (not "Crew in your fingerprint"). Only names: the people in it or behind it that the app has learned you particularly like and follow, each with their role in small grey text (Actor, Director, Writer). No percentage bars ("15% of Matt Damon").
+6. **When there's no crew match:** no "No crew members from your watch history — recommendation is based on narrative and tone fit." Keep the Crew heading and say so in one short, plain line, like "No one you follow in this one" (draft copy).
+
+7. **The games' "Why this pick?" panel** is part of this task too: its "FINGERPRINT" label becomes "Why".
+
+**What it doesn't show**
+The match ring, Play Trailer, Add to Watchlist, the streaming service (Paramount+, Amazon…), Loved / Liked / Disliked, the X, or the share button. All of those stay on the card underneath.
+
+**Look**
+A **sheet that slides up** over the card and covers almost the whole screen, so the long content has room and scrolls inside it. Close it with an **X** at the top, by swiping down, or with the phone's back button. No app top bar (back, share, menu) on it. Today it's a full screen with a back arrow.
+The sheet is a thick dark layer on top of the title. It doesn't have to be fully opaque, but nothing busy shows through. **No blurred poster behind it**: it makes the text hard to read.
+**The story lines only say what it is:** this screen is "why we recommend it". The "Label: value" lines show the title's own values and never point out where it doesn't match you. (Don't recommend a sushi plate and then write "Tuna: no".)
+
+**Rule to keep (confirmed by Eran 2026-11-04)**
+Every recommendation explains what works **and** what doesn't (a standing product decision). The written "why" already does this ("your one likely reservation is…"), and the "Doesn't quite fit" list can hold real reasons against, like a director you rated down. Drop the filler line when there's no crew, but keep real reasons against, in the same plain style.
+
+**Open questions**
+- None left. Draft copy ("Why", "No one you follow in this one") gets its final wording at the mock stage.
+
+**Build notes (for whoever picks it up)**
+- The screen is `WhyDetailOverlay` in `src/modules/session/recommendations/RecommendationsView.tsx`. Its sections (score breakdown, crew, story side, reasons against) come from `WhyPanel` in `src/app/components/RecCard.tsx`.
+- With Loved / Liked / Disliked gone from this screen, the card's "Seen it?" row (see the Seen task above) is the only place to rate.
+- **Process:** one JPEG mock per state before building: the sheet opening over the card, the full sheet, a title with crew matches, a title with none, and a title with a real reason against.
+
+**Done when**
+- The screen shows only the title, metadata, the why, bars without weights or numbers, "Label: value" lines without Format, and crew names.
+- None of the card's buttons, the match ring or the streaming service appear on it.
+- It opens as a sheet over the card, on a thick dark layer with no poster behind it, and closes with the X, a swipe down or the back button.
+- Real reasons against still show. The no-crew filler line is replaced by one short line.
+- The games' "Why this pick?" panel says "Why", not "FINGERPRINT".
