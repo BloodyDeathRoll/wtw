@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadPlay, progressOf } from "../../play/lib/server";
@@ -10,7 +9,7 @@ import SharedTitleView from "./SharedTitleView";
  * The page a shared link opens (/t/movie-9909?by=Eran), signed in or not —
  * the middleware never redirects it. Design: docs/prototypes/share/v3/8a–8d.
  * The preview card WhatsApp and the rest show comes from the metadata below
- * plus ./opengraph-image.tsx.
+ * (the poster, title and running time — see generateMetadata).
  */
 type Props = {
   params: Promise<{ key: string }>;
@@ -23,23 +22,38 @@ function sharerName(by: string | undefined): string | null {
   return name && /^[\p{L}\p{M}' .-]+$/u.test(name) ? name : null;
 }
 
+/**
+ * The link preview, IMDb-style (Eran, 2026-11-04): the poster itself as the
+ * picture, "Title (Year) ⭐ 7.4 | Genres" as its title, the running time under
+ * it. The poster comes straight from TMDB's image server: small (~60 KB) and
+ * fast, so WhatsApp — which builds the preview on the sender's phone and gives
+ * up on a slow or heavy picture — shows it every time. (Until then the picture
+ * was a 1200×630 image drawn per request: ~400 KB, 2–4 s, never cached, and
+ * the preview came out differently for every share.)
+ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { key } = await params;
   const shared = await loadSharedTitle(key);
   if (!shared) return { title: "WTW — What To Watch" };
-  const { rec, synopsis } = shared;
-  const title = rec.year ? `${rec.title} (${rec.year}) · WTW` : `${rec.title} · WTW`;
-  const description = synopsis.length > 160 ? `${synopsis.slice(0, 157).trimEnd()}…` : synopsis;
-  // Absolute image URLs for the link preview, from whatever host served this page.
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
+  const { rec, genres } = shared;
+  const name = rec.year ? `${rec.title} (${rec.year})` : rec.title;
+  const ogTitle = [
+    rec.rating > 0 ? `${name} ⭐ ${rec.rating.toFixed(1)}` : name,
+    genres.slice(0, 3).join(", ") || null,
+  ].filter(Boolean).join(" | ");
+  const description = rec.type === "tv" && rec.meta !== "Series" ? `Series | ${rec.meta}` : rec.meta;
+  const images = rec.poster_url ? [{ url: rec.poster_url, width: 500, height: 750, alt: rec.title }] : undefined;
   return {
-    title,
+    title: `${name} · WTW`,
     description,
-    metadataBase: host ? new URL(`${proto}://${host}`) : undefined,
-    openGraph: { title, description, type: "website", siteName: "WTW" },
-    twitter: { card: "summary_large_image", title, description },
+    openGraph: {
+      title: ogTitle,
+      description,
+      type: rec.type === "tv" ? "video.tv_show" : "video.movie",
+      siteName: "WTW",
+      images,
+    },
+    twitter: { card: "summary_large_image", title: ogTitle, description, images },
   };
 }
 

@@ -18,6 +18,8 @@ export interface SharedTitle {
   /** In the watchlist's card shape, so "Save" stores exactly what the feed would. */
   rec: Recommendation;
   synopsis: string;
+  /** Genre names, for the link preview's title line ("Action, Drama, Sci-Fi"). */
+  genres: string[];
 }
 
 /** "movie-9909" → the title's `type:tmdb_id` parts; null for anything else. */
@@ -37,7 +39,7 @@ export async function loadSharedTitle(key: string): Promise<SharedTitle | null> 
 
   const { data: row } = await createServiceClient()
     .from("titles")
-    .select("title, synopsis, release_year, runtime_minutes, tmdb_rating, poster_path, trailer_key, watch_providers")
+    .select("title, synopsis, release_year, runtime_minutes, tmdb_rating, poster_path, trailer_key, watch_providers, genres")
     .eq("tmdb_id", tmdb_id)
     .eq("type", type)
     .maybeSingle();
@@ -52,8 +54,13 @@ export async function loadSharedTitle(key: string): Promise<SharedTitle | null> 
       ? runtime ? `${Math.floor(runtime / 60)}h ${runtime % 60}m` : "Film"
       : runtime ? `~${runtime}m episodes` : "Series";
 
+  const genres = ((t.genres as { name?: string }[] | null) ?? [])
+    .map((g) => g?.name)
+    .filter((n): n is string => typeof n === "string" && n.length > 0);
+
   return {
     synopsis: (t.synopsis as string | null) ?? "",
+    genres,
     rec: {
       id: `${type}:${tmdb_id}`,
       title: t.title as string,
