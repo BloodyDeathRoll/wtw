@@ -1,6 +1,6 @@
 /**
  * GET /api/search?q=slow+horses — the Search screen's list (menu → Search).
- *   → { results: TitleSearchHit[] }
+ *   → { results: SearchHit[] } — titles, and directors and actors (since 2026-11-05)
  *
  * Searches all of TMDB, not just our catalogue: the point is finding the show
  * someone at the office mentioned, which may be one we've never seen. Fast
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) return NextResponse.json({ results: [] });
 
   try {
-    return NextResponse.json({ results: await searchTitles(q) });
+    return NextResponse.json({ results: await searchTitles(q, 6, { people: true }) });
   } catch (e) {
     console.error("[search] TMDB failed", e);
     return NextResponse.json({ error: "Search is unavailable" }, { status: 502 });

@@ -59,6 +59,8 @@
 
 .list {
   display: grid;
+  /* A long line truncates instead of widening the list past the screen. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
@@ -77,6 +79,7 @@
   color: #f2f2f2;
   font: inherit;
   cursor: pointer;
+  min-width: 0;
 }
 .row:hover {
   background: rgba(255, 255, 255, 0.06);
@@ -110,7 +113,52 @@
   white-space: nowrap;
 }
 
-/* "Searching…", "No title like that…" — the game's .tguess-none */
+/* A person's row (2026-11-05): a round photo in the poster's 40px column. */
+.face {
+  width: 40px;
+  height: 40px;
+  margin: 10px 0;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 20%;
+  background: #0e0e10;
+  flex: none;
+}
+
+/* A person's page: photo, name, "Director · 15 films", then their titles. */
+.personPage {
+  padding-bottom: 16px !important;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 4px 10px;
+}
+.who img,
+.whoBlank {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 20%;
+  background: #0e0e10;
+  flex: none;
+}
+.who b {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #f2f2f2;
+}
+.who small {
+  display: block;
+  margin-top: 2px;
+  font-size: 14.5px;
+  color: #8a8a8e;
+}
+
+/* "Searching…", "Nothing like that…" — the game's .tguess-none */
 .note {
   margin: 6px 0 0;
   font-size: 14.5px;
