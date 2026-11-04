@@ -48,6 +48,65 @@ describe('searchTitles', () => {
     expect(hits).toEqual([{ tmdb_id: '7', type: 'movie', title: 'Slow', year: null, poster_path: null }])
   })
 
+  it('ignores a leading "The", and lists titles nobody knows after the known ones (lowdown)', async () => {
+    tmdbReturns([
+      { id: 1, media_type: 'tv', name: 'The Lowdown', first_air_date: '2025-09-23', poster_path: '/a.jpg', vote_count: 82 },
+      { id: 2, media_type: 'tv', name: 'Lowdown', first_air_date: '2010-01-01', poster_path: '/b.jpg', vote_count: 4 },
+      { id: 3, media_type: 'movie', title: 'Sweet and Lowdown', release_date: '1999-12-03', poster_path: '/c.jpg', vote_count: 588 },
+      { id: 4, media_type: 'movie', title: 'Lowdown Dirty Criminals', release_date: '2020-01-01', poster_path: '/d.jpg', vote_count: 14 },
+    ])
+    expect((await searchTitles('lowdown')).map(h => h.title))
+      .toEqual(['The Lowdown', 'Lowdown Dirty Criminals', 'Sweet and Lowdown', 'Lowdown'])
+  })
+
+  describe('when TMDB finds nothing, it asks again with each word left out', () => {
+    /** TMDB stand-in: answers by the exact query it is asked. */
+    function tmdbAnswers(byQuery: Record<string, unknown[]>) {
+      const f = vi.fn(async (url: string) => {
+        const q = new URL(url).searchParams.get('query') ?? ''
+        return new Response(JSON.stringify({ results: byQuery[q] ?? [] }), { status: 200 })
+      })
+      vi.stubGlobal('fetch', f)
+      return f
+    }
+    const planes = { id: 2609, media_type: 'movie', title: 'Planes, Trains and Automobiles', release_date: '1987-11-25', poster_path: '/p.jpg', vote_count: 2100 }
+    const bhc = { id: 90, media_type: 'movie', title: 'Beverly Hills Cop', release_date: '1984-12-05', poster_path: '/b.jpg', vote_count: 4821 }
+
+    it('finds a title with one misspelt word (plains trains and automobiles)', async () => {
+      const f = tmdbAnswers({
+        'trains and automobiles': [planes],
+        // Results nothing like what was typed are dropped.
+        'plains trains and': [{ id: 7, media_type: 'movie', title: 'Plains', release_date: '2020-01-01', poster_path: '/x.jpg', vote_count: 30 }],
+      })
+      expect((await searchTitles('plains trains and automobiles')).map(h => h.title)).toEqual(['Planes, Trains and Automobiles'])
+      expect(f).toHaveBeenCalledTimes(5) // the search, then one per word
+    })
+
+    it('finds a title typed with an extra "The" (the beverly hills cop)', async () => {
+      tmdbAnswers({ 'beverly hills cop': [bhc], 'the hills cop': [bhc] })
+      expect(await searchTitles('the beverly hills cop')).toEqual([
+        { tmdb_id: '90', type: 'movie', title: 'Beverly Hills Cop', year: 1984, poster_path: '/b.jpg' },
+      ])
+    })
+
+    it('still answers when one of the retries fails', async () => {
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        const q = new URL(url).searchParams.get('query')
+        if (q === 'beverly hills cop') return new Response(JSON.stringify({ results: [bhc] }), { status: 200 })
+        if (q === 'the beverly cop') return new Response('boom', { status: 500 })
+        return new Response(JSON.stringify({ results: [] }), { status: 200 })
+      }))
+      expect((await searchTitles('the beverly hills cop')).map(h => h.title)).toEqual(['Beverly Hills Cop'])
+    })
+
+    it('does not retry a one-word search, or one TMDB answered', async () => {
+      const f = tmdbAnswers({ 'beverly hills cop': [bhc] })
+      expect(await searchTitles('shtisle')).toEqual([])
+      expect(await searchTitles('beverly hills cop')).toHaveLength(1)
+      expect(f).toHaveBeenCalledTimes(2)
+    })
+  })
+
   it('asks TMDB nothing for an empty query', async () => {
     const f = vi.fn()
     vi.stubGlobal('fetch', f)
