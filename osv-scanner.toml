@@ -1,0 +1,36 @@
+# Exceptions for the weekly OSV scan (.github/workflows/osv-scan.yml).
+# Each entry has a reason and an expiry date. On expiry the scan fails
+# again, so someone checks whether a real fix has shipped. Added
+# 2026-11-04 (chore/osv-fixes); see docs/INTEGRATION.md.
+
+# deepmerge: no fixed version exists (4.3.1 is the latest release). It is
+# only used at build time, by @rollup/plugin-node-resolve inside
+# next-pwa's workbox-build, to merge our own service-worker build options.
+# No user input reaches it, and it never ships to the browser or server.
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2027-02-04T00:00:00Z
+reason = "No fix released; build-time only (workbox-build > @rollup/plugin-node-resolve), merges our own config"
+
+# minimatch GHSA-g3hv-75wg-m249: the flaw is in the optimizationLevel
+# pre-processing that 10.x added. 3.1.5 and 5.1.9 do not contain that code,
+# but the advisory marks every version below 11.0.1. Moving them to 11
+# would break their parents (glob 7, filelist, eslint-plugin-import/react/
+# jsx-a11y, @eslint/eslintrc), which call the old API. minimatch 10.x is
+# fixed by the "minimatch@^10" override in package.json, so it is not
+# listed here.
+[[PackageOverrides]]
+name = "minimatch"
+version = "3.1.5"
+ecosystem = "npm"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-04T00:00:00Z
+reason = "GHSA-g3hv-75wg-m249 targets 10.x code that 3.1.5 does not contain; parents need the 3.x API"
+
+[[PackageOverrides]]
+name = "minimatch"
+version = "5.1.9"
+ecosystem = "npm"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-04T00:00:00Z
+reason = "GHSA-g3hv-75wg-m249 targets 10.x code that 5.1.9 does not contain; filelist needs the 5.x API"
