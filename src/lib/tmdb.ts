@@ -480,45 +480,103 @@ export interface TitleSearchHit {
   poster_path: string | null
 }
 
+/** TMDB's raw /search/multi row, the fields Search reads. */
+interface TMDBSearchRow {
+  id: number
+  media_type: string
+  title?: string
+  name?: string
+  release_date?: string
+  first_air_date?: string
+  poster_path?: string | null
+  vote_count?: number
+}
+
+/** A title folded for comparing: no accents, punctuation or case, and no
+ *  leading "The"/"A"/"An" — so "lowdown" is "The Lowdown" exactly. */
+function searchKey(s: string): string {
+  return s
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^(the|a|an) /, '')
+}
+
+/** How alike two folded titles are, 0–1: shared letter pairs (Dice). Ranks
+ *  the typo retry's results ("breking bad" ≈ "breaking bad", not "bad girls"). */
+function likeness(a: string, b: string): number {
+  const pairs = (s: string) => {
+    const t = s.replace(/ /g, '')
+    const m = new Map<string, number>()
+    for (let i = 0; i < t.length - 1; i++) m.set(t.slice(i, i + 2), (m.get(t.slice(i, i + 2)) ?? 0) + 1)
+    return m
+  }
+  const pa = pairs(a), pb = pairs(b)
+  let shared = 0, total = 0
+  for (const [k, n] of pa) { shared += Math.min(n, pb.get(k) ?? 0); total += n }
+  for (const n of pb.values()) total += n
+  return total ? (2 * shared) / total : 0
+}
+
+/** Votes below this mean "almost nobody has heard of it": listed after the known ones. */
+const KNOWN_VOTES = 10
+/** The typo retry keeps only results at least this much like what was typed. */
+const RETRY_LIKENESS = 0.5
+/** The typo retry asks TMDB once per word, so long queries are not retried. */
+const RETRY_MAX_WORDS = 8
+
 /**
  * Titles for the Search screen (menu → Search), movies and series together.
  *
  * TMDB's own order is relevance, which happily puts an unknown soap first, so
- * the list is re-ranked: exact title, then titles starting with the query,
- * then the rest; better-known (more votes) first within each. Entries with
- * neither a poster nor a handful of votes are noise and are dropped.
+ * the list is re-ranked: titles people know (10+ votes) before the rest; within
+ * each, the exact title, then titles starting with the query, then the others,
+ * better-known first. A leading "The"/"A"/"An" is ignored either way. Entries
+ * with neither a poster nor a handful of votes are noise and are dropped.
+ *
+ * TMDB only returns titles containing every word typed, so one misspelt word
+ * ("plains trains and automobiles"), or an extra "The" ("the beverly hills
+ * cop"), gives nothing. Then it is asked again with each word left out in turn,
+ * all at once, and the answers most like what was typed are kept (2026-11-04).
+ * A one-word typo ("shtisle") still finds nothing: docs/BACKLOG.md.
  */
 export async function searchTitles(query: string, limit = 6): Promise<TitleSearchHit[]> {
   const q = query.trim()
   if (!q) return []
 
-  const raw = await tmdbFetch<{
-    results: {
-      id: number
-      media_type: string
-      title?: string
-      name?: string
-      release_date?: string
-      first_air_date?: string
-      poster_path?: string | null
-      vote_count?: number
-    }[]
-  }>('/search/multi', { query: q, page: '1', include_adult: 'false' })
+  const ask = async (text: string) =>
+    ((await tmdbFetch<{ results: TMDBSearchRow[] }>('/search/multi', {
+      query: text, page: '1', include_adult: 'false',
+    }))?.results ?? [])
+      .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.title ?? r.name))
+      .filter(r => r.poster_path || (r.vote_count ?? 0) >= KNOWN_VOTES)
 
-  const fold = (s: string) =>
-    s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
-  const fq = fold(q)
-  const tier = (title: string) => {
-    const f = fold(title)
-    return f === fq ? 0 : f.startsWith(fq) ? 1 : 2
+  const kq = searchKey(q)
+  let rows = await ask(q)
+  let retried = false
+
+  const words = q.split(/\s+/)
+  if (rows.length === 0 && words.length >= 2 && words.length <= RETRY_MAX_WORDS) {
+    retried = true
+    const answers = await Promise.allSettled(
+      words.map((_, i) => ask(words.filter((__, j) => j !== i).join(' '))),
+    )
+    const seen = new Set<string>()
+    rows = answers
+      .flatMap(a => (a.status === 'fulfilled' ? a.value : []))
+      .filter(r => {
+        const id = `${r.media_type}-${r.id}`
+        if (seen.has(id)) return false
+        seen.add(id)
+        return likeness(searchKey((r.title ?? r.name)!), kq) >= RETRY_LIKENESS
+      })
   }
 
-  return (raw?.results ?? [])
-    .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.title ?? r.name))
-    .filter(r => r.poster_path || (r.vote_count ?? 0) >= 10)
+  return rows
     .map(r => {
       const title = (r.title ?? r.name)!
       const date = r.release_date || r.first_air_date || ''
+      const k = searchKey(title)
+      const votes = r.vote_count ?? 0
       return {
         hit: {
           tmdb_id: String(r.id),
@@ -527,11 +585,13 @@ export async function searchTitles(query: string, limit = 6): Promise<TitleSearc
           year: date ? Number(date.slice(0, 4)) : null,
           poster_path: r.poster_path ?? null,
         },
-        tier: tier(title),
-        votes: r.vote_count ?? 0,
+        known: votes >= KNOWN_VOTES ? 0 : 1,
+        tier: k === kq ? 0 : k.startsWith(kq) ? 1 : 2,
+        like: retried ? likeness(k, kq) : 0,
+        votes,
       }
     })
-    .sort((a, b) => a.tier - b.tier || b.votes - a.votes)
+    .sort((a, b) => a.known - b.known || a.tier - b.tier || b.like - a.like || b.votes - a.votes)
     .slice(0, limit)
     .map(x => x.hit)
 }
