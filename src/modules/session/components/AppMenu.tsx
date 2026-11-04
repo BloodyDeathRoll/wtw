@@ -21,6 +21,7 @@ import {
   Play,
   X,
 } from "lucide-react";
+import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import type { AppUser } from "../types";
 import styles from "./WTWApp.module.css";
 
@@ -100,8 +101,29 @@ export function AppMenu({
 }) {
   const shown = (item: MenuItem) => !hide.includes(item);
   const router = useRouter();
-  const search = onSearch ?? (() => router.push("/search"));
   const [menuOpen, setMenuOpen] = useState(false);
+  // Search is its own route, rendered on the server (sign-in check first), so
+  // the tap would otherwise leave the old screen sitting still for a second or
+  // two. Cover it with the Loading screen at once, as the Taste DNA page does
+  // when you leave it (Eran, 2026-11-04).
+  const [goingToSearch, setGoingToSearch] = useState(false);
+  const search =
+    onSearch ??
+    (() => {
+      setGoingToSearch(true);
+      router.push("/search");
+    });
+  // If the navigation never lands (offline, a server error), give the screen back.
+  useEffect(() => {
+    if (!goingToSearch) return;
+    const t = setTimeout(() => setGoingToSearch(false), LEAVE_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [goingToSearch]);
+  // Fetch Search ahead while the menu is open, so the tap often lands at once.
+  const searchShown = shown("search") && !onSearch;
+  useEffect(() => {
+    if (menuOpen && searchShown) router.prefetch("/search");
+  }, [menuOpen, searchShown, router]);
   const [menuView, setMenuView] = useState<"root" | "voice">("root");
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
@@ -403,6 +425,7 @@ export function AppMenu({
         </div>
       </div>
     )}
+      {goingToSearch && <RouteLoading label="Loading" overlay />}
     </>
   );
 }
