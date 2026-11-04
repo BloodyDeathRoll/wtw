@@ -103,7 +103,7 @@ export const Icon = {
 
 /** Same key WTWApp keeps the Gemini Live voice under. */
 const VOICE_KEY = 'wtw:voice'
-const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'ratings', 'profile', 'voice']
+const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'search', 'ratings', 'profile', 'voice']
 const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile']
 
 /**

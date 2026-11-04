@@ -1,0 +1,36 @@
+<!doctype html><html class="dark" style="--h:812px"><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"><link rel="stylesheet" href="app.css"><style>
+html,body{margin:0;overflow:hidden}
+/* headless Chrome won't go below ~500px wide: pin the app to the phone's size, without the desktop frame */
+.WTWApp-module__gS1tAq__page{right:auto;bottom:auto;width:375px;height:var(--h)}
+.WTWApp-module__gS1tAq__app{border:0!important;border-radius:0!important;box-shadow:none!important;height:100%!important;max-width:none}
+*,*::before,*::after{animation:none!important;transition:none!important}
+.RecommendationsView-module__IjrHsa__posterImg{opacity:1!important}
+/* SEARCH: the field and list, copied from the Other Side game (play.css .tguess + its line-914 override) */
+.sbox{display:grid;gap:6px;padding:6px 16px 0;position:relative;z-index:2}
+.sfield{position:relative}
+.sfield .sinput{box-sizing:border-box;width:100%;min-height:64px;display:flex;align-items:center;background:#1c1c1e;border:0;border-radius:16px;padding:20px 52px 20px 20px;color:#F2F2F2;font:inherit;font-size:20px;outline:none}
+.sfield .ph{color:#8A8A8E}
+.sfield .caret{display:inline-block;width:2px;height:26px;margin:0 1px;background:#F2F2F2;vertical-align:middle}
+/* SEARCH, new: a clear button inside the field once there's text */
+.sfield .clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;border-radius:50%;background:transparent;color:#8A8A8E;display:grid;place-items:center;padding:0}
+.slist{display:grid;gap:4px;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:4px;background:rgba(10,8,20,.92)}
+.slist button{display:flex;align-items:center;gap:10px;text-align:left;padding:6px 8px;border-radius:10px;background:transparent;border:0;color:#F2F2F2;font:inherit}
+.slist img,.slist .noimg{width:28px;height:42px;border-radius:4px;object-fit:cover;background:#0E0E10;flex:none}
+.slist b{display:block;font-size:16px;font-weight:600}
+.slist small{font-size:13.5px;color:#8A8A8E}
+.snone{margin:6px 0 0;font-size:14.5px;color:#5E5E62;text-align:center}
+/* the card under the field: the feed's list, same padding */
+.RecommendationsView-module__IjrHsa__list.under{padding-top:16px}
+/* Android keyboard (Gboard, dark theme) — system UI, drawn for the mock only */
+.kb{position:absolute;left:0;right:0;bottom:0;z-index:30;background:#1f1f1f;padding:0 3px 0;font-family:Roboto,system-ui,sans-serif;color:#e3e3e3}
+.kb .sug{height:42px;display:flex;align-items:center;justify-content:space-around;font-size:15px;color:#c4c7c5;border-bottom:1px solid #2c2c2c}
+.kb .row{display:flex;gap:5px;padding:0 2px;margin-top:9px}
+.kb .k{flex:1;height:44px;border-radius:7px;background:#3a3a3a;display:grid;place-items:center;font-size:21px}
+.kb .k.f{background:#2c2c2c;font-size:14px}
+.kb .k.go{background:#a8c7fa;color:#062e6f}
+.kb .row.mid{padding:0 18px}
+.kb .nav{height:30px;display:grid;place-items:center}
+.kb .nav i{display:block;width:108px;height:4px;border-radius:2px;background:#c4c7c5;opacity:.8}
+</style></head>
+<body class="inter_3d9c7ff2-module__6cOLqa__variable font-sans"><div class="WTWApp-module__gS1tAq__page"><div class="WTWApp-module__gS1tAq__app"><div class="WTWApp-module__gS1tAq__appInner"><div class="WTWApp-module__gS1tAq__shell">
+<div class="RecommendationsView-module__IjrHsa__view"><div class="RecommendationsView-module__IjrHsa__header"><button class="RecommendationsView-module__IjrHsa__headerBtn"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button><span class="RecommendationsView-module__IjrHsa__headerTitle">Search</span><div class="RecommendationsView-module__IjrHsa__headerRight"><div class="WTWApp-module__gS1tAq__userMenuWrap"><button class="WTWApp-module__gS1tAq__hamburgerBtn"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg></button></div></div></div><div class="sbox"><div class="sfield"><div class="sinput"><span>se</span><span class="caret"></span></div><button class="clear"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div><div class="slist"><button><img src="https://image.tmdb.org/t/p/w92/191nKfP0ehp3uIvWqgPbFmI4lv9.jpg" alt=""><span><b>Se7en</b><small>1995</small></span></button><button><img src="https://image.tmdb.org/t/p/w92/bc3bmTdnoKcRuO9xdQKgAbB7Y9Z.jpg" alt=""><span><b>Sex Education</b><small>2019 · series</small></span></button><button><img src="https://image.tmdb.org/t/p/w92/85zUipgVy2QbvAJ6djZXYaGckMv.jpg" alt=""><span><b>Seven Pounds</b><small>2008</small></span></button><button><img src="https://image.tmdb.org/t/p/w92/4ukEYAxlSivFcDG6vLxJB6PjTjg.jpg" alt=""><span><b>Seven Psychopaths</b><small>2012</small></span></button><button><img src="https://image.tmdb.org/t/p/w92/yuAPCsCGJGSxA7YOW4elF5JNrzK.jpg" alt=""><span><b>Searching</b><small>2018</small></span></button></div></div></div><div class="kb"><div class="sug"><span>se</span><span>see</span><span>set</span></div><div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div><div class="row mid"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div><div class="row"><span class="k f" style="flex:1.5">⇧</span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k f" style="flex:1.5">⌫</span></div><div class="row"><span class="k f" style="flex:1.6">?123</span><span class="k f">,</span><span class="k f">☺</span><span class="k" style="flex:4.2"></span><span class="k f">.</span><span class="k go" style="flex:1.6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span></div><div class="nav"><i></i></div></div></div></div></div></div></body></html>

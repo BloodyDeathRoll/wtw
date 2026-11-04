@@ -471,6 +471,100 @@ export async function searchTitle(
   return { tmdb_id: best.tmdb_id, title: best.title, type: best.type }
 }
 
+/** One row of the Search screen's list. */
+export interface TitleSearchHit {
+  tmdb_id: string
+  type: 'movie' | 'tv'
+  title: string
+  year: number | null
+  poster_path: string | null
+}
+
+/**
+ * Titles for the Search screen (menu → Search), movies and series together.
+ *
+ * TMDB's own order is relevance, which happily puts an unknown soap first, so
+ * the list is re-ranked: exact title, then titles starting with the query,
+ * then the rest; better-known (more votes) first within each. Entries with
+ * neither a poster nor a handful of votes are noise and are dropped.
+ */
+export async function searchTitles(query: string, limit = 6): Promise<TitleSearchHit[]> {
+  const q = query.trim()
+  if (!q) return []
+
+  const raw = await tmdbFetch<{
+    results: {
+      id: number
+      media_type: string
+      title?: string
+      name?: string
+      release_date?: string
+      first_air_date?: string
+      poster_path?: string | null
+      vote_count?: number
+    }[]
+  }>('/search/multi', { query: q, page: '1', include_adult: 'false' })
+
+  const fold = (s: string) =>
+    s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const fq = fold(q)
+  const tier = (title: string) => {
+    const f = fold(title)
+    return f === fq ? 0 : f.startsWith(fq) ? 1 : 2
+  }
+
+  return (raw?.results ?? [])
+    .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.title ?? r.name))
+    .filter(r => r.poster_path || (r.vote_count ?? 0) >= 10)
+    .map(r => {
+      const title = (r.title ?? r.name)!
+      const date = r.release_date || r.first_air_date || ''
+      return {
+        hit: {
+          tmdb_id: String(r.id),
+          type: r.media_type as 'movie' | 'tv',
+          title,
+          year: date ? Number(date.slice(0, 4)) : null,
+          poster_path: r.poster_path ?? null,
+        },
+        tier: tier(title),
+        votes: r.vote_count ?? 0,
+      }
+    })
+    .sort((a, b) => a.tier - b.tier || b.votes - a.votes)
+    .slice(0, limit)
+    .map(x => x.hit)
+}
+
+/**
+ * The two top-billed actors of each title, "Michael Douglas, Benicio del Toro",
+ * keyed `type-tmdb_id` ('' when TMDB lists no cast). The Search list shows it
+ * under each result so two titles with the same name can be told apart.
+ * One credits call per title, all at once: ~0.1–0.3s for six (2026-11-04).
+ * A title whose lookup fails is simply left out.
+ */
+export async function leadCast(
+  titles: { type: 'movie' | 'tv'; tmdb_id: string }[],
+  n = 2,
+): Promise<Record<string, string>> {
+  const rows = await Promise.all(
+    titles.map(async t => {
+      try {
+        const raw = await tmdbFetch<{ cast?: { name: string; order?: number }[] }>(`/${t.type}/${t.tmdb_id}/credits`)
+        const names = (raw?.cast ?? [])
+          .slice()
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .slice(0, n)
+          .map(c => c.name)
+        return [`${t.type}-${t.tmdb_id}`, names.join(', ')] as [string, string]
+      } catch {
+        return null
+      }
+    }),
+  )
+  return Object.fromEntries(rows.filter((r): r is [string, string] => r !== null))
+}
+
 /**
  * Search TMDB for a person by name and resolve them to a tmdb_person_id.
  *

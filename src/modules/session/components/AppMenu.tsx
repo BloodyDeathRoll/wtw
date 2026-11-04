@@ -12,6 +12,7 @@
 // (guarded by tests/unit/drawer-containing-block.test.ts).
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -55,7 +56,7 @@ export { VOICES };
 export type { Voice };
 
 /** Menu entries a screen can leave out (sign out is always there). */
-export type MenuItem = "recommend" | "watchlist" | "play" | "ratings" | "profile" | "voice";
+export type MenuItem = "recommend" | "watchlist" | "play" | "search" | "ratings" | "profile" | "voice";
 
 // ─────────────────────────────────────────────────────────────
 // AppMenu — the hamburger and its drawer.
@@ -76,6 +77,7 @@ export function AppMenu({
   onFastLearning,
   onRatings,
   onProfile,
+  onSearch,
   user,
   onSignOut,
   voice,
@@ -87,6 +89,8 @@ export function AppMenu({
   onFastLearning: () => void;
   onRatings: () => void;
   onProfile: () => void;
+  /** Menu → Search (its own route, /search). Defaults to going there. */
+  onSearch?: () => void;
   user: AppUser;
   onSignOut: () => void;
   voice: Voice;
@@ -95,6 +99,8 @@ export function AppMenu({
   hide?: readonly MenuItem[];
 }) {
   const shown = (item: MenuItem) => !hide.includes(item);
+  const router = useRouter();
+  const search = onSearch ?? (() => router.push("/search"));
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<"root" | "voice">("root");
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
@@ -275,6 +281,20 @@ export function AppMenu({
                   }}
                 >
                   <span>Play</span>
+                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
+                </button>
+              )}
+              {shown("search") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    search();
+                  }}
+                >
+                  <span>Search</span>
                   <span className={styles.userMenuTrail}>{I.chevRight}</span>
                 </button>
               )}
