@@ -480,6 +480,23 @@ export interface TitleSearchHit {
   poster_path: string | null
 }
 
+/** A director or actor in the Search screen's list (2026-11-05). */
+export interface PersonSearchHit {
+  tmdb_id: string
+  type: 'person'
+  name: string
+  role: PersonRole
+  profile_path: string | null
+  /** What TMDB says they're best known for: up to three titles. */
+  known_for: string[]
+}
+
+export type SearchHit = TitleSearchHit | PersonSearchHit
+
+/** Search only finds directors and actors — not writers, crew or the rest (Eran, 2026-11-05). */
+export type PersonRole = 'Director' | 'Actor'
+const ROLE_OF: Record<string, PersonRole> = { Directing: 'Director', Acting: 'Actor' }
+
 /** TMDB's raw /search/multi row, the fields Search reads. */
 interface TMDBSearchRow {
   id: number
@@ -490,6 +507,11 @@ interface TMDBSearchRow {
   first_air_date?: string
   poster_path?: string | null
   vote_count?: number
+  // people only
+  profile_path?: string | null
+  known_for_department?: string
+  popularity?: number
+  known_for?: { title?: string; name?: string; vote_count?: number }[]
 }
 
 /** A title folded for comparing: no accents, punctuation or case, and no
@@ -523,9 +545,18 @@ const KNOWN_VOTES = 10
 const RETRY_LIKENESS = 0.5
 /** The typo retry asks TMDB once per word, so long queries are not retried. */
 const RETRY_MAX_WORDS = 8
+/** People below this TMDB popularity are the dozen unknown namesakes ("michael douglas"). */
+const PERSON_MIN_POPULARITY = 1
+/** At most this many people in the list, so titles still show ("nolan"). */
+const MAX_PEOPLE = 3
+/** A person's TMDB popularity × this ≈ the vote count of a title as well known
+ *  (Christopher Nolan 8.2 → ~41k, like Interstellar). Not their known-for
+ *  titles' votes: those make a bit part in Interstellar as famous as Nolan. */
+const PERSON_FAME = 5000
 
 /**
- * Titles for the Search screen (menu → Search), movies and series together.
+ * Titles for the Search screen (menu → Search), movies and series together,
+ * and since 2026-11-05 the directors and actors whose name matches (`people`).
  *
  * TMDB's own order is relevance, which happily puts an unknown soap first, so
  * the list is re-ranked: titles people know (10+ votes) before the rest; within
@@ -533,23 +564,36 @@ const RETRY_MAX_WORDS = 8
  * better-known first. A leading "The"/"A"/"An" is ignored either way. Entries
  * with neither a poster nor a handful of votes are noise and are dropped.
  *
+ * People: only directors and actors, with a photo and a little fame, three at
+ * most. A last name typed ("spielberg") counts as their exact name, and their
+ * popularity is put on the titles' vote scale, so Steven Spielberg comes
+ * before a documentary called "Spielberg".
+ *
  * TMDB only returns titles containing every word typed, so one misspelt word
  * ("plains trains and automobiles"), or an extra "The" ("the beverly hills
  * cop"), gives nothing. Then it is asked again with each word left out in turn,
  * all at once, and the answers most like what was typed are kept (2026-11-04).
  * A one-word typo ("shtisle") still finds nothing: docs/BACKLOG.md.
  */
-export async function searchTitles(query: string, limit = 6): Promise<TitleSearchHit[]> {
+export async function searchTitles(query: string, limit?: number, opts?: { people?: false }): Promise<TitleSearchHit[]>
+export async function searchTitles(query: string, limit: number, opts: { people: boolean }): Promise<SearchHit[]>
+export async function searchTitles(query: string, limit = 6, { people = false } = {}): Promise<SearchHit[]> {
   const q = query.trim()
   if (!q) return []
+
+  const isTitle = (r: TMDBSearchRow) =>
+    (r.media_type === 'movie' || r.media_type === 'tv') && !!(r.title ?? r.name) &&
+    (!!r.poster_path || (r.vote_count ?? 0) >= KNOWN_VOTES)
+  const isPerson = (r: TMDBSearchRow) =>
+    people && r.media_type === 'person' && !!r.name && !!r.profile_path &&
+    !!ROLE_OF[r.known_for_department ?? ''] && (r.popularity ?? 0) >= PERSON_MIN_POPULARITY
 
   const ask = async (text: string) =>
     ((await tmdbFetch<{ results: TMDBSearchRow[] }>('/search/multi', {
       query: text, page: '1', include_adult: 'false',
-    }))?.results ?? [])
-      .filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && (r.title ?? r.name))
-      .filter(r => r.poster_path || (r.vote_count ?? 0) >= KNOWN_VOTES)
+    }))?.results ?? []).filter(r => isTitle(r) || isPerson(r))
 
+  const nameOf = (r: TMDBSearchRow) => (r.title ?? r.name)!
   const kq = searchKey(q)
   let rows = await ask(q)
   let retried = false
@@ -567,33 +611,139 @@ export async function searchTitles(query: string, limit = 6): Promise<TitleSearc
         const id = `${r.media_type}-${r.id}`
         if (seen.has(id)) return false
         seen.add(id)
-        return likeness(searchKey((r.title ?? r.name)!), kq) >= RETRY_LIKENESS
+        return likeness(searchKey(nameOf(r)), kq) >= RETRY_LIKENESS
       })
   }
 
   return rows
     .map(r => {
-      const title = (r.title ?? r.name)!
-      const date = r.release_date || r.first_air_date || ''
-      const k = searchKey(title)
-      const votes = r.vote_count ?? 0
-      return {
-        hit: {
+      const name = nameOf(r)
+      const k = searchKey(name)
+      const like = retried ? likeness(k, kq) : 0
+      if (r.media_type === 'person') {
+        const knownFor = r.known_for ?? []
+        const hit: PersonSearchHit = {
           tmdb_id: String(r.id),
-          type: r.media_type as 'movie' | 'tv',
-          title,
-          year: date ? Number(date.slice(0, 4)) : null,
-          poster_path: r.poster_path ?? null,
-        },
+          type: 'person',
+          name,
+          role: ROLE_OF[r.known_for_department!],
+          profile_path: r.profile_path ?? null,
+          known_for: knownFor.map(t => t.title ?? t.name).filter((t): t is string => !!t).slice(0, 3),
+        }
+        return {
+          hit, known: 0, like,
+          tier: k === kq || k.endsWith(` ${kq}`) ? 0 : k.startsWith(kq) || ` ${k}`.includes(` ${kq}`) ? 1 : 2,
+          votes: (r.popularity ?? 0) * PERSON_FAME,
+        }
+      }
+      const date = r.release_date || r.first_air_date || ''
+      const votes = r.vote_count ?? 0
+      const hit: TitleSearchHit = {
+        tmdb_id: String(r.id),
+        type: r.media_type as 'movie' | 'tv',
+        title: name,
+        year: date ? Number(date.slice(0, 4)) : null,
+        poster_path: r.poster_path ?? null,
+      }
+      return {
+        hit, like, votes,
         known: votes >= KNOWN_VOTES ? 0 : 1,
         tier: k === kq ? 0 : k.startsWith(kq) ? 1 : 2,
-        like: retried ? likeness(k, kq) : 0,
-        votes,
       }
     })
     .sort((a, b) => a.known - b.known || a.tier - b.tier || b.like - a.like || b.votes - a.votes)
+    .filter((x, i, all) => x.hit.type !== 'person' || all.slice(0, i).filter(y => y.hit.type === 'person').length < MAX_PEOPLE)
     .slice(0, limit)
     .map(x => x.hit)
+}
+
+/** One title on a person's page: a search row, plus who they played. */
+export interface PersonTitle extends TitleSearchHit {
+  /** "Gordon Gekko" for an actor; null for a director's films. */
+  character: string | null
+}
+
+export interface PersonPage {
+  tmdb_id: string
+  name: string
+  role: PersonRole
+  profile_path: string | null
+  titles: PersonTitle[]
+}
+
+/** TMDB genre ids that aren't films or stories: documentary, news, reality, talk. */
+const NOT_STORIES = new Set([99, 10763, 10764, 10767])
+/** "Himself", "Self", "Narrator": appearances, not roles. */
+const NOT_A_ROLE = /\b(self|himself|herself|themselves|narrator|host)\b/i
+
+/**
+ * A person's page in Search (2026-11-05): a director's films (what they
+ * directed) or an actor's titles (what they acted in), newest first (Eran).
+ * Left out: no poster, under 10 votes, "as himself", documentaries, news,
+ * reality and talk shows, and TV guest spots (an actor in under 5 episodes, a
+ * director on a single one). One TMDB call.
+ */
+export async function personTitles(tmdb_id: string): Promise<PersonPage | null> {
+  type Credit = {
+    id: number
+    media_type: 'movie' | 'tv'
+    title?: string
+    name?: string
+    release_date?: string
+    first_air_date?: string
+    poster_path?: string | null
+    vote_count?: number
+    genre_ids?: number[]
+    character?: string
+    job?: string
+    episode_count?: number
+  }
+  const raw = await tmdbFetch<{
+    id: number
+    name: string
+    known_for_department?: string
+    profile_path?: string | null
+    combined_credits?: { cast: Credit[]; crew: Credit[] }
+  }>(`/person/${tmdb_id}`, { append_to_response: 'combined_credits' })
+  if (!raw) return null
+
+  const role: PersonRole = raw.known_for_department === 'Directing' ? 'Director' : 'Actor'
+  const credits = role === 'Director'
+    ? (raw.combined_credits?.crew ?? []).filter(c => c.job === 'Director')
+    : (raw.combined_credits?.cast ?? []).filter(c => !NOT_A_ROLE.test(c.character ?? ''))
+  const minEpisodes = role === 'Director' ? 2 : 5
+
+  const seen = new Set<string>()
+  const titles = credits
+    .filter(c => {
+      const key = `${c.media_type}-${c.id}`
+      if (seen.has(key) || !c.poster_path || (c.vote_count ?? 0) < KNOWN_VOTES) return false
+      if ((c.genre_ids ?? []).some(g => NOT_STORIES.has(g))) return false
+      if (c.media_type === 'tv' && (c.episode_count ?? 0) < minEpisodes) return false
+      seen.add(key)
+      return true
+    })
+    .map(c => {
+      const date = c.release_date || c.first_air_date || ''
+      return {
+        date,
+        votes: c.vote_count ?? 0,
+        title: {
+          tmdb_id: String(c.id),
+          type: c.media_type,
+          title: (c.title ?? c.name ?? '').trim(),
+          year: date ? Number(date.slice(0, 4)) : null,
+          poster_path: c.poster_path ?? null,
+          character: role === 'Actor' ? c.character?.trim() || null : null,
+        } satisfies PersonTitle,
+      }
+    })
+    .filter(x => x.title.title)
+    // Newest first; undated last.
+    .sort((a, b) => (b.date || '0').localeCompare(a.date || '0') || b.votes - a.votes)
+    .map(x => x.title)
+
+  return { tmdb_id: String(raw.id), name: raw.name, role, profile_path: raw.profile_path ?? null, titles }
 }
 
 /**
