@@ -104,7 +104,9 @@ export async function getCandidates(
   // six cards just shown at the top of the next batch, the client deduped
   // them, and the user got a couple of new titles per batch (seen live
   // 2026-11-05). They stay out of FRESH too (allServed), so they come back
-  // after the cooldown, not before.
+  // after the cooldown, not before. A sitting cannot drain the pools: FRESH is
+  // the catalog minus everything ever served, and when SEEN comes up short of
+  // its ten slots step3b backfills them from FRESH.
   const seenCutoff = Date.now() - SEEN_COOLDOWN_MS
   const timesServed = new Map<string, number>()
   const allServed: string[] = []

@@ -369,6 +369,7 @@ export default function RecommendationsView({
     setRecs([]);
     setHasMore(true);
     offsetRef.current = 0;
+    versionRef.current = null;
     hasMoreRef.current = true;
     loadingRef.current = false;
     // Seed the membership set (all modes — the feed shows saved state too), the
