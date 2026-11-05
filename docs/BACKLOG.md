@@ -71,6 +71,7 @@ Today the Ratings page shows a count, four tiles (Loved / Liked / Disliked / Rem
 - **Each title shows its poster** plus a few details (for example year, movie or series, length). The exact format is still to be brainstormed: see the open questions.
 - **Change a reaction** right there, the same way as on the card.
 - **Search inside the page** when there are many titles.
+- **Refine the two dropdowns** above the list. The type dropdown (today All / Movies / Series) says **Both** instead of "All", matching the feed's Movies / Series / Both. The sort dropdown (today "Date Added" / "Oldest First" / "Title A–Z") gets clearer labels too: "Date Added" doesn't say whether it's newest or oldest first.
 
 **Rules**
 - Nothing you've rated or X'd is ever *suggested again* in a new batch.
