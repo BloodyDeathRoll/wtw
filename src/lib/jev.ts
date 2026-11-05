@@ -110,18 +110,31 @@ export async function jevFailuresSince(since: string | null): Promise<JevFailure
   return parsed.filter(f => since === null || f.at > since)
 }
 
+/** The home page will not wait longer than this on Redis for the banner. */
+export const DEV_FAILURES_TIMEOUT_MS = 1500
+
 /**
  * The failures to show a signed-in user on the home page: none unless they
- * are a dev, and none if Redis is down — the home page must not go down with
- * it.
+ * are a dev, and none if Redis is down or slow — the home page must not go
+ * down, or wait, with it.
  */
-export async function devJevFailures(email: string | null | undefined): Promise<JevFailure[]> {
+export async function devJevFailures(
+  email: string | null | undefined,
+  timeoutMs = DEV_FAILURES_TIMEOUT_MS,
+): Promise<JevFailure[]> {
   if (!isDev(email)) return []
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    return await jevFailuresSince(await jevSeenAt(email!.toLowerCase()))
+    const read = jevSeenAt(email!.toLowerCase()).then(since => jevFailuresSince(since))
+    const timeout = new Promise<JevFailure[]>(resolve => {
+      timer = setTimeout(() => resolve([]), timeoutMs)
+    })
+    return await Promise.race([read, timeout])
   } catch (err) {
     console.warn('[jev] could not read failures:', err instanceof Error ? err.message : err)
     return []
+  } finally {
+    clearTimeout(timer)
   }
 }
 

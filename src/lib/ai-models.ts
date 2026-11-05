@@ -48,7 +48,8 @@ export const MODELS = {
 
   /** STRUCTURED output (`generateText` + `Output.object`) on the low-volume,
    *  latency-sensitive paths: engine explanation / co-watch, and session
-   *  transcript analysis (the engine rerank moved to `jev` on 2026-11-05). MUST be NON-reasoning — reasoning models (Groq gpt-oss-*, qwen3.6)
+   *  transcript analysis (the engine rerank moved to `jev` on 2026-11-05).
+   *  MUST be NON-reasoning — reasoning models (Groq gpt-oss-*, qwen3.6)
    *  spend their budget on a `reasoning` trace and often return empty `content`,
    *  which structured output can't parse. Measured 2026-07-09: gpt-oss-120b fails
    *  ~1/6 on complex schemas (e.g. analyze-session) and these sites sit in the

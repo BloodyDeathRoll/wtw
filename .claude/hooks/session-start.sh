@@ -92,7 +92,11 @@ fi
 # nobody opens. Needs node_modules and the Upstash keys; silently skipped
 # otherwise, and time-boxed so Redis trouble cannot stall the session.
 if [ -d node_modules ] && [ -f .env.local ] && grep -q '^UPSTASH_REDIS_REST_URL=' .env.local; then
-  # Seen per person, so each dev hears about a failure once.
+  # Seen per person, so each dev hears about a failure once. (In a remote
+  # session this is the bot's identity: it gets its own marker and nobody
+  # reads the line — harmless.) The script marks seen as soon as it prints;
+  # the EXIT trap above guarantees the line is still emitted if anything
+  # after this point fails.
   JEV_WHO="$(git config user.email 2>/dev/null || whoami)"
   JEV_MSG="$(JEV_WHO="$JEV_WHO" timeout 20 node --env-file=.env.local --conditions=react-server --import tsx scripts/jev-failures.mts 2>/dev/null || true)"
   [ -n "$JEV_MSG" ] && echo "[session-start] $JEV_MSG"

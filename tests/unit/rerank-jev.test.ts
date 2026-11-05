@@ -185,6 +185,13 @@ describe('failure log', () => {
     expect(redis.get).toHaveBeenLastCalledWith('jev:seen:einhanamer@gmail.com')
   })
 
+  it('devJevFailures: a slow Redis is given up on, the home page does not wait', async () => {
+    redis.get.mockImplementationOnce(() => new Promise(() => {}))   // never resolves
+    const t0 = Date.now()
+    expect(await devJevFailures('einhanamer@gmail.com', 30)).toEqual([])
+    expect(Date.now() - t0).toBeLessThan(1000)
+  })
+
   it('records the message of an Error and the string of anything else', async () => {
     await recordJevFailure('rerank', new Error('boom'))
     await recordJevFailure('rerank', 'plain')

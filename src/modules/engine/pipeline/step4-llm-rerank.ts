@@ -130,8 +130,9 @@ export function avoidSummary(dna: DNASchema): string {
 // ─────────────────────────────────────────────
 
 /** Jev's "would dislike" probability at or above this drops the candidate.
- *  Measured 2026-11-05 on an 8-title probe: avoided titles 0.73–0.97, fits
- *  0.04–0.08. */
+ *  From `scripts/jev-threshold-probe.mts` (8 titles, two runs on
+ *  2026-11-05): fits 0.04–0.13, avoided 0.70–0.97; hard avoids 0.95+, a
+ *  soft "wants less of" title sits at the line. Re-run it before changing. */
 export const JEV_DISLIKE_THRESHOLD = 0.7
 
 /**
