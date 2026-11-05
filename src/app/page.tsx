@@ -2,10 +2,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
-import { getOrCreateActiveConversation } from "@/lib/conversations";
-import { buildWelcomeData } from "@/lib/welcome";
+import { loadHomeBootstrap, openConversation } from "@/lib/home-bootstrap";
+import { welcomeForSignals } from "@/lib/welcome";
 import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
-import { loadPlay, progressOf } from "./play/lib/server";
+import { progressOf } from "./play/lib/server";
 import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
 import LoginScreen from "./login/LoginScreen";
@@ -30,10 +30,11 @@ export default async function Home({
   // The taste games are the way in (src/lib/play-rollout.ts): genres before
   // anything, then the season until it's finished or skipped. A link back out
   // of the games (?from=play, ?stage=…) is never bounced back to them.
-  // Started now, awaited with the other reads below (only the redirect needs it first).
-  const playLoad = loadPlay(supabase, user.id).then((p) => progressOf(p.state));
+  // One round trip for everything the screen reads (conversation, messages,
+  // signal counts, play state): migration 0027, docs/speed-plan.md part D.
+  const boot = await loadHomeBootstrap(supabase, user.id);
+  const play = progressOf(boot.play.state);
   if (PLAY_ONBOARDING_LIVE) {
-    const play = await playLoad;
     const params = await searchParams;
     const fromApp = params.from === "play" || !!params.stage;
     if (!play.genresDone || (!play.done && !play.skipped && !fromApp)) redirect("/play");
@@ -59,12 +60,11 @@ export default async function Home({
       null,
   };
 
-  // Independent — fan out to shave the Groq round-trip off `buildWelcomeData`
-  // when it lands during the conversation fetch.
-  const [conversation, welcome, play, jevFailures] = await Promise.all([
-    getOrCreateActiveConversation(supabase, user.id),
-    buildWelcomeData(supabase, user.id, appUser.name, utcOffsetMinutes),
-    playLoad,
+  // The conversation (created only now, after the redirect decision), the
+  // greeting (Groq, cached) and the dev notice (Redis) are independent.
+  const [conversation, welcome, jevFailures] = await Promise.all([
+    openConversation(supabase, user.id, boot),
+    welcomeForSignals(user.id, boot.signals, appUser.name, utcOffsetMinutes),
     // Jev failures since this dev last dismissed the notice; [] for everyone else.
     devJevFailures(appUser.email),
   ]);

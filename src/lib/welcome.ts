@@ -29,12 +29,47 @@ export async function buildWelcomeData(
   utcOffsetMinutes: number | null = null,
 ): Promise<WelcomeData> {
   const signals = await countUserSignals(supabase, userId);
+  return welcomeForSignals(userId, signals, name, utcOffsetMinutes);
+}
+
+/** How long one greeting is reused: the time-of-day wording is right for
+ *  about a quarter of a day, and a fresh Groq call per home load was ~0.7 s. */
+const GREETING_TTL_S = 4 * 60 * 60;
+
+/**
+ * The greeting for a signal count the caller already has (the home page gets
+ * it from `home_bootstrap()`). Cached in Redis per user and quarter of the
+ * user's local day, so a mature user's home page does not wait on Groq on
+ * every load. Cache trouble is never fatal: the greeting is generated anyway.
+ */
+export async function welcomeForSignals(
+  userId: string,
+  signals: number,
+  name: string | null,
+  utcOffsetMinutes: number | null = null,
+): Promise<WelcomeData> {
   if (signals < MATURE_THRESHOLD) {
     return { greeting: null };
   }
-  const greeting = await generateGreeting(name, utcOffsetMinutes);
-  return { greeting };
+  const localHour = utcOffsetMinutes === null
+    ? null
+    : new Date(Date.now() - utcOffsetMinutes * 60_000).getUTCHours();
+  const key = `greeting:${userId}:${localHour === null ? "any" : Math.floor(localHour / 6)}`;
+  // Lazy: `@/lib/redis` is server-only and not every importer of this file
+  // (play page, tests) wants it loaded.
+  const redis = await import("@/lib/redis").then((m) => m.getRedis()).catch(() => null);
+  if (redis) {
+    const cached = await redis.get<unknown>(key).catch(() => null);
+    if (typeof cached === "string" && cached) return { greeting: cached };
+  }
+  // Only a real generation is cached: a Groq outage must not pin the canned
+  // line for 4 h.
+  const generated = await generateGreeting(name, utcOffsetMinutes);
+  if (generated && redis) await redis.set(key, generated, { ex: GREETING_TTL_S }).catch(() => {});
+  return { greeting: generated ?? `Hi ${firstName(name)}, what are you in the mood for tonight?` };
 }
+
+const firstName = (name: string | null) => (name?.trim().split(" ")[0] ?? "").trim() || "there";
 
 /** Chat turns + feedback rows. Also tells an existing user from a brand-new one. */
 export async function countUserSignals(
@@ -65,11 +100,12 @@ export async function countUserSignals(
   return (feedbackCount ?? 0) + messageCount;
 }
 
+/** The Groq greeting, or null when it failed or came back empty. */
 async function generateGreeting(
   name: string | null,
   utcOffsetMinutes: number | null,
-): Promise<string> {
-  const displayName = (name?.trim().split(" ")[0] ?? "").trim() || "there";
+): Promise<string | null> {
+  const displayName = firstName(name);
 
   // When we have the client's offset, shift "now" to the user's local clock
   // and read fields in UTC so the rendered values reflect their wall time.
@@ -130,10 +166,9 @@ Hard rules:
       instructions: systemPrompt,
       prompt: `Greet ${displayName} and ask the question.`,
     });
-    const text = result.text.trim();
-    return text || `Hi ${displayName}, what are you in the mood for tonight?`;
+    return result.text.trim() || null;
   } catch (e) {
     console.error("[welcome] greeting generation failed", e);
-    return `Hi ${displayName}, what are you in the mood for tonight?`;
+    return null;
   }
 }
