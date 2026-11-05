@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 
 // Mirrors the client's MAX_ENTRIES — the list a device can hold.
 const MAX_ENTRIES = 200;
@@ -88,9 +89,7 @@ async function readList(supabase: SupabaseClient, userId: string) {
 
 async function authed() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   return { supabase, user };
 }
 

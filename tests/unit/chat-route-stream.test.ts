@@ -11,7 +11,7 @@ import { MockLanguageModelV4, simulateReadableStream } from 'ai/test'
 
 const saveMessage = vi.fn(async () => {})
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) } }),
+  createClient: async () => ({ auth: { getClaims: async () => ({ data: { claims: { sub: 'u1' } }, error: null }) } }),
 }))
 vi.mock('@/lib/rate-limit', () => ({ enforceRateLimit: async () => null }))
 vi.mock('@/lib/conversations', () => ({ saveMessage, updateConversationState: vi.fn(async () => {}) }))

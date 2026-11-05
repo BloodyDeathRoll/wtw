@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import type { DNASchema, StrandA } from '@/types/dna'
 import AppShell from '@/modules/session/components/AppShell'
@@ -115,7 +116,7 @@ function Section({
 
 export default async function DNAProfilePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   let dna: DNASchema

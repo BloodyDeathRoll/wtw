@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const saveMessage = vi.fn(async () => {})
 const updateConversationState = vi.fn(async () => {})
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) } }),
+  createClient: async () => ({ auth: { getClaims: async () => ({ data: { claims: { sub: 'u1' } }, error: null }) } }),
 }))
 vi.mock('@/lib/conversations', () => ({ saveMessage, updateConversationState }))
 

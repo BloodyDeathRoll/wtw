@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { createServiceClient } from '@/lib/supabase/service'
 import { enforceRateLimit } from '@/lib/rate-limit'
 
@@ -30,9 +31,7 @@ const SESSION_MS = 2 * 60 * 60 * 1000
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) {
     logAuthFailure('/api/cowatch/room/join')
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

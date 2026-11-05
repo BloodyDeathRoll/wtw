@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import {
   saveMessage,
   updateConversationState,
@@ -28,9 +29,7 @@ const STAGES: readonly ConversationStage[] = ["onboard", "welcome", "conversatio
 
 export async function POST(req: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     logAuthFailure("/api/voice/transcript");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
