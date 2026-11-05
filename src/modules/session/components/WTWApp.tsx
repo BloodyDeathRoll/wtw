@@ -787,9 +787,11 @@ export default function WTWApp({
     // New chat/voice content → full session-end (analyze + merge + generate).
     setBuildingRecs(true);
     setStage("recommendations");
+    // Transcript consumed — next tap is instant. Cleared before the build (it
+    // never throws) so a message sent mid-build, after Back, still counts.
+    chattedThisLoadRef.current = false;
     try {
       await endSessionAndGenerate();
-      chattedThisLoadRef.current = false; // transcript consumed — next tap is instant
     } finally {
       setBuildingRecs(false);
     }
