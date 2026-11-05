@@ -176,6 +176,12 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-05 — Jev scores the rerank (`feat/jev-rerank`)
+- Jev (typesafe.ai System One, `jev-latest`) answers yes/no questions with a probability; it writes no text. It is now the **first pass of step 4** (`src/modules/engine/pipeline/step4-llm-rerank.ts`, A2): one request, one question per candidate ("Would this viewer love …?") against the same profile + avoids text the Mistral prompt uses; the batch is sorted by the probability, ties in composite order, unanswered last. Client: `src/lib/jev.ts` (`jevNoul`, 4s timeout). Model id in `src/lib/ai-models.ts` (`MODELS.jev`).
+- **Fallback chain:** Jev → the existing Mistral ids rerank → composite order. Jev throws on a missing `TYPESAFE_API_KEY`, non-2xx, timeout or a body without `answers`; step 4 logs `[rerank] jev failed` and goes on. Nothing downstream changed.
+- Measured live 2026-11-05: 2 questions 0.39s; a full batch of 50 0.39s, 2.6k input / 0.9k output tokens (its request cap is 32k). The two-question probe separated an avoided anime from a fit sharply (0.06 vs 0.81); in the 50-batch the gap was narrower (0.33 vs 0.60). **Not measured:** rank quality against Mistral's on real batches, rate limits, pricing.
+- Key: `TYPESAFE_API_KEY` in `.env.local` and on Vercel (Production, set 2026-11-05). Tests: `tests/unit/rerank-jev.test.ts` (5). All 679 pass, type-check clean.
+
 ### 2026-11-05 — "Why it's a match" on "Both" (`fix/why-both-batch`)
 - Found by Eran right after the sheet shipped: with the picker on **Both**, every title's sheet said "The full breakdown isn't ready". Not new: since "Both" was added (2026-10-26) the explain route only looked in the Movies and Series batches (`rec:{user}:{version}:movies|series`), never in Both's (`…:all`). Movies/Series were fine.
 - **Fixed** in `src/app/api/recommendations/explain/route.ts`: look in the title's own type's batch, then Both's; with no type, Movies → Series → Both. The (tmdb_id, type) matching is unchanged.

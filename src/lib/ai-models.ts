@@ -71,6 +71,12 @@ export const MODELS = {
    *  replaces mistral-small (0). */
   enrichment: 'ministral-8b-latest',
 
+  /** Jev (typesafe.ai System One) — yes/no probabilities, not text. First
+   *  pass of the engine rerank (`src/lib/jev.ts`): one request scores the
+   *  whole batch against the viewer profile, ~0.4s measured 2026-11-05.
+   *  `structured` on Mistral stays as the fallback when it fails. */
+  jev: 'jev-latest',
+
   /** Mistral — narrative + fingerprint embeddings (1024-dim, matches the
    *  vector(1024) columns in the Supabase migrations). */
   embedding: 'mistral-embed',

@@ -4,13 +4,17 @@
  * Takes the top 50 scored candidates and asks Groq to re-rank them based
  * on nuanced tonal and thematic resonance that numeric scoring can't capture.
  *
- * One structured call (Mistral small — see src/lib/ai-models.ts) returns the
- * re-ranked list of ids. Since 2026-08-28 it returns ids ONLY: per-title
- * rationales made it the slowest step of "Find more" and step 7 builds the
- * interim card text from the reason payload instead. groq_rationale is kept
- * on the type (ReasonPayload contract) and is always ''.
+ * Two passes, each a fallback for the one before (2026-11-05):
+ *   1. Jev (`src/lib/jev.ts`) — one request asks, per candidate, "would this
+ *      viewer love it?" against the profile and returns a probability; the
+ *      batch is sorted by it, ties kept in composite order.
+ *   2. One structured call (Mistral — see src/lib/ai-models.ts) returns the
+ *      re-ranked list of ids. Since 2026-08-28 it returns ids ONLY: per-title
+ *      rationales made it the slowest step of "Find more" and step 7 builds
+ *      the interim card text from the reason payload instead. groq_rationale
+ *      is kept on the type (ReasonPayload contract) and is always ''.
  *
- * Returns all 50 in the model's order; composite order on any failure.
+ * Returns all 50 in the model's order; composite order when both fail.
  *
  * The prompt carries what the viewer AVOIDS as well as what they like
  * (2026-09-20). It used to be an entirely positive profile, so a reranker with
@@ -21,6 +25,7 @@
 import { generateText, Output } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
 import { MODELS } from '@/lib/ai-models'
+import { jevNoul } from '@/lib/jev'
 import { z } from 'zod'
 import { strongestContentAffinities } from '@/modules/dna/lib/update-content-affinity'
 import type { DNASchema } from '@/types/dna'
@@ -140,6 +145,20 @@ const rerankSchema = z.object({
   ).min(1),
 })
 
+/**
+ * Highest Jev probability first; equal probabilities keep composite order
+ * (the sort is stable). A candidate Jev did not answer for counts as 0 and
+ * so goes last — never dropped, step 5 needs the whole batch.
+ */
+export function rankByNoul<T>(
+  items: T[],
+  answers: Record<string, number>,
+  keyOf: (item: T) => string,
+): T[] {
+  const p = (item: T) => answers[keyOf(item)] ?? 0
+  return [...items].sort((a, b) => p(b) - p(a))
+}
+
 // ─────────────────────────────────────────────
 // Main function
 // ─────────────────────────────────────────────
@@ -151,25 +170,44 @@ export async function llmRerank(
   const top50 = scored.slice(0, 50)
   if (top50.length === 0) return []
 
-  const candidateList = top50
-    .map((s, i) => {
-      const t = s.title
-      const director = t.crew.directors[0]?.name ?? 'unknown director'
-      const genres   = t.genres.map(g => g.name).join(', ')
-      const tones    = t.tone_tags.join(', ') || 'unknown'
-      // The bracketed id is the composite key: the model echoes it back and a
-      // bare tmdb_id would collide for a movie/TV pair sharing an id.
-      return `${i + 1}. [${t.type}:${t.tmdb_id}] "${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${director} — Genres: ${genres} — Tone: ${tones} — Score: ${s.composite_score.toFixed(3)}`
-    })
-    .join('\n')
+  // The composite key: the model echoes it back and a bare tmdb_id would
+  // collide for a movie/TV pair sharing an id.
+  const keyOf = (s: ScoredTitle) => `${s.title.type}:${s.title.tmdb_id}`
+  const describe = (s: ScoredTitle) => {
+    const t = s.title
+    const director = t.crew.directors[0]?.name ?? 'unknown director'
+    const genres   = t.genres.map(g => g.name).join(', ')
+    const tones    = t.tone_tags.join(', ') || 'unknown'
+    return `"${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${director} — Genres: ${genres} — Tone: ${tones}`
+  }
 
   const avoids = avoidSummary(dna)
+  const profile = `VIEWER PROFILE:\n${profileSummary(dna)}${
+    avoids ? `\n\nWHAT THIS VIEWER AVOIDS:\n${avoids}\nAnything on that list belongs at the BOTTOM of your order, however good it is in the abstract. A title they told you they do not want is a bad recommendation for them.` : ''
+  }`
+
+  // Pass 1 — Jev: a probability per candidate, one request for the batch.
+  try {
+    const answers = await jevNoul(
+      profile,
+      Object.fromEntries(top50.map(s => [keyOf(s), `Would this viewer love ${describe(s)}?`])),
+    )
+    const scoredCount = top50.filter(s => keyOf(s) in answers).length
+    console.log(`[rerank] jev scored ${scoredCount}/${top50.length}`)
+    if (scoredCount > 0) return rankByNoul(top50, answers, keyOf).map(item => ({ ...item, groq_rationale: '' }))
+  } catch (err) {
+    console.warn('[rerank] jev failed — trying the LLM rerank:', err instanceof Error ? err.message : err)
+  }
+
+  // Pass 2 — Mistral, ids in order.
+  const candidateList = top50
+    .map((s, i) => `${i + 1}. [${keyOf(s)}] ${describe(s)} — Score: ${s.composite_score.toFixed(3)}`)
+    .join('\n')
 
   const prompt = `You are a film expert re-ranking recommendations for a specific viewer.
 
-VIEWER PROFILE:
-${profileSummary(dna)}
-${avoids ? `\nWHAT THIS VIEWER AVOIDS:\n${avoids}\nAnything on that list belongs at the BOTTOM of your order, however good it is in the abstract. A title they told you they do not want is a bad recommendation for them.\n` : ''}
+${profile}
+
 CANDIDATES (currently ranked by numeric score):
 ${candidateList}
 
