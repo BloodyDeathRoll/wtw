@@ -25,7 +25,8 @@
  * the top of the batch on tonal resonance alone.
  */
 
-import { jevNoul, recordJevFailure } from '@/lib/jev'
+import { after } from 'next/server'
+import { jevNoul, recordJevFailure, JevNotConfigured } from '@/lib/jev'
 import { strongestContentAffinities } from '@/modules/dna/lib/update-content-affinity'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
@@ -192,7 +193,18 @@ export async function llmRerank(
     return done(kept)
   } catch (err) {
     console.warn('[rerank] jev failed — composite order, nothing dropped:', err instanceof Error ? err.message : err)
-    await recordJevFailure('rerank', err)
+    // Only an API failure is news for the devs (it usually means the token
+    // needs a top-up); a machine without the key is a local setup gap.
+    // Logged after the response is sent, so no user waits on Redis for it;
+    // outside a request (tests, scripts) `after` throws and we write inline.
+    if (!(err instanceof JevNotConfigured)) {
+      const log = () => recordJevFailure('rerank', err)
+      try {
+        after(log)
+      } catch {
+        await log()
+      }
+    }
     return done(top50)
   }
 }

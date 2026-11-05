@@ -16,9 +16,15 @@ export default function JevNotice({ failures }: { failures: JevFailure[] }) {
   if (!open || failures.length === 0) return null
   const last = failures[0]
 
+  // Marks seen up to the newest failure shown, so one that lands meanwhile
+  // is still reported next time.
   const dismiss = () => {
     setOpen(false)
-    fetch("/api/admin/jev-failures", { method: "POST" }).catch(() => {})
+    fetch("/api/admin/jev-failures", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ at: last.at }),
+    }).catch(() => {})
   }
 
   return (

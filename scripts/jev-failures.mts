@@ -21,7 +21,7 @@ try {
     console.log(
       `Jev failed ${times} ${sinceText}; recommendations fell back to score order. Last: ${last.at} (${last.where}): ${last.error}`,
     )
-    await markJevSeen('claude-code')
+    await markJevSeen('claude-code', last.at)
   }
 } catch (err) {
   console.error('[jev-failures] could not read Redis:', err instanceof Error ? err.message : err)

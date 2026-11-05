@@ -16,11 +16,18 @@ import { getRedis } from '@/lib/redis'
 
 export const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 
+/** No `TYPESAFE_API_KEY`: a setup gap on this machine, not an API failure —
+ *  callers fall back without logging it for the devs. */
+export class JevNotConfigured extends Error {
+  constructor() { super('TYPESAFE_API_KEY is not set') }
+}
+
 /**
  * Asks Jev one noul question per entry of `questions` (name → instructions)
- * and returns name → probability. Throws when the key is missing, the request
- * fails or times out, or the body is not an `answers` object; callers decide
- * what to fall back to. Answers that are not finite numbers are left out.
+ * and returns name → probability. Throws `JevNotConfigured` when the key is
+ * missing, and an Error when the request fails or times out or the body is
+ * not an `answers` object; callers decide what to fall back to. Answers
+ * that are not finite numbers are left out.
  */
 export async function jevNoul(
   state: string,
@@ -28,7 +35,7 @@ export async function jevNoul(
   timeoutMs = 4000,
 ): Promise<Record<string, number>> {
   const key = process.env.TYPESAFE_API_KEY
-  if (!key) throw new Error('TYPESAFE_API_KEY is not set')
+  if (!key) throw new JevNotConfigured()
 
   const body = {
     model: MODELS.jev,
@@ -98,6 +105,11 @@ export async function jevSeenAt(who: string): Promise<string | null> {
   return getRedis().get<string>(seenKey(who))
 }
 
-export async function markJevSeen(who: string): Promise<void> {
-  await getRedis().set(seenKey(who), new Date().toISOString())
+/**
+ * `at` is the newest failure the dev was SHOWN, not "now": a failure that
+ * lands between the read and this write is newer than `at`, so it is still
+ * reported next time instead of being lost.
+ */
+export async function markJevSeen(who: string, at: string): Promise<void> {
+  await getRedis().set(seenKey(who), at)
 }

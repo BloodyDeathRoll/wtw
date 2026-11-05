@@ -14,7 +14,7 @@ const redis = {
 }
 vi.mock('@/lib/redis', () => ({ getRedis: () => redis }))
 
-const { jevNoul, JEV_URL, recordJevFailure, jevFailuresSince } = await import('@/lib/jev')
+const { jevNoul, JEV_URL, recordJevFailure, jevFailuresSince, markJevSeen } = await import('@/lib/jev')
 const { llmRerank, dropDisliked, JEV_DISLIKE_THRESHOLD } = await import('@/modules/engine/pipeline/step4-llm-rerank')
 const { createBlankDNA } = await import('@/modules/dna/blank-dna')
 type ScoredTitle = import('@/modules/engine/types').ScoredTitle
@@ -119,14 +119,16 @@ describe('llmRerank (step 4)', () => {
     expect(redis.ltrim).toHaveBeenCalledWith('jev:failures', 0, 49)
   })
 
-  it('serves the batch untouched when the key is missing or the request times out', async () => {
+  it('a missing key serves the batch untouched and is NOT logged for the devs', async () => {
     delete process.env.TYPESAFE_API_KEY
     expect((await llmRerank(batch, dna)).length).toBe(4)
+    expect(redis.lpush).not.toHaveBeenCalled()
+  })
 
-    process.env.TYPESAFE_API_KEY = 'test-key'
+  it('a timeout serves the batch untouched and is logged', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new DOMException('timed out', 'TimeoutError') }))
     expect((await llmRerank(batch, dna)).length).toBe(4)
-    expect(redis.lpush).toHaveBeenCalledTimes(2)
+    expect(redis.lpush).toHaveBeenCalledTimes(1)
   })
 
   it('a Redis outage while logging never reaches the caller', async () => {
@@ -144,6 +146,16 @@ describe('failure log', () => {
     ])
     const out = await jevFailuresSince('2026-11-05T11:00:00.000Z')
     expect(out.map(f => f.error)).toEqual(['b'])
+  })
+
+  it('marks seen up to the failure shown, not "now", so one landing meanwhile is still reported', async () => {
+    await markJevSeen('claude-code', '2026-11-05T12:00:00.000Z')
+    expect(redis.set).toHaveBeenCalledWith('jev:seen:claude-code', '2026-11-05T12:00:00.000Z')
+    redis.lrange.mockResolvedValueOnce([
+      { at: '2026-11-05T12:00:00.500Z', where: 'rerank', error: 'landed during the read' },
+      { at: '2026-11-05T12:00:00.000Z', where: 'rerank', error: 'shown' },
+    ])
+    expect((await jevFailuresSince('2026-11-05T12:00:00.000Z')).map(f => f.error)).toEqual(['landed during the read'])
   })
 
   it('records the message of an Error and the string of anything else', async () => {
