@@ -11,8 +11,8 @@
  * "Why this?" (?) button toggles the WhyPanel inline at any state.
  */
 
-import { useEffect, useState } from "react"
-import { ArrowRight, TriangleAlert } from "lucide-react"
+import { Fragment, useEffect, useState } from "react"
+import { TriangleAlert } from "lucide-react"
 import type { RecommendationResult, Reaction } from "@/types/dna"
 import { addToRegretQueue } from "@/lib/regret-queue"
 import DeepSurvey from "./DeepSurvey"
@@ -199,14 +199,51 @@ function DoneState({ reaction }: { reaction: Reaction | null }) {
 }
 
 // ─── Why panel ───────────────────────────────────────────────
-// All bars share one colour (brand yellow, set in CSS) — Figma 28:3288.
+// "Why it's a match", stripped down to the why (backlog 2026-11-04, mocks in
+// docs/prototypes/why-match): bars with no weights or numbers, the title's own
+// values as plain "Label: value" lines, the names you follow, and real reasons
+// against. All bars share one colour (brand yellow, set in CSS).
 const SCORE_SEGMENTS = [
-  { key: "crew",      label: "Crew",      weight: 35 },
-  { key: "narrative", label: "Narrative", weight: 30 },
-  { key: "visceral",  label: "Visceral",  weight: 20 },
-  { key: "ratings",   label: "Ratings",   weight: 10 },
-  { key: "recency",   label: "Recency",   weight: 5  },
+  { key: "crew",      label: "Crew" },
+  { key: "narrative", label: "Narrative" },
+  { key: "visceral",  label: "Mood & pace" },
+  { key: "ratings",   label: "Reviews" },
+  { key: "recency",   label: "Recency" },
 ]
+
+// The story lines, in this order. Format is left out on purpose: movie or
+// series is obvious from the title.
+const STORY_LABELS: Record<string, string> = {
+  pacing:   "Pacing",
+  tone:     "Tone",
+  genre:    "Genre",
+  language: "Language",
+}
+
+// "You've rated down other titles directed by …"
+const ROLE_PHRASE: Record<string, string> = {
+  director: "directed by",
+  writer:   "written by",
+  cinematographer: "shot by",
+}
+
+// The engine filler for "no crew match". The Crew section says it plainly
+// instead, so it never shows as a reason against.
+const NO_CREW_FILLER = /^No crew members from your watch history/
+
+/** "en" → "English". Falls back to the code if the browser can't name it. */
+function languageName(code: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
+function storyValue(dimension: string, value: string): string {
+  const v = value.replace(/_/g, " ")
+  return dimension === "language" ? languageName(v) : v
+}
 
 export function WhyPanel({ result }: { result: RecommendationResult }) {
   const p = result.reason_payload
@@ -219,14 +256,14 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
     return () => cancelAnimationFrame(id)
   }, [])
 
-  // crew_matches carries every known crew member with a SIGNED affinity. A
-  // rated-down director is a reason against, not a match: list them apart, and
-  // keep the bar at 0 or more (a negative width/percent rendered as nonsense).
+  // crew_matches carries every known crew member with a SIGNED affinity. The
+  // ones you like are the Crew list; a rated-down one is a reason against.
   const likedCrew = p.crew_matches.filter(m => m.affinity_score > 0)
   const dislikedCrew = p.crew_matches.filter(m => m.affinity_score < 0)
-  const crewScore = p.crew_matches.length > 0
+  // No one you follow → an empty Crew bar, so it agrees with the line below it.
+  const crewScore = likedCrew.length > 0
     ? Math.max(0, p.crew_matches.reduce((s, m) => s + m.affinity_score, 0) / p.crew_matches.length)
-    : result.composite_score * 0.8
+    : 0
 
   const ratingsScore = p.external_ratings.length > 0
     ? p.external_ratings.reduce((s, r) => s + r.score, 0) / p.external_ratings.length
@@ -241,95 +278,75 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
   }
 
   // composite_score 0 is "no match claim": a cold-start pick (popular titles
-  // served under 15 ratings) or a title saved from the taste games. A fake
-  // breakdown of a score that doesn't exist is exactly the kind of claim the
-  // games were built to avoid — say what the card is instead. The heading is
-  // safe: this panel only renders from the engine's cached batch (the explain
-  // route 404s otherwise), and the only 0-score results in that cache are
-  // cold-start picks; game saves never reach it.
+  // served under 15 ratings). A breakdown of a score that doesn't exist would
+  // be a made-up claim, so it's left out; the written "why" says what it is.
   const noClaim = !(result.composite_score > 0)
+
+  // One line per dimension, the title's own value, first one wins.
+  const story: { label: string; value: string }[] = []
+  for (const dim of Object.keys(STORY_LABELS)) {
+    const d = p.dimension_matches.find(m => m.dimension === dim)
+    if (d?.title_value) story.push({ label: STORY_LABELS[dim], value: storyValue(dim, d.title_value) })
+  }
+
+  const against = [
+    ...dislikedCrew.map(m => `You’ve rated down other titles ${ROLE_PHRASE[m.role.toLowerCase()] ?? "with"} ${m.name}.`),
+    ...p.negative_signals.filter(s => !NO_CREW_FILLER.test(s)),
+  ]
 
   return (
     <div className={styles.whyPanel}>
-      {noClaim ? (
-        <div className={styles.whySection}>
-          <div className={styles.whySectionLabel}>Popular pick</div>
-          <div className={styles.whyText}>{result.explanation}</div>
-        </div>
-      ) : (
       <div className={styles.whySection}>
-        <div className={styles.whySectionLabel}>Score breakdown</div>
-        {SCORE_SEGMENTS.map(seg => (
-          <div key={seg.key} className={styles.scoreRow}>
-            <div className={styles.scoreLabel}>
-              <span>{seg.label}</span>
-              <span className={styles.scoreWeight}>{seg.weight}%</span>
-            </div>
-            <div className={styles.scoreTrack}>
-              <div className={styles.scoreFill} style={{ width: grown ? `${scores[seg.key] * 100}%` : 0 }} />
-            </div>
-            <span className={styles.scoreNum}>{Math.round(scores[seg.key] * 100)}</span>
-          </div>
-        ))}
+        <div className={styles.whySectionLabel}>Why</div>
+        <div className={styles.whyText}><Emphasis text={result.explanation} /></div>
       </div>
-      )}
 
-      {likedCrew.length > 0 && (
+      {!noClaim && (
         <div className={styles.whySection}>
-          <div className={styles.whySectionLabel}>Crew in your fingerprint</div>
-          {likedCrew.map((m, i) => (
-            <div key={i} className={styles.crewRow}>
-              <div className={styles.crewInfo}>
-                <span className={styles.crewName}>{m.name}</span>
-                <span className={styles.crewRole}>{m.role}</span>
+          <div className={styles.whySectionLabel}>Score breakdown</div>
+          {SCORE_SEGMENTS.map(seg => (
+            <div key={seg.key} className={styles.scoreRow}>
+              <div className={styles.scoreLabel}>{seg.label}</div>
+              <div className={styles.scoreTrack}>
+                <div className={styles.scoreFill} style={{ width: grown ? `${Math.min(1, scores[seg.key]) * 100}%` : 0 }} />
               </div>
-              <div className={styles.crewTrack}>
-                <div className={styles.crewFill} style={{ width: grown ? `${m.affinity_score * 100}%` : 0 }} />
-              </div>
-              <span className={styles.crewPct}>{Math.round(m.affinity_score * 100)}%</span>
             </div>
           ))}
         </div>
       )}
 
-      {dislikedCrew.length > 0 && (
+      {story.length > 0 && (
         <div className={styles.whySection}>
-          <div className={styles.whySectionLabel}>Crew you&apos;ve rated down</div>
-          {dislikedCrew.map((m, i) => (
-            <div key={i} className={styles.crewRow}>
-              <div className={styles.crewInfo}>
-                <span className={styles.crewName}>{m.name}</span>
-                <span className={styles.crewRole}>{m.role}</span>
-              </div>
-              <div className={styles.crewTrack}>
-                <div className={`${styles.crewFill} ${styles.crewFillNeg}`} style={{ width: grown ? `${Math.min(1, -m.affinity_score) * 100}%` : 0 }} />
-              </div>
-              <span className={`${styles.crewPct} ${styles.crewPctNeg}`}>−{Math.round(-m.affinity_score * 100)}%</span>
-            </div>
-          ))}
+          <div className={styles.whySectionLabel}>What it’s like</div>
+          <dl className={styles.storyList}>
+            {story.map(s => (
+              <Fragment key={s.label}>
+                <dt className={styles.storyLabel}>{s.label}:</dt>
+                <dd className={styles.storyValue}>{s.value}</dd>
+              </Fragment>
+            ))}
+          </dl>
         </div>
       )}
 
-      {p.dimension_matches.length > 0 && (
-        <div className={styles.whySection}>
-          <div className={styles.whySectionLabel}>Narrative alignment</div>
-          {p.dimension_matches.map((d, i) => (
-            <div key={i} className={styles.dimRow}>
-              <span className={styles.dimName}>{d.dimension}</span>
-              <span className={styles.dimArrow}>
-                <span className={styles.dimVal}>{d.user_value}</span>
-                <span className={styles.dimSep}><ArrowRight size={20} strokeWidth={1.5} aria-hidden /><span className={styles.srOnly}>to</span></span>
-                <span className={styles.dimVal}>{d.title_value}</span>
-              </span>
+      <div className={styles.whySection}>
+        <div className={styles.whySectionLabel}>Crew</div>
+        {likedCrew.length > 0 ? (
+          likedCrew.map((m, i) => (
+            <div key={i} className={styles.crewInfo}>
+              <span className={styles.crewName}>{m.name}</span>
+              <span className={styles.crewRole}>{m.role}</span>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        ) : (
+          <div className={`${styles.whyText} ${styles.whyTextMuted}`}>No one you follow is in this one.</div>
+        )}
+      </div>
 
-      {p.negative_signals.length > 0 && (
+      {against.length > 0 && (
         <div className={styles.whySection}>
           <div className={styles.whySectionLabelWarn}>Doesn&apos;t quite fit</div>
-          {p.negative_signals.map((s, i) => (
+          {against.map((s, i) => (
             <div key={i} className={styles.negRow}>
               <span className={styles.negIcon}><TriangleAlert size={20} strokeWidth={1.5} aria-hidden /></span>
               <span>{s}</span>
@@ -438,7 +455,7 @@ export default function RecCard({ result, onFeedback }: RecCardProps) {
           {cardState === "idle" && (
             <>
               <div className={styles.recWhy}>
-                <span className={styles.whyEyebrow}>FINGERPRINT</span>
+                <span className={styles.whyEyebrow}>Why</span>
                 <span><Emphasis text={result.explanation} /></span>
               </div>
 

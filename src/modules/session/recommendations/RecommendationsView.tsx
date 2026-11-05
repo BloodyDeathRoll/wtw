@@ -16,6 +16,7 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  type TouchEvent as ReactTouchEvent,
 } from "react";
 import type {
   FeedbackRating,
@@ -148,28 +149,6 @@ function sortEntries(entries: WatchlistEntry[], key: SortKey): WatchlistEntry[] 
         a.rec.title.localeCompare(b.rec.title, undefined, { sensitivity: "base" }),
       );
   }
-}
-
-/**
- * Streaming service — brand icon + name only, under the year/runtime/rating
- * meta on every card (feed, watchlist, and the Why detail). Hidden
- * entirely when `where` is null (never checked, or not streaming in this
- * region), so no empty affordance. See migration 0017 and grow-catalog.mts §3c.
- *
- * ⚠️ The "via JustWatch" eyebrow was removed 2026-08-29 at the user's request.
- * TMDB sources this data from JustWatch and its terms require the attribution
- * to be visible wherever availability is shown — it needs to reappear
- * somewhere (a footer or an about/legal line) before this ships publicly.
- */
-function WherePill({ where }: { where: string | null }) {
-  if (!where) return null;
-  const { key, label } = canonicalProvider(where);
-  return (
-    <div className={styles.wherePill}>
-      <ProviderIcon providerKey={key} className={styles.whereIcon} />
-      <span>{label}</span>
-    </div>
-  );
 }
 
 // "Both" ('all') mixes movies and series in one batch — the word the taste
@@ -637,20 +616,7 @@ export default function RecommendationsView({
       </div>
 
       {detail && (
-        <WhyDetailOverlay
-          rec={detail}
-          rated={feedbackGiven[detail.id]}
-          saved={saved.has(detail.id)}
-          onToggleWatchlist={toggleWatchlist}
-          onFeedback={handleFeedback}
-          onRemove={(r) => {
-            setDetail(null);
-            handleRemove(r);
-          }}
-          onClose={() => setDetail(null)}
-          onShare={(r) => void shareTitle(r, sharerName)}
-          headerRight={headerRight}
-        />
+        <WhyDetailOverlay rec={detail} onClose={() => setDetail(null)} />
       )}
     </div>
   );
@@ -898,7 +864,14 @@ function FeedCard({
   );
 }
 
-/** Streaming service as a glass pill on the poster. Hidden when unknown. */
+/**
+ * Streaming service as a glass pill on the poster. Hidden when unknown.
+ *
+ * ⚠️ The "via JustWatch" eyebrow was removed 2026-08-29 at the user's request.
+ * TMDB sources this data from JustWatch and its terms require the attribution
+ * to be visible wherever availability is shown — it needs to reappear
+ * somewhere (a footer or an about/legal line) before this ships publicly.
+ */
 function WhereBadge({ where }: { where: string | null }) {
   if (!where) return null;
   const { key, label } = canonicalProvider(where);
@@ -965,43 +938,6 @@ function MatchRing({ match, className }: { match: number; className?: string }) 
   );
 }
 
-/** Provider + trailer row, then the Why pill + watchlist CTA row. */
-function CtaBlock({
-  rec,
-  onWhy,
-  saved,
-  onToggleWatchlist,
-}: {
-  rec: Recommendation;
-  /** Omitted on the Why detail itself — the CTA spans the row instead. */
-  onWhy?: (rec: Recommendation) => void;
-  saved: boolean;
-  onToggleWatchlist: (rec: Recommendation) => void;
-}) {
-  return (
-    <div className={styles.ctaBlock}>
-      <div className={styles.providerRow}>
-        <WherePill where={rec.where} />
-        <TrailerButton rec={rec} />
-      </div>
-      <div className={styles.ctaRow}>
-        {onWhy && (
-          <button
-            type="button"
-            className={styles.whyPill}
-            onClick={() => onWhy(rec)}
-            aria-label={`Why we picked ${rec.title}`}
-          >
-            <span aria-hidden>🤔</span>
-            <span>Why ?</span>
-          </button>
-        )}
-        <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} />
-      </div>
-    </div>
-  );
-}
-
 // The card's primary CTA — yellow-tinted pill, heavier than the "Why ?" pill
 // it sits across from. Toggles: saved cards offer removal instead.
 function WatchlistButton({
@@ -1033,29 +969,6 @@ function WatchlistButton({
         aria-hidden
       />
       <span>{label}</span>
-    </button>
-  );
-}
-
-// "Play Trailer ▶" pill. Disabled (greyed, "No trailer") when no trailer has
-// been ingested for the title.
-function TrailerButton({ rec }: { rec: Recommendation }) {
-  const hasTrailer = Boolean(rec.trailer_url);
-  return (
-    <button
-      type="button"
-      className={styles.playBtn}
-      disabled={!hasTrailer}
-      onClick={
-        hasTrailer
-          ? () => window.open(rec.trailer_url!, "_blank", "noopener,noreferrer")
-          : undefined
-      }
-      aria-label={hasTrailer ? `Play ${rec.title} trailer` : "Trailer unavailable"}
-      title={hasTrailer ? "Play trailer" : "Trailer unavailable"}
-    >
-      <span>{hasTrailer ? "Play Trailer" : "No trailer"}</span>
-      <Play size={16} fill="currentColor" strokeWidth={0} className={styles.playIcon} aria-hidden />
     </button>
   );
 }
@@ -1182,30 +1095,21 @@ function toResult(data: ExplainData, rec: Recommendation): RecommendationResult 
   };
 }
 
-// Detail overlay — serves the reason_payload from the on-device cache, or
-// fetches it from the engine cache (fingerprint loader while it lands) and
-// stores it locally. Renders the full breakdown over the poster: data pinned
-// to the top, the four reactions, and the always-on WhyPanel.
+// "Why it's a match" — a sheet that slides up over the card (backlog
+// 2026-11-04, mocks in docs/prototypes/why-match). Only the title, a little
+// metadata and the why: the card's buttons, match ring and streaming service
+// stay on the card underneath. Closes with the X, a swipe down, a tap on the
+// dark layer, Escape or the phone's back button. Serves the reason_payload
+// from the on-device cache, or fetches it from the engine cache.
+const SHEET_EXIT_MS = 220;
+const SWIPE_CLOSE_PX = 90;
+
 function WhyDetailOverlay({
   rec,
-  rated,
-  saved,
-  onToggleWatchlist,
-  onFeedback,
-  onRemove,
   onClose,
-  onShare,
-  headerRight,
 }: {
   rec: Recommendation;
-  rated: WatchlistRating | undefined;
-  saved: boolean;
-  onToggleWatchlist: (rec: Recommendation) => void;
-  onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
-  onRemove: (rec: Recommendation) => void;
   onClose: () => void;
-  onShare: (rec: Recommendation) => void;
-  headerRight?: ReactNode;
 }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
@@ -1271,94 +1175,126 @@ function WhyDetailOverlay({
     };
   }, [rec]);
 
-  // Escape closes the detail.
+  // Slide down, then unmount. Every way out ends here.
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  const dismiss = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setClosing(true);
+    window.setTimeout(() => onCloseRef.current(), SHEET_EXIT_MS);
+  }, []);
+
+  // The phone's back button closes the sheet, not the page: opening adds a
+  // history entry for the same address, and going back from it closes.
+  useEffect(() => {
+    if (!window.history.state?.wtwWhy) {
+      window.history.pushState({ ...window.history.state, wtwWhy: true }, "", window.location.href);
+    }
+    const onPop = () => dismiss();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [dismiss]);
+
+  // The X, the dark layer, Escape and a swipe: step back over our own history
+  // entry (that fires popstate → dismiss), or just close if it's gone.
+  const close = useCallback(() => {
+    if (window.history.state?.wtwWhy) window.history.back();
+    else dismiss();
+  }, [dismiss]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
+
+  // Swipe down to close: from the top of the sheet always, from the content
+  // only once it's scrolled to the top (otherwise the swipe scrolls it).
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ y0: number; dy: number } | null>(null);
+  // Once the content scrolls, a hairline under the title keeps it from
+  // running straight into the year/length line.
+  const [scrolled, setScrolled] = useState(false);
+  const setOffset = (dy: number, animate: boolean) => {
+    const el = sheetRef.current;
+    if (!el) return;
+    el.style.transition = animate ? "" : "none";
+    el.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
+  };
+  const onTouchStart = (e: ReactTouchEvent) => {
+    const fromBody = bodyRef.current?.contains(e.target as Node);
+    if (fromBody && (bodyRef.current?.scrollTop ?? 0) > 0) return;
+    drag.current = { y0: e.touches[0].clientY, dy: 0 };
+  };
+  const onTouchMove = (e: ReactTouchEvent) => {
+    if (!drag.current) return;
+    const dy = e.touches[0].clientY - drag.current.y0;
+    // Pulling up hands the gesture back to the content's own scroll.
+    if (dy < 0 && drag.current.dy === 0) {
+      drag.current = null;
+      return;
+    }
+    drag.current.dy = Math.max(0, dy);
+    setOffset(drag.current.dy, false);
+  };
+  const onTouchEnd = () => {
+    if (!drag.current) return;
+    const { dy } = drag.current;
+    drag.current = null;
+    setOffset(0, true);
+    if (dy > SWIPE_CLOSE_PX) close();
+  };
 
   return (
-    <div
-      className={styles.whyOverlay}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Why we picked ${rec.title}`}
-    >
-      {/* Top bar (Figma 28:3288): back · share · menu. Unpositioned, like
-          every .header — the menu drawer must resolve to the overlay. */}
-      <div className={`${styles.header} ${styles.whyHeader}`}>
-        <button type="button" className={styles.headerBtn} onClick={onClose} aria-label="back">
-          <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
-        </button>
-        <span />
-        <div className={styles.headerRight}>
-          <button type="button" className={styles.headerBtn} onClick={() => onShare(rec)} aria-label={`Share ${rec.title}`}>
-            <ShareIcon size={30} strokeWidth={1.5} />
+    <div className={`${styles.whyLayer} ${closing ? styles.whyClosing : ""}`}>
+      <div className={styles.whyScrim} onClick={close} aria-hidden />
+      <div
+        ref={sheetRef}
+        className={styles.whySheet}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Why ${rec.title} is a match`}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      >
+        <div className={styles.whyGrab} aria-hidden />
+        <div className={`${styles.whySheetHead} ${scrolled ? styles.whySheetHeadScrolled : ""}`}>
+          <div className={styles.cardTitleBlock}>
+            <h2 className={styles.heroTitle}>{rec.title}</h2>
+            <MetaRow rec={rec} />
+          </div>
+          <button type="button" className={styles.headerBtn} onClick={close} aria-label="Close">
+            <X size={26} strokeWidth={1.5} aria-hidden />
           </button>
-          {headerRight}
         </div>
-      </div>
 
-      <div className={styles.whyBody}>
-        {/* Fixed poster background (faded) + gradient into the dark base, per
-            Figma 28:3288 — data sits on top, no per-block scrims needed. */}
-        {rec.poster_url && (
-          <div
-            className={styles.heroBg}
-            style={{ backgroundImage: `url(${rec.poster_url})` }}
-            aria-hidden
-          />
-        )}
-        <div className={styles.heroScrim} aria-hidden />
-
-        {/* Scrollable content column over the fixed background. Clicking the
-            empty area (outside the content) closes. */}
-        <div className={styles.heroScroll} onClick={onClose}>
-          {status === "loading" ? (
-            // Centred in the whole overlay (Figma 28:3112 "taste loading").
+        <div
+          ref={bodyRef}
+          className={styles.whySheetBody}
+          onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)}
+        >
+          {status === "loading" && (
             <div className={styles.whyLoading}>
               <span className={styles.loadingEyebrow}>Reading your taste</span>
               <FingerprintLoader size={66} />
             </div>
-          ) : (
-          <div className={styles.heroInner} onClick={(e) => e.stopPropagation()}>
-            {status === "error" && (
-              <div className={styles.whyError}>
-                <span className={styles.error}>{errMsg}</span>
-              </div>
-            )}
-            {status === "ready" && result && (
-              <div className={styles.heroData}>
-                <div className={styles.heroRingRow}>
-                  <MatchRing match={rec.match} />
-                </div>
-                <div className={styles.cardTitleBlock}>
-                  <h2 className={styles.heroTitle}>{rec.title}</h2>
-                  <MetaRow rec={rec} />
-                </div>
-                <CtaBlock
-                  rec={rec}
-                  saved={saved}
-                  onToggleWatchlist={onToggleWatchlist}
-                />
-                <div className={styles.heroFingerprint}>
-                  <span className={styles.reasonEyebrow}>FINGERPRINT</span>
-                  <span><Emphasis text={result.explanation} /></span>
-                </div>
-                <FeedbackRow
-                  rec={rec}
-                  rated={rated}
-                  onFeedback={onFeedback}
-                  onRemove={onRemove}
-                />
-                <WhyPanel result={result} />
-              </div>
-            )}
-          </div>
           )}
+          {status === "error" && (
+            <div className={styles.whyError}>
+              <span className={styles.error}>{errMsg}</span>
+            </div>
+          )}
+          {status === "ready" && result && <WhyPanel result={result} />}
         </div>
       </div>
     </div>

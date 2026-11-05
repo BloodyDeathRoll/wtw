@@ -128,7 +128,7 @@ function PickCard({ ctl, r, match, onWhy, rated, onReact }: { ctl: Ctl; r: Rec; 
           <ShareButton ctl={ctl} t={t} />
         </div>
         <div className={styles.cardReason}>
-          <span className={styles.reasonEyebrow}>FINGERPRINT</span>
+          <span className={styles.reasonEyebrow}>Why</span>
           <span>{recReason(ctl.S, r)}</span>
         </div>
       </div>

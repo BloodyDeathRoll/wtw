@@ -861,7 +861,100 @@
   display: block;
   opacity: 0.65;
 }
-/* ─── "Why this pick?" detail overlay (confined to the phone frame) ─── */
+/* ─── "Why it's a match": a sheet over the card (confined to the phone frame).
+   Mocks: docs/prototypes/why-match. ─── */
+.whyLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  /* the feed's tokens live on .view; the sheet's ★ and text need them too */
+  --rv-white-70: rgba(255, 255, 255, 0.7);
+  --rv-yellow: #ffa900;
+}
+/* The page underneath goes dark */
+.whyScrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  animation: whyFadeIn 0.25s var(--ease-out) both;
+}
+/* Solid dark, no poster behind it: nothing busy shows through */
+.whySheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 44px;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--rv-dark-50, #161614);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  transition: transform 0.25s var(--ease-drawer);
+  animation: whySheetUp 0.32s var(--ease-drawer) both;
+}
+@keyframes whySheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+/* Leaving: slide back down while the dark layer fades */
+.whyClosing .whySheet {
+  animation: whySheetDown 0.22s var(--ease-out) both;
+}
+.whyClosing .whyScrim {
+  animation: whyFadeOut 0.22s var(--ease-out) both;
+}
+@keyframes whySheetDown {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+@keyframes whyFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .whySheet,
+  .whyClosing .whySheet {
+    animation: none;
+  }
+}
+.whyGrab {
+  flex: none;
+  width: 36px;
+  height: 4px;
+  margin: 8px auto 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.28);
+}
+/* Title + meta, with the X at the right */
+.whySheetHead {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 10px 12px 20px;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+.whySheetHeadScrolled {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+.whySheetHead .cardTitleBlock {
+  padding-top: 8px;
+}
+/* The content scrolls inside the sheet */
+.whySheetBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 20px 40px;
+}
+/* Old games-side picks sheet (src/app/play/components/Picks.tsx) — nothing
+   opens it anymore; kept until that screen is removed. */
 .whyOverlay {
   position: absolute;
   inset: 0;
@@ -875,16 +968,6 @@
 @keyframes whyFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
-}
-.whyHeader {
-  background: #000;
-}
-/* Poster, scrim and scrolling content live under the top bar. */
-.whyBody {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 /* Poster background, faded to 20% — stays put while .heroScroll scrolls. */
 .heroBg {
