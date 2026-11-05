@@ -101,6 +101,9 @@ interface Props {
    * list shows a card asking them to finish (2026-10-20). Tapping it opens the games.
    */
   onCalibrate?: () => void;
+  /** The recs are still being built (Picks tapped): show the loader under the
+   *  header and hold the first fetch until the build lands. */
+  building?: boolean;
 }
 
 /** One calibration nudge per this many recommendations (feed). */
@@ -234,6 +237,7 @@ export default function RecommendationsView({
   onBrowse,
   headerRight,
   onCalibrate,
+  building = false,
 }: Props) {
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -372,11 +376,11 @@ export default function RecommendationsView({
       ),
     );
     watchlistRef.current = sortEntries(entries, sortKey).map((e) => e.rec);
-    void loadMore();
+    if (!building) void loadMore();
     // sortKey only changes in watchlist mode (the control renders nowhere
     // else); re-running here re-pages the list from the top in the new order.
     // hydratedAt bumps when the server's watchlist lands after mount.
-  }, [contentType, loadMore, sortKey, hydratedAt]);
+  }, [contentType, loadMore, sortKey, hydratedAt, building]);
 
   // "Find more": rebuild the fingerprint (feedback so far included) and
   // regenerate recs server-side, then APPEND the fresh batch — existing cards
@@ -592,7 +596,7 @@ export default function RecommendationsView({
       <div className={`${styles.content} ${sortOpen ? styles.contentDimmed : ""}`}>
         <Feed
           recs={recs}
-          loading={loading}
+          loading={loading || building}
           hasMore={hasMore}
           error={error}
           feedbackGiven={feedbackGiven}
@@ -696,15 +700,13 @@ function Feed({
     return () => cancelAnimationFrame(id);
   }, [refreshing]);
 
-  // First page still loading — same centred state as the chat's
-  // "Reading your taste" screen (Figma 24:1578), not a bare "Loading more…".
+  // First page still loading (or the recs still being built) — a centred
+  // state (Figma 24:1578), not a bare "Loading more…".
   if (recs.length === 0 && loading && !refreshing) {
     return (
       <div className={styles.initialLoading}>
-        <span className={styles.loadingEyebrow}>Reading your taste</span>
-        <span className={styles.loadingTitle}>
-          Updating your fingerprint and finding matches from what you&rsquo;ve told me
-        </span>
+        <span className={styles.loadingEyebrow}>Reading your fingerprint</span>
+        <span className={styles.loadingTitle}>Finding matches</span>
         <FingerprintLoader size={66} />
       </div>
     );

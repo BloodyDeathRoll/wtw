@@ -44,7 +44,6 @@ import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
 import IntroVoice from "../voice/IntroVoice";
 import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from "../voice/intro-copy";
-import { FingerprintLoader } from "./FingerprintLoader";
 import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
@@ -770,23 +769,23 @@ export default function WTWApp({
         return;
       }
       setBuildingRecs(true);
+      setStage("recommendations");
       try {
         await warmPromiseRef.current;
       } finally {
         setBuildingRecs(false);
-        setStage("recommendations");
       }
       return;
     }
 
     // New chat/voice content → full session-end (analyze + merge + generate).
     setBuildingRecs(true);
+    setStage("recommendations");
     try {
       await endSessionAndGenerate();
       chattedThisLoadRef.current = false; // transcript consumed — next tap is instant
     } finally {
       setBuildingRecs(false);
-      setStage("recommendations");
     }
   }
 
@@ -902,18 +901,7 @@ export default function WTWApp({
 
   return (
     <AppShell>
-      {buildingRecs ? (
-        <div className={styles.shell}>
-          <div className={styles.readingTaste}>
-            <p className={styles.readingTasteTitle}>Reading your taste</p>
-            <p className={styles.readingTasteBody}>
-              Updating your fingerprint and finding matches from what you&rsquo;ve told me
-            </p>
-            {/* Figma 160 → 66px. */}
-            <FingerprintLoader size={66} />
-          </div>
-        </div>
-      ) : stage === "intro" ? (
+      {stage === "intro" ? (
         <IntroVoice
           text={GAMES_INTRO_MESSAGE}
           src={GAMES_INTRO_AUDIO_SRC}
@@ -970,6 +958,7 @@ export default function WTWApp({
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
             headerRight={appMenu}
+            building={buildingRecs}
             onCalibrate={calibrationNudge ? () => leaveTo("/play") : undefined}
           />
         </div>
