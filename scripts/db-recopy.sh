@@ -37,6 +37,14 @@ echo "3 restore"
 $PG sh -c 'pg_restore --dbname="$NEW" --data-only --no-owner --exit-on-error' < "$D/data.dump"
 echo "4 trigger + analyze"
 $PG sh -c 'psql "$NEW" -v ON_ERROR_STOP=1 -q -c "create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();" -c "analyze"' 2> >(grep -v WARNING >&2)
+# The TRUNCATE in step 2 rebuilt every ivfflat index on an EMPTY table, so its
+# centroids are garbage and all the rows reloaded in step 3 fell into a few
+# lists: a probe then reads the whole index (seen 2026-11-05: 93 MB per query,
+# >8 s, "Find more" timing out). Rebuild them now that the rows are there.
+echo "4b rebuild ivfflat indexes"
+for idx in $($PG sh -c 'psql "$NEW" -tA -c "$0"' "select indexname from pg_indexes where schemaname='public' and indexdef ilike '%ivfflat%'"); do
+  $PG sh -c 'psql "$NEW" -v ON_ERROR_STOP=1 -q -c "$0" -c "$1"' "set maintenance_work_mem = '256MB'" "reindex index concurrently public.$idx" && echo "   $idx"
+done
 trap 'rm -rf "$D"' EXIT
 
 echo "5 exact counts old vs new"
