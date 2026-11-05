@@ -188,9 +188,17 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const offsetParam = url.searchParams.get("offset");
-  const offset = Number.isFinite(Number(offsetParam))
+  const requestedOffset = Number.isFinite(Number(offsetParam))
     ? Math.max(0, Number(offsetParam))
     : 0;
+  // The taste_version the client's offset belongs to. The live batch is
+  // replaced under a scrolling user (refresh-batch.ts, every 5 ratings), and an
+  // offset carried into the replacement skipped its top — a user at offset 42
+  // was handed positions 42–49 of a batch whose 42 best matches they never saw
+  // (seen live 2026-11-05). When the version moved, the walk restarts at 0; the
+  // client dedups what is already on screen.
+  const versionParam = url.searchParams.get("v");
+  let offset = requestedOffset;
   // Movies/Series. A GENERATION input now (2026-08-29): the batch is built
   // for this type and cached under it, so a series batch is 50 series. It
   // used to be a read-time filter over a type-blind batch, which left ~1
@@ -282,6 +290,8 @@ export async function GET(req: Request) {
   // UI shape. Used for both the warm cache and a freshly regenerated list so
   // their handling can't drift apart.
   async function servePage(recs: RecommendationResult[], source: string) {
+    const taste_version = dna?.metadata.taste_version ?? null;
+    if (versionParam != null && String(taste_version) !== versionParam) offset = 0;
     // The batch was generated for this content type, so this only guards a
     // cache entry written before the split.
     const wanted = titleTypeFor(contentType);
@@ -339,7 +349,7 @@ export async function GET(req: Request) {
         if (error) console.warn("[recommendations/generate] record_served_titles failed (non-fatal):", error.message);
       });
     }
-    return NextResponse.json({ recommendations: uiRecs, next_offset: nextOffset, has_more: hasMore, source });
+    return NextResponse.json({ recommendations: uiRecs, next_offset: nextOffset, has_more: hasMore, source, taste_version });
   }
 
   if (cachedRecs && cachedRecs.length > 0) {
