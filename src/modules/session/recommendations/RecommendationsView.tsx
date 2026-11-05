@@ -380,6 +380,8 @@ export default function RecommendationsView({
     // sortKey only changes in watchlist mode (the control renders nowhere
     // else); re-running here re-pages the list from the top in the new order.
     // hydratedAt bumps when the server's watchlist lands after mount.
+    // building: a Picks tap empties the list now and fetches once the build
+    // lands; re-seeding alongside is redundant but cheap.
   }, [contentType, loadMore, sortKey, hydratedAt, building]);
 
   // "Find more": rebuild the fingerprint (feedback so far included) and
@@ -701,7 +703,7 @@ function Feed({
   }, [refreshing]);
 
   // First page still loading (or the recs still being built) — a centred
-  // state (Figma 24:1578), not a bare "Loading more…".
+  // state, not a bare "Loading more…".
   if (recs.length === 0 && loading && !refreshing) {
     return (
       <div className={styles.initialLoading}>
