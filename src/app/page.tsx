@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { getOrCreateActiveConversation } from "@/lib/conversations";
 import { buildWelcomeData } from "@/lib/welcome";
 import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
@@ -17,9 +18,7 @@ export default async function Home({
   searchParams: Promise<{ stage?: string; from?: string }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   // Signed-out visitors get the public homepage in place — no redirect.
   // Google's site-verification crawler fetches the root URL anonymously and

@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { createServiceClient } from '@/lib/supabase/service'
 import { endConversation } from '@/lib/conversations'
@@ -44,11 +45,8 @@ const RATE_LIMIT = { scope: 'session-end', perUser: 20, windowSec: 10 * 60 }
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-  if (authError || !user) {
+  const user = await getAuthUser(supabase)
+  if (!user) {
     logAuthFailure('/api/session/end')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -319,6 +317,9 @@ export async function POST(req: NextRequest) {
   //
   // Best-effort: a failure leaves the user in the conversation they are in,
   // which is the old behaviour rather than a broken one.
+  // Inline on purpose (2026-11-05): moving this into after() was tried for
+  // speed and reverted — a message sent right after "Find more" could land in
+  // the conversation still being ended. The response guarantees rotation.
   if (!skipTranscript && !extractionFailed) {
     await endConversation(db, conversationId).catch(err =>
       console.warn('[session/end] conversation rotation failed (non-fatal):', err instanceof Error ? err.message : err),
