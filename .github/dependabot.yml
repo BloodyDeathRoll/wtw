@@ -1,12 +1,19 @@
 # Dependency updates (swarm audit 2026-09-11, RULES C2). npm 11 has no
 # min-release-age, so the 7-day cooldown lives here instead: no update PR for
 # a release younger than a week.
+#
+# ONE check a week, ONE PR per check (Shahar, 2026-11-05). Every minor and
+# patch bump lands in a single grouped PR; a major gets its own PR because it
+# needs a human look. Dependabot also runs the moment this file changes on
+# main — so edit it rarely: on 2026-11-05 two edits produced two extra sets
+# of five PRs within one day.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+      day: monday
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
@@ -16,18 +23,33 @@ updates:
     ignore:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
-    # `ai` and every `@ai-sdk/*` package must move in ONE PR: their types
-    # must come from a single `@ai-sdk/provider` version, and a bump of one
-    # alone fails type-check (#156, #157 on 2026-11-05, fixed by #179).
+    # A dependency joins the first group it matches, so the ai-sdk group comes
+    # first: `ai` and every `@ai-sdk/*` package must move together (their
+    # types must come from a single `@ai-sdk/provider` version; #156, #157,
+    # fixed by #179) — and together even for a major.
     groups:
       ai-sdk:
         patterns:
           - "ai"
           - "@ai-sdk/*"
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
     cooldown:
       default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
