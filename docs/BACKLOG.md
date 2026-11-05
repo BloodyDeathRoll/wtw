@@ -12,7 +12,7 @@ Things we've decided to come back to. Newest first. When one gets picked up, mov
 | 2026-11-05 | **"What it's like" only shows what the engine matched on** | The lines are the title's own values, but only where the engine found something you rate highly: one genre (not all of them), the language only if you've rated others in it, tones only from the five it scores (cynical, warm, dark, comedic, hopeful). A line with no match just doesn't show. Showing every line would need the title's full details passed along with the reason (A2). |
 | 2026-11-05 | **UI: a long title never moves anything else** | When two posters sit side by side, a title that wraps to two lines pushes everything below it down, so the pair stops lining up. Seen in Higher or Lower (the ★ ratings sit at different heights) and Drama Knockout (the "Haven't seen" buttons). Rule: the title area takes the same space whether the title is one line or two, so ratings, years and buttons always line up. Search the whole app for every place this happens (games, feed, Watchlist, Search) and fix them all. |
 | 2026-11-05 | **Search: find a title by what you remember of it** | Describe it instead of naming it: the plot, the ending, an actor, a scene ("the one where the guy relives the same day"), and Search tries to work out what you mean and lists its best guesses. Two ways in, probably both: (1) an AI call reads the description and suggests titles, each checked against TMDB so only real ones show; (2) our catalogue already stores a plot fingerprint for each title (`titles.narrative_embedding`), so the description can be matched against those, but only for our 35k titles. Either means a 1–3s wait, so it's its own mode (a "Describe it" option), not every keystroke. Free-tier AI limits apply. |
-| 2026-11-04 | **Split the card into "Want it?" and "Seen it?", plus a new Seen section** | The X moves next to Add to Watchlist (accept or reject). Loved / Liked / Disliked only rate: the button stays highlighted, the card stays where it was, and the title goes to Seen, a new main section next to Recommendations, Watchlist, Play and Search. Full task: [Seen — task details](#seen--task-details). |
+| 2026-11-04 | **Split the card into "Want it?" and "Seen it?", plus a new Seen section** | The X moves next to Add to Watchlist (accept or reject). Loved / Liked / Disliked only rate: the button stays highlighted, the card stays where it was, and the title goes to Seen: today's **Ratings** page in the menu, reworked (updated 2026-11-05). Full task: [Seen — task details](#seen--task-details). |
 | 2026-11-04 | **Search: adding a title teaches your taste** | Eran decided it should. The MVP only saves the card. Needs the DNA writer (A3) to take a "saved from search" signal. |
 | 2026-11-04 | **Search: match % and "Why it's a match"** | The MVP card has no score. Same missing piece as the shared page's match: the engine scoring one title on request (A2), plus an AI call for the reason (a 1–3s wait, free-tier limits). |
 | 2026-11-04 | **Search: "Seen it? Tell me how it was" on the card** | Left out of the MVP; small once the taste signal above exists. |
@@ -40,7 +40,7 @@ Each card today mixes two different questions in one row, and the X sits in the 
 - **"Want it?":** accept or reject the recommendation. **Add to Watchlist** (large, primary, orange) and a small **X** beside it.
 - **"Seen it?":** rate it. Loved / Liked / Disliked. This only teaches the app your taste and adds the title to **Seen**. It never removes the card.
 
-**Seen** is a new main section in the menu, next to Recommendations, Watchlist, Play and Search. It holds every title you've rated, from anywhere in the app: Recommendations, the Watchlist, Search, the games and the training sessions.
+**Seen** isn't a new section: it's today's **Ratings** page in the main menu, reworked (Eran, 2026-11-05). It holds every title you've rated, from anywhere in the app: Recommendations, the Watchlist, Search, the games and the training sessions.
 
 **Why**
 Today, rating a recommendation turns the card into a grey message ("Loved — weighted strongly into your taste") with no buttons. The X disappears with it, so the card can't be changed or removed, and on the next visit it's quietly gone.
@@ -63,7 +63,14 @@ The X also means two things at once. Disliked means "I watched it and didn't lik
 **What the user sees: everywhere else**
 - **Games and training sessions:** the poster is part of the screen there, so nothing moves or leaves. A rating just adds the title to Seen.
 - **Search:** once search cards get the Seen-it chips (its own backlog row, from the Search PR), those ratings go to Seen too.
-- **The Seen page:** same card look as the Watchlist. Each card shows your reaction as a pressed button. Tap a different reaction to change it.
+
+**What the user sees: the Seen page (today's Ratings page)**
+Today the Ratings page shows a count, four tiles (Loved / Liked / Disliked / Removed), and a list of bare titles you tap to open, over a dimmed random poster. Reworked:
+- **Only rated titles:** Loved, Liked and Disliked. **No Removed**: X'd titles aren't "seen", so they don't show here.
+- **Filter with the same buttons as the "Seen it?" row** (Loved / Liked / Disliked, same look). None selected = show everything. Tap one = show only those.
+- **Each title shows its poster** plus a few details (for example year, movie or series, length). The exact format is still to be brainstormed: see the open questions.
+- **Change a reaction** right there, the same way as on the card.
+- **Search inside the page** when there are many titles.
 
 **Rules**
 - Nothing you've rated or X'd is ever *suggested again* in a new batch.
@@ -76,7 +83,12 @@ The X also means two things at once. Disliked means "I watched it and didn't lik
 - **The copy:** "Saved to Seen" is a draft. Same line for all three reactions, or slightly different for Disliked?
 - **Un-rating:** does tapping the highlighted button again clear the rating?
 - **Removing from Seen:** can you remove a title from Seen, and if so, does that forget the rating entirely, so your taste updates as if you never rated it?
-- **Filters on Seen:** pills like WhatsApp's (All / Loved / Liked / Disliked)? Sort newest first?
+- **Name:** keep "Ratings" in the menu, or rename it "Seen" to match the "Saved to Seen" note on the card? (Claude leans "Seen".)
+- **Display format (to brainstorm):** list rows with a small poster, or a poster grid? Which details: year, movie or series, length, the date you rated it?
+- **Action buttons:** are the three reaction buttons always visible on each title, or only after a tap (as today)? Anything else to do from here, like Add to Watchlist or share?
+- **Filters:** can you select more than one at a time (Loved + Liked)? Keep today's sort (date added, title)?
+- **Search:** from how many titles does the search box appear, or is it always there?
+- **Restoring X'd titles:** today the Removed tile has a Restore button that lets a title be recommended again. With Removed gone from this page, where does Restore live, or is it dropped?
 - **Old ratings:** does Seen start with everything already rated before it exists? (Likely yes, if the data allows it.)
 - **Empty state:** what Seen says before you've rated anything.
 
@@ -84,16 +96,16 @@ The X also means two things at once. Disliked means "I watched it and didn't lik
 - **Keeping a rated card in place:** today every rating changes the taste profile, which rebuilds the list, and the rebuild drops anything rated (the generate route filters out every rated title, and step 1 of the engine never picks them). Keep a per-user list of "rated, still on the feed" titles with their position, and put them back at that position when serving. New batches still never pick rated titles. The X clears the title from that list and adds it to the removed list.
 - **X as a signal:** today the X only writes to the removed list. Add a light negative taste signal: an engine change, so agree it with the engine owner.
 - **Changing a reaction** must **update** the existing rating, not add a second one. Check how the feedback route handles that today.
-- **Seen data:** ratings are already stored as taste signals, so Seen can probably be built from them. Check that they can be read back as a list with posters.
-- **Areas touched:** the card and the Recommendations / Watchlist screen, the main menu, how the recommendations list is served, a new page under `src/app` (shared, so coordinate first), and the games and training sessions (only to add to Seen, with no change on screen).
-- **Process:** one JPEG mock per state before building: the new card with both levels, the card after rating (pressed button and new copy), the card leaving on X, the Watchlist card, the Seen page, Seen when empty, and the menu with Seen in it.
+- **Seen data:** the Ratings page already reads your ratings (`RatingsView` in `src/modules/session/ratings/RatingsView.tsx`, from `GET /api/recommendations/ratings`) and can change a reaction. Check it includes ratings from the games, the training sessions and Search, and that it can return posters.
+- **Areas touched:** the card and the Recommendations / Watchlist screen, the main menu, how the recommendations list is served, the Ratings page, and the games and training sessions (only to add to Seen, with no change on screen).
+- **Process:** one JPEG mock per state before building: the new card with both levels, the card after rating (pressed button and new copy), the card leaving on X, the Watchlist card, the Seen page (no filter, one filter, searching), Seen when empty, and the menu with Seen in it.
 
 **Done when**
 - The card has two clear levels: Add to Watchlist + X, then "Seen it?" with no X.
 - Rating highlights the button, changes the prompt line, adds the title to Seen, and leaves the card in place, also after coming back later.
 - The X removes the card for good and counts as a light "not for me".
 - On the Watchlist, rating only adds to Seen. Only "Remove from Watchlist" removes.
-- Seen is in the main menu, lists every rated title with its reaction, and the reaction can be changed there.
+- The Ratings page becomes Seen: only rated titles, each with its poster and reaction, filtered with the "Seen it?" buttons, searchable, and the reaction can be changed there.
 - Nothing leaves Recommendations or the Watchlist except by the X or "Remove from Watchlist".
 
 ### One open conversation per user — a unique index
