@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import AppShell from "@/modules/session/components/AppShell";
 import SearchView from "./SearchView";
 
@@ -13,7 +14,7 @@ export const metadata = { title: "Search — WTW" };
  */
 export default async function SearchPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) redirect("/login");
 
   const appUser = {

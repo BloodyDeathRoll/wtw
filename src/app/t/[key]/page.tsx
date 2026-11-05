@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { loadPlay, progressOf } from "../../play/lib/server";
 import { loadSharedTitle } from "./data";
 import SharedTitleView from "./SharedTitleView";
@@ -63,9 +64,7 @@ export default async function SharedTitlePage({ params, searchParams }: Props) {
   if (!shared) notFound();
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   // A brand-new account (back from sign-in, genres never picked) is sent on to
   // the taste games after the save, instead of to the feed.
   const newUser = user ? !progressOf((await loadPlay(supabase, user.id)).state).genresDone : false;

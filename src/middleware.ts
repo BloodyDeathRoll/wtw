@@ -76,8 +76,11 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh the session without redirecting — keeps the token alive
-  await supabase.auth.getUser();
+  // Refresh the session without redirecting — keeps the token alive.
+  // getClaims verifies the JWT locally (JWKS cached per instance) and still
+  // refreshes an expired session; getUser() was a ~300 ms round trip to
+  // Supabase Auth in Sydney on EVERY request (docs/speed-plan.md, part B).
+  await supabase.auth.getClaims();
 
   supabaseResponse.headers.set("Content-Security-Policy-Report-Only", csp);
   return supabaseResponse;

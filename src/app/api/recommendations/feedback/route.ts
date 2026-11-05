@@ -38,6 +38,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { precomputeNextBatch } from '@/modules/engine/pipeline/precompute'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isMediaType, recordMatches, titleKey, type MediaType } from '@/lib/title-key'
@@ -148,9 +149,9 @@ function applyFeedbackToDNA(dna: DNASchema, input: FeedbackInput): boolean {
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
-  if (authError || !user) {
+  if (!user) {
     logAuthFailure('/api/recommendations/feedback')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
