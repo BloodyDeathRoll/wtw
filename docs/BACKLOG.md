@@ -154,7 +154,8 @@ The Taste DNA page is a good idea, but it shows the app's inner workings, not so
    - **A whole group with nothing known is hidden** (e.g. the craft aspects, which only fill in from the deep surveys) rather than a stack of grey bars.
    - **Build note: the app can't tell "unknown" today.** Mood & pace is stored as one number per mood, with no count of how many rated titles carried it, and every rating re-balances the whole group around the middle (`recenterWeights` in `src/modules/dna/lib/update-strand-c.ts`), so a mood you never touched still drifts off 50. Greying needs a small addition: a count per mood, the way genres already keep one (`sample_size`). That's a change to the shared DNA contract (`src/types/dna.ts`). The re-balancing also means the bars are relative within a group ("funny more than dark"), which suits plain bars.
 
-8. **Page title** (Eran, 2026-11-05): personal, along the lines of "My profile" or "My DNA", not "Taste DNA". Claude suggests **"My taste"**. Settle the exact words at mock time.
+8. **Order** (Eran, 2026-11-05): Story traits, Mood & pace, People who pull you in, Rules.
+9. **Page title** (Eran, 2026-11-05): personal, along the lines of "My profile" or "My DNA", not "Taste DNA". Claude suggests **"My taste"**. Settle the exact words at mock time.
 
 **Parked: rethinking rules** (Eran, 2026-11-05: back burner, not part of this task)
 Ideas from the discussion, so they aren't lost:
@@ -168,8 +169,7 @@ Ideas from the discussion, so they aren't lost:
 - **The header** "22 signals · v4 · 11/3/2026" becomes something like "Based on 22 ratings · updated 3 Nov". The footer "Schema v1 · N sessions" goes.
 
 **Open questions**
-- **Overall order:** with the people section below Mood & pace, where do the story traits go: first, or between them?
-- **Open Questions and Stretch Pick Results** (the two sections at the bottom, shown only when there's something in them): keep, reword, or drop?
+- **Open Questions and Stretch Pick Results** (the two sections at the bottom): Eran has never seen them, because they only show once something is in them. Open Questions fill only from chat sessions (the AI notes what to ask next time); Stretch Pick Results only once you've reacted to a deliberate "outside your comfort zone" pick, which starts after 15 ratings. Leave them as they are for now and decide when the chat and stretch picks get their own look.
 
 **Build notes (for whoever picks it up)**
 - **"More of" needs a change to the shared DNA contract** (`src/types/dna.ts`): a "Less of" rule is stored with a strength between 0 and 1, which can only lower a score. Tell all three before changing it, and check the engine applies a boost.
