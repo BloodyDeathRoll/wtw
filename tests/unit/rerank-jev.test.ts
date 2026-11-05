@@ -1,19 +1,44 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { jevNoul, JEV_URL } from '@/lib/jev'
-import { rankByNoul } from '@/modules/engine/pipeline/step4-llm-rerank'
 
-// 2026-11-05: Jev is the first rerank pass. It answers one yes/no question per
-// candidate with a probability; the batch is sorted by it. Anything wrong with
-// the call throws so step 4 can fall through to the Mistral rerank.
+// 2026-11-05: step 4 is a Jev filter. One request asks, per candidate, whether
+// the viewer would dislike it; the sure ones are dropped and the rest keep
+// composite order — the card's % match IS the order. Any Jev failure serves
+// the batch untouched and is logged to Redis for the devs.
+
+const redis = {
+  lpush: vi.fn(async () => 1),
+  ltrim: vi.fn(async () => 'OK'),
+  lrange: vi.fn(async () => [] as unknown[]),
+  get: vi.fn(async () => null as string | null),
+  set: vi.fn(async () => 'OK'),
+}
+vi.mock('@/lib/redis', () => ({ getRedis: () => redis }))
+
+const { jevNoul, JEV_URL, recordJevFailure, jevFailuresSince } = await import('@/lib/jev')
+const { llmRerank, dropDisliked, JEV_DISLIKE_THRESHOLD } = await import('@/modules/engine/pipeline/step4-llm-rerank')
+const { createBlankDNA } = await import('@/modules/dna/blank-dna')
+type ScoredTitle = import('@/modules/engine/types').ScoredTitle
+
+const candidate = (tmdb_id: string, composite_score: number, type: 'movie' | 'tv' = 'movie'): ScoredTitle =>
+  ({
+    title: { tmdb_id, type, title: `T${tmdb_id}`, release_year: 2000, crew: { directors: [] }, genres: [], tone_tags: [] },
+    composite_score,
+  }) as unknown as ScoredTitle
+
+const jevResponse = (answers: Record<string, number>) =>
+  new Response(JSON.stringify({
+    answers: Object.fromEntries(Object.entries(answers).map(([k, noul]) => [k, { type: 'noul', noul }])),
+  }), { status: 200 })
+
+beforeEach(() => {
+  process.env.TYPESAFE_API_KEY = 'test-key'
+  vi.clearAllMocks()
+})
+afterEach(() => { vi.unstubAllGlobals() })
 
 describe('jevNoul', () => {
-  beforeEach(() => { process.env.TYPESAFE_API_KEY = 'test-key' })
-  afterEach(() => { vi.unstubAllGlobals() })
-
   it('sends one noul question per entry and returns name → probability', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-      answers: { 'movie:1': { type: 'noul', noul: 0.81 }, 'tv:2': { type: 'noul', noul: 0.06 } },
-    }), { status: 200 }))
+    const fetchMock = vi.fn(async () => jevResponse({ 'movie:1': 0.81, 'tv:2': 0.06 }))
     vi.stubGlobal('fetch', fetchMock)
 
     const out = await jevNoul('likes crime drama', { 'movie:1': 'Godfather?', 'tv:2': 'anime?' })
@@ -52,10 +77,79 @@ describe('jevNoul', () => {
   })
 })
 
-describe('rankByNoul', () => {
-  it('sorts by probability, keeps composite order on ties, unanswered last', () => {
+describe('dropDisliked', () => {
+  it('drops at or above the threshold, keeps order, keeps the unanswered', () => {
     const items = ['a', 'b', 'c', 'd', 'e']
-    const out = rankByNoul(items, { a: 0.2, b: 0.9, c: 0.2, e: 0.9 }, x => x)
-    expect(out).toEqual(['b', 'e', 'a', 'c', 'd'])
+    const out = dropDisliked(items, { a: 0.1, b: JEV_DISLIKE_THRESHOLD, c: 0.69, e: 0.99 }, x => x)
+    expect(out).toEqual(['a', 'c', 'd'])
+  })
+
+  it('drops nothing when more than half the batch would go', () => {
+    const items = ['a', 'b', 'c', 'd']
+    expect(dropDisliked(items, { a: 0.9, b: 0.9, c: 0.9 }, x => x)).toEqual(items)
+    expect(dropDisliked(items, { a: 0.9, b: 0.9 }, x => x)).toEqual(['c', 'd'])
+  })
+})
+
+describe('llmRerank (step 4)', () => {
+  const dna = createBlankDNA('u1')
+  const batch = [candidate('1', 0.95), candidate('2', 0.94), candidate('3', 0.93), candidate('3', 0.92, 'tv')]
+
+  it('keeps composite order and drops what Jev is sure the viewer would dislike', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jevResponse({ 'movie:2': 0.95, 'tv:3': 0.2 })))
+
+    const out = await llmRerank(batch, dna)
+
+    expect(out.map(s => `${s.title.type}:${s.title.tmdb_id}`)).toEqual(['movie:1', 'movie:3', 'tv:3'])
+    expect(out.map(s => s.composite_score)).toEqual([0.95, 0.93, 0.92])
+    expect(out.every(s => s.groq_rationale === '')).toBe(true)
+    expect(redis.lpush).not.toHaveBeenCalled()
+  })
+
+  it('serves the batch untouched when Jev fails, and records the failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('down', { status: 503 })))
+
+    const out = await llmRerank(batch, dna)
+
+    expect(out.map(s => s.composite_score)).toEqual([0.95, 0.94, 0.93, 0.92])
+    expect(redis.lpush).toHaveBeenCalledTimes(1)
+    const [key, value] = redis.lpush.mock.calls[0] as unknown as [string, string]
+    expect(key).toBe('jev:failures')
+    expect(JSON.parse(value)).toMatchObject({ where: 'rerank', error: expect.stringContaining('503') })
+    expect(redis.ltrim).toHaveBeenCalledWith('jev:failures', 0, 49)
+  })
+
+  it('serves the batch untouched when the key is missing or the request times out', async () => {
+    delete process.env.TYPESAFE_API_KEY
+    expect((await llmRerank(batch, dna)).length).toBe(4)
+
+    process.env.TYPESAFE_API_KEY = 'test-key'
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new DOMException('timed out', 'TimeoutError') }))
+    expect((await llmRerank(batch, dna)).length).toBe(4)
+    expect(redis.lpush).toHaveBeenCalledTimes(2)
+  })
+
+  it('a Redis outage while logging never reaches the caller', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('down', { status: 503 })))
+    redis.lpush.mockRejectedValueOnce(new Error('redis down'))
+    expect((await llmRerank(batch, dna)).length).toBe(4)
+  })
+})
+
+describe('failure log', () => {
+  it('returns only failures newer than `since`, newest first', async () => {
+    redis.lrange.mockResolvedValueOnce([
+      { at: '2026-11-05T12:00:00.000Z', where: 'rerank', error: 'b' },
+      JSON.stringify({ at: '2026-11-05T10:00:00.000Z', where: 'rerank', error: 'a' }),
+    ])
+    const out = await jevFailuresSince('2026-11-05T11:00:00.000Z')
+    expect(out.map(f => f.error)).toEqual(['b'])
+  })
+
+  it('records the message of an Error and the string of anything else', async () => {
+    await recordJevFailure('rerank', new Error('boom'))
+    await recordJevFailure('rerank', 'plain')
+    const errors = redis.lpush.mock.calls.map(c => JSON.parse((c as unknown as [string, string])[1]).error)
+    expect(errors).toEqual(['boom', 'plain'])
   })
 })

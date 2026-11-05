@@ -1,13 +1,18 @@
 // ============================================================
-// WTW — Jev (typesafe.ai System One) client
+// WTW — Jev (typesafe.ai System One) client + failure log
 // ============================================================
 // Jev does not write text. It reads a `state` and answers yes/no
 // ("noul") questions about it with a probability in [0, 1]. One
-// request, many questions — ~0.4s measured live 2026-11-05 for two.
-// Used by the engine's rerank step to score candidates against the
-// viewer's profile. The key is `TYPESAFE_API_KEY`.
+// request, many questions — ~0.4s measured live 2026-11-05 for 50.
+// The engine's step 4 uses it to drop candidates the viewer would
+// dislike. The key is `TYPESAFE_API_KEY`.
+//
+// Every failure is written to Redis so the devs hear about it the next
+// time they open the app (`JevNotice`) or a Claude Code session
+// (`scripts/jev-failures.mts`, run by `.claude/hooks/session-start.sh`).
 
 import { MODELS } from '@/lib/ai-models'
+import { getRedis } from '@/lib/redis'
 
 export const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 
@@ -49,4 +54,50 @@ export async function jevNoul(
     if (typeof answer?.noul === 'number' && Number.isFinite(answer.noul)) out[name] = answer.noul
   }
   return out
+}
+
+// ─────────────────────────────────────────────
+// Failure log
+// ─────────────────────────────────────────────
+
+export interface JevFailure {
+  at: string      // ISO
+  where: string   // which call site, e.g. 'rerank'
+  error: string
+}
+
+const FAILURES_KEY = 'jev:failures'
+const KEEP = 50
+const seenKey = (who: string) => `jev:seen:${who}`
+
+/** Best-effort: a logging failure must never fail the caller. */
+export async function recordJevFailure(where: string, err: unknown): Promise<void> {
+  const failure: JevFailure = {
+    at: new Date().toISOString(),
+    where,
+    error: err instanceof Error ? err.message : String(err),
+  }
+  try {
+    const redis = getRedis()
+    await redis.lpush(FAILURES_KEY, JSON.stringify(failure))
+    await redis.ltrim(FAILURES_KEY, 0, KEEP - 1)
+  } catch (e) {
+    console.warn('[jev] could not record failure:', e instanceof Error ? e.message : e)
+  }
+}
+
+/** Failures newer than `since` (ISO), newest first; all of them when `since` is null. */
+export async function jevFailuresSince(since: string | null): Promise<JevFailure[]> {
+  const rows = await getRedis().lrange<JevFailure | string>(FAILURES_KEY, 0, KEEP - 1)
+  return rows
+    .map(r => (typeof r === 'string' ? (JSON.parse(r) as JevFailure) : r))
+    .filter(f => since === null || f.at > since)
+}
+
+export async function jevSeenAt(who: string): Promise<string | null> {
+  return getRedis().get<string>(seenKey(who))
+}
+
+export async function markJevSeen(who: string): Promise<void> {
+  await getRedis().set(seenKey(who), new Date().toISOString())
 }

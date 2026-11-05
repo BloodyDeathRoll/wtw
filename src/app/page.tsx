@@ -8,6 +8,21 @@ import { loadPlay, progressOf } from "./play/lib/server";
 import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
 import LoginScreen from "./login/LoginScreen";
+import JevNotice from "./components/JevNotice";
+import { isDev } from "@/lib/dev-emails";
+import { jevFailuresSince, jevSeenAt, type JevFailure } from "@/lib/jev";
+
+// Jev failures since this dev last dismissed the notice. Devs only; a Redis
+// problem here must not take the home page down with it.
+async function devJevFailures(email: string | null): Promise<JevFailure[]> {
+  if (!isDev(email)) return [];
+  try {
+    return await jevFailuresSince(await jevSeenAt(email!.toLowerCase()));
+  } catch (err) {
+    console.warn("[home] could not read Jev failures:", err instanceof Error ? err.message : err);
+    return [];
+  }
+}
 
 export default async function Home({
   searchParams,
@@ -60,18 +75,22 @@ export default async function Home({
 
   // Independent — fan out to shave the Groq round-trip off `buildWelcomeData`
   // when it lands during the conversation fetch.
-  const [conversation, welcome, play] = await Promise.all([
+  const [conversation, welcome, play, jevFailures] = await Promise.all([
     getOrCreateActiveConversation(supabase, user.id),
     buildWelcomeData(supabase, user.id, appUser.name, utcOffsetMinutes),
     playLoad,
+    devJevFailures(appUser.email),
   ]);
 
   return (
-    <WTWApp
-      user={appUser}
-      conversation={conversation}
-      welcome={welcome}
-      calibrationNudge={play.skipped}
-    />
+    <>
+      {jevFailures.length > 0 && <JevNotice failures={jevFailures} />}
+      <WTWApp
+        user={appUser}
+        conversation={conversation}
+        welcome={welcome}
+        calibrationNudge={play.skipped}
+      />
+    </>
   );
 }

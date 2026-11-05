@@ -1,0 +1,35 @@
+.banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: #7a2e1d;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.text { flex: 1; min-width: 0; }
+
+.detail {
+  margin-top: 2px;
+  opacity: 0.85;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.dismiss {
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  padding: 4px 10px;
+  font: inherit;
+}
