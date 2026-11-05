@@ -29,10 +29,41 @@ export async function buildWelcomeData(
   utcOffsetMinutes: number | null = null,
 ): Promise<WelcomeData> {
   const signals = await countUserSignals(supabase, userId);
+  return welcomeForSignals(userId, signals, name, utcOffsetMinutes);
+}
+
+/** How long one greeting is reused: the time-of-day wording is right for
+ *  about a quarter of a day, and a fresh Groq call per home load was ~0.7 s. */
+const GREETING_TTL_S = 4 * 60 * 60;
+
+/**
+ * The greeting for a signal count the caller already has (the home page gets
+ * it from `home_bootstrap()`). Cached in Redis per user and quarter of the
+ * user's local day, so a mature user's home page does not wait on Groq on
+ * every load. Cache trouble is never fatal: the greeting is generated anyway.
+ */
+export async function welcomeForSignals(
+  userId: string,
+  signals: number,
+  name: string | null,
+  utcOffsetMinutes: number | null = null,
+): Promise<WelcomeData> {
   if (signals < MATURE_THRESHOLD) {
     return { greeting: null };
   }
+  const localHour = utcOffsetMinutes === null
+    ? null
+    : new Date(Date.now() - utcOffsetMinutes * 60_000).getUTCHours();
+  const key = `greeting:${userId}:${localHour === null ? "any" : Math.floor(localHour / 6)}`;
+  // Lazy: `@/lib/redis` is server-only and not every importer of this file
+  // (play page, tests) wants it loaded.
+  const redis = await import("@/lib/redis").then((m) => m.getRedis()).catch(() => null);
+  if (redis) {
+    const cached = await redis.get<string>(key).catch(() => null);
+    if (cached) return { greeting: cached };
+  }
   const greeting = await generateGreeting(name, utcOffsetMinutes);
+  if (redis) await redis.set(key, greeting, { ex: GREETING_TTL_S }).catch(() => {});
   return { greeting };
 }
 

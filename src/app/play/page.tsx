@@ -8,9 +8,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
-import { countUserSignals } from '@/lib/welcome'
+import { loadHomeBootstrap } from '@/lib/home-bootstrap'
 import type { AppUser } from '@/modules/session/types'
-import { loadPlay } from './lib/server'
 import { withBlindCovers, withSideClues } from './lib/games'
 import type { BlindCover, GameTitle, SideClue } from './lib/scales'
 import rawTitles from './data/titles.json'
@@ -53,7 +52,8 @@ export default async function PlayPage({ searchParams }: { searchParams: Promise
     avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
   }
   // Brand-new users get a short menu: the feed, ratings and DNA have nothing to show yet.
-  const [saved, signals] = await Promise.all([loadPlay(supabase, user.id), countUserSignals(supabase, user.id)])
+  // One round trip for the play state and the signal count (migration 0027).
+  const { play: saved, signals } = await loadHomeBootstrap(supabase, user.id)
 
   return <PlayApp user={appUser} existingUser={signals > 0} voiceIntro={signals === 0 && !heard} titles={titles} saved={saved} tab={tab} />
 }

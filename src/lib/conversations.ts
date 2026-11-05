@@ -10,14 +10,14 @@ import type {
   ConversationStage,
 } from "@/modules/session/types";
 
-interface ConversationRow {
+export interface ConversationRow {
   id: string;
   session_number: number;
   stage: ConversationStage;
   favorites: string;
 }
 
-interface MessageRow {
+export interface MessageRow {
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -78,9 +78,19 @@ async function createConversation(
     .limit(1)
     .maybeSingle<{ session_number: number }>();
 
+  return createConversationNumbered(supabase, userId, (last?.session_number ?? 0) + 1);
+}
+
+/** The insert alone — for callers that already know the next number
+ *  (`home_bootstrap()` returns it, so the home page needs no extra select). */
+export async function createConversationNumbered(
+  supabase: SupabaseClient,
+  userId: string,
+  sessionNumber: number,
+): Promise<ConversationRow> {
   const { data, error } = await supabase
     .from("conversations")
-    .insert({ user_id: userId, session_number: (last?.session_number ?? 0) + 1 })
+    .insert({ user_id: userId, session_number: sessionNumber })
     .select("id, session_number, stage, favorites")
     .single<ConversationRow>();
 
