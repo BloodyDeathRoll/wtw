@@ -14,7 +14,7 @@ const redis = {
 }
 vi.mock('@/lib/redis', () => ({ getRedis: () => redis }))
 
-const { jevNoul, JEV_URL, recordJevFailure, jevFailuresSince, markJevSeen } = await import('@/lib/jev')
+const { jevNoul, JEV_URL, recordJevFailure, jevFailuresSince, markJevSeen, devJevFailures } = await import('@/lib/jev')
 const { llmRerank, dropDisliked, JEV_DISLIKE_THRESHOLD } = await import('@/modules/engine/pipeline/step4-llm-rerank')
 const { createBlankDNA } = await import('@/modules/dna/blank-dna')
 type ScoredTitle = import('@/modules/engine/types').ScoredTitle
@@ -156,6 +156,33 @@ describe('failure log', () => {
       { at: '2026-11-05T12:00:00.000Z', where: 'rerank', error: 'shown' },
     ])
     expect((await jevFailuresSince('2026-11-05T12:00:00.000Z')).map(f => f.error)).toEqual(['landed during the read'])
+  })
+
+  it('a corrupt row is skipped, not allowed to silence the log', async () => {
+    redis.lrange.mockResolvedValueOnce([
+      '{not json',
+      { at: '2026-11-05T12:00:00.000Z', where: 'rerank', error: 'good' },
+      { nope: true },
+      null,
+    ])
+    expect((await jevFailuresSince(null)).map(f => f.error)).toEqual(['good'])
+  })
+
+  it('devJevFailures: nothing for a non-dev, nothing when Redis is down, the log for a dev', async () => {
+    expect(await devJevFailures('someone@example.com')).toEqual([])
+    expect(await devJevFailures(null)).toEqual([])
+    expect(redis.lrange).not.toHaveBeenCalled()
+
+    redis.get.mockRejectedValueOnce(new Error('redis down'))
+    expect(await devJevFailures('einhanamer@gmail.com')).toEqual([])
+
+    redis.get.mockResolvedValueOnce('2026-11-05T11:00:00.000Z')
+    redis.lrange.mockResolvedValueOnce([
+      { at: '2026-11-05T12:00:00.000Z', where: 'rerank', error: 'new' },
+      { at: '2026-11-05T10:00:00.000Z', where: 'rerank', error: 'seen' },
+    ])
+    expect((await devJevFailures('EinHanamer@gmail.com')).map(f => f.error)).toEqual(['new'])
+    expect(redis.get).toHaveBeenLastCalledWith('jev:seen:einhanamer@gmail.com')
   })
 
   it('records the message of an Error and the string of anything else', async () => {

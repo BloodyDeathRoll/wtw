@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
   if (typeof at !== 'string' || Number.isNaN(Date.parse(at))) {
     return NextResponse.json({ error: 'at must be an ISO date' }, { status: 400 })
   }
-
-  await markJevSeen(user.email!.toLowerCase(), at)
+  // A future `at` would mute the banner until then.
+  const now = new Date().toISOString()
+  await markJevSeen(user.email!.toLowerCase(), at > now ? now : at)
   return new NextResponse(null, { status: 204 })
 }

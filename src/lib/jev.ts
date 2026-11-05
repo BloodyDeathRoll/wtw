@@ -13,6 +13,7 @@
 
 import { MODELS } from '@/lib/ai-models'
 import { getRedis } from '@/lib/redis'
+import { isDev } from '@/lib/dev-emails'
 
 export const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 
@@ -93,12 +94,35 @@ export async function recordJevFailure(where: string, err: unknown): Promise<voi
   }
 }
 
-/** Failures newer than `since` (ISO), newest first; all of them when `since` is null. */
+/** Failures newer than `since` (ISO), newest first; all of them when `since` is null.
+ *  A corrupt row is skipped, not allowed to silence the whole log. */
 export async function jevFailuresSince(since: string | null): Promise<JevFailure[]> {
   const rows = await getRedis().lrange<JevFailure | string>(FAILURES_KEY, 0, KEEP - 1)
-  return rows
-    .map(r => (typeof r === 'string' ? (JSON.parse(r) as JevFailure) : r))
-    .filter(f => since === null || f.at > since)
+  const parsed: JevFailure[] = []
+  for (const r of rows) {
+    try {
+      const f = typeof r === 'string' ? (JSON.parse(r) as JevFailure) : r
+      if (f && typeof f.at === 'string') parsed.push(f)
+    } catch {
+      // skip
+    }
+  }
+  return parsed.filter(f => since === null || f.at > since)
+}
+
+/**
+ * The failures to show a signed-in user on the home page: none unless they
+ * are a dev, and none if Redis is down — the home page must not go down with
+ * it.
+ */
+export async function devJevFailures(email: string | null | undefined): Promise<JevFailure[]> {
+  if (!isDev(email)) return []
+  try {
+    return await jevFailuresSince(await jevSeenAt(email!.toLowerCase()))
+  } catch (err) {
+    console.warn('[jev] could not read failures:', err instanceof Error ? err.message : err)
+    return []
+  }
 }
 
 export async function jevSeenAt(who: string): Promise<string | null> {

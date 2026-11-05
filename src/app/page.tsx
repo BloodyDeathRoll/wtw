@@ -9,20 +9,7 @@ import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
 import LoginScreen from "./login/LoginScreen";
 import JevNotice from "./components/JevNotice";
-import { isDev } from "@/lib/dev-emails";
-import { jevFailuresSince, jevSeenAt, type JevFailure } from "@/lib/jev";
-
-// Jev failures since this dev last dismissed the notice. Devs only; a Redis
-// problem here must not take the home page down with it.
-async function devJevFailures(email: string | null): Promise<JevFailure[]> {
-  if (!isDev(email)) return [];
-  try {
-    return await jevFailuresSince(await jevSeenAt(email!.toLowerCase()));
-  } catch (err) {
-    console.warn("[home] could not read Jev failures:", err instanceof Error ? err.message : err);
-    return [];
-  }
-}
+import { devJevFailures } from "@/lib/jev";
 
 export default async function Home({
   searchParams,
@@ -79,6 +66,7 @@ export default async function Home({
     getOrCreateActiveConversation(supabase, user.id),
     buildWelcomeData(supabase, user.id, appUser.name, utcOffsetMinutes),
     playLoad,
+    // Jev failures since this dev last dismissed the notice; [] for everyone else.
     devJevFailures(appUser.email),
   ]);
 
