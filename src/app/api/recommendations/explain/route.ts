@@ -23,7 +23,8 @@ import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getCachedRecommendations } from '@/modules/engine'
-import type { DNASchema } from '@/types/dna'
+import type { DNASchema, RecommendationResult } from '@/types/dna'
+import type { ContentType } from '@/lib/content-type'
 
 export async function GET(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────
@@ -61,34 +62,43 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Read from Redis cache ─────────────────────────────────
-  // Batches are cached per content type (rec:{user}:{version}:{type}), so
-  // read the entry this card actually came from. Without a `type` the caller
-  // can't say which, and both are checked.
-  const cached = type
-    ? await getCachedRecommendations(user.id, tasteVersion, type === 'movie' ? 'movies' : 'series')
-    : (await getCachedRecommendations(user.id, tasteVersion, 'movies')) ??
-      (await getCachedRecommendations(user.id, tasteVersion, 'series'))
+  // Batches are cached per picker setting (rec:{user}:{version}:{type}):
+  // Movies, Series and Both each have their own. A card can come from its own
+  // type's batch or from the Both batch, so look in the type's batch first,
+  // then in Both. (Before 2026-11-05 Both was never checked, so with the
+  // picker on Both every "Why it's a match" said the breakdown wasn't ready.)
+  // Without a `type` the caller can't say which, and all three are checked.
+  const contentTypes: ContentType[] = type
+    ? [type === 'movie' ? 'movies' : 'series', 'all']
+    : ['movies', 'series', 'all']
 
-  if (!cached) {
+  let anyCache = false
+  let recommendation: RecommendationResult | undefined
+  for (const contentType of contentTypes) {
+    const cached = await getCachedRecommendations(user.id, tasteVersion, contentType)
+    if (!cached) continue
+    anyCache = true
+
+    // Match on the composite (tmdb_id, type) when the caller tells us the
+    // type. Without it we can only take the first bare-id match, which is
+    // exactly how a colliding movie/TV pair ends up showing each other's
+    // breakdown — so warn loudly when a batch holds an ambiguous pair.
+    const matches = cached.filter(r => r.tmdb_id === tmdb_id)
+    if (!type && matches.length > 1) {
+      console.warn(
+        `[recommendations/explain] ambiguous tmdb_id ${tmdb_id}: ${matches.length} cached recs share it and no type was given`,
+      )
+    }
+    recommendation = type ? matches.find(r => r.type === type) : matches[0]
+    if (recommendation) break
+  }
+
+  if (!anyCache) {
     return NextResponse.json(
       { error: 'Recommendation cache expired. Call /generate first.' },
       { status: 404 }
     )
   }
-
-  // Match on the composite (tmdb_id, type) when the caller tells us the type.
-  // Without it we can only take the first bare-id match, which is exactly how a
-  // colliding movie/TV pair ends up showing each other's breakdown — so warn
-  // loudly when the cache actually holds an ambiguous pair.
-  const matches = cached.filter(r => r.tmdb_id === tmdb_id)
-  if (!type && matches.length > 1) {
-    console.warn(
-      `[recommendations/explain] ambiguous tmdb_id ${tmdb_id}: ${matches.length} cached recs share it and no type was given`,
-    )
-  }
-  const recommendation = type
-    ? matches.find(r => r.type === type)
-    : matches[0]
 
   if (!recommendation) {
     return NextResponse.json(
