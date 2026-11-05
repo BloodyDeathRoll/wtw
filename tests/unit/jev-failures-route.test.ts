@@ -51,6 +51,12 @@ describe('POST /api/admin/jev-failures', () => {
     expect(redis.set).toHaveBeenCalledWith('jev:seen:einhanamer@gmail.com', '2026-11-04T12:00:00.000Z')
   })
 
+  it('an `at` with a timezone offset is stored in canonical UTC form', async () => {
+    user = { id: 'u1', email: 'lavi.alon@gmail.com' }
+    expect((await post({ at: '2026-11-04T12:00:00+02:00' })).status).toBe(204)
+    expect(redis.set).toHaveBeenCalledWith('jev:seen:lavi.alon@gmail.com', '2026-11-04T10:00:00.000Z')
+  })
+
   it('a future `at` is clamped to now', async () => {
     user = { id: 'u1', email: 'eranmanor@gmail.com' }
     const before = new Date().toISOString()

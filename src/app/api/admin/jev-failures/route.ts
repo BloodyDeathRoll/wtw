@@ -21,11 +21,14 @@ export async function POST(req: NextRequest) {
   }
   if (!isDev(user.email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const at = (await req.json().catch(() => null))?.at
-  if (typeof at !== 'string' || Number.isNaN(Date.parse(at))) {
+  const raw = (await req.json().catch(() => null))?.at
+  if (typeof raw !== 'string' || Number.isNaN(Date.parse(raw))) {
     return NextResponse.json({ error: 'at must be an ISO date' }, { status: 400 })
   }
-  // A future `at` would mute the banner until then.
+  // Canonical UTC form: the log compares `at` as strings, so an offset form
+  // like "…+02:00" must not be stored. A future `at` would mute the banner
+  // until then.
+  const at = new Date(raw).toISOString()
   const now = new Date().toISOString()
   await markJevSeen(user.email!.toLowerCase(), at > now ? now : at)
   return new NextResponse(null, { status: 204 })

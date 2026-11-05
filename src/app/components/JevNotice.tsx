@@ -31,7 +31,7 @@ export default function JevNotice({ failures }: { failures: JevFailure[] }) {
     <div className={styles.banner} role="status">
       <div className={styles.text}>
         <strong>Jev failed {failures.length === 1 ? "once" : `${failures.length} times`}</strong> since you last looked
-        — recommendations fell back to the plain score order.
+        — recommendations went out unfiltered, in score order. Usually the token needs a top-up.
         <div className={styles.detail}>
           Last: {new Date(last.at).toLocaleString()} · {last.where} · {last.error}
         </div>
