@@ -44,7 +44,6 @@ import RatingsView from "../ratings/RatingsView";
 import VoiceMode from "../voice/VoiceMode";
 import IntroVoice from "../voice/IntroVoice";
 import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from "../voice/intro-copy";
-import { FingerprintLoader } from "./FingerprintLoader";
 import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
@@ -761,6 +760,12 @@ export default function WTWApp({
   async function handleRecommend() {
     setVoiceOpen(false);
 
+    // Back and Picks again mid-build: rejoin that build, don't start a second.
+    if (buildingRecs) {
+      setStage("recommendations");
+      return;
+    }
+
     // Nothing new said this page-load → nothing to analyze. Serve the
     // warm-up's pre-generated recs: instant when it finished, a short loader
     // if it's still running. Never falls back to mocks.
@@ -770,23 +775,28 @@ export default function WTWApp({
         return;
       }
       setBuildingRecs(true);
+      setStage("recommendations");
       try {
         await warmPromiseRef.current;
       } finally {
         setBuildingRecs(false);
-        setStage("recommendations");
       }
       return;
     }
 
     // New chat/voice content → full session-end (analyze + merge + generate).
     setBuildingRecs(true);
+    setStage("recommendations");
+    // Transcript consumed — next tap is instant. Cleared before the build so a
+    // message sent mid-build, after Back, still counts; a throw restores it.
+    chattedThisLoadRef.current = false;
     try {
       await endSessionAndGenerate();
-      chattedThisLoadRef.current = false; // transcript consumed — next tap is instant
+    } catch (e) {
+      chattedThisLoadRef.current = true;
+      throw e;
     } finally {
       setBuildingRecs(false);
-      setStage("recommendations");
     }
   }
 
@@ -902,18 +912,7 @@ export default function WTWApp({
 
   return (
     <AppShell>
-      {buildingRecs ? (
-        <div className={styles.shell}>
-          <div className={styles.readingTaste}>
-            <p className={styles.readingTasteTitle}>Reading your taste</p>
-            <p className={styles.readingTasteBody}>
-              Updating your fingerprint and finding matches from what you&rsquo;ve told me
-            </p>
-            {/* Figma 160 → 66px. */}
-            <FingerprintLoader size={66} />
-          </div>
-        </div>
-      ) : stage === "intro" ? (
+      {stage === "intro" ? (
         <IntroVoice
           text={GAMES_INTRO_MESSAGE}
           src={GAMES_INTRO_AUDIO_SRC}
@@ -970,6 +969,7 @@ export default function WTWApp({
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
             headerRight={appMenu}
+            building={buildingRecs}
             onCalibrate={calibrationNudge ? () => leaveTo("/play") : undefined}
           />
         </div>
