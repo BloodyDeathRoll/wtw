@@ -10,15 +10,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import type { DNASchema } from '@/types/dna'
 
 export async function POST(_req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
-  if (authError || !user) {
+  if (!user) {
     logAuthFailure('/api/dna/bootstrap')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

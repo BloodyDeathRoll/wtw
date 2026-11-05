@@ -21,6 +21,7 @@
 import { NextResponse } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { tmdbPosterUrl } from '@/lib/tmdb'
 import type { Reaction } from '@/types/dna'
 
@@ -61,8 +62,8 @@ function parseRecId(recId: string): { media_type: MediaType | null; tmdb_id: str
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
+  const user = await getAuthUser(supabase)
+  if (!user) {
     logAuthFailure('/api/recommendations/ratings')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

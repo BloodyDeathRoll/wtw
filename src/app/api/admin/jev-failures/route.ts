@@ -8,13 +8,14 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { isDev } from '@/lib/dev-emails'
 import { markJevSeen } from '@/lib/jev'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) {
     logAuthFailure('/api/admin/jev-failures')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

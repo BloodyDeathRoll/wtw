@@ -5,7 +5,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 let user: { id: string; email?: string } | null = null
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser: async () => ({ data: { user }, error: null }) } }),
+  createClient: async () => ({
+    auth: { getClaims: async () => ({ data: user ? { claims: { sub: user.id, email: user.email } } : null, error: null }) },
+  }),
 }))
 vi.mock('@/lib/auth-guard', () => ({ logAuthFailure: () => {} }))
 const redis = { set: vi.fn(async () => 'OK') }

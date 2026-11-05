@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { isMissingTable } from '@/app/play/lib/server'
 import { MAX_STATE_BYTES } from '@/app/play/lib/events'
 import type { GameTitle } from '@/app/play/lib/scales'
@@ -44,8 +45,8 @@ function syncAfterSave(userId: string, state: unknown) {
 
 export async function PUT(req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
+  const user = await getAuthUser(supabase)
+  if (!user) {
     logAuthFailure('/api/play/state')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
