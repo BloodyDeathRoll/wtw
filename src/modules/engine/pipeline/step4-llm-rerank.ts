@@ -149,6 +149,7 @@ export function dropDisliked<T>(
   threshold = JEV_DISLIKE_THRESHOLD,
 ): T[] {
   const kept = items.filter(item => (answers[keyOf(item)] ?? 0) < threshold)
+  // Strictly more than half: dropping exactly 25 of 50 still goes ahead.
   return kept.length * 2 < items.length ? items : kept
 }
 
@@ -187,11 +188,11 @@ export async function llmRerank(
   // GRACEFUL DEGRADATION: a Jev failure must never kill the pipeline.
   // Composite scoring (step 2) already produced the order — this pass only
   // removes. On any error, serve the batch as it came and log the failure.
+  // Only the Jev call is inside the try: a bug in our own filtering must not
+  // be reported to the devs as an API failure.
+  let answers: Record<string, number>
   try {
-    const answers = await jevNoul(state, questions)
-    const kept = dropDisliked(top50, answers, keyOf)
-    console.log(`[rerank] jev answered ${Object.keys(answers).length}/${top50.length}, dropped ${top50.length - kept.length}`)
-    return done(kept)
+    answers = await jevNoul(state, questions)
   } catch (err) {
     console.warn('[rerank] jev failed — composite order, nothing dropped:', err instanceof Error ? err.message : err)
     // Only an API failure is news for the devs (it usually means the token
@@ -208,4 +209,8 @@ export async function llmRerank(
     }
     return done(top50)
   }
+
+  const kept = dropDisliked(top50, answers, keyOf)
+  console.log(`[rerank] jev answered ${Object.keys(answers).length}/${top50.length}, dropped ${top50.length - kept.length}`)
+  return done(kept)
 }
