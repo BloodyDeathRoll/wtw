@@ -541,7 +541,7 @@ async function main() {
       .order('last_trailer_check', { ascending: true, nullsFirst: true })
       .limit(TRAILER_BACKFILL)
     const checkedAt = new Date().toISOString()
-    for (const row of rows ?? []) {
+    await inTmdbBatches(rows ?? [], async (row) => {
       try {
         const detail =
           row.type === 'movie'
@@ -561,8 +561,7 @@ async function main() {
       } catch {
         /* best-effort — transient TMDB/DB error; row stays unstamped for retry */
       }
-      await sleep(260) // TMDB courtesy (40 req / 10s)
-    }
+    })
   }
 
   // ── 3c. Backfill streaming availability (migration 0017). This is what
@@ -595,7 +594,7 @@ async function main() {
       .order('last_provider_check', { ascending: true, nullsFirst: true })
       .limit(PROVIDER_BACKFILL)
     const checkedAt = new Date().toISOString()
-    for (const row of rows ?? []) {
+    await inTmdbBatches(rows ?? [], async (row) => {
       try {
         const providers = await getWatchProviders(
           row.type as 'movie' | 'tv',
@@ -615,8 +614,7 @@ async function main() {
       } catch {
         /* best-effort — transient TMDB/DB error; row stays unstamped for retry */
       }
-      await sleep(260) // TMDB courtesy (40 req / 10s)
-    }
+    })
   }
 
   // ── 4. Final counts + JSON summary (LAST line) ────────────────────────────
@@ -700,6 +698,20 @@ async function main() {
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+// Runs `fn` over `rows` TMDB_BATCH at a time, holding each batch to at least
+// TMDB_BATCH_MS: 3 requests per 780ms ≈ 3.85 req/s, under TMDB's 40 req / 10s.
+// Each row is one TMDB request; `fn` must catch its own errors.
+const TMDB_BATCH = 3
+const TMDB_BATCH_MS = 780
+async function inTmdbBatches<T>(rows: T[], fn: (row: T) => Promise<void>) {
+  for (let i = 0; i < rows.length; i += TMDB_BATCH) {
+    const started = Date.now()
+    await Promise.all(rows.slice(i, i + TMDB_BATCH).map(fn))
+    if (i + TMDB_BATCH >= rows.length) break // nothing follows the last batch
+    await sleep(Math.max(0, TMDB_BATCH_MS - (Date.now() - started)))
+  }
 }
 
 main().catch((err) => {
