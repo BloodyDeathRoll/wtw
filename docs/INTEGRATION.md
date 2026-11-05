@@ -176,6 +176,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-05 — Types and engines follow the runtime: Node 24 (`chore/types-node-24`, #186)
+- `@types/node` 22 → 24 and `engines.node` `>=22.13` → `>=24`, matching `.nvmrc`, CI (`node-version: 24`) and the Vercel project setting (24.x, checked). Dependabot #184 had proposed `@types/node` 26; `.github/dependabot.yml` now ignores semver-major updates for it — bump the major by hand when the runtime moves. Lockfile note: npm 11.9 (local) drops the `libc` fields that main's lockfile carries on `@next/swc-linux-*`; they were restored so the lockfile diff is only the intended lines.
+
 ### 2026-11-05 — Catalog backfills: TMDB 429 retry, 3 lookups at a time (`catalog-backfill-counts-9bb755e2`, #185)
 - `tmdbFetch` (`src/lib/tmdb.ts`, shared with the app) retries a 429 up to 3 times: `Retry-After` honoured and capped at 4s, else 1s / 2s / 4s. **A live TMDB call can now wait up to ~12s before failing instead of failing at once** — accepted (Shahar). A missing or HTTP-date `Retry-After` takes the backoff; the 429 body is cancelled before the wait.
 - `scripts/grow-catalog.mts`: the trailer and provider backfills run 3 rows at a time, each batch held to ≥ 780ms ≈ 3.85 req/s, under TMDB's 40 / 10s; the old `sleep(260)` per row is gone. One TMDB request per row (`getMovie` / `getTV` / `getWatchProviders` are single calls). Dream's nightly run (wtw-catalog) passes `TRAILER_BACKFILL=1000` (~4.5 min) and `PROVIDER_BACKFILL=3000` (~13 min) — well inside its 180 minutes; the 22,611 never-checked provider rows clear in ~7 nights.
