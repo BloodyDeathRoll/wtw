@@ -192,6 +192,14 @@ describe('failure log', () => {
     expect(Date.now() - t0).toBeLessThan(1000)
   })
 
+  it('devJevFailures: a read that fails AFTER the timeout won is not an unhandled rejection', async () => {
+    redis.get.mockImplementationOnce(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error('late failure')), 40)),
+    )
+    expect(await devJevFailures('einhanamer@gmail.com', 10)).toEqual([])
+    await new Promise(r => setTimeout(r, 60))   // vitest fails the run on an unhandled rejection here
+  })
+
   it('records the message of an Error and the string of anything else', async () => {
     await recordJevFailure('rerank', new Error('boom'))
     await recordJevFailure('rerank', 'plain')

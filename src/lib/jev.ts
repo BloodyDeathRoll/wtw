@@ -125,7 +125,14 @@ export async function devJevFailures(
   if (!isDev(email)) return []
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    const read = jevSeenAt(email!.toLowerCase()).then(since => jevFailuresSince(since))
+    // `.catch` here too: when the timeout wins, the read keeps running and a
+    // late rejection would otherwise be unhandled.
+    const read = jevSeenAt(email!.toLowerCase())
+      .then(since => jevFailuresSince(since))
+      .catch((err: unknown) => {
+        console.warn('[jev] could not read failures:', err instanceof Error ? err.message : err)
+        return [] as JevFailure[]
+      })
     const timeout = new Promise<JevFailure[]>(resolve => {
       timer = setTimeout(() => resolve([]), timeoutMs)
     })
