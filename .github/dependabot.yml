@@ -10,6 +10,14 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    # `ai` and every `@ai-sdk/*` package must move in ONE PR: their types
+    # must come from a single `@ai-sdk/provider` version, and a bump of one
+    # alone fails type-check (#156, #157 on 2026-11-05, fixed by #179).
+    groups:
+      ai-sdk:
+        patterns:
+          - "ai"
+          - "@ai-sdk/*"
 
   - package-ecosystem: github-actions
     directory: /

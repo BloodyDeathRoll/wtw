@@ -8,6 +8,8 @@ import { loadPlay, progressOf } from "./play/lib/server";
 import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
 import LoginScreen from "./login/LoginScreen";
+import JevNotice from "./components/JevNotice";
+import { devJevFailures } from "@/lib/jev";
 
 export default async function Home({
   searchParams,
@@ -60,18 +62,23 @@ export default async function Home({
 
   // Independent — fan out to shave the Groq round-trip off `buildWelcomeData`
   // when it lands during the conversation fetch.
-  const [conversation, welcome, play] = await Promise.all([
+  const [conversation, welcome, play, jevFailures] = await Promise.all([
     getOrCreateActiveConversation(supabase, user.id),
     buildWelcomeData(supabase, user.id, appUser.name, utcOffsetMinutes),
     playLoad,
+    // Jev failures since this dev last dismissed the notice; [] for everyone else.
+    devJevFailures(appUser.email),
   ]);
 
   return (
-    <WTWApp
-      user={appUser}
-      conversation={conversation}
-      welcome={welcome}
-      calibrationNudge={play.skipped}
-    />
+    <>
+      {jevFailures.length > 0 && <JevNotice failures={jevFailures} />}
+      <WTWApp
+        user={appUser}
+        conversation={conversation}
+        welcome={welcome}
+        calibrationNudge={play.skipped}
+      />
+    </>
   );
 }

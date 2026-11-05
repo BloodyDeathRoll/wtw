@@ -24,17 +24,27 @@ exec 3>&1 1>&2
 # it before anything else.
 # Starts as a failure so an early exit (set -e) still warns; cleared on success.
 PULL_SKIPPED="the hook stopped before the pull finished"
+# Filled below by scripts/jev-failures.mts when Jev failed since the last session.
+JEV_MSG=""
 emit_result() {
-  [ -n "$PULL_SKIPPED" ] || return 0
-  PULL_SKIPPED="$PULL_SKIPPED" node -e '
+  [ -n "$PULL_SKIPPED" ] || [ -n "$JEV_MSG" ] || return 0
+  PULL_SKIPPED="$PULL_SKIPPED" JEV_MSG="$JEV_MSG" node -e '
     const why = process.env.PULL_SKIPPED
-    const msg = `main was NOT pulled this session: ${why}. You may be working on stale code.`
+    const jev = process.env.JEV_MSG
+    const lines = []
+    const context = []
+    if (why) {
+      const msg = `main was NOT pulled this session: ${why}. You may be working on stale code.`
+      lines.push(`⚠️ ${msg}`)
+      context.push(`${msg} Before doing anything else, start your first reply by telling the user this in one line and ask them to confirm they have read it. Do not start the task until they confirm.`)
+    }
+    if (jev) {
+      lines.push(`⚠️ ${jev}`)
+      context.push(`${jev} Tell the user this in one line at the start of your first reply.`)
+    }
     console.log(JSON.stringify({
-      systemMessage: `⚠️ ${msg}`,
-      hookSpecificOutput: {
-        hookEventName: "SessionStart",
-        additionalContext: `${msg} Before doing anything else, start your first reply by telling the user this in one line and ask them to confirm they have read it. Do not start the task until they confirm.`,
-      },
+      systemMessage: lines.join("\n"),
+      hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context.join("\n") },
     }))' >&3
 }
 # Registered before any git call, so a set -e exit mid-pull still warns.
@@ -76,6 +86,22 @@ else
   PULL_SKIPPED="could not merge origin/main into $BRANCH (conflict or timeout; merge aborted)"
 fi
 
+# ── Jev failures since the last session ────────────────────────────────────
+# The rerank filter logs every failure to Redis (src/lib/jev.ts). Read them
+# here so the devs hear about a failed Jev in the next session, not in a log
+# nobody opens. Needs node_modules and the Upstash keys; silently skipped
+# otherwise, and time-boxed so Redis trouble cannot stall the session.
+if [ -d node_modules ] && [ -f .env.local ] && grep -q '^UPSTASH_REDIS_REST_URL=' .env.local; then
+  # Seen per person, so each dev hears about a failure once. (In a remote
+  # session this is the bot's identity: it gets its own marker and nobody
+  # reads the line — harmless.) The script marks seen as soon as it prints;
+  # the EXIT trap above guarantees the line is still emitted if anything
+  # after this point fails.
+  JEV_WHO="$(git config user.email 2>/dev/null || whoami)"
+  JEV_MSG="$(JEV_WHO="$JEV_WHO" timeout 20 node --env-file=.env.local --conditions=react-server --import tsx scripts/jev-failures.mts 2>/dev/null || true)"
+  [ -n "$JEV_MSG" ] && echo "[session-start] $JEV_MSG"
+fi
+
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
@@ -105,7 +131,7 @@ fi
 # (.gitignore) and never overwritten if one already exists.
 ENV_KEYS=(
   NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL
-  GROQ_API_KEY MISTRAL_API_KEY MISTRAL_BATCH_API_KEY GEMINI_API_KEY
+  GROQ_API_KEY MISTRAL_API_KEY MISTRAL_BATCH_API_KEY GEMINI_API_KEY TYPESAFE_API_KEY
   TMDB_API_KEY OMDB_API_KEY
   UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN
   CRON_SECRET VERCEL_DEPLOY_HOOK_URL
