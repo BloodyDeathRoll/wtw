@@ -5,7 +5,8 @@ import {
 } from '@/modules/dna/lib/update-content-affinity'
 import { computeContentAffinity } from '@/modules/engine/scoring/content-affinity'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
-import { templateExplanation, payloadSummary } from '@/modules/engine/pipeline/step7-explanation'
+import { payloadSummary } from '@/modules/engine/pipeline/step7-explanation'
+import { cardReason } from '@/modules/engine/pipeline/step7-card-reason'
 import type { ScoredTitleWithPayload } from '@/modules/engine/pipeline/step6-reason-payload'
 import type { StrandC, Reaction } from '@/types/dna'
 import type { TitleRow } from '@/modules/engine/types'
@@ -166,8 +167,8 @@ describe('content affinity — what the scorer does with it', () => {
   })
 
   it('keeps an avoided genre OUT of the reasons to watch', () => {
-    // templateExplanation says "lines up with what you rate highly" about
-    // dimension_matches[0] — a disliked genre in there is sold as a feature.
+    // Every renderer reads dimension_matches as reasons TO watch (the card
+    // line names the genre) — a disliked genre in there is sold as a feature.
     const c = strandC()
     rate(c, 10, 'disliked', title({ genres: ['Horror'], language: 'en' }))
     const r = affinity(c, title({ genres: ['Horror'], language: 'en' }))
@@ -177,12 +178,13 @@ describe('content affinity — what the scorer does with it', () => {
   })
 })
 
-describe('content affinity — the fallback explanation can see it', () => {
-  it('prefers a liked genre over the pacing match that is on every title', () => {
+describe('content affinity — the card line can see it', () => {
+  it('names a liked genre, not the pacing match that is on every title', () => {
     // computeVisceralMatch pushes a pacing match for nearly every enriched
-    // title, and it is pushed first — so reading dimension_matches[0] made
-    // this whole dimension invisible in the no-LLM explanation.
+    // title, and it is pushed first — reading dimension_matches[0] once made
+    // this whole dimension invisible in the no-LLM line.
     const item = {
+      title: { tmdb_id: '1', type: 'movie' },
       reason_payload: {
         crew_matches: [],
         lineage_connections: [],
@@ -199,7 +201,7 @@ describe('content affinity — the fallback explanation can see it', () => {
       },
     } as unknown as ScoredTitleWithPayload
 
-    expect(templateExplanation(item)).toContain('Its genre (drama)')
+    expect(cardReason(item)).toBe('A drama.')
   })
 
   it('puts a liked genre in the LLM prompt, not just the template', () => {
@@ -229,12 +231,13 @@ describe('content affinity — the fallback explanation can see it', () => {
     expect(summary).not.toContain('Narrative match: pacing')
   })
 
-  it('still falls back to pacing when that is all there is', () => {
+  it('still uses pacing when that is all there is', () => {
     const item = {
+      title: { tmdb_id: '1', type: 'movie' },
       reason_payload: {
         crew_matches: [],
         lineage_connections: [],
-        dimension_matches: [{ dimension: 'pacing', user_value: 'moderate', title_value: 'moderate' }],
+        dimension_matches: [{ dimension: 'pacing', user_value: 'slow_burn', title_value: 'slow_burn' }],
         soft_preferences_applied: [],
         external_ratings: [],
         is_stretch_pick: false,
@@ -244,6 +247,6 @@ describe('content affinity — the fallback explanation can see it', () => {
       },
     } as unknown as ScoredTitleWithPayload
 
-    expect(templateExplanation(item)).toContain('Its pacing (moderate)')
+    expect(cardReason(item)).toBe('A slow-burn film.')
   })
 })

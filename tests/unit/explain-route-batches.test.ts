@@ -22,14 +22,16 @@ vi.mock('@/lib/supabase/service', () => ({
   }),
 }))
 vi.mock('@/lib/auth-guard', () => ({ logAuthFailure: () => {} }))
-vi.mock('@/modules/engine', () => ({ getCachedRecommendations }))
+let sheet: Record<string, string> = {}
+const getSheetExplanation = vi.fn(async (_u: string, _v: number, contentType: string, key: string) => sheet[`${contentType}|${key}`] ?? null)
+vi.mock('@/modules/engine', () => ({ getCachedRecommendations, getSheetExplanation }))
 
 const { GET } = await import('@/app/api/recommendations/explain/route')
 const { NextRequest } = await import('next/server')
 const get = (q: string) => GET(new NextRequest(`http://x/api/recommendations/explain?${q}`))
 
 describe('explain route: which saved batch it reads', () => {
-  beforeEach(() => { batches = {}; getCachedRecommendations.mockClear() })
+  beforeEach(() => { batches = {}; sheet = {}; getCachedRecommendations.mockClear() })
 
   it('finds a title in the Both batch', async () => {
     batches = { all: [rec('7326', 'movie', 'Juno'), rec('1396', 'tv', 'Breaking Bad')] }
@@ -59,5 +61,25 @@ describe('explain route: which saved batch it reads', () => {
     expect((await get('tmdb_id=7326&type=movie')).status).toBe(404)
     batches = { all: [rec('1', 'movie', 'Other')] }
     expect((await get('tmdb_id=7326&type=movie')).status).toBe(404)
+  })
+})
+
+// Since 2026-11-05 the card keeps its short line and the sheet's AI paragraph
+// is stored beside the batch, for the batch the title was found in.
+describe('explain route: the sheet text', () => {
+  beforeEach(() => { batches = {}; sheet = {} })
+
+  it("shows the sheet's own paragraph when it has landed", async () => {
+    batches = { all: [rec('7326', 'movie', 'Juno')] }
+    sheet = { 'all|movie:7326': 'A longer paragraph for the sheet.' }
+    expect((await (await get('tmdb_id=7326&type=movie')).json()).explanation).toBe('A longer paragraph for the sheet.')
+  })
+
+  it('shows the card line until then, or if the read fails', async () => {
+    batches = { movies: [rec('7326', 'movie', 'Juno')] }
+    sheet = { 'all|movie:7326': 'from the wrong batch' }
+    expect((await (await get('tmdb_id=7326&type=movie')).json()).explanation).toBe('why Juno')
+    getSheetExplanation.mockRejectedValueOnce(new Error('redis down'))
+    expect((await (await get('tmdb_id=7326&type=movie')).json()).explanation).toBe('why Juno')
   })
 })

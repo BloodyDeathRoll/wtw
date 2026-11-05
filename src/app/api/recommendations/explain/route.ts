@@ -2,7 +2,11 @@
  * GET /api/recommendations/explain?tmdb_id=<id>
  *
  * Returns the stored explanation and full reason_payload for a specific
- * recommendation. Powers the "Why this?" button.
+ * recommendation. Powers the "Why it's a match" sheet.
+ *
+ * `explanation` is the sheet's AI paragraph, stored beside the batch
+ * (step8-cache.ts, since 2026-11-05) — or, until it lands, the card's own
+ * short line, which is what the cached recommendation carries.
  *
  * Reads from the Redis cache populated by /generate — no LLM calls.
  * Returns 404 if the recommendation isn't in the current cache
@@ -23,7 +27,7 @@ import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { createServiceClient } from '@/lib/supabase/service'
-import { getCachedRecommendations } from '@/modules/engine'
+import { getCachedRecommendations, getSheetExplanation } from '@/modules/engine'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
 
@@ -75,6 +79,7 @@ export async function GET(req: NextRequest) {
 
   let anyCache = false
   let recommendation: RecommendationResult | undefined
+  let foundIn: ContentType | undefined
   for (const contentType of contentTypes) {
     const cached = await getCachedRecommendations(user.id, tasteVersion, contentType)
     if (!cached) continue
@@ -91,7 +96,7 @@ export async function GET(req: NextRequest) {
       )
     }
     recommendation = type ? matches.find(r => r.type === type) : matches[0]
-    if (recommendation) break
+    if (recommendation) { foundIn = contentType; break }
   }
 
   if (!anyCache) {
@@ -108,10 +113,15 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  // Best-effort: a Redis hiccup here just shows the card line in the sheet.
+  const sheetText = await getSheetExplanation(
+    user.id, tasteVersion, foundIn!, `${recommendation.type}:${recommendation.tmdb_id}`,
+  ).catch(() => null)
+
   return NextResponse.json({
     tmdb_id:        recommendation.tmdb_id,
     title:          recommendation.title,
-    explanation:    recommendation.explanation,
+    explanation:    sheetText ?? recommendation.explanation,
     reason_payload: recommendation.reason_payload,
     is_stretch_pick: recommendation.is_stretch_pick,
   })
