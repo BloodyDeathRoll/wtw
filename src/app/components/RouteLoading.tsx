@@ -30,7 +30,7 @@ export function RouteLoading({
       <AppShell>
         <div className={styles.content}>
           <p className={styles.label}>{label}</p>
-          {/* Same size as the "Reading your taste" screen. */}
+          {/* Same size as the recs loading screen. */}
           <FingerprintLoader size={66} />
         </div>
       </AppShell>
