@@ -4,6 +4,8 @@ Things we've decided to come back to. Newest first. When one gets picked up, mov
 
 | Added | Item | Notes |
 |---|---|---|
+| 2026-11-06 | **Recommendations: "Clear all seen" in one tap** | Rated cards stay in place now (the Seen task), so after rating a lot while scrolling, the feed fills up with titles you've already seen, and clearing them one by one is a chore. Add one action that clears every card you've rated from the list in one go, something like WhatsApp's "Archived" row at the top of the chat list. They're already in Seen, so nothing is lost. Decide where it sits (top of the list, or next to Movies / Series / Both) and whether it shows only once there's something to clear, with a count ("Clear 12 seen"). Related: [Seen — task details](#seen--task-details) and "never lose picks, never pile up". |
+| 2026-11-06 | **Adding a title to the Watchlist takes it off Recommendations** | Eran (2026-11-06): Add to Watchlist moves the title off the recommendation list. Today the card stays on the feed until you leave and come back (the server already drops saved titles from the next load). Make it leave right away, with a light animation and a short "Moved to Watchlist" note that fades by itself. The Seen task's rule is updated to match: only the X, Add to Watchlist or "Remove from Watchlist" takes a title off a list; a rating never does. |
 | 2026-11-06 | **Co-watch: its "why" is AI-written from almost nothing** | Not reachable from any screen today (only `/api/recommendations/cowatch`), so no user sees it. When co-watch gets a screen: its explanations come from Mistral given only each title's name and two scores, plus one taste line per person (`src/modules/engine/cowatch/intersection.ts`), so they would invent reasons the same way the sheet's AI paragraph did (removed 2026-11-06). Build them from facts like the card (`step7-card-reason.ts`) before it ships. |
 | 2026-11-06 | **AI back in "Why it's a match", only if grounded** | The sheet's AI paragraph was removed 2026-11-06 because it invented facts; the sheet now shows a fuller fact-built text (`sheetReason`). If a written paragraph is wanted again: give the model the real credits, keywords and the user's rated titles, forbid anything else, and check its output against those facts before showing it. Decide first whether it adds anything the facts don't. |
 | 2026-11-05 | **The whole app's main experience: the chat (typed and voice) and the home screen** | Big one. Today the home screen is the chat, typed or by voice, with three round buttons under it: **Picks**, **Watchlist** (with a count) and **Games** (`WTWApp.tsx`; the voice chat runs on Gemini Live). Eran is considering **removing the chat altogether**, typed and above all voice, and rethinking the home screen from scratch: what goes on it, and what a user does first when they open the app. Not decided. To discuss before anything else. It touches a lot: the CLAUDE.md product rules ("conversational" onboarding and sessions), "Set Voice" in the menu, what the chat feeds today (rules like "no anime", titles you mention, the Open Questions on Taste DNA), the 48-hour check-in, which shows on the home screen, and the backlog rows that mention the chat. |
@@ -55,7 +57,7 @@ Each card today mixes two different questions in one row, and the X sits in the 
 **Why**
 Today, rating a recommendation turns the card into a grey message ("Loved — weighted strongly into your taste") with no buttons. The X disappears with it, so the card can't be changed or removed, and on the next visit it's quietly gone.
 The X also means two things at once. Disliked means "I watched it and didn't like it". The X means "I don't want to watch it". Those are different answers, and now each gets its own place.
-**Rule:** only the X (or "Remove from Watchlist") takes a title off a list. A rating never does.
+**Rule:** only the X, **Add to Watchlist** (on Recommendations: the title moves to the Watchlist, updated 2026-11-06) or "Remove from Watchlist" takes a title off a list. A rating never does.
 
 **What the user sees: Recommendations**
 1. **"Want it?" level:** Add to Watchlist (large, primary) with the X beside it (small, secondary).
@@ -117,7 +119,7 @@ Today the Ratings page shows a count, four tiles (Loved / Liked / Disliked / Rem
 - The X removes the card for good and counts as a light "not for me".
 - On the Watchlist, rating only adds to Seen. Only "Remove from Watchlist" removes.
 - The Ratings page becomes Seen: only rated titles, each with its poster and reaction, filtered with the "Seen it?" buttons, searchable, and the reaction can be changed there.
-- Nothing leaves Recommendations or the Watchlist except by the X or "Remove from Watchlist".
+- Nothing leaves Recommendations or the Watchlist except by the X, Add to Watchlist (Recommendations only) or "Remove from Watchlist".
 
 ### One open conversation per user — a unique index
 Two concurrent first loads (`/` plus a prefetched `/play`, or two tabs) can each insert an open conversation; the older code had the same race. A partial unique index closes it: `create unique index on conversations (user_id) where ended_at is null`, with the insert in `createConversationNumbered` handling the conflict by re-reading. Not a regression of 2026-11-05's `home_bootstrap()` (PR #198 review); do it when a duplicate is actually seen.
