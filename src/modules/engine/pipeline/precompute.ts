@@ -27,7 +27,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { isSavedMarker, recordKey, titleKey } from '@/lib/title-key'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
-import { generateRecommendations, scheduleExplanationPatch } from './generate'
+import { generateRecommendations } from './generate'
 import { cacheRecommendations } from './step8-cache'
 
 const pendingKey = (userId: string, contentType: ContentType) => `rec_pending:${userId}:${contentType}`
@@ -162,7 +162,6 @@ export async function adoptPendingBatch(
   const version = dna.metadata.taste_version
   const versioned = batch.results.map(r => ({ ...r, fingerprint_version: version }))
   await cacheRecommendations(userId, version, versioned, contentType)
-  scheduleExplanationPatch(userId, version, versioned, contentType)
   console.log(`[precompute] adopted pending batch (${versioned.length}) as v${version}`)
   return versioned
 }

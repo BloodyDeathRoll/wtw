@@ -16,10 +16,10 @@
  * Step 4 → the 50 LLM re-ranked, ids only (all 50 kept)
  * Step 5 → stretch pick injected at slot 20 (when eligible)
  * Step 6 → ReasonPayload assembled for each title
- * Step 7a → each card's short "why", built from facts (step7-card-reason.ts)
+ * Step 7 → each card's short "why" and the "Why it's a match" sheet's text,
+ *          both built from facts (step7-card-reason.ts); the sheet's is
+ *          stored per user beside the batch. No model writes either.
  * Step 8 → result cached in Redis, returned
- * Step 7 → LLM paragraphs for the "Why it's a match" sheet, generated AFTER
- *          the response and stored beside the batch (never over the card text)
  *
  * Only one LLM round-trip (step 4) blocks the response since 2026-08-28; the
  * explanation calls used to be the second serial one (~4-12s for 20 titles).
@@ -31,7 +31,6 @@
 
 import { after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { getRedis } from '@/lib/redis'
 import { startTimer, type StepTimer } from '@/lib/timing'
 import { ensureWatchProviders }     from '../enrichment/ensure-watch-providers'
 import { isColdStart, coldStartBatch } from './cold-start'
@@ -42,12 +41,12 @@ import { composeBatch }             from './step3b-compose-batch'
 import { llmRerank }                from './step4-llm-rerank'
 import { injectStretchPick }        from './step5-stretch-pick'
 import { buildReasonPayloads }      from './step6-reason-payload'
-import { explainMany, resultToExplainItem, toResults } from './step7-explanation'
+import { sheetTexts, toResults } from './step7-explanation'
 import { loadRatedByPerson } from './step7-card-reason'
 import {
   getCachedRecommendations,
   cacheRecommendations,
-  cacheSheetExplanations,
+  cacheWhyTexts,
 } from './step8-cache'
 import type { DNASchema, SessionContext, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
@@ -90,56 +89,6 @@ async function loadDNA(userId: string): Promise<DNASchema | null> {
   return data.dna
 }
 
-// ─────────────────────────────────────────────
-// Background explanations → cache
-// ─────────────────────────────────────────────
-
-/**
- * Generate the sheet's AI paragraphs for `results` and store them beside the
- * cached batch at (userId, version). Never touches the batch itself — the
- * card's `explanation` is final (step7-card-reason.ts); a failure just leaves
- * the sheet showing the card line. Runs after the response when there is
- * one — `after` throws outside a request scope (a script, a cron, the E2E
- * harness), and there it just runs fire-and-forget.
- */
-export function scheduleExplanationPatch(
-  userId: string,
-  version: number,
-  results: RecommendationResult[],
-  contentType: ContentType = 'all',
-): void {
-  if (results.length === 0) return
-  const patch = async () => {
-    try {
-      // One background job per (user, taste_version): a double-submit at the
-      // same version would pay the LLM twice for identical work. NX lock, no
-      // release — once stored there's nothing left to do at this version, and
-      // the TTL clears it if the job dies midway.
-      const lock = await getRedis().set(
-        `rec_explain_lock:${userId}:${version}:${contentType}`,
-        '1',
-        { nx: true, ex: 300 }
-      )
-      if (lock === null) return
-
-      const bt = startTimer('generate/explain')
-      const byKey = await explainMany(results.map(resultToExplainItem))
-      await cacheSheetExplanations(userId, version, byKey, contentType)
-      bt.done(`stored ${byKey.size}/${results.length} sheet explanations`)
-    } catch (err) {
-      console.warn(
-        '[generate] background sheet explanations failed (sheet shows the card line):',
-        err instanceof Error ? err.message : err
-      )
-    }
-  }
-  try {
-    after(patch)
-  } catch {
-    void patch()
-  }
-}
-
 /**
  * Streaming availability for a whole batch (decided 2026-08-28: checked on
  * demand per batch, not just by the nightly 150/night job). Best-effort —
@@ -178,6 +127,7 @@ async function runColdStart(
 
 /** Steps 1–6: the fingerprint-driven pipeline described at the top. */
 async function runPipeline(
+  userId: string,
   dna: DNASchema,
   sessionContext: SessionContext | undefined,
   contentType: ContentType | undefined,
@@ -213,9 +163,12 @@ async function runPipeline(
   // ── Step 6: reason payload assembly ──────────────────────
   const withPayloads = buildReasonPayloads(withStretch)
 
-  // ── Step 7a: each card's short "why" ─────────────────────
-  // Reasons for only, from facts (step7-card-reason.ts). Final: the sheet's
-  // AI paragraph is stored beside the batch, not over this.
+  // ── Step 7: the card line and the sheet text, from facts ─
+  // The sheet's text is stored now, for this batch and a precomputed one
+  // alike. Best-effort: without it the sheet shows the card line.
+  await cacheWhyTexts(userId, sheetTexts(withPayloads, rated)).catch(err => {
+    console.warn('[generate] sheet texts not cached (sheet shows the card line):', err instanceof Error ? err.message : err)
+  })
   const version = dna.metadata.taste_version
   return toResults(withPayloads, rated).map(r => ({
     ...r,
@@ -261,7 +214,7 @@ export async function generateRecommendations(
   const coldStart = isColdStart(dna)
   const versioned = coldStart
     ? await runColdStart(dna, opts.contentType, t)
-    : await runPipeline(dna, sessionContext, opts.contentType, t)
+    : await runPipeline(userId, dna, sessionContext, opts.contentType, t)
   if (versioned.length === 0) return []
 
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─
@@ -290,11 +243,6 @@ export async function generateRecommendations(
         console.warn('[generate] cache write failed (non-fatal):', err instanceof Error ? err.message : err)
       })
     t.mark('cache write')
-
-    // ── Step 7 (background): the sheet's AI paragraphs, stored beside the batch ──
-    // Not for a cold-start batch: its "Why this?" is the popularity line,
-    // and there is no fingerprint for the model to explain against.
-    if (!coldStart) scheduleExplanationPatch(userId, version, versioned, opts.contentType)
 
     // ── Background: streaming availability for the whole batch ────────
     // The GET route also checks the few unchecked titles on each page it

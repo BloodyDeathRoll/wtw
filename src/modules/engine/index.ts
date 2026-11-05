@@ -21,7 +21,7 @@ export {
   cowatchCacheKey,
   getCachedRecommendations,
   cacheRecommendations,
-  getSheetExplanation,
+  getWhyText,
 } from './pipeline/step8-cache'
 
 // ── Public types (re-exported for consumers) ──────────────
