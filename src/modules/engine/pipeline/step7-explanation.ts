@@ -4,6 +4,11 @@
  * For each title, generates a 2–3 sentence "Why this?" explanation in warm,
  * conversational language. Batched into Groq calls of up to 25 titles.
  *
+ * Since 2026-11-05 this paragraph is for the "Why it's a match" sheet only.
+ * The feed card's short line is built from facts, never by a model
+ * (step7-card-reason.ts), and this text is stored beside the batch rather
+ * than over it (step8-cache.ts, `cacheSheetExplanations`).
+ *
  * Each explanation must:
  *   - Reference at least one positive signal specific to THIS user
  *   - Include one honest negative signal or caveat
@@ -22,6 +27,14 @@ import { z } from 'zod'
 import { CONTENT_DIMENSIONS } from '../scoring/content-affinity'
 import type { RecommendationResult, ReasonPayload } from '@/types/dna'
 import type { ScoredTitleWithPayload } from './step6-reason-payload'
+import { cardReason, STRONG_CREW_AFFINITY, type RatedByPerson } from './step7-card-reason'
+
+/**
+ * Step 6 adds this when no crew member the user has rated is in the title.
+ * True of most titles, so it is not a reservation: it never goes to the
+ * model as a caveat (the sheet already hides it, RecCard.tsx).
+ */
+export const NO_CREW_FILLER = /^No crew members from your watch history/
 
 function mistral() {
   const key = process.env.MISTRAL_API_KEY
@@ -60,15 +73,8 @@ export function resultToExplainItem(r: RecommendationResult): ExplainItem {
   return { tmdb_id: r.tmdb_id, type: r.type, title: r.title, reason_payload: r.reason_payload }
 }
 
-/**
- * The affinity a crew member needs before a card calls them "one of your
- * strongest matches". crew_matches carries confidence-weighted affinity
- * (crew-affinity.ts): one "loved" rating is 0.15, one "liked" 0.075, two
- * "loved" about 0.23. So 0.2 means the user has loved their work at least
- * twice. Measured 2026-10-01 across live fingerprints: the median positive
- * affinity is 0.15, so without a floor a single rating headlined the card.
- */
-export const STRONG_CREW_AFFINITY = 0.2
+/** Defined with the card line, which uses the same floor (step7-card-reason.ts). */
+export { STRONG_CREW_AFFINITY }
 
 /** Crew the user has rated positively, strongest first. */
 function likedCrew(p: ReasonPayload): ReasonPayload['crew_matches'] {
@@ -112,7 +118,7 @@ export function payloadSummary(item: ExplainItem): string {
   }
 
   if (p.dimension_matches.length > 0) {
-    // Same preference as templateExplanation, and for a stronger reason: this
+    // Prefer a content dimension, and for a good reason: this
     // is what the LLM is told about the title. Pacing is on nearly every
     // enriched title and is pushed first, so reading [0] meant a genre the
     // user actively rates highly never reached the prompt — leaving the
@@ -126,8 +132,9 @@ export function payloadSummary(item: ExplainItem): string {
     parts.push(`Ranking rationale: ${p.groq_rationale}`)
   }
 
-  if (p.negative_signals.length > 0) {
-    parts.push(`Honest caveat: ${p.negative_signals[0]}`)
+  const caveat = p.negative_signals.find(n => !NO_CREW_FILLER.test(n))
+  if (caveat) {
+    parts.push(`Honest caveat: ${caveat}`)
   }
 
   if (p.is_stretch_pick) {
@@ -141,49 +148,13 @@ export function payloadSummary(item: ExplainItem): string {
 const EXPLAIN_CHUNK_SIZE = 25
 
 /**
- * One-line "Why this?" built from the reason payload alone — no LLM. This is
- * what a card shows until the background explanation lands (and permanently
- * if it never does). Positive signal first, honest caveat second, so it
- * satisfies the explainability rule (positive AND negative) on its own.
+ * Adapt scored+payload items to RecommendationResult without any LLM call.
+ * `explanation` is the card's short "why" (step7-card-reason.ts) and is final:
+ * the AI paragraph never replaces it.
  */
-export function templateExplanation(item: ScoredTitleWithPayload): string {
-  const p = item.reason_payload
-  const parts: string[] = []
-
-  const crew = strongCrew(p)[0]
-  if (crew) {
-    parts.push(`${crew.name} (${crew.role}) is one of your strongest matches.`)
-  } else if (p.lineage_connections[0]) {
-    const c = p.lineage_connections[0]
-    parts.push(`Connected to ${c.from} through ${c.to} (${c.relationship}).`)
-  } else if (p.dimension_matches.length > 0) {
-    // A genre the user actually rates highly beats "pacing: moderate", and
-    // pacing is pushed first for nearly every enriched title — so reading
-    // dimension_matches[0] made the content dimension invisible here.
-    const d = p.dimension_matches.find(m => CONTENT_DIMENSIONS.has(m.dimension)) ?? p.dimension_matches[0]
-    parts.push(`Its ${d.dimension.replace(/_/g, ' ')} (${d.title_value}) lines up with what you rate highly.`)
-  } else {
-    parts.push('Matched on narrative and tone fit with your fingerprint.')
-  }
-
-  if (p.is_stretch_pick && p.stretch_rationale) {
-    parts.push(p.stretch_rationale)
-  } else if (p.negative_signals[0]) {
-    parts.push(`One reservation: ${p.negative_signals[0].replace(/\.$/, '').replace(/^./, ch => ch.toLowerCase())}.`)
-  }
-
-  return parts.join(' ')
-}
-
-/**
- * Adapt scored+payload items to RecommendationResult without any LLM call —
- * explanations from the map when present (keyed `${type}:${tmdb_id}`), else
- * the template. Used to serve titles immediately while their real
- * explanations are still generating.
- */
-export function toResultsWithFallback(
+export function toResults(
   items: ScoredTitleWithPayload[],
-  explanationMap: Map<string, string> = new Map()
+  rated: RatedByPerson = new Map(),
 ): RecommendationResult[] {
   const now = new Date().toISOString()
   return items.map(item => ({
@@ -192,9 +163,7 @@ export function toResultsWithFallback(
     type:               item.title.type,
     composite_score:    item.composite_score,
     reason_payload:     item.reason_payload,
-    explanation:        explanationMap.get(`${item.title.type}:${item.title.tmdb_id}`)
-                          ?? explanationMap.get(item.title.tmdb_id)
-                          ?? templateExplanation(item),
+    explanation:        cardReason(item, rated),
     is_stretch_pick:    item.is_stretch_pick,
     generated_at:       now,
     fingerprint_version: 0,   // set by generate.ts from dna.metadata.taste_version
@@ -269,11 +238,4 @@ export async function explainMany(items: ExplainItem[]): Promise<Map<string, str
     for (const [id, text] of chunkMap) explanationMap.set(id, text)
   }
   return explanationMap
-}
-
-export async function generateExplanations(
-  items: ScoredTitleWithPayload[]
-): Promise<RecommendationResult[]> {
-  if (items.length === 0) return []
-  return toResultsWithFallback(items, await explainMany(items.map(toExplainItem)))
 }

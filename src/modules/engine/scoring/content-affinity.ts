@@ -33,9 +33,9 @@ export interface ContentAffinityResult {
   score: number                                          // 0.0 – 1.0
   /**
    * POSITIVES only. Everything downstream reads a dimension match as a reason
-   * to recommend — `templateExplanation` says "lines up with what you rate
-   * highly" about `dimension_matches[0]` — so an avoided genre in here would
-   * be shown to the user as a selling point.
+   * to recommend — the card line (`cardReason`) names the genre as what you
+   * rate highly — so an avoided genre in here would be shown to the user as a
+   * selling point.
    */
   dimension_matches: ReasonPayload['dimension_matches']
   /** The strongest thing about this title the user avoids, for the caveat line. */

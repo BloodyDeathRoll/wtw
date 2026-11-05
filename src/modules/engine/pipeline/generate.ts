@@ -16,9 +16,10 @@
  * Step 4 → the 50 LLM re-ranked, ids only (all 50 kept)
  * Step 5 → stretch pick injected at slot 20 (when eligible)
  * Step 6 → ReasonPayload assembled for each title
- * Step 8 → result cached in Redis with template "Why this?" text, returned
- * Step 7 → LLM explanations for all 50 generated AFTER the response and
- *          patched into the cache (order untouched, so pagination is stable)
+ * Step 7a → each card's short "why", built from facts (step7-card-reason.ts)
+ * Step 8 → result cached in Redis, returned
+ * Step 7 → LLM paragraphs for the "Why it's a match" sheet, generated AFTER
+ *          the response and stored beside the batch (never over the card text)
  *
  * Only one LLM round-trip (step 4) blocks the response since 2026-08-28; the
  * explanation calls used to be the second serial one (~4-12s for 20 titles).
@@ -41,10 +42,12 @@ import { composeBatch }             from './step3b-compose-batch'
 import { llmRerank }                from './step4-llm-rerank'
 import { injectStretchPick }        from './step5-stretch-pick'
 import { buildReasonPayloads }      from './step6-reason-payload'
-import { explainMany, resultToExplainItem, toResultsWithFallback } from './step7-explanation'
+import { explainMany, resultToExplainItem, toResults } from './step7-explanation'
+import { loadRatedByPerson } from './step7-card-reason'
 import {
   getCachedRecommendations,
   cacheRecommendations,
+  cacheSheetExplanations,
 } from './step8-cache'
 import type { DNASchema, SessionContext, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
@@ -92,11 +95,12 @@ async function loadDNA(userId: string): Promise<DNASchema | null> {
 // ─────────────────────────────────────────────
 
 /**
- * Generate LLM explanations for `results` and merge them into the cached
- * batch at (userId, version). Never reorders and never overwrites with its
- * own snapshot; a failure leaves the template text in place. Runs after the
- * response when there is one — `after` throws outside a request scope (a
- * script, a cron, the E2E harness), and there it just runs fire-and-forget.
+ * Generate the sheet's AI paragraphs for `results` and store them beside the
+ * cached batch at (userId, version). Never touches the batch itself — the
+ * card's `explanation` is final (step7-card-reason.ts); a failure just leaves
+ * the sheet showing the card line. Runs after the response when there is
+ * one — `after` throws outside a request scope (a script, a cron, the E2E
+ * harness), and there it just runs fire-and-forget.
  */
 export function scheduleExplanationPatch(
   userId: string,
@@ -107,11 +111,10 @@ export function scheduleExplanationPatch(
   if (results.length === 0) return
   const patch = async () => {
     try {
-      // One background patch per (user, taste_version): a double-submit at
-      // the same version would race two read-modify-writes on the cache key
-      // and pay the LLM twice for identical work. NX lock, no release — once
-      // patched there's nothing left to do at this version, and the TTL
-      // clears it if the job dies midway (template text remains).
+      // One background job per (user, taste_version): a double-submit at the
+      // same version would pay the LLM twice for identical work. NX lock, no
+      // release — once stored there's nothing left to do at this version, and
+      // the TTL clears it if the job dies midway.
       const lock = await getRedis().set(
         `rec_explain_lock:${userId}:${version}:${contentType}`,
         '1',
@@ -121,17 +124,11 @@ export function scheduleExplanationPatch(
 
       const bt = startTimer('generate/explain')
       const byKey = await explainMany(results.map(resultToExplainItem))
-      const current = await getCachedRecommendations(userId, version, contentType)
-      if (!current) return   // cache expired or superseded — nothing to patch
-      const merged = current.map(r => {
-        const explanation = byKey.get(`${r.type}:${r.tmdb_id}`)
-        return explanation ? { ...r, explanation } : r
-      })
-      await cacheRecommendations(userId, version, merged, contentType)
-      bt.done(`patched ${byKey.size}/${results.length} explanations`)
+      await cacheSheetExplanations(userId, version, byKey, contentType)
+      bt.done(`stored ${byKey.size}/${results.length} sheet explanations`)
     } catch (err) {
       console.warn(
-        '[generate] background explanations failed (template text kept):',
+        '[generate] background sheet explanations failed (sheet shows the card line):',
         err instanceof Error ? err.message : err
       )
     }
@@ -187,7 +184,12 @@ async function runPipeline(
   t: StepTimer,
 ): Promise<RecommendationResult[]> {
   // ── Step 1: candidate generation ─────────────────────────
-  const candidates = await getCandidates(dna, sessionContext, contentType)
+  // The card line's "who made X, which you loved" needs the crew of the
+  // titles you rated — one read, run alongside step 1 so it costs no time.
+  const [candidates, rated] = await Promise.all([
+    getCandidates(dna, sessionContext, contentType),
+    loadRatedByPerson(dna),
+  ])
   t.mark(`step1 candidates (${candidates.length})`)
   if (candidates.length === 0) return []
 
@@ -211,12 +213,11 @@ async function runPipeline(
   // ── Step 6: reason payload assembly ──────────────────────
   const withPayloads = buildReasonPayloads(withStretch)
 
-  // ── Results with template explanations ───────────────────
-  // Every card ships with a one-line "Why this?" built from its reason
-  // payload (positive signal + caveat). The LLM blurbs replace them in the
-  // cache below, after the response.
+  // ── Step 7a: each card's short "why" ─────────────────────
+  // Reasons for only, from facts (step7-card-reason.ts). Final: the sheet's
+  // AI paragraph is stored beside the batch, not over this.
   const version = dna.metadata.taste_version
-  return toResultsWithFallback(withPayloads).map(r => ({
+  return toResults(withPayloads, rated).map(r => ({
     ...r,
     fingerprint_version: version,
   }))
@@ -290,7 +291,7 @@ export async function generateRecommendations(
       })
     t.mark('cache write')
 
-    // ── Step 7 (background): LLM explanations, patched into the cache ──
+    // ── Step 7 (background): the sheet's AI paragraphs, stored beside the batch ──
     // Not for a cold-start batch: its "Why this?" is the popularity line,
     // and there is no fingerprint for the model to explain against.
     if (!coldStart) scheduleExplanationPatch(userId, version, versioned, opts.contentType)

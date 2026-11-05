@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { templateExplanation, payloadSummary, STRONG_CREW_AFFINITY } from '@/modules/engine/pipeline/step7-explanation'
+import { payloadSummary, STRONG_CREW_AFFINITY } from '@/modules/engine/pipeline/step7-explanation'
+import { cardReason } from '@/modules/engine/pipeline/step7-card-reason'
 
 // 2026-10-01: a card said "Andy Garcia (actor) is one of your strongest
 // matches" on a 0.15 affinity — one "loved" rating, and the median positive
-// affinity across live fingerprints. A crew member headlines the card only at
-// STRONG_CREW_AFFINITY (≈ loved twice); below it the card falls back to the
-// next reason.
+// affinity across live fingerprints. The card says "you love their work" only
+// at STRONG_CREW_AFFINITY (≈ loved twice); below it, "you've enjoyed".
 
 const payload = (crew: { name: string; role: string; affinity_score: number }[]) => ({
   crew_matches: crew,
@@ -20,18 +20,18 @@ const explainItem = (crew: Parameters<typeof payload>[0]) =>
   ({ tmdb_id: '161', type: 'movie', title: "Ocean's Eleven", reason_payload: payload(crew) }) as never
 
 describe('crew headline threshold', () => {
-  it('does not call a single-rating crew member a strongest match', () => {
-    const text = templateExplanation(item([{ name: 'Andy Garcia', role: 'actor', affinity_score: 0.15 }]))
-    expect(text).not.toMatch(/strongest/)
-    expect(text).toContain('genre (thriller) lines up')
+  it('does not say "you love their work" on a single rating', () => {
+    const text = cardReason(item([{ name: 'Andy Garcia', role: 'actor', affinity_score: 0.15 }]))
+    expect(text).not.toMatch(/you love/)
+    expect(text).toContain("Andy Garcia is in it; you've enjoyed their work before.")
   })
 
-  it('headlines crew at or above the threshold', () => {
-    const text = templateExplanation(item([
+  it('says it at or above the threshold', () => {
+    const text = cardReason(item([
       { name: 'Andy Garcia', role: 'actor', affinity_score: 0.15 },
       { name: 'Steven Soderbergh', role: 'director', affinity_score: STRONG_CREW_AFFINITY },
     ]))
-    expect(text).toContain('Steven Soderbergh (director) is one of your strongest matches.')
+    expect(text).toContain('Steven Soderbergh directed it, and you love their work.')
   })
 
   it('tells the LLM a weak match is weak, not strong', () => {

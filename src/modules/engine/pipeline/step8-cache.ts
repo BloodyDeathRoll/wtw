@@ -69,6 +69,47 @@ export async function cacheRecommendations(
   await redis.set(recCacheKey(userId, tasteVersion, contentType), results, { ex: TTL_SECONDS })
 }
 
+/**
+ * The AI paragraph for the "Why it's a match" sheet, stored BESIDE the batch
+ * (2026-11-05). It used to be written over each card's `explanation`, which
+ * swapped the card's short line for a long one on the next visit. Same
+ * version and TTL as the batch it explains; keyed `${type}:${tmdb_id}`.
+ */
+export function sheetExplanationKey(
+  userId: string,
+  tasteVersion: number,
+  contentType: ContentType = 'all',
+): string {
+  return `rec_sheet:${userId}:${tasteVersion}:${contentType}`
+}
+
+export async function cacheSheetExplanations(
+  userId: string,
+  tasteVersion: number,
+  explanations: Map<string, string>,
+  contentType: ContentType = 'all',
+): Promise<void> {
+  if (explanations.size === 0) return
+  const redis = getRedis()
+  await redis.set(
+    sheetExplanationKey(userId, tasteVersion, contentType),
+    Object.fromEntries(explanations),
+    { ex: TTL_SECONDS },
+  )
+}
+
+/** One title's sheet paragraph, or null while it's still being written (or never was). */
+export async function getSheetExplanation(
+  userId: string,
+  tasteVersion: number,
+  contentType: ContentType,
+  key: string,
+): Promise<string | null> {
+  const redis = getRedis()
+  const all = await redis.get<Record<string, string>>(sheetExplanationKey(userId, tasteVersion, contentType))
+  return all?.[key] ?? null
+}
+
 export async function getCachedCowatch(
   roomCode: string,
   userIdA: string,
