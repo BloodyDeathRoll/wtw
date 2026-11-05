@@ -4,6 +4,7 @@ Things we've decided to come back to. Newest first. When one gets picked up, mov
 
 | Added | Item | Notes |
 |---|---|---|
+| 2026-11-05 | **Taste DNA: make it read like a person, not a model** | Needs a discussion before any mock. "Confidence" percentages mean nothing to a user ("23% De Niro, 15% Matt Damon"?). Mood & pace (today "Visceral Specs") is the part that works: keep it, bars only, no numbers, and move the people section below it. Rules need a "More of" and the same categories as the sections above. Full task: [Taste DNA — task details](#taste-dna--task-details). |
 | 2026-11-05 | **Pin the Jev model** | `MODELS.jev` is `jev-latest` (`src/lib/ai-models.ts`). A floating alias can change what step 4 drops without a deploy. Once the filter has been watched on real batches for a while, pin the version Jev reports in its responses (`model` field, e.g. `jev-1.14.0`) and re-run `scripts/jev-threshold-probe.mts`. |
 | 2026-11-05 | **The card's short "why": only reasons for, and more of them** | On the feed card, the short text under the title is the same on almost every card ("Its genre (drama) lines up with what you rate highly. One reservation: no crew members from your watch history…"), which looks broken. Rules for the **card text only**: (1) never a "why not": no reservation, and above all not the crew one, which shows on most titles; (2) more of the "why yes": more detailed and specific (story, mood, people, what you rated that it's like). Reasons against still belong in the "Why it's a match" sheet, which keeps what works **and** what doesn't. Note: these cards show the quick fallback text (`templateExplanation` in `src/modules/engine/pipeline/step7-explanation.ts`), not the AI-written one that should replace it in the background, so check why that swap isn't happening too. Goes further than the "no crew members" row below. |
 | 2026-11-05 | **"Why it's a match": what the Crew bar means, and put it last** | (1) The bar doesn't say what it measures. On Meet the Parents it's a short sliver with Robert De Niro listed under Crew: does that mean you only like him a little, that his part is small, or that people you love aren't in it? Today it's the average of how much you like *every* person in the title the app knows from your ratings, liked and disliked together (`crewScore` in `WhyPanel`, `src/app/components/RecCard.tsx`), so one favourite plus a few people you're lukewarm on comes out short. Decide what it should mean, then make the bar (or a few words by it) say that. (2) Most recommendations have no one you follow, so the Crew bar is often empty: move it to the **bottom** of the Score breakdown (Eran, 2026-11-05). |
@@ -111,3 +112,46 @@ Today the Ratings page shows a count, four tiles (Loved / Liked / Disliked / Rem
 
 ### One open conversation per user — a unique index
 Two concurrent first loads (`/` plus a prefetched `/play`, or two tabs) can each insert an open conversation; the older code had the same race. A partial unique index closes it: `create unique index on conversations (user_id) where ended_at is null`, with the insert in `createConversationNumbered` handling the conflict by re-reading. Not a regression of 2026-11-05's `home_bootstrap()` (PR #198 review); do it when a duplicate is actually seen.
+
+### Taste DNA — task details
+
+*Added 2026-11-05 · Status: needs a discussion, then mocks · Page: `src/app/profile/dna/page.tsx` (rules: `RulesSection.tsx`)*
+
+**Summary**
+The Taste DNA page is a good idea, but it shows the app's inner workings, not something a person can relate to. It should answer "what does the app think I like?" in plain words. What the user sees matters here, not how the app works it out.
+
+**What's wrong today**
+- **"Confidence" means nothing to a user.** Under each director, writer and actor, and under each story trait, there's a "Confidence" bar and a percentage. It's how sure the app is, but it reads as how much you like them: is the app 23% sure about De Niro and only 15% about Matt Damon? "It's 16% sure my Moral Ambiguity is Medium": what does that mean, in English?
+- **The story traits are jargon:** "Moral ambiguity: Medium", "Ensemble vs solo: Slight ensemble", "Originality: 61 / 100".
+- **Mood & pace works** (today "Visceral Specs": pacing and tone). It's a display a regular person can relate to, but the numbers ("65", "Weight · 50 = neutral") aren't needed. The length of the bar is enough, as in the "Why it's a match" sheet.
+
+**Decided (Eran, 2026-11-05)**
+1. **Mood & pace** replaces "Visceral Specs", the same name as in the "Why it's a match" sheet. Bars only: no numbers and no "Weight · 50 = neutral" legend.
+2. **The people section** ("Creative Affinities": directors, writers, actors) moves **below** Mood & pace.
+3. **Drop "Confidence" as it's shown today** (the label and the percentages) in favour of something a user understands. See the ideas below.
+4. **Rules** (today "Never show me" and "Less of"): cover every intention, including **"More of"**, not just "less". The things a rule can be about should match the sections above it (people, story, mood & pace, genres).
+
+**Ideas for the discussion (Claude's, not decided)**
+- **Same words as the "Why it's a match" sheet:** Crew, Narrative, Mood & pace. The page and the sheet then talk about your taste in the same terms.
+- **People:** a plain list of who you like, strongest first, with no numbers. Tap a name to see why: the titles you rated with them ("from Heat and Meet the Parents, which you loved"). Showing the evidence is easier to trust than a percentage.
+- **Story traits as plain sentences,** for example "You like main characters who are flawed, and know it", "You lean towards stories about a group, not one hero", "You like things a little off the beaten path" (instead of "Originality 61 / 100").
+- **"How sure" as words, and only when it matters:** traits the app is still unsure about say "Still learning" (the page already does this below a certain point) or are hidden, instead of a percentage on every row.
+- **Craft aspects** (Tone / Story / Acting / Pacing, from the deep surveys) all sit at the neutral middle until a survey is filled in. Hide them until there's something to show.
+- **The header** "22 signals · v4 · 11/3/2026" becomes something like "Based on 22 ratings · updated 3 Nov". The footer "Schema v1 · N sessions" goes.
+
+**Open questions**
+- **Overall order:** with the people section below Mood & pace, where do the story traits go: first, or between them?
+- **Name:** keep "Taste DNA"?
+- **Open Questions and Stretch Pick Results** (the two sections at the bottom, shown only when there's something in them): keep, reword, or drop?
+- **Rules:** is there an opposite of "Never show me" ("Always", "Only")? Or is "More of" enough?
+
+**Build notes (for whoever picks it up)**
+- **"More of" needs a change to the shared DNA contract** (`src/types/dna.ts`): a "Less of" rule is stored with a strength between 0 and 1, which can only lower a score. Tell all three before changing it, and check the engine applies a boost.
+- **Rules about people** can only be added by naming them in a session today; the "Add a rule" box takes genres and keywords. Rules about story or mood & pace don't exist yet.
+- **Process:** discussion first, then one JPEG mock per state: the full page, a new user with little data, the people section with a name tapped, and the rules with "More of".
+
+**Done when**
+- No percentages or "Confidence" labels a user has to decode.
+- Mood & pace shows bars only, and the people section sits below it.
+- Every trait reads as plain English.
+- Rules cover "Never", "Less of" and "More of", for the same kinds of things the page shows.
