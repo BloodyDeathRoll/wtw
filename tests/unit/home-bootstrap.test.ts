@@ -13,7 +13,7 @@ vi.mock('@/lib/conversations', () => ({ getOrCreateActiveConversation, createCon
 vi.mock('@/lib/welcome', () => ({ countUserSignals }))
 vi.mock('@/app/play/lib/server', () => ({ loadPlay, isMissingTable: (e: { code?: string }) => e?.code === 'PGRST205' }))
 
-const { loadHomeBootstrap } = await import('@/lib/home-bootstrap')
+const { loadHomeBootstrap, openConversation } = await import('@/lib/home-bootstrap')
 
 const rpcClient = (result: unknown) =>
   ({ rpc: vi.fn(() => ({ single: async () => result })) }) as unknown as SupabaseClient
@@ -39,12 +39,20 @@ describe('loadHomeBootstrap', () => {
     expect(getOrCreateActiveConversation).not.toHaveBeenCalled()
   })
 
-  it('no open conversation: one insert with the number the RPC returned, no messages', async () => {
-    const out = await loadHomeBootstrap(rpcClient({ data: { ...row, conversation: null, messages: [], next_session_number: 9 }, error: null }), 'u1')
+  it('no open conversation: nothing is inserted by the load; openConversation inserts once with the number the RPC returned', async () => {
+    const boot = await loadHomeBootstrap(rpcClient({ data: { ...row, conversation: null, messages: [], next_session_number: 9 }, error: null }), 'u1')
+    expect(boot.conversation).toBeNull()
+    expect(boot.nextSessionNumber).toBe(9)
+    expect(createConversationNumbered).not.toHaveBeenCalled()
+    const conversation = await openConversation({} as SupabaseClient, 'u1', boot)
     expect(createConversationNumbered).toHaveBeenCalledWith(expect.anything(), 'u1', 9)
-    expect(out.conversation.id).toBe('new')
-    expect(out.conversation.session_number).toBe(9)
-    expect(out.conversation.messages).toEqual([])
+    expect(conversation).toEqual({ id: 'new', session_number: 9, stage: 'onboard', favorites: '', messages: [] })
+  })
+
+  it('openConversation returns the open conversation as is, no insert', async () => {
+    const boot = await loadHomeBootstrap(rpcClient({ data: row, error: null }), 'u1')
+    expect(await openConversation({} as SupabaseClient, 'u1', boot)).toBe(boot.conversation)
+    expect(createConversationNumbered).not.toHaveBeenCalled()
   })
 
   it('no play row → server mode with no state; a non-v3 state is dropped', async () => {
@@ -59,7 +67,7 @@ describe('loadHomeBootstrap', () => {
     expect(getOrCreateActiveConversation).toHaveBeenCalledWith(expect.anything(), 'u1')
     expect(countUserSignals).toHaveBeenCalled()
     expect(loadPlay).toHaveBeenCalled()
-    expect(out.conversation.id).toBe('old')
+    expect(out.conversation?.id).toBe('old')
     expect(out.signals).toBe(4)
   })
 

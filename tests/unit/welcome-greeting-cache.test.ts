@@ -38,6 +38,13 @@ describe('welcomeForSignals', () => {
     expect(redis.get).toHaveBeenCalledWith('greeting:u1:any')
   })
 
+  it('Groq failed: the canned line is served and NOT cached', async () => {
+    generateText.mockRejectedValueOnce(new Error('rate limited'))
+    const out = await welcomeForSignals('u1', 12, 'Ada Lovelace', -180)
+    expect(out.greeting).toBe('Hi Ada, what are you in the mood for tonight?')
+    expect(redis.set).not.toHaveBeenCalled()
+  })
+
   it('Redis down: the greeting is still generated', async () => {
     redis.get.mockRejectedValueOnce(new Error('redis down'))
     redis.set.mockRejectedValueOnce(new Error('redis down'))

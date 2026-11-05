@@ -95,3 +95,6 @@ The X also means two things at once. Disliked means "I watched it and didn't lik
 - On the Watchlist, rating only adds to Seen. Only "Remove from Watchlist" removes.
 - Seen is in the main menu, lists every rated title with its reaction, and the reaction can be changed there.
 - Nothing leaves Recommendations or the Watchlist except by the X or "Remove from Watchlist".
+
+### One open conversation per user — a unique index
+Two concurrent first loads (`/` plus a prefetched `/play`, or two tabs) can each insert an open conversation; the older code had the same race. A partial unique index closes it: `create unique index on conversations (user_id) where ended_at is null`, with the insert in `createConversationNumbered` handling the conflict by re-reading. Not a regression of 2026-11-05's `home_bootstrap()` (PR #198 review); do it when a duplicate is actually seen.

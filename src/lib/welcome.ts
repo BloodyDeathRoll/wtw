@@ -59,13 +59,17 @@ export async function welcomeForSignals(
   // (play page, tests) wants it loaded.
   const redis = await import("@/lib/redis").then((m) => m.getRedis()).catch(() => null);
   if (redis) {
-    const cached = await redis.get<string>(key).catch(() => null);
-    if (cached) return { greeting: cached };
+    const cached = await redis.get<unknown>(key).catch(() => null);
+    if (typeof cached === "string" && cached) return { greeting: cached };
   }
-  const greeting = await generateGreeting(name, utcOffsetMinutes);
-  if (redis) await redis.set(key, greeting, { ex: GREETING_TTL_S }).catch(() => {});
-  return { greeting };
+  // Only a real generation is cached: a Groq outage must not pin the canned
+  // line for 4 h.
+  const generated = await generateGreeting(name, utcOffsetMinutes);
+  if (generated && redis) await redis.set(key, generated, { ex: GREETING_TTL_S }).catch(() => {});
+  return { greeting: generated ?? `Hi ${firstName(name)}, what are you in the mood for tonight?` };
 }
+
+const firstName = (name: string | null) => (name?.trim().split(" ")[0] ?? "").trim() || "there";
 
 /** Chat turns + feedback rows. Also tells an existing user from a brand-new one. */
 export async function countUserSignals(
@@ -96,11 +100,12 @@ export async function countUserSignals(
   return (feedbackCount ?? 0) + messageCount;
 }
 
+/** The Groq greeting, or null when it failed or came back empty. */
 async function generateGreeting(
   name: string | null,
   utcOffsetMinutes: number | null,
-): Promise<string> {
-  const displayName = (name?.trim().split(" ")[0] ?? "").trim() || "there";
+): Promise<string | null> {
+  const displayName = firstName(name);
 
   // When we have the client's offset, shift "now" to the user's local clock
   // and read fields in UTC so the rendered values reflect their wall time.
@@ -161,10 +166,9 @@ Hard rules:
       instructions: systemPrompt,
       prompt: `Greet ${displayName} and ask the question.`,
     });
-    const text = result.text.trim();
-    return text || `Hi ${displayName}, what are you in the mood for tonight?`;
+    return result.text.trim() || null;
   } catch (e) {
     console.error("[welcome] greeting generation failed", e);
-    return `Hi ${displayName}, what are you in the mood for tonight?`;
+    return null;
   }
 }

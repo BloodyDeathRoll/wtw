@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
-import { loadHomeBootstrap } from "@/lib/home-bootstrap";
+import { loadHomeBootstrap, openConversation } from "@/lib/home-bootstrap";
 import { welcomeForSignals } from "@/lib/welcome";
 import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
 import { progressOf } from "./play/lib/server";
@@ -60,8 +60,10 @@ export default async function Home({
       null,
   };
 
-  // The greeting (Groq, cached) and the dev notice (Redis) are independent.
-  const [welcome, jevFailures] = await Promise.all([
+  // The conversation (created only now, after the redirect decision), the
+  // greeting (Groq, cached) and the dev notice (Redis) are independent.
+  const [conversation, welcome, jevFailures] = await Promise.all([
+    openConversation(supabase, user.id, boot),
     welcomeForSignals(user.id, boot.signals, appUser.name, utcOffsetMinutes),
     // Jev failures since this dev last dismissed the notice; [] for everyone else.
     devJevFailures(appUser.email),
@@ -72,7 +74,7 @@ export default async function Home({
       {jevFailures.length > 0 && <JevNotice failures={jevFailures} />}
       <WTWApp
         user={appUser}
-        conversation={boot.conversation}
+        conversation={conversation}
         welcome={welcome}
         calibrationNudge={play.skipped}
       />
