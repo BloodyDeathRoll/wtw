@@ -176,6 +176,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-05 — Dependabot: one check a week, one PR per check (`chore/dependabot-weekly-one-pr`)
+- Three sets of five dependabot PRs landed on 2026-11-05. Cause: dependabot runs the moment `.github/dependabot.yml` changes on `main`, and with `open-pull-requests-limit: 5` and a backlog each run opened the next five (#180–184 one minute after #179 merged, #187–191 one minute after #186). Now: Mondays only, and every minor/patch bump in **one** grouped PR (`npm-minor-patch`; `ai-sdk` stays its own group and comes first; actions grouped too). A major still gets its own PR. **Edit `dependabot.yml` rarely — each edit is an extra run.**
+
 ### 2026-11-05 — Types and engines follow the runtime: Node 24 (`chore/types-node-24`, #186)
 - `@types/node` 22 → 24 and `engines.node` `>=22.13` → `>=24`, matching `.nvmrc`, CI (`node-version: 24`) and the Vercel project setting (24.x, checked). Dependabot #184 had proposed `@types/node` 26; `.github/dependabot.yml` now ignores semver-major updates for it — bump the major by hand when the runtime moves. Lockfile note: npm 11.9 (local) drops the `libc` fields that main's lockfile carries on `@next/swc-linux-*`; they were restored so the lockfile diff is only the intended lines.
 
