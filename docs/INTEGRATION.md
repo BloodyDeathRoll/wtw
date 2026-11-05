@@ -176,6 +176,11 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-05 — "Why it's a match" on "Both" (`fix/why-both-batch`)
+- Found by Eran right after the sheet shipped: with the picker on **Both**, every title's sheet said "The full breakdown isn't ready". Not new: since "Both" was added (2026-10-26) the explain route only looked in the Movies and Series batches (`rec:{user}:{version}:movies|series`), never in Both's (`…:all`). Movies/Series were fine.
+- **Fixed** in `src/app/api/recommendations/explain/route.ts`: look in the title's own type's batch, then Both's; with no type, Movies → Series → Both. The (tmdb_id, type) matching is unchanged.
+- Tests: `tests/unit/explain-route-batches.test.ts` (5; 3 fail on the old code). All 675 pass, type-check clean. Checked in the running app on Both: Friends, Once (series), Cool Runnings, Bridesmaids (films). The test account's picker is left on Both.
+
 ### 2026-11-05 — "Why it's a match" stripped down to the why (`feat/why-match-sheet`)
 - Eran's backlog item (2026-11-04). Mocked first (`docs/prototypes/why-match/`, 5 states: opening, full sheet, crew matches, no crew, a real reason against), approved as mocked.
 - **Built:** `WhyDetailOverlay` (`RecommendationsView.tsx`, A1's module) is now a **sheet that slides up over the card**: dark layer behind, solid dark sheet 44px from the top, grab handle, title + year · length · ★ and an X. Gone from it: the top bar (back/share/menu), blurred poster, match ring, streaming service, trailer, watchlist button, Loved/Liked/Disliked, Remove. Closes with the X, a tap on the dark layer, Escape, a **swipe down** (from the top, or from the content once it's scrolled up; 90px) and the **phone's back button** (opening pushes a same-address history entry `{wtwWhy: true}`; popstate closes). The old `CtaBlock`, `WherePill`, `TrailerButton` (only it used them) are removed.
