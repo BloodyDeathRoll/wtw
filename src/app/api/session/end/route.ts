@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
   // cards, so re-running the LLM transcript extraction (~5-10s) would only
   // produce signals that dedup away. Ratings are folded regardless.
   const skipTranscript: boolean = body.skip_transcript === true
+  // "Find more": the user has read the current batch to its end and wants the
+  // next one. Only that button sends it (the warm-up and leave-cards calls
+  // share skip_transcript but must stay no-ops).
+  const wantMore: boolean = body.more === true
   // Watchlist adds the client hasn't reported yet, piggybacked on this request
   // so saving a card costs no round-trip of its own. Ids are "type:tmdb_id".
   const watchlistAdded: string[] = Array.isArray(body.watchlist_added)
@@ -243,7 +247,7 @@ export async function POST(req: NextRequest) {
       cacheWarmAndClean = false
     }
 
-    if (cacheWarmAndClean) {
+    if (cacheWarmAndClean && !wantMore) {
       return NextResponse.json({
         ok: true,
         taste_version: dna.metadata.taste_version,
@@ -253,6 +257,32 @@ export async function POST(req: NextRequest) {
         watchlist_recorded: watchlistRecorded,
         watchlist_synced: watchlistSynced,
         ...extractionReport(extractionFailed),
+      })
+    }
+    // "Find more" with nothing to merge: the no-op above would hand back the
+    // batch the user has just finished, and the client would show nothing new.
+    // Build the NEXT batch at the same taste_version — step 1 excludes what
+    // was served, so it is fresh — without the fingerprint update below, which
+    // bumps the version and busts the embedding cache for no new signal.
+    if (cacheWarmAndClean && wantMore) {
+      let rec_count = 0
+      try {
+        const adopted = await adoptPendingBatch(user.id, dna, contentType)
+        const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna, skipCacheRead: true, contentType })
+        rec_count = recs.length
+        t.done(adopted ? 'total (next batch, adopted precomputed)' : 'total (next batch)')
+      } catch (err) {
+        console.error('[session/end] next batch failed:', err)
+      }
+      return NextResponse.json({
+        ok: true,
+        taste_version: dna.metadata.taste_version,
+        signal_count: 0,
+        rec_count,
+        watchlist_recorded: watchlistRecorded,
+        watchlist_synced: watchlistSynced,
+        ...extractionReport(extractionFailed),
+        ...(rec_count === 0 ? { warning: 'Next batch could not be built' } : {}),
       })
     }
     // else: cache is stale (holds a rated title) or cold — fall through to

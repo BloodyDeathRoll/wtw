@@ -706,7 +706,7 @@ export default function WTWApp({
   // Runs the session-end pipeline: fingerprint rebuild + fresh rec generation
   // (cached server-side at the new taste_version). Shared by the initial
   // "Recommend" entry and the in-list "Find More" refresh.
-  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean }) {
+  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean; more?: boolean }) {
     // Watchlist saves ride along on this request rather than posting their own —
     // saving a card is supposed to cost zero extra calls.
     const savedIds = getUnsyncedIds();
@@ -722,6 +722,8 @@ export default function WTWApp({
           // "Find more": chat didn't change while rating cards — skip the
           // slow transcript re-analysis; per-click merges did the rest.
           skip_transcript: opts?.skipTranscript ?? false,
+          // "Find more": the batch was read to its end — build the next one.
+          more: opts?.more === true,
           // Which list to regenerate — batches are built per content type.
           content_type: contentType,
           watchlist_added: savedIds,
@@ -967,7 +969,7 @@ export default function WTWApp({
             mode="recommendations"
             sharerName={user.name}
             setContentType={setContentType}
-            onFindMore={() => endSessionAndGenerate({ skipTranscript: true })}
+            onFindMore={() => endSessionAndGenerate({ skipTranscript: true, more: true })}
             headerRight={appMenu}
             building={buildingRecs}
             onCalibrate={calibrationNudge ? () => leaveTo("/play") : undefined}
