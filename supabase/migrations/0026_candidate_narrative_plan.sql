@@ -15,7 +15,22 @@
 -- scan. Same body, same arguments, same results (checked: identical first 50
 -- for the same inputs); 45–116 ms per call across type/limit variants.
 --
--- Run it with pg from here (SUPABASE_DB_URL), like 0025.
+-- One deliberate difference: pool_limit null used to mean `limit null` (every
+-- row); it is now 150, and 0 or less becomes 1. No caller passes either
+-- (step1-candidate-gen.ts always passes a positive number).
+--
+-- The index is ivfflat (lists = 100), so `ivfflat.probes` is the right knob;
+-- it is kept at 10 as in 0021.
+--
+-- Cold start: the index is 103 MB and the instance has 280 MB of shared
+-- buffers, so after a restart or eviction the first few calls read it from
+-- disk (0.3–1.6 s measured), then ~50 ms. Keeping it warm is in
+-- docs/speed-plan.md.
+--
+-- Rollback: re-run the 0021 body (0021_titles_language_keywords.sql:122-160).
+--
+-- Run it with pg from here (SUPABASE_DB_URL), like 0025. Applied live
+-- 2026-11-05.
 
 create or replace function public.get_candidate_titles_by_narrative(
   query_embedding   vector(1024),

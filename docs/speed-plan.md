@@ -1,0 +1,33 @@
+# Speeding-up plan
+
+Why the app feels slow, measured on 2026-11-05 from production logs, `pg_stat_statements` and `EXPLAIN ANALYZE`, and what to do about it, in order. Part A is done; the rest is this plan. When a part lands, move its line to `docs/INTEGRATION.md` and delete it here.
+
+## What was measured
+
+- **"Find more" ≈ 20 s.** The client POSTs `/api/session/end`, which runs the whole recommendation pipeline inline (a real run at 11:21: step 1 candidates **5.6 s**, step 2 scoring 1.3 s, step 4 Jev 0.1 s, watch providers 1.4 s — 8.4 s), plus a Groq transcript analysis when there were messages; then the client GETs `/api/recommendations/generate`, which makes ~7 more sequential database calls.
+- **Every screen 1.5–3 s before any HTML.** The home page makes 5–6 Supabase calls in sequence (conversation, messages, feedback count, conversation list, message count, play state). Each call is ~300 ms because of where the database is.
+- **Geography.** Supabase: **Sydney** (`aws-1-ap-southeast-2`). Vercel functions: Frankfurt (`region=fra1` in the runtime logs). Upstash Redis: Frankfurt. Users: Israel. A round trip function → database is ~300 ms; from a laptop in Israel 0.5–1.2 s.
+- **Auth hop on every request.** `src/middleware.ts` calls `supabase.auth.getUser()` (a network call to Supabase Auth in Sydney) on every page and API request, and each page calls it again.
+- **The database itself.** `get_candidate_titles_by_narrative` averaged 2.0–2.7 s per call (fixed in part A, below). The catalog is 34,973 titles against a 15k target. The instance is Supabase's smallest: 280 MB shared buffers, 2 MB `work_mem`; the 103 MB vector index does not stay in memory, so the first calls after a quiet period read it from disk (0.3–1.6 s), then ~50 ms.
+
+## Parts
+
+| Part | What | Effort | Expected gain | Status |
+|---|---|---|---|---|
+| **A** | Migration `0026`: `get_candidate_titles_by_narrative` planned per call (`return query execute`) so it uses `idx_titles_narrative_embedding`. | done | step 1: 2.0–2.7 s mean → ~50 ms warm. Verified live, e2e harness 5/5. | ✅ 2026-11-05, PR #194 |
+| **B** | `getUser()` → `getClaims()` in `src/middleware.ts` and in the pages (`src/app/page.tsx`, `search`, `play`, `t/[key]`, `login`). `getClaims` verifies the JWT locally against cached JWKS; supabase-js 2.118 has it. Keep `getUser()` only where the row must be fresh (sign-out, account changes). | 1–2 h | −0.3 to −0.6 s on **every** request. | |
+| **C** | `/api/session/end`: stop regenerating inline. Serve the batch the feedback route already precomputes (`[generate/precompute]`), and regenerate in `after()` when the DNA changed. The client's follow-up GET then hits the cache. | 2 h | "Find more": no 8 s wait inside the request. | |
+| **D** | One RPC per screen instead of 5–6 sequential queries: home (`src/lib/conversations.ts` + `src/lib/welcome.ts` `countUserSignals` + `loadPlay`), play, search. Each becomes a single `select … from rpc(user_id)`. | half a day | −1 to −1.5 s per screen while the database is far; still worth it after E (fewer round trips, fewer connections). | |
+| **E** | **Move Supabase to Frankfurt** (`eu-central-1`): new project, `pg_dump`/restore (280 MB; the vector index rebuilds), re-create auth users via the admin API, rotate the keys in `.env.local` and Vercel, re-point the e2e scratch user. Needs a maintenance window. | half a day + window | every database hop 300 ms → ~2 ms; the single biggest change for "all screens load slowly". | |
+| **F** | Keep the vector index warm: `pg_prewarm('idx_titles_narrative_embedding')` after deploys / nightly (the cron at `/api/cron/decay` runs at 04:00), or a bigger instance if the catalog keeps growing. | 1 h | no 0.3–1.6 s first-call penalty after quiet periods. | |
+| **G** | Catalog size: decide whether 35k titles is intended (the recorded target was 15k). Fewer rows → smaller index, more of it in memory. | decision | | |
+
+## Not recommended
+
+- Moving the Vercel functions to Sydney (one project setting) would make the function ↔ database hop fast, but every request from Israel would then cross to Sydney (~300 ms) and every Redis call (Frankfurt) would too. Net loss for the people using the app. E is the right fix.
+
+## How to re-measure
+
+- Pipeline step times: Vercel runtime logs, lines `[generate] step1 candidates …`, `[generate/precompute] …` (Hobby plan keeps 1 hour).
+- Database: `select calls, round(mean_exec_time), round(max_exec_time), left(query, 90) from pg_stat_statements order by mean_exec_time desc limit 12` (stats were reset on 2026-11-05 at the moment A was applied). Connect with `pg` (`npm install --no-save pg`) and `SUPABASE_DB_URL`.
+- Round trips: `curl -o /dev/null -w '%{time_total}'` against `NEXT_PUBLIC_SUPABASE_URL/rest/v1/titles?select=tmdb_id&limit=1` with the anon key.
