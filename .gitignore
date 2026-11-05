@@ -57,3 +57,7 @@ handoff.md
 
 # Local code-review reports (kept out of the repo)
 docs/code-review-*
+
+# local backups of env files (e.g. .env.local.sydney.bak) and dumps
+.env*.bak
+scripts/dump/

@@ -177,8 +177,8 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
 ### 2026-11-05 — Speed, part E: Supabase moved from Sydney to Frankfurt (`perf/supabase-frankfurt`)
-- New project `cxoivygtoncywvrkgtdr` ("wtw 2.0", `eu-central-1`, Nano, Postgres 17.11); the old one `lvdjehvbmcypwewdohob` (`ap-southeast-2`) stays paused as a fallback for a week, then gets deleted. How it was copied and verified: `docs/speed-plan.md` part E. `scripts/db-recopy.sh` is the row re-copy used at cutover (and reusable for any project-to-project move).
-- Same env var names; new values in `.env.local` (`.env.local.sydney.bak` kept next to it) and on Vercel (Preview + Production). `SUPABASE_DB_URL` is now the direct connection (`db.<ref>.supabase.co:5432`, IPv6 only — the session pooler on `aws-1-eu-central-1.pooler.supabase.com` is the IPv4 fallback).
+- New project `cxoivygtoncywvrkgtdr` ("wtw 2.0", `eu-central-1`, Nano, Postgres 17.11); the old one `lvdjehvbmcypwewdohob` (`ap-southeast-2`) stays paused as a fallback — **the rollback window ends about 2026-11-12**, then delete it. How it was copied and verified: `docs/speed-plan.md` part E. `scripts/db-recopy.sh` is the row re-copy used at cutover (one snapshot, truncate + restore, exits non-zero on any count mismatch; reusable for any project-to-project move, inside a write-quiet window).
+- Same env var names; new values in `.env.local` (`.env.local.sydney.bak` kept next to it, local only — `.env*.bak` is git-ignored) and on Vercel (Preview + Production). `SUPABASE_DB_URL` is now the direct connection (`db.<ref>.supabase.co:5432`, IPv6 only — the session pooler on `aws-1-eu-central-1.pooler.supabase.com` is the IPv4 fallback).
 - The e2e scratch user came with the auth copy (same id `33abbfff-…`). The harness's Redis-versioning test fails once right after a copy because Redis is shared and already ahead of the copied `taste_version`; it passes again after the first real run.
 - Not moved (nothing to move): storage buckets 0, vault secrets 0, no `pg_cron`.
 
