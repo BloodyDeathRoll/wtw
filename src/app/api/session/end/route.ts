@@ -16,7 +16,7 @@
  * Response: { ok, taste_version, signal_count, rec_count, watchlist_recorded, watchlist_synced }
  */
 
-import { NextRequest, NextResponse, after } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
@@ -317,18 +317,13 @@ export async function POST(req: NextRequest) {
   //
   // Best-effort: a failure leaves the user in the conversation they are in,
   // which is the old behaviour rather than a broken one.
-  // Rotating the conversation is bookkeeping the response does not need —
-  // one more Sydney round trip — so it runs after the response is sent.
-  // Outside a request (tests) `after` throws and it runs inline.
+  // Inline on purpose (2026-11-05): moving this into after() was tried for
+  // speed and reverted — a message sent right after "Find more" could land in
+  // the conversation still being ended. The response guarantees rotation.
   if (!skipTranscript && !extractionFailed) {
-    const rotate = () => endConversation(db, conversationId).catch(err =>
+    await endConversation(db, conversationId).catch(err =>
       console.warn('[session/end] conversation rotation failed (non-fatal):', err instanceof Error ? err.message : err),
     )
-    try {
-      after(rotate)
-    } catch {
-      await rotate()
-    }
   }
 
   return NextResponse.json({

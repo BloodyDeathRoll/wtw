@@ -176,9 +176,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
-### 2026-11-05 — Speed, parts B + C: no Auth round trip per request; conversation rotation after the response (`perf/auth-claims`)
+### 2026-11-05 — Speed, part B: no Auth round trip per request; part C closed (`perf/auth-claims`)
 - **B:** `src/lib/supabase/auth-user.ts` → `getAuthUser(supabase)` reads the signed-in user from the JWT with `supabase.auth.getClaims()` (local ES256 check against the project's JWKS, cached per function instance; refreshes an expired session like `getUser()`). Used by `src/middleware.ts`, the pages (`/`, `/search`, `/play`, `/t/[key]`) and the three "Find more" routes (`session/end`, `recommendations/generate` GET+POST, `recommendations/feedback`). Measured with a real session for the e2e user: `getUser()` 392–399 ms per call, `getClaims()` 104 ms once then 0–1 ms. Trust change: a session revoked server-side stays valid until the token expires (1 h). The other 17 API routes still call `getUser()` — listed in `docs/speed-plan.md`.
-- **C, corrected:** the plan said `session/end` regenerates inline while the client's GET repeats the work. Not so: the GET is a cache hit, and with ratings only the precomputed batch is adopted; inline regeneration happens only when chat changed the taste. Done instead: `endConversation` runs in `after()`.
+- **C, corrected — no change:** the plan said `session/end` regenerates inline while the client's GET repeats the work. Not so: the GET is a cache hit, and with ratings only the precomputed batch is adopted; inline regeneration happens only when chat changed the taste. Moving `endConversation` into `after()` was tried in this PR and reverted on review: a message sent right after "Find more" could land in the conversation being ended. The route is unchanged apart from B.
 - Tests: `tests/unit/auth-user.test.ts` (3). Type-check clean.
 
 ### 2026-11-05 — Speed, part A: the narrative candidate query uses its index again (`perf/candidate-narrative-plan`, migration `0026`)
