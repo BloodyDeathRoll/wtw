@@ -46,9 +46,10 @@ export const MODELS = {
    *  returned text"; it is not, unless the reasoning is separated out. */
   text: 'openai/gpt-oss-120b',
 
-  /** STRUCTURED output (`generateText` + `Output.object`) on the low-volume, latency-sensitive
-   *  paths: engine rerank / explanation / co-watch, and session transcript
-   *  analysis. MUST be NON-reasoning — reasoning models (Groq gpt-oss-*, qwen3.6)
+  /** STRUCTURED output (`generateText` + `Output.object`) on the low-volume,
+   *  latency-sensitive paths: engine explanation / co-watch, and session
+   *  transcript analysis (the engine rerank moved to `jev` on 2026-11-05).
+   *  MUST be NON-reasoning — reasoning models (Groq gpt-oss-*, qwen3.6)
    *  spend their budget on a `reasoning` trace and often return empty `content`,
    *  which structured output can't parse. Measured 2026-07-09: gpt-oss-120b fails
    *  ~1/6 on complex schemas (e.g. analyze-session) and these sites sit in the
@@ -70,6 +71,14 @@ export const MODELS = {
    *  2026-09-07 free-tier move as `structured`: ministral-8b (188 req/min free)
    *  replaces mistral-small (0). */
   enrichment: 'ministral-8b-latest',
+
+  /** Jev (typesafe.ai System One) — yes/no probabilities, not text. Engine
+   *  step 4 (`src/lib/jev.ts`): one request asks, per candidate, whether the
+   *  viewer would dislike it and drops the sure ones; order is untouched.
+   *  ~0.4s for 50 measured 2026-11-05, against 5–20s for the Mistral rerank
+   *  it replaced. On failure the batch is served as scored and the failure
+   *  is logged to Redis for the devs. `-latest` floats: pin once measured. */
+  jev: 'jev-latest',
 
   /** Mistral — narrative + fingerprint embeddings (1024-dim, matches the
    *  vector(1024) columns in the Supabase migrations). */

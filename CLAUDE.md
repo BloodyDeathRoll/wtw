@@ -87,6 +87,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=     GEMINI_API_KEY=          OMDB_API_KEY=
 SUPABASE_SERVICE_ROLE_KEY=         MISTRAL_API_KEY=         CRON_SECRET=
 UPSTASH_REDIS_REST_URL=            UPSTASH_REDIS_REST_TOKEN=
 MISTRAL_BATCH_API_KEY=   # optional — nightly enrichment only; falls back to MISTRAL_API_KEY
+TYPESAFE_API_KEY=        # Jev — engine step 4 filter; when it fails the batch is served in score order and the devs are told
 ```
 
 ## Commands

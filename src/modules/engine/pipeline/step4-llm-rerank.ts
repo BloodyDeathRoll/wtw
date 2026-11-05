@@ -1,16 +1,23 @@
 /**
- * Step 4 — LLM Re-ranking
+ * Step 4 — Jev filter (was: LLM re-ranking)
  *
- * Takes the top 50 scored candidates and asks Groq to re-rank them based
- * on nuanced tonal and thematic resonance that numeric scoring can't capture.
+ * Takes the top 50 scored candidates and asks Jev (`src/lib/jev.ts`), per
+ * candidate, whether THIS viewer would dislike it — the nuance numeric
+ * scoring can't capture, above all the avoid list (see `avoidSummary`).
+ * Candidates Jev is ≥ `JEV_DISLIKE_THRESHOLD` sure about are dropped.
  *
- * One structured call (Mistral small — see src/lib/ai-models.ts) returns the
- * re-ranked list of ids. Since 2026-08-28 it returns ids ONLY: per-title
- * rationales made it the slowest step of "Find more" and step 7 builds the
- * interim card text from the reason payload instead. groq_rationale is kept
- * on the type (ReasonPayload contract) and is always ''.
+ * Nothing is reordered (2026-11-05). Until then this step asked Mistral to
+ * re-rank the batch by taste, so a 94% match could show above a 95% one.
+ * The product rule is that the card's % match IS the order: composite
+ * order in, composite order out, minus what Jev drops. One Jev request for
+ * the whole batch, ~0.4s measured live, against 5–20s for the LLM rerank.
  *
- * Returns all 50 in the model's order; composite order on any failure.
+ * On any Jev failure (no key, non-2xx, timeout, bad body) the batch is
+ * returned untouched and the failure is logged to Redis (`recordJevFailure`)
+ * so the devs see it on their next app open / Claude Code session.
+ *
+ * groq_rationale is kept on the type (ReasonPayload contract) and is
+ * always ''.
  *
  * The prompt carries what the viewer AVOIDS as well as what they like
  * (2026-09-20). It used to be an entirely positive profile, so a reranker with
@@ -18,19 +25,11 @@
  * the top of the batch on tonal resonance alone.
  */
 
-import { generateText, Output } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
-import { MODELS } from '@/lib/ai-models'
-import { z } from 'zod'
+import { after } from 'next/server'
+import { jevNoul, recordJevFailure, JevNotConfigured } from '@/lib/jev'
 import { strongestContentAffinities } from '@/modules/dna/lib/update-content-affinity'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
-
-function mistral() {
-  const key = process.env.MISTRAL_API_KEY
-  if (!key) throw new Error('MISTRAL_API_KEY is not set')
-  return createMistral({ apiKey: key })
-}
 
 // ─────────────────────────────────────────────
 // Profile → natural language (for the prompt)
@@ -127,18 +126,32 @@ export function avoidSummary(dna: DNASchema): string {
 }
 
 // ─────────────────────────────────────────────
-// Re-ranking schema
+// The filter
 // ─────────────────────────────────────────────
 
-// Ids only. This call used to return a rationale per title too — ~4K output
-// tokens for 50 titles, the single largest cost of a "Find more" (est. 5-20s,
-// 2026-08-28). The rationales only fed the explanation prompt and the interim
-// card text, both of which step 7 now covers from the reason payload.
-const rerankSchema = z.object({
-  ranked: z.array(
-    z.string().describe('The bracketed id exactly as shown, e.g. "movie:603"'),
-  ).min(1),
-})
+/** Jev's "would dislike" probability at or above this drops the candidate.
+ *  From `scripts/jev-threshold-probe.mts` (8 titles, two runs on
+ *  2026-11-05): fits 0.04–0.13, avoided 0.70–0.97; hard avoids 0.95+, a
+ *  soft "wants less of" title sits at the line. Re-run it before changing. */
+export const JEV_DISLIKE_THRESHOLD = 0.7
+
+/**
+ * Removes the items Jev is sure the viewer would dislike; order is untouched
+ * and an unanswered item is kept. If that would drop more than half the
+ * batch the pass is distrusted and nothing is dropped — the SQL pass already
+ * applied the hard rules, so a batch that is mostly "dislikes" means the
+ * question misfired, not the catalog.
+ */
+export function dropDisliked<T>(
+  items: T[],
+  answers: Record<string, number>,
+  keyOf: (item: T) => string,
+  threshold = JEV_DISLIKE_THRESHOLD,
+): T[] {
+  const kept = items.filter(item => (answers[keyOf(item)] ?? 0) < threshold)
+  // Strictly more than half: dropping exactly 25 of 50 still goes ahead.
+  return kept.length * 2 < items.length ? items : kept
+}
 
 // ─────────────────────────────────────────────
 // Main function
@@ -150,65 +163,54 @@ export async function llmRerank(
 ): Promise<ScoredTitle[]> {
   const top50 = scored.slice(0, 50)
   if (top50.length === 0) return []
+  const done = (items: ScoredTitle[]) => items.map(item => ({ ...item, groq_rationale: '' }))
 
-  const candidateList = top50
-    .map((s, i) => {
-      const t = s.title
-      const director = t.crew.directors[0]?.name ?? 'unknown director'
-      const genres   = t.genres.map(g => g.name).join(', ')
-      const tones    = t.tone_tags.join(', ') || 'unknown'
-      // The bracketed id is the composite key: the model echoes it back and a
-      // bare tmdb_id would collide for a movie/TV pair sharing an id.
-      return `${i + 1}. [${t.type}:${t.tmdb_id}] "${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${director} — Genres: ${genres} — Tone: ${tones} — Score: ${s.composite_score.toFixed(3)}`
-    })
-    .join('\n')
+  // The composite key: a bare tmdb_id would collide for a movie/TV pair
+  // sharing an id.
+  const keyOf = (s: ScoredTitle) => `${s.title.type}:${s.title.tmdb_id}`
+  const describe = (s: ScoredTitle) => {
+    const t = s.title
+    const director = t.crew.directors[0]?.name ?? 'unknown director'
+    const genres   = t.genres.map(g => g.name).join(', ')
+    const tones    = t.tone_tags.join(', ') || 'unknown'
+    return `"${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${director} — Genres: ${genres} — Tone: ${tones}`
+  }
 
   const avoids = avoidSummary(dna)
-
-  const prompt = `You are a film expert re-ranking recommendations for a specific viewer.
-
-VIEWER PROFILE:
-${profileSummary(dna)}
-${avoids ? `\nWHAT THIS VIEWER AVOIDS:\n${avoids}\nAnything on that list belongs at the BOTTOM of your order, however good it is in the abstract. A title they told you they do not want is a bad recommendation for them.\n` : ''}
-CANDIDATES (currently ranked by numeric score):
-${candidateList}
-
-Re-rank these titles from best to worst fit for THIS viewer. You may dramatically reorder them — the numeric score misses nuance.
-Return ALL ${top50.length} bracketed ids in your preferred order. Ids only — no titles, no commentary.`
-
-  // GRACEFUL DEGRADATION: a rerank failure must never kill the pipeline.
-  // Composite scoring (step 2) already produced a good order — the LLM pass
-  // only refines it. On any LLM/validation error, fall back to that order.
-  let ranked: string[]
-  try {
-    const { output } = await generateText({
-      model: mistral()(MODELS.structured),
-      output: Output.object({ schema: rerankSchema }),
-      prompt,
-    })
-    ranked = output.ranked
-  } catch (err) {
-    console.warn('[rerank] LLM rerank failed — falling back to composite order:', err instanceof Error ? err.message : err)
-    return top50.map(item => ({ ...item, groq_rationale: '' }))
-  }
-
-  // Keyed on whatever the model echoed — the composite key we showed it, or a
-  // bare id if it trimmed the prefix; the lookup tries the composite first.
-  const rankMap = new Map<string, number>(
-    ranked.map((id, i) => [id.trim().replace(/^\[|\]$/g, ''), i])
+  const state = `VIEWER PROFILE:\n${profileSummary(dna)}${avoids ? `\n\nWHAT THIS VIEWER AVOIDS:\n${avoids}` : ''}`
+  const questions = Object.fromEntries(
+    top50.map(s => [
+      keyOf(s),
+      `Would this viewer dislike ${describe(s)}? True if it is something they avoid or have rated down; false if it fits their taste.`,
+    ]),
   )
-  const rankOf = (s: ScoredTitle) =>
-    rankMap.get(`${s.title.type}:${s.title.tmdb_id}`) ?? rankMap.get(s.title.tmdb_id)
 
-  // Apply the LLM's ordering, preserving original numeric order for unranked titles
-  const matched = top50.filter(s => rankOf(s) !== undefined).length
-  console.log(`[rerank] ${matched}/${top50.length} ids matched (${ranked.length} returned)`)
-  if (matched === 0) {
-    // The model returned something we can't map (titles instead of ids?) —
-    // say so loudly rather than silently serving composite order as "reranked".
-    console.warn('[rerank] no ids matched — composite order kept; sample:', ranked.slice(0, 3))
+  // GRACEFUL DEGRADATION: a Jev failure must never kill the pipeline.
+  // Composite scoring (step 2) already produced the order — this pass only
+  // removes. On any error, serve the batch as it came and log the failure.
+  // Only the Jev call is inside the try: a bug in our own filtering must not
+  // be reported to the devs as an API failure.
+  let answers: Record<string, number>
+  try {
+    answers = await jevNoul(state, questions)
+  } catch (err) {
+    console.warn('[rerank] jev failed — composite order, nothing dropped:', err instanceof Error ? err.message : err)
+    // Only an API failure is news for the devs (it usually means the token
+    // needs a top-up); a machine without the key is a local setup gap.
+    // Logged after the response is sent, so no user waits on Redis for it;
+    // outside a request (tests, scripts) `after` throws and we write inline.
+    if (!(err instanceof JevNotConfigured)) {
+      const log = () => recordJevFailure('rerank', err)
+      try {
+        after(log)
+      } catch {
+        await log()
+      }
+    }
+    return done(top50)
   }
-  const reranked = [...top50].sort((a, b) => (rankOf(a) ?? 999) - (rankOf(b) ?? 999))
 
-  return reranked.map(item => ({ ...item, groq_rationale: '' }))
+  const kept = dropDisliked(top50, answers, keyOf)
+  console.log(`[rerank] jev answered ${Object.keys(answers).length}/${top50.length}, dropped ${top50.length - kept.length}`)
+  return done(kept)
 }
