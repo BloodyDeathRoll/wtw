@@ -36,6 +36,17 @@ describe('tmdbFetch 429 retry', () => {
     expect(fetch).toHaveBeenCalledTimes(4)
   })
 
+  it('an HTTP-date Retry-After is not a number: falls back to the 1s backoff', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(r429('Wed, 05 Nov 2026 12:00:00 GMT')).mockResolvedValueOnce(ok())
+    vi.stubGlobal('fetch', fetch)
+    const p = getWatchProviders('movie', '1', ['US'])
+    await vi.advanceTimersByTimeAsync(999)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(p).resolves.toEqual({})
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
   it('caps a long Retry-After at 4s', async () => {
     const fetch = vi.fn().mockResolvedValueOnce(r429('60')).mockResolvedValueOnce(ok())
     vi.stubGlobal('fetch', fetch)

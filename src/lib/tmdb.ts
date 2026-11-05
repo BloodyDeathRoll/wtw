@@ -43,8 +43,11 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
       next: { revalidate: 0 }, // always fresh — we do our own caching in Supabase
     })
     if (res.status !== 429 || attempt >= TMDB_429_RETRIES) break
+    // Release the connection before waiting; the 429 body is never read.
+    await res.body?.cancel().catch(() => {})
     // Honour Retry-After (seconds) when TMDB sends it, capped so a live request
-    // never hangs past ~12s; else back off 1s, 2s, 4s.
+    // never hangs past ~12s; else back off 1s, 2s, 4s. A missing or HTTP-date
+    // header is not a positive number and takes the backoff too.
     const retryAfter = Math.min(Number(res.headers.get('retry-after')), TMDB_RETRY_AFTER_MAX_S)
     await new Promise((r) => setTimeout(r, retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt))
   }

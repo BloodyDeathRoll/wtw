@@ -709,6 +709,7 @@ async function inTmdbBatches<T>(rows: T[], fn: (row: T) => Promise<void>) {
   for (let i = 0; i < rows.length; i += TMDB_BATCH) {
     const started = Date.now()
     await Promise.all(rows.slice(i, i + TMDB_BATCH).map(fn))
+    if (i + TMDB_BATCH >= rows.length) break // nothing follows the last batch
     await sleep(Math.max(0, TMDB_BATCH_MS - (Date.now() - started)))
   }
 }
