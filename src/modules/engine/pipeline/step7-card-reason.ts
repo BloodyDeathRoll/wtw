@@ -7,10 +7,10 @@
  *   2. Specific and varied: a person you rated, linked to a title of theirs
  *      you loved or liked; the title's own story hook; the moods you share
  *      with it; then critics, when there's room.
- *   3. Only facts the app holds. No model writes this line: the AI paragraph
- *      (step7-explanation.ts) invented credits and moods when tried live
- *      (2026-11-05: Cruella's writer "wrote The Big Sick"), so it is kept for
- *      the sheet and never replaces this.
+ *   3. Only facts the app holds. No model writes this line, nor the longer
+ *      one in the "Why it's a match" sheet (`sheetReason`): the AI paragraph
+ *      the sheet used to show invented credits and moods (live 2026-11-05:
+ *      Cruella's writer "wrote The Big Sick"), and was removed 2026-11-06.
  *
  * Built at generation time from the title row (crew, keywords, genres) and
  * the reason payload, so the card has its final text on the first view — the
@@ -231,8 +231,13 @@ const titleText = (t: string) => `*${t.replace(/\*/g, '')}*`
 
 const ROLE_VERB: Record<string, string> = { director: 'directed it', writer: 'wrote it', actor: 'is in it' }
 
-/** Sentence 1: a person you rated well — named with a title of theirs you rated, when there is one. */
-function personSentence(item: CardReasonInput, rated: RatedByPerson): string {
+/**
+ * Sentences about people you rated well, strongest first: each named with a
+ * title of theirs you loved or liked when there is one ("From X, who made Y,
+ * which you loved."), else "X directed it, and you love their work." People
+ * with a linked title come first — they're the more specific reason.
+ */
+function personSentences(item: CardReasonInput, rated: RatedByPerson, max: number): string[] {
   const { title, reason_payload: p } = item
   const self = `${title.type}:${title.tmdb_id}`
 
@@ -242,42 +247,47 @@ function personSentence(item: CardReasonInput, rated: RatedByPerson): string {
     if (!idOf.has(c.name)) idOf.set(c.name, c.tmdb_person_id)
   }
 
-  // Cinematographers never headline: users don't follow them.
+  // Cinematographers never headline: users don't follow them. One person in
+  // two roles (writer-director) is named once, in their strongest role.
+  const seen = new Set<string>()
   const people = p.crew_matches
     .filter(m => ROLE_VERB[m.role] && m.affinity_score >= SOME)
     .sort((a, b) => b.affinity_score - a.affinity_score)
+    .filter(m => (seen.has(m.name) ? false : (seen.add(m.name), true)))
 
+  const linked: string[] = []
+  const plain: string[] = []
   for (const m of people) {
     const id = idOf.get(m.name)
-    const theirs = (id ? rated.get(id) ?? [] : [])
-      .filter(t => t.key !== self)
-      .sort((a, b) => (a.reaction === 'loved' ? 0 : 1) - (b.reaction === 'loved' ? 0 : 1) || b.votes - a.votes)
-    const t = theirs[0]
-    if (!t) continue
-    const how = t.reaction
-    if (m.role === 'actor') return `With ${m.name}, who you ${how} in ${titleText(t.title)}.`
-    if (m.role === 'writer') return `Written by ${m.name}, who wrote ${titleText(t.title)}, which you ${how}.`
-    return `From ${m.name}, who made ${titleText(t.title)}, which you ${how}.`
+    const t = (id ? rated.get(id) ?? [] : [])
+      .filter(r => r.key !== self)
+      .sort((a, b) => (a.reaction === 'loved' ? 0 : 1) - (b.reaction === 'loved' ? 0 : 1) || b.votes - a.votes)[0]
+    if (t) {
+      const how = t.reaction
+      linked.push(
+        m.role === 'actor' ? `With ${m.name}, who you ${how} in ${titleText(t.title)}.`
+        : m.role === 'writer' ? `Written by ${m.name}, who wrote ${titleText(t.title)}, which you ${how}.`
+        : `From ${m.name}, who made ${titleText(t.title)}, which you ${how}.`)
+    } else {
+      plain.push(m.affinity_score >= STRONG
+        ? `${m.name} ${ROLE_VERB[m.role]}, and you love their work.`
+        : `${m.name} ${ROLE_VERB[m.role]}; you've enjoyed their work before.`)
+    }
   }
-
-  const m = people[0]
-  if (!m) return ''
-  return m.affinity_score >= STRONG
-    ? `${m.name} ${ROLE_VERB[m.role]}, and you love their work.`
-    : `${m.name} ${ROLE_VERB[m.role]}; you've enjoyed their work before.`
+  return [...linked, ...plain].slice(0, max)
 }
 
-/**
- * The card's short "why": reasons for only, specific to this title and this
- * user, at most CARD_REASON_MAX_CHARS. A stretch pick keeps its own
- * rationale — saying why it's outside your usual is the reason.
- */
-export function cardReason(item: CardReasonInput, rated: RatedByPerson = new Map()): string {
-  const { title, reason_payload: p } = item
-  if (p.is_stretch_pick && p.stretch_rationale) return p.stretch_rationale
+interface ReasonParts {
+  stretch: string | null
+  people: string[]
+  story: (withMood: boolean, withAbout: boolean, nExtras: number) => string
+  hasStory: boolean
+  crowd: string
+}
 
+function reasonParts(item: CardReasonInput, rated: RatedByPerson, maxPeople: number): ReasonParts {
+  const { title, reason_payload: p } = item
   const kind = title.type === 'tv' ? 'series' : 'film'
-  const who = personSentence(item, rated)
 
   // ── Story + mood ────────────────────────────────────────
   const dim = new Map(p.dimension_matches.map(d => [d.dimension, d]))
@@ -314,27 +324,64 @@ export function cardReason(item: CardReasonInput, rated: RatedByPerson = new Map
     return `${article(s)} ${s}.`
   }
 
-  // Nothing to say about the story beyond "a film": say it plainly instead.
-  if (!noun && !genre && !mood) return who || 'Close to the stories you rate highest.'
-
-  // ── What others thought — only when no person is named ──
+  // ── What others thought ─────────────────────────────────
   const omdb = p.external_ratings.find(e => e.source.startsWith('OMDB'))?.score ?? 0
   const tmdb = p.external_ratings.find(e => e.source === 'TMDB')?.score ?? 0
-  const crowd = who ? '' : omdb >= 0.75 ? 'Critics loved it.' : tmdb >= 0.75 ? 'Audiences loved it.' : ''
+  const crowd = omdb >= 0.75 ? 'Critics loved it.' : tmdb >= 0.75 ? 'Audiences loved it.' : ''
 
+  return {
+    stretch: p.is_stretch_pick && p.stretch_rationale ? p.stretch_rationale : null,
+    people: personSentences(item, rated, maxPeople),
+    story,
+    // Nothing to say about the story beyond "a film".
+    hasStory: Boolean(noun || genre || mood),
+    crowd,
+  }
+}
+
+/**
+ * The card's short "why": reasons for only, specific to this title and this
+ * user, at most CARD_REASON_MAX_CHARS. A stretch pick keeps its own
+ * rationale — saying why it's outside your usual is the reason.
+ */
+export function cardReason(item: CardReasonInput, rated: RatedByPerson = new Map()): string {
+  const r = reasonParts(item, rated, 1)
+  if (r.stretch) return r.stretch
+  const who = r.people[0] ?? ''
+  if (!r.hasStory) return who || 'Close to the stories you rate highest.'
+
+  // Critics only when no person is named — the card has room for two reasons.
+  const crowd = who ? '' : r.crowd
   // The fullest version that fits four lines; the least personal parts go first.
   const tries: string[][] = [
-    [who, story(true, true, 2), crowd],
-    [who, story(true, true, 1), crowd],
-    [who, story(true, true, 1)],
-    [who, story(true, true, 0)],
-    [who, story(true, false, 0)],
-    [who, story(false, false, 0)],
+    [who, r.story(true, true, 2), crowd],
+    [who, r.story(true, true, 1), crowd],
+    [who, r.story(true, true, 1)],
+    [who, r.story(true, true, 0)],
+    [who, r.story(true, false, 0)],
+    [who, r.story(false, false, 0)],
     [who],
   ]
   for (const parts of tries) {
     const s = parts.filter(Boolean).join(' ')
     if (s && visible(s) <= CARD_REASON_MAX_CHARS) return s
   }
-  return who || story(false, false, 0)
+  return who || r.story(false, false, 0)
+}
+
+/**
+ * The "Why" text in the "Why it's a match" sheet: the card's reasons, in
+ * full — up to two people, the whole story line, what critics thought. Same
+ * facts, same rule (reasons for only; what doesn't fit is listed separately
+ * in the sheet), no length cap.
+ */
+export function sheetReason(item: CardReasonInput, rated: RatedByPerson = new Map()): string {
+  const r = reasonParts(item, rated, 2)
+  const parts = [
+    r.stretch ?? '',
+    ...r.people,
+    r.hasStory ? r.story(true, true, 3) : '',
+    r.crowd,
+  ].filter(Boolean)
+  return parts.length ? parts.join(' ') : 'Close to the stories you rate highest.'
 }

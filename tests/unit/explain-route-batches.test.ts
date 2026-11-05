@@ -23,8 +23,8 @@ vi.mock('@/lib/supabase/service', () => ({
 }))
 vi.mock('@/lib/auth-guard', () => ({ logAuthFailure: () => {} }))
 let sheet: Record<string, string> = {}
-const getSheetExplanation = vi.fn(async (_u: string, _v: number, contentType: string, key: string) => sheet[`${contentType}|${key}`] ?? null)
-vi.mock('@/modules/engine', () => ({ getCachedRecommendations, getSheetExplanation }))
+const getWhyText = vi.fn(async (_u: string, key: string) => sheet[key] ?? null)
+vi.mock('@/modules/engine', () => ({ getCachedRecommendations, getWhyText }))
 
 const { GET } = await import('@/app/api/recommendations/explain/route')
 const { NextRequest } = await import('next/server')
@@ -64,22 +64,22 @@ describe('explain route: which saved batch it reads', () => {
   })
 })
 
-// Since 2026-11-05 the card keeps its short line and the sheet's AI paragraph
-// is stored beside the batch, for the batch the title was found in.
+// Since 2026-11-06 the sheet's text is built from facts with the batch and
+// stored per user (no model writes it); the card line is the fallback.
 describe('explain route: the sheet text', () => {
   beforeEach(() => { batches = {}; sheet = {} })
 
-  it("shows the sheet's own paragraph when it has landed", async () => {
+  it("shows the sheet's own text when the batch stored one", async () => {
     batches = { all: [rec('7326', 'movie', 'Juno')] }
-    sheet = { 'all|movie:7326': 'A longer paragraph for the sheet.' }
-    expect((await (await get('tmdb_id=7326&type=movie')).json()).explanation).toBe('A longer paragraph for the sheet.')
+    sheet = { 'movie:7326': 'The fuller fact-built text.' }
+    expect((await (await get('tmdb_id=7326&type=movie')).json()).explanation).toBe('The fuller fact-built text.')
   })
 
-  it('shows the card line until then, or if the read fails', async () => {
+  it('shows the card line when there is none, or the read fails', async () => {
     batches = { movies: [rec('7326', 'movie', 'Juno')] }
-    sheet = { 'all|movie:7326': 'from the wrong batch' }
     expect((await (await get('tmdb_id=7326&type=movie')).json()).explanation).toBe('why Juno')
-    getSheetExplanation.mockRejectedValueOnce(new Error('redis down'))
+    sheet = { 'movie:7326': 'unreachable' }
+    getWhyText.mockRejectedValueOnce(new Error('redis down'))
     expect((await (await get('tmdb_id=7326&type=movie')).json()).explanation).toBe('why Juno')
   })
 })

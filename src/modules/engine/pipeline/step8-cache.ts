@@ -2,7 +2,7 @@
  * Step 8 — Redis Cache
  *
  * Caches the final RecommendationResult[] in Upstash Redis.
- * Key: rec:{user_id}:{taste_version}  TTL: 6 hours
+ * Key: rec2:{user_id}:{taste_version}:{type}  TTL: 6 hours
  *
  * The taste_version in the key means cache entries are automatically
  * superseded when Assignment 3 increments taste_version after a DNA update.
@@ -29,7 +29,10 @@ export function recCacheKey(
   tasteVersion: number,
   contentType: ContentType = 'all',
 ): string {
-  return `rec:${userId}:${tasteVersion}:${contentType}`
+  // `rec2:` since 2026-11-06: batches cached before then could carry an AI
+  // paragraph with invented facts in `explanation`. The new prefix leaves
+  // them unread (they expire within 6h); each user rebuilds once.
+  return `rec2:${userId}:${tasteVersion}:${contentType}`
 }
 
 /**
@@ -70,44 +73,29 @@ export async function cacheRecommendations(
 }
 
 /**
- * The AI paragraph for the "Why it's a match" sheet, stored BESIDE the batch
- * (2026-11-05). It used to be written over each card's `explanation`, which
- * swapped the card's short line for a long one on the next visit. Same
- * version and TTL as the batch it explains; keyed `${type}:${tmdb_id}`.
+ * The "Why it's a match" sheet's text per title (step7-card-reason.ts,
+ * `sheetReason`), one hash per user, written when a batch is built —
+ * precomputed batches included, so an adopted batch already has it. Not
+ * versioned: the text is facts about the title and the people you rated, and
+ * the next build overwrites it. Replaced the AI paragraph (`rec_sheet:*`,
+ * 2026-11-06); those keys are never read and expire on their own.
  */
-export function sheetExplanationKey(
-  userId: string,
-  tasteVersion: number,
-  contentType: ContentType = 'all',
-): string {
-  return `rec_sheet:${userId}:${tasteVersion}:${contentType}`
+export function whyTextKey(userId: string): string {
+  return `rec_why:${userId}`
 }
 
-export async function cacheSheetExplanations(
-  userId: string,
-  tasteVersion: number,
-  explanations: Map<string, string>,
-  contentType: ContentType = 'all',
-): Promise<void> {
-  if (explanations.size === 0) return
+export async function cacheWhyTexts(userId: string, texts: Map<string, string>): Promise<void> {
+  if (texts.size === 0) return
   const redis = getRedis()
-  await redis.set(
-    sheetExplanationKey(userId, tasteVersion, contentType),
-    Object.fromEntries(explanations),
-    { ex: TTL_SECONDS },
-  )
+  const key = whyTextKey(userId)
+  await redis.hset(key, Object.fromEntries(texts))
+  await redis.expire(key, TTL_SECONDS)
 }
 
-/** One title's sheet paragraph, or null while it's still being written (or never was). */
-export async function getSheetExplanation(
-  userId: string,
-  tasteVersion: number,
-  contentType: ContentType,
-  key: string,
-): Promise<string | null> {
+/** One title's sheet text, or null if no batch with it was built in the last 6h. */
+export async function getWhyText(userId: string, key: string): Promise<string | null> {
   const redis = getRedis()
-  const all = await redis.get<Record<string, string>>(sheetExplanationKey(userId, tasteVersion, contentType))
-  return all?.[key] ?? null
+  return redis.hget<string>(whyTextKey(userId), key)
 }
 
 export async function getCachedCowatch(

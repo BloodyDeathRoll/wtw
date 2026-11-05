@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { cardReason, CARD_REASON_MAX_CHARS, type RatedByPerson } from '@/modules/engine/pipeline/step7-card-reason'
-import { payloadSummary } from '@/modules/engine/pipeline/step7-explanation'
+import { readFileSync } from 'node:fs'
+import { cardReason, sheetReason, CARD_REASON_MAX_CHARS, type RatedByPerson } from '@/modules/engine/pipeline/step7-card-reason'
 import type { ReasonPayload } from '@/types/dna'
 
 // The feed card's short "why" (backlog 2026-11-05): reasons FOR only, from
@@ -145,11 +145,47 @@ describe('card line — fits four lines', () => {
   })
 })
 
-describe('the sheet\'s AI prompt', () => {
-  it('does not hand the model "no crew members" as its caveat', () => {
-    const p = payload({ negative_signals: [NO_CREW, 'Pacing (moderate) differs from what you typically rate highly.'] })
-    const summary = payloadSummary({ tmdb_id: '1', type: 'movie', title: 'X', reason_payload: p })
-    expect(summary).not.toContain('No crew members')
-    expect(summary).toContain('Honest caveat: Pacing (moderate) differs')
+describe('the "Why it\'s a match" sheet text', () => {
+  it('says the card\'s reasons in full: two people, the whole story line, critics', () => {
+    const text = sheetReason(item({
+      keywords: ['treasure hunt', 'based on true story', '1950s'],
+      p: {
+        crew_matches: [
+          { name: 'Steven Spielberg', role: 'director', affinity_score: 0.3 },
+          { name: 'George Lucas', role: 'writer', affinity_score: 0.3 },
+        ],
+        external_ratings: [{ source: 'OMDB (RT/Meta weighted)', score: 0.8 }],
+      },
+    }), rated)
+    expect(text).toBe(
+      'From Steven Spielberg, who made *Raiders of the Lost Ark*, which you loved. ' +
+      'Written by George Lucas, who wrote *Star Wars*, which you loved. ' +
+      'A funny and warm treasure-hunt adventure, based on a true story, set in the 1950s. ' +
+      'Critics loved it.')
+  })
+
+  it('names a writer-director once', () => {
+    const text = sheetReason(item({ p: { crew_matches: [
+      { name: 'George Lucas', role: 'writer', affinity_score: 0.3 },
+      { name: 'George Lucas', role: 'director', affinity_score: 0.25 },
+    ] } }), rated)
+    expect(text.match(/George Lucas/g)).toHaveLength(1)
+  })
+
+  it('never carries a reservation either — those are listed separately in the sheet', () => {
+    const text = sheetReason(item({ p: { negative_signals: [NO_CREW, 'Lower critical/audience ratings than your usual picks.'] } }))
+    expect(text).toBe('A funny and warm crime film.')
+  })
+})
+
+describe('no model writes a "why"', () => {
+  // 2026-11-06: the sheet's AI paragraph invented credits ("Cruella's writer
+  // wrote The Big Sick"). Both texts come from facts; this fails if a model
+  // call comes back into step 7 without that being a decision.
+  it('step 7 imports no AI SDK', () => {
+    for (const f of ['step7-card-reason.ts', 'step7-explanation.ts']) {
+      const src = readFileSync(`src/modules/engine/pipeline/${f}`, 'utf8')
+      expect(src, f).not.toMatch(/from 'ai'|@ai-sdk\//)
+    }
   })
 })
