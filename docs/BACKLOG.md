@@ -142,12 +142,16 @@ The Taste DNA page is a good idea, but it shows the app's inner workings, not so
    - **No 59 names:** the 2-title bar already cuts most of them. Then the top 5 per group, strongest first (how much you like them, then how many titles), and a "See all" link for the rest.
    - **Empty state:** "Rate a few titles you've seen and we'll spot the directors and actors you keep coming back to."
    - Related rows: dislikes no longer move people; the feed should act on a person sooner (both in the table above).
+6. **Story traits** (Eran accepted, 2026-11-05): each trait is its plain-English sentence ("You like main characters who are flawed, and know it"), not "Moral ambiguity: Medium". The app already writes one per trait (`notes`), once it has enough to go on. No percentages. Traits it's still unsure about go in one quiet line at the end: "Still figuring out: humour, moral grey areas".
+7. **Mood & pace bars** (Eran, 2026-11-05):
+   - **Plain bars from zero, no middle line, no numbers.** A short "Dark" bar reads "you like it a little dark", a long "Comedic" bar "you like it funny". That's fine.
+   - **Each group (Pace, Tone) sorted longest bar first.**
+   - **Moods the app knows nothing about yet are greyed out, at the bottom of their group.** No words: colour for what it knows, grey for what it doesn't. The page should feel visual, not wordy.
+   - **A whole group with nothing known is hidden** (e.g. the craft aspects, which only fill in from the deep surveys) rather than a stack of grey bars.
+   - **Build note: the app can't tell "unknown" today.** Mood & pace is stored as one number per mood, with no count of how many rated titles carried it, and every rating re-balances the whole group around the middle (`recenterWeights` in `src/modules/dna/lib/update-strand-c.ts`), so a mood you never touched still drifts off 50. Greying needs a small addition: a count per mood, the way genres already keep one (`sample_size`). That's a change to the shared DNA contract (`src/types/dna.ts`). The re-balancing also means the bars are relative within a group ("funny more than dark"), which suits plain bars.
 
 **Ideas for the discussion (Claude's, not decided)**
 - **Same words as the "Why it's a match" sheet:** Crew, Narrative, Mood & pace. The page and the sheet then talk about your taste in the same terms.
-- **Story traits as plain sentences,** for example "You like main characters who are flawed, and know it", "You lean towards stories about a group, not one hero", "You like things a little off the beaten path" (instead of "Originality 61 / 100").
-- **"How sure" as words, and only when it matters:** traits the app is still unsure about say "Still learning" (the page already does this below a certain point) or are hidden, instead of a percentage on every row.
-- **Craft aspects** (Tone / Story / Acting / Pacing, from the deep surveys) all sit at the neutral middle until a survey is filled in. Hide them until there's something to show.
 - **The header** "22 signals · v4 · 11/3/2026" becomes something like "Based on 22 ratings · updated 3 Nov". The footer "Schema v1 · N sessions" goes.
 
 **Open questions**
