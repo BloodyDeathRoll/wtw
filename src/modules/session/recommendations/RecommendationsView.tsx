@@ -277,6 +277,11 @@ export default function RecommendationsView({
   // IntersectionObserver firing on the empty sentinel).
   const loadingRef = useRef(false);
   const offsetRef = useRef(0);
+  // The taste_version offsetRef belongs to. Sent with each page so the server
+  // restarts the walk when the live batch was replaced underneath (a rating
+  // refresh); otherwise the offset lands in the tail of a batch whose top was
+  // never shown.
+  const versionRef = useRef<number | null>(null);
   const hasMoreRef = useRef(true);
   // Serializes feedback POSTs: each click's server-side fingerprint merge is a
   // read-modify-write on the DNA, so requests must not overlap. Find More
@@ -313,15 +318,18 @@ export default function RecommendationsView({
         return;
       }
 
+      const v = versionRef.current == null ? "" : `&v=${versionRef.current}`;
       const res = await fetch(
-        `/api/recommendations/generate?type=${contentType}&offset=${offsetRef.current}`,
+        `/api/recommendations/generate?type=${contentType}&offset=${offsetRef.current}${v}`,
       );
       if (!res.ok) throw new Error(`${res.status}`);
       const data = (await res.json()) as {
         recommendations: Recommendation[];
         next_offset: number;
         has_more: boolean;
+        taste_version?: number | null;
       };
+      if (data.taste_version != null) versionRef.current = data.taste_version;
       // Dedup by id — in case the same page slips through twice we don't
       // create duplicate React keys. Also drop titles already on the watchlist:
       // the server excludes them once the save has been reported (session/end),
@@ -361,6 +369,7 @@ export default function RecommendationsView({
     setRecs([]);
     setHasMore(true);
     offsetRef.current = 0;
+    versionRef.current = null;
     hasMoreRef.current = true;
     loadingRef.current = false;
     // Seed the membership set (all modes — the feed shows saved state too), the

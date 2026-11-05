@@ -58,6 +58,10 @@ const FRESH_BY_NARRATIVE_LIMIT = 150
 // now runs from a finished season or 10 ratings, not 15. 5,138 catalog titles
 // clear 1,000 votes — plenty for a 150-row nearest-neighbour pool.
 const FRESH_BY_NARRATIVE_MIN_VOTES = 1000
+// A title served within this window is still on the screen it was served to
+// (the rec cache and the rating counter both live 6 h — one sitting), so it is
+// neither FRESH nor SEEN until the window passes.
+const SEEN_COOLDOWN_MS = 6 * 60 * 60 * 1000
 const SEEN_LIMIT               = 150
 
 export async function getCandidates(
@@ -84,7 +88,7 @@ export async function getCandidates(
   const [{ data: removedRows, error: removedError }, { data: servedRows, error: servedError }] =
     await Promise.all([
       supabase.from('removed_titles').select('tmdb_id, media_type').eq('user_id', userId),
-      supabase.from('served_titles').select('tmdb_id, media_type, times_served').eq('user_id', userId),
+      supabase.from('served_titles').select('tmdb_id, media_type, times_served, last_served_at').eq('user_id', userId),
     ])
   if (removedError) throw new Error(`Candidate generation failed (removed_titles): ${removedError.message}`)
   if (servedError)  throw new Error(`Candidate generation failed (served_titles): ${servedError.message}`)
@@ -94,10 +98,24 @@ export async function getCandidates(
   // Served-but-unrated: everything served minus everything excluded. The
   // serve count rides along so step3b can rotate the seen slice instead of
   // re-showing the same ten highest-scoring ones every batch.
+  //
+  // Not what was served this sitting: those cards are still on the user's
+  // screen, and step3b takes the LEAST-served first — so a "Find more" put the
+  // six cards just shown at the top of the next batch, the client deduped
+  // them, and the user got a couple of new titles per batch (seen live
+  // 2026-11-05). They stay out of FRESH too (allServed), so they come back
+  // after the cooldown, not before. A sitting cannot drain the pools: FRESH is
+  // the catalog minus everything ever served, and when SEEN comes up short of
+  // its ten slots step3b backfills them from FRESH.
+  const seenCutoff = Date.now() - SEEN_COOLDOWN_MS
   const timesServed = new Map<string, number>()
+  const allServed: string[] = []
   for (const r of servedRows ?? []) {
     const k = titleKey(r.media_type as MediaType, r.tmdb_id)
-    if (!excluded.has(k)) timesServed.set(k, r.times_served as number)
+    allServed.push(k)
+    if (excluded.has(k)) continue
+    const at = r.last_served_at ? Date.parse(r.last_served_at as string) : 0
+    if (at < seenCutoff) timesServed.set(k, r.times_served as number)
   }
   const servedKeys = [...timesServed.keys()]
 
@@ -119,8 +137,8 @@ export async function getCandidates(
   const ruleParams = sqlExclusionParams(exclusionRules)
 
   // ── Fetch the pools ───────────────────────────────────────
-  // FRESH excludes served titles too — those belong to SEEN.
-  const freshExclude = [...excludeKeys, ...servedKeys]
+  // FRESH excludes served titles too — those belong to SEEN (or to the cooldown).
+  const freshExclude = [...excludeKeys, ...allServed]
 
   const byVotes = supabase.rpc('get_candidate_titles', {
     watched_keys: freshExclude,
