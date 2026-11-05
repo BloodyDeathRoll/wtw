@@ -31,7 +31,7 @@
   "dependencies": {
     "@ai-sdk/groq": "^4.0.58",
     "@ai-sdk/mistral": "^4.0.56",
-    "@ai-sdk/react": "^4.0.136",
+    "@ai-sdk/react": "^4.0.152",
     "@ducanh2912/next-pwa": "^10",
     "@google/genai": "^2.6.0",
     "@supabase/ssr": "^0.12",
