@@ -176,6 +176,9 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-05 — Service worker never answers /api from its cache (`fix/sw-no-api-cache`)
+- next-pwa's default `apis` runtime rule is NetworkFirst with `networkTimeoutSeconds: 10`: an `/api` GET slower than 10 s was answered with the previously cached response, so "Find more" showed the old batch as if it were new and the function's own log line never appeared (seen three times right after the Frankfurt cutover, 13 s each). `next.config.ts` now overrides that rule (same `cacheName`, `extendDefaultRuntimeCaching: true`) with `NetworkOnly` for same-origin `/api/*`. Verified in the built `public/sw.js`: it is the second rule, before every page/data rule.
+
 ### 2026-11-05 — Speed, part E: Supabase moved from Sydney to Frankfurt (`perf/supabase-frankfurt`)
 - New project `cxoivygtoncywvrkgtdr` ("wtw 2.0", `eu-central-1`, Nano, Postgres 17.11); the old one `lvdjehvbmcypwewdohob` (`ap-southeast-2`) stays paused as a fallback — **the rollback window ends about 2026-11-12**, then delete it. How it was copied and verified: `docs/speed-plan.md` part E. `scripts/db-recopy.sh` is the row re-copy used at cutover (one snapshot, truncate + restore, exits non-zero on any count mismatch; reusable for any project-to-project move, inside a write-quiet window).
 - Same env var names; new values in `.env.local` (`.env.local.sydney.bak` kept next to it, local only — `.env*.bak` is git-ignored) and on Vercel (Preview + Production). `SUPABASE_DB_URL` is now the direct connection (`db.<ref>.supabase.co:5432`, IPv6 only — the session pooler on `aws-1-eu-central-1.pooler.supabase.com` is the IPv4 fallback).
