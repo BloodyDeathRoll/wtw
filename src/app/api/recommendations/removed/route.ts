@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 
 type MediaType = "movie" | "tv";
 
@@ -25,9 +26,7 @@ function isMediaType(v: unknown): v is MediaType {
 // ── POST: remove a title ──────────────────────────────────────
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     logAuthFailure("/api/recommendations/removed");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -67,9 +66,7 @@ export async function POST(req: NextRequest) {
 // ── GET: list removed titles (newest first) ───────────────────
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     logAuthFailure("/api/recommendations/removed");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -92,9 +89,7 @@ export async function GET() {
 // ── DELETE: restore a title ───────────────────────────────────
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     logAuthFailure("/api/recommendations/removed");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

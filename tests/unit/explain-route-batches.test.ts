@@ -14,7 +14,7 @@ let batches: Record<string, Rec[] | null> = {}
 const getCachedRecommendations = vi.fn(async (_u: string, _v: number, contentType: string) => batches[contentType] ?? null)
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'u1' } }, error: null }) } }),
+  createClient: async () => ({ auth: { getClaims: async () => ({ data: { claims: { sub: 'u1' } }, error: null }) } }),
 }))
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({

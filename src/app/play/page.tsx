@@ -7,6 +7,7 @@
  */
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { countUserSignals } from '@/lib/welcome'
 import type { AppUser } from '@/modules/session/types'
 import { loadPlay } from './lib/server'
@@ -25,7 +26,7 @@ const DEMO_USER: AppUser = { id: 'dev-demo', email: null, name: null, avatarUrl:
 
 export default async function PlayPage({ searchParams }: { searchParams: Promise<{ demo?: string; jump?: string; tab?: string; new?: string; heard?: string }> }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   const params = await searchParams
   // ?tab=games: the home screen's Games button opens the arcade, not the training.
   const tab = params.tab === 'games' ? 'games' : undefined

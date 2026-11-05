@@ -24,6 +24,7 @@ import { generateText } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
 import { MODELS, GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import { getRedis } from '@/lib/redis'
 
@@ -37,9 +38,9 @@ function getGroq() {
 
 export async function GET(_req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
-  if (authError || !user) {
+  if (!user) {
     logAuthFailure('/api/dna/summary')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

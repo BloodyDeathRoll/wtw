@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateRecommendations } from "@/modules/engine";
@@ -176,9 +177,7 @@ async function toUIRecommendations(
 // ── GET: paginated list for the RecommendationsView UI ────────
 export async function GET(req: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
   if (!user) {
     logAuthFailure("/api/recommendations/generate");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -439,12 +438,9 @@ const RATE_LIMIT = { scope: "recommendations-generate", perUser: 20, windowSec: 
 // ── POST: full engine pipeline (Assignment 2) ─────────────────
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
-  if (authError || !user) {
+  if (!user) {
     logAuthFailure("/api/recommendations/generate");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

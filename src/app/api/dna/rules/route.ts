@@ -27,6 +27,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/supabase/auth-user'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { loadDNA, saveDNA, bumpVersion } from '@/modules/dna/lib/load-save'
 import { applyDirectives, directivesChanged } from '@/modules/dna/lib/apply-directives'
@@ -44,8 +45,8 @@ const RATE_LIMIT = { scope: 'dna-rules', perUser: 30, perIp: 60, windowSec: 10 *
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
+  const user = await getAuthUser(supabase)
+  if (!user) {
     logAuthFailure('/api/dna/rules')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -111,8 +112,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
+  const user = await getAuthUser(supabase)
+  if (!user) {
     logAuthFailure('/api/dna/rules')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
