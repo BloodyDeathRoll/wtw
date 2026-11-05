@@ -261,18 +261,23 @@ export async function POST(req: NextRequest) {
     }
     // "Find more" with nothing to merge: the no-op above would hand back the
     // batch the user has just finished, and the client would show nothing new.
-    // Build the NEXT batch at the same taste_version — step 1 excludes what
-    // was served, so it is fresh — without the fingerprint update below, which
-    // bumps the version and busts the embedding cache for no new signal.
+    // Build the NEXT batch at the same taste_version — step 1 draws from titles
+    // never served (step 3b lets previously served, unrated ones back in at up
+    // to 20%, and the client drops any still on screen) — without the
+    // fingerprint update below, which bumps the version and busts the
+    // embedding cache for no new signal.
     if (cacheWarmAndClean && wantMore) {
       let rec_count = 0
+      let warning: string | undefined
       try {
         const adopted = await adoptPendingBatch(user.id, dna, contentType)
         const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna, skipCacheRead: true, contentType })
         rec_count = recs.length
+        if (rec_count === 0) warning = 'Next batch came back empty'
         t.done(adopted ? 'total (next batch, adopted precomputed)' : 'total (next batch)')
       } catch (err) {
         console.error('[session/end] next batch failed:', err)
+        warning = 'Next batch could not be built'
       }
       return NextResponse.json({
         ok: true,
@@ -282,7 +287,7 @@ export async function POST(req: NextRequest) {
         watchlist_recorded: watchlistRecorded,
         watchlist_synced: watchlistSynced,
         ...extractionReport(extractionFailed),
-        ...(rec_count === 0 ? { warning: 'Next batch could not be built' } : {}),
+        ...(warning ? { warning } : {}),
       })
     }
     // else: cache is stale (holds a rated title) or cold — fall through to

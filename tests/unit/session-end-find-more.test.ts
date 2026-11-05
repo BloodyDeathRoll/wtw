@@ -69,6 +69,11 @@ describe('session/end with nothing to merge', () => {
     expect(generateRecommendations).not.toHaveBeenCalled()
   })
 
+  it('with `more`: an empty batch is told apart from a failed build', async () => {
+    generateRecommendations.mockResolvedValueOnce([])
+    expect(await (await post({ more: true })).json()).toMatchObject({ rec_count: 0, warning: 'Next batch came back empty' })
+  })
+
   it('with `more`: a generation failure is a 200 with a warning, never a 500', async () => {
     generateRecommendations.mockRejectedValueOnce(new Error('pipeline down'))
     const res = await post({ more: true })
