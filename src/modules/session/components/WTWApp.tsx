@@ -760,6 +760,12 @@ export default function WTWApp({
   async function handleRecommend() {
     setVoiceOpen(false);
 
+    // Back and Picks again mid-build: rejoin that build, don't start a second.
+    if (buildingRecs) {
+      setStage("recommendations");
+      return;
+    }
+
     // Nothing new said this page-load → nothing to analyze. Serve the
     // warm-up's pre-generated recs: instant when it finished, a short loader
     // if it's still running. Never falls back to mocks.
