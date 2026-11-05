@@ -10,6 +10,12 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    # @types/node follows the runtime we run (Node 24: .nvmrc, CI, Vercel),
+    # not npm's newest major. #184 proposed 26 on 2026-11-05; bump the major
+    # by hand when the runtime moves.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     # `ai` and every `@ai-sdk/*` package must move in ONE PR: their types
     # must come from a single `@ai-sdk/provider` version, and a bump of one
     # alone fails type-check (#156, #157 on 2026-11-05, fixed by #179).
