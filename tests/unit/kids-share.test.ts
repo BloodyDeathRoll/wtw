@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { capKidsShare, kidsAllowance, isKidsTitle, KIDS_BASE } from '@/modules/engine/pipeline/kids-share'
+import { capKidsShare, kidsAllowance, isKidsTitle, spreadKids, KIDS_BASE } from '@/modules/engine/pipeline/kids-share'
 
 // Kids' titles get the share a viewer has earned for them (2026-11-06): a
 // warm, hopeful taste was filling half of every batch with kids' films.
@@ -53,5 +53,23 @@ describe('capKidsShare', () => {
   it('leaves a batch alone when it is within the allowance', () => {
     const batch = [t(['Family'], 0.9), t(['Drama'], 0.8)]
     expect(capKidsShare(batch, batch, dna())).toBe(batch)
+  })
+})
+
+describe('spreadKids', () => {
+  const kind = (xs: { title: { genres: { name: string }[] } }[]) => xs.map(x => (isKidsTitle(x.title) ? 'K' : '.')).join('')
+  it('never puts two kids\' titles within five cards — the feed no longer opens on seven of them', () => {
+    const batch = [...Array(7)].map((_, i) => t(['Family'], 0.9 - i * 0.01)).concat([...Array(30)].map((_, i) => t(['Drama'], 0.8 - i * 0.01)))
+    const out = spreadKids(batch)
+    expect(kind(out).slice(0, 31)).toBe('K....K....K....K....K....K....K')
+    expect(out).toHaveLength(batch.length)
+  })
+  it('keeps the order of everything else, and puts leftover kids\' titles last when nothing else is left', () => {
+    const batch = [t(['Family'], 0.9), t(['Family'], 0.8), t(['Drama'], 0.7), t(['Family'], 0.6)]
+    expect(kind(spreadKids(batch))).toBe('K.KK')
+  })
+  it('changes nothing when there are no kids\' titles', () => {
+    const batch = [t(['Drama'], 0.9), t(['Comedy'], 0.8)]
+    expect(spreadKids(batch)).toEqual(batch)
   })
 })

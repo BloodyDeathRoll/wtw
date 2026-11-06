@@ -176,6 +176,11 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-06 — Kids' titles spread through the feed (`fix/spread-kids`)
+- **Why:** on Eran's live data the kids' limit held (7 of 43), but all 7 were the first 7 cards, because they were his best matches. Opening the app read as "99% kids".
+- **What:** `spreadKids` (kids-share.ts, before the stretch pick in `generate.ts`) allows at most one kids' title in any 5 cards in a row. A kids' title that comes too soon waits behind the next best other title. **Eran chose this over strict match-% order** (the #178 rule), so a 71% kids' title can sit below 68% titles.
+- **Also this session:** `.env.local` now points at the live Frankfurt database (`cxoivygtoncywvrkgtdr`); the Sydney values are in `.env.local.sydney.bak`. Earlier local measurements today ran on the paused Sydney copy.
+
 ### 2026-11-06 — "Why it's a match": backup writers and a richer fallback (`fix/why-backup-writer`)
 - **Why:** after testing used up the writer's (qwen) daily budget, every new sheet showed one plot sentence ("this is what most of the titles look like" — Eran).
 - **Backup chain** (`CHAIN` in `why/write-why.ts`):
