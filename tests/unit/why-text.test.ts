@@ -8,6 +8,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const generateText = vi.fn()
 vi.mock('ai', () => ({ generateText: (...a: unknown[]) => generateText(...a) }))
 vi.mock('@ai-sdk/groq', () => ({ createGroq: () => (model: string) => ({ model }) }))
+vi.mock('@ai-sdk/mistral', () => ({ createMistral: () => (model: string) => ({ model }) }))
+process.env.MISTRAL_API_KEY = 'test'
 vi.mock('@/lib/redis', () => ({ getRedis: () => ({ get: async () => null, set: async () => 'OK' }) }))
 // The catalogue, for comparisons to other titles: only these exist.
 const CATALOGUE = ['little miss sunshine', 'the proposal']
@@ -16,7 +18,7 @@ vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({
 }) }))
 
 process.env.GROQ_API_KEY = 'test'
-const { buildWhyFacts, checkWhy, writeWhyFromFacts, similarRated, reservationFor, angleFor } = await import('@/modules/engine/why/write-why')
+const { buildWhyFacts, checkWhy, writeWhyFromFacts, similarRated, reservationFor, angleFor, resetModelOuts, richFallback } = await import('@/modules/engine/why/write-why')
 /** A title id whose angle is a comparison to a famous title. */
 const CMP_ID = [...Array(100).keys()].map(String).find(id => angleFor(id, false, false) === 'comparison')!
 const NO_CMP_ID = [...Array(100).keys()].map(String).find(id => angleFor(id, false, false) === 'cast')!
@@ -154,7 +156,7 @@ describe('comparisons to famous titles (option B, 2026-11-06)', () => {
 })
 
 describe('the writer', () => {
-  beforeEach(() => generateText.mockReset())
+  beforeEach(() => { generateText.mockReset(); resetModelOuts() })
   const usedModels = () => generateText.mock.calls.map(c => (c[0] as { model: { model: string } }).model.model)
 
   it('writes, fact-checks, and keeps a text that passes both', async () => {
@@ -190,12 +192,37 @@ describe('the writer', () => {
     expect(why.text).not.toMatch(/critics|warm and hopeful/i)
   })
 
-  it('falls back when the model is down or rate-limited, without the SDK retrying', async () => {
-    generateText.mockRejectedValueOnce(new Error('Rate limit reached … Please try again in 9m'))
+  it('hands over to the backup writer when the main one is out of its daily budget', async () => {
+    generateText
+      .mockRejectedValueOnce(new Error('Rate limit reached for model on tokens per day (TPD). Please try again in 9m12.5s'))
+      .mockResolvedValueOnce({ text: GOOD })
+      .mockResolvedValueOnce({ text: 'OK' })
+    const why = await writeWhyFromFacts(codaItem(), new Map())
+    expect(why).toEqual({ text: GOOD, source: 'ai' })
+    expect(usedModels()).toEqual([MODELS.whyWriter, MODELS.whyWriterBackup, MODELS.whyJudge])
+    expect((generateText.mock.calls[0][0] as { maxRetries: number }).maxRetries).toBe(0)
+
+    // …and doesn't ask the spent one again on the next sheet.
+    generateText.mockReset().mockResolvedValueOnce({ text: GOOD }).mockResolvedValueOnce({ text: 'OK' })
+    await writeWhyFromFacts(codaItem(), new Map())
+    expect(usedModels()[0]).toBe(MODELS.whyWriterBackup)
+  })
+
+  it('uses the backup fact-check when the main one is out', async () => {
+    generateText
+      .mockResolvedValueOnce({ text: GOOD })
+      .mockRejectedValueOnce(new Error('Rate limit reached … Please try again in 30m'))
+      .mockResolvedValueOnce({ text: 'OK' })
+    const why = await writeWhyFromFacts(codaItem(), new Map())
+    expect(why.source).toBe('ai')
+    expect(usedModels()).toEqual([MODELS.whyWriter, MODELS.whyJudge, MODELS.whyJudgeBackup])
+  })
+
+  it('falls back to the plain text when every writer is out', async () => {
+    generateText.mockRejectedValue(new Error('Rate limit reached … Please try again in 20m'))
     const why = await writeWhyFromFacts(codaItem(), new Map())
     expect(why.source).toBe('facts')
-    expect(generateText).toHaveBeenCalledTimes(1)
-    expect((generateText.mock.calls[0][0] as { maxRetries: number }).maxRetries).toBe(0)
+    expect(usedModels()).toEqual([MODELS.whyWriter, MODELS.whyWriterBackup, MODELS.whyWriterLast])
   })
 
   it('waits once when the rate limit asks for a few seconds', async () => {
@@ -245,6 +272,28 @@ describe('comparisons to titles the viewer rated (2026-11-06)', () => {
     expect(checkWhy(text, f)).toEqual([])
     const wrong = GOOD.replace('First love and family', 'Like *Fishing Doc*, which you loved, first love and family')
     expect(checkWhy(wrong, f).join()).toMatch(/describe the film/)
+  })
+})
+
+describe('the plain version, when no model can write it', () => {
+  it('is a short paragraph of facts, not one plot sentence', () => {
+    const text = richFallback(codaItem() as never, new Map(), similarRated(codaItem(), [rel('Fishing Doc', 'loved', ['fishing', 'singing'])]), 'It has melancholic stretches, heavier than the lighter stories this viewer usually goes for.')
+    expect(text).toContain('Ruby is the only hearing person in her deaf family.')
+    expect(text).toContain('Like *Fishing Doc*, which you loved, it has fishing and singing.')
+    expect(text).toContain('Starring Emilia Jones and Troy Kotsur.')
+    expect(text).toContain('One thing to know: it has melancholic stretches, heavier than the lighter stories you usually go for.')
+  })
+})
+
+describe('small fixes from the backup-writer run', () => {
+  const facts = buildWhyFacts(codaItem(), new Map())
+  it('reads "Jones’" (a name ending in s, possessive) as the name', () => {
+    expect(checkWhy(GOOD.replace('Emilia Jones carries it', 'Emilia Jones’ performance carries it'), facts).join()).not.toMatch(/Jones/)
+  })
+  it('swaps "anchors" and "crackles" instead of refusing the draft', async () => {
+    const { freshenWords } = await import('@/modules/engine/why/write-why')
+    expect(freshenWords('Emilia Jones anchors the film and the banter crackles with wit.')).toBe('Emilia Jones carries the film and the banter sparks with wit.')
+    expect(freshenWords('the producer and the anchor trade barbs; the news anchors argue')).toBe('the producer and the anchor trade barbs; the news anchors argue')
   })
 })
 

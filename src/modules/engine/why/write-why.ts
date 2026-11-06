@@ -25,6 +25,7 @@
  */
 
 import { createGroq } from '@ai-sdk/groq'
+import { createMistral } from '@ai-sdk/mistral'
 import { generateText } from 'ai'
 import { MODELS, GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
 import { getRedis } from '@/lib/redis'
@@ -319,11 +320,48 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     haystack: text.toLowerCase(),
     linkedNames,
     linkClause,
-    fallback: coldStart ? null : sheetReason(item, rated),
+    fallback: coldStart ? null : richFallback(item, rated, similarRated(item, ctx.ratedTitles ?? []), reservation),
     compared,
     reservation,
     angle,
   }
+}
+
+// ─────────────────────────────────────────────
+// The plain version, when no model can write it
+// ─────────────────────────────────────────────
+
+const listOf = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
+/** The reservation facts speak of "this viewer"; the sheet speaks to you. */
+const toYou = (s: string) => s
+  .replace(/this viewer usually goes for/g, 'you usually go for')
+  .replace(/this viewer's/g, 'your')
+  .replace(/for this viewer/g, 'for you')
+  .replace(/this viewer/g, 'you')
+
+/**
+ * What the sheet shows when no model could write a text that passes (2026-11-06,
+ * Eran: "this is what most of the titles look like" — one plot sentence). Every
+ * part is a fact: the people you rated, the plot, a title you loved that shares
+ * real story ground, who's in it, and the honest catch.
+ */
+export function richFallback(
+  item: ScoredTitleWithPayload,
+  rated: RatedByPerson,
+  similar: ReturnType<typeof similarRated>,
+  reservation: string | null,
+): string {
+  const t = item.title
+  const parts = [sheetReason(item, rated)]
+  const c = similar[0]
+  if (c) {
+    const tags = c.tags.filter(k => !GENERIC_TAGS.has(k) && !/[()]|universe|based on/i.test(k) && k.split(' ').length <= 3).slice(0, 2).map(k => k.replace(/\b3d\b/gi, '3D'))
+    if (tags.length) parts.push(`Like *${c.r.title}*, which you ${c.r.reaction}, it has ${listOf(tags)}.`)
+  }
+  const cast = t.crew.cast.slice(0, 3).map(x => x.name).filter(n => !parts[0].includes(n))
+  if (cast.length) parts.push(`Starring ${listOf(cast)}.`)
+  if (reservation) { const r = toYou(reservation); parts.push(`One thing to know: ${r[0].toLowerCase()}${r.slice(1)}`) }
+  return parts.join(' ')
 }
 
 // ─────────────────────────────────────────────
@@ -335,7 +373,7 @@ const norm = (s: string) => s.toLowerCase()
 
 /** A capitalised word is "in the facts" as written, or as London is to Londoner. */
 function knownWord(word: string, haystack: string): boolean {
-  const w = norm(word).replace(/'s$/, '')
+  const w = norm(word).replace(/'s$/, '').replace(/s'$/, 's')
   if (haystack.includes(w)) return true
   for (const suffix of ['ers', 'er', 'ians', 'ian', 'ans', 'an', 'es', 's']) {
     if (w.endsWith(suffix) && w.length - suffix.length >= 4 && haystack.includes(w.slice(0, -suffix.length))) return true
@@ -350,6 +388,22 @@ const CLICHE = /\b(you'll be hooked|hooked|loved it as|that (critics|audiences) 
 /** Said on every title, so they say nothing (Eran, 2026-11-06): critics/audiences, and mood tags strung together ("warm, hopeful, and whimsical"). */
 const MOOD_TAG = '(?:warm|hopeful)'
 const SAMENESS = new RegExp(`\\b(critics|audiences|reviews?|rate[sd]?|rating|${MOOD_TAG},?\\s+(?:and\\s+)?${MOOD_TAG})\\b`, 'i')
+/**
+ * Two verbs every model reaches for, swapped for plain ones rather than
+ * throwing a good draft away (the backup writer used "anchors" in 4 of 5).
+ */
+export function freshenWords(text: string): string {
+  // Only where it's a verb with an object — "a news anchor" is a person
+  // (Morning Glory: "the producer and the carry" was the first try).
+  const obj = String.raw`(?=\s+(?:the|this|it|his|her|their|every|each|a|an)\b)`
+  const swap: [RegExp, string][] = [
+    [new RegExp(String.raw`\banchors${obj}`, 'g'), 'carries'], [new RegExp(String.raw`\banchoring${obj}`, 'g'), 'carrying'],
+    [/\banchored by\b/g, 'carried by'],
+    [/\bcrackles with\b/g, 'sparks with'], [/\bcrackling with\b/g, 'sparking with'],
+  ]
+  return swap.reduce((t, [re, w]) => t.replace(re, w), text)
+}
+
 /** Words that turned up in most texts of a ten-title read (2026-11-06): allowed `max` times. */
 const OVERUSED: { re: RegExp; max: number }[] = [
   { re: /\belectric\w*/gi, max: 0 },
@@ -438,7 +492,7 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
     let run: string[] = []
     const flush = () => {
       if (run.length) {
-        const name = run.join(' ').replace(/[’']s$/i, '').replace(/[.]$/, '')
+        const name = run.join(' ').replace(/[’']s$/i, '').replace(/(s)[’']$/i, '$1').replace(/[.]$/, '')
         const ok = facts.haystack.includes(norm(name)) ||
           run.filter(w => !/^(of|the|in|on|a|de|la|von|van)$/.test(w)).every(w => knownWord(w, facts.haystack))
         if (!ok) problems.push(`it mentions "${name}", which is not in the facts`)
@@ -521,39 +575,84 @@ const CALL_TIMEOUT_MS = 14000
 /** The longest rate-limit wait worth sitting through rather than showing the plain text. */
 const MAX_RATE_WAIT_MS = 6000
 
+/** In order: the next takes over when one is out of budget, rate-limited or down. */
+const CHAIN: Record<'write' | 'judge', string[]> = {
+  write: [MODELS.whyWriter, MODELS.whyWriterBackup, MODELS.whyWriterLast],
+  judge: [MODELS.whyJudge, MODELS.whyJudgeBackup],
+}
+/** How long a model is skipped after it says it's out of budget, when it doesn't say. */
+const OUT_DEFAULT_MS = 15 * 60 * 1000
+const OUT_MAX_MS = 60 * 60 * 1000
+const outKey = (model: string) => `why_model_out:${model}`
+const outLocal = new Map<string, number>()
+/** Tests only: forget which models were marked out. */
+export const resetModelOuts = () => outLocal.clear()
+
+/** "try again in 9m12.5s" / "in 2.7s" / "in 450ms" → ms; null when the error doesn't say. */
+function retryAfterMs(message: string): number | null {
+  const m = /try again in ((?:\d+h)?(?:\d+m)?(?:[\d.]+s)?|[\d.]+ms)/i.exec(message)
+  if (!m) return null
+  if (/ms$/.test(m[1])) return Number(m[1].slice(0, -2))
+  const h = /(\d+)h/.exec(m[1]), mn = /(\d+)m(?!s)/.exec(m[1]), sec = /([\d.]+)s/.exec(m[1])
+  return ((h ? +h[1] * 3600 : 0) + (mn ? +mn[1] * 60 : 0) + (sec ? +sec[1] : 0)) * 1000
+}
+const isRateLimit = (message: string) => /rate limit|429|too many requests|quota/i.test(message)
+
+async function isOut(model: string): Promise<boolean> {
+  if ((outLocal.get(model) ?? 0) > Date.now()) return true
+  try { return Boolean(await getRedis().get(outKey(model))) } catch { return false }
+}
+async function markOut(model: string, ms: number): Promise<void> {
+  const ttl = Math.min(Math.max(ms, 60_000), OUT_MAX_MS)
+  outLocal.set(model, Date.now() + ttl)
+  try { await getRedis().set(outKey(model), '1', { ex: Math.ceil(ttl / 1000) }) } catch { /* the local mark still holds */ }
+}
+
 async function draft(prompt: string, purpose: 'write' | 'judge' = 'write'): Promise<string> {
-  for (let tries = 0; ; tries++) {
-    try {
-      return await callModel(prompt, purpose)
-    } catch (err) {
-      // Groq's free tier says how long to wait ("try again in 2.7s"). Wait
-      // once when it's short; otherwise give up and show the plain text.
-      const wait = /try again in ([\d.]+)(ms|s)/i.exec(err instanceof Error ? err.message : '')
-      const ms = wait ? Number(wait[1]) * (wait[2] === 'ms' ? 1 : 1000) : Infinity
-      if (tries > 0 || ms > MAX_RATE_WAIT_MS) throw err
-      await new Promise(r => setTimeout(r, ms + 250))
+  let last: unknown = new Error(`no ${purpose} model available`)
+  for (const model of CHAIN[purpose]) {
+    if (await isOut(model)) continue
+    for (let tries = 0; tries < 2; tries++) {
+      try {
+        return await callModel(model, prompt, purpose)
+      } catch (err) {
+        last = err
+        const msg = err instanceof Error ? err.message : String(err)
+        const ms = retryAfterMs(msg)
+        // A short wait the model asks for is worth it once; a long one means
+        // its budget is spent — skip it (for everyone) and use the next.
+        if (isRateLimit(msg) && ms != null && ms <= MAX_RATE_WAIT_MS && tries === 0) {
+          await new Promise(r => setTimeout(r, ms + 250))
+          continue
+        }
+        if (isRateLimit(msg)) await markOut(model, ms ?? OUT_DEFAULT_MS)
+        break
+      }
     }
   }
+  throw last
 }
 
 /** gpt-oss takes low/medium/high; Qwen takes none/default. */
 function effortFor(model: string): 'low' | 'none' {
   return model.startsWith('qwen/') ? 'none' : 'low'
 }
+const isMistral = (model: string) => /^(ministral|mistral|open-mistral)/.test(model)
 
-async function callModel(prompt: string, purpose: 'write' | 'judge'): Promise<string> {
-  const model = purpose === 'judge' ? MODELS.whyJudge : MODELS.whyWriter
+async function callModel(model: string, prompt: string, purpose: 'write' | 'judge'): Promise<string> {
+  const mistralKey = process.env.MISTRAL_API_KEY
+  if (isMistral(model) && !mistralKey) throw new Error('MISTRAL_API_KEY is not set')
   const { text } = await generateText({
-    model: groq()(model),
-    // Both are reasoning models; two sentences from given facts need little
-    // thinking, and each free budget is 8,000 tokens a minute.
-    providerOptions: { groq: { ...GROQ_TEXT_OPTIONS.groq, reasoningEffort: effortFor(model) } },
+    model: isMistral(model) ? createMistral({ apiKey: mistralKey })(model) : groq()(model),
+    // The Groq ones are reasoning models; a paragraph from given facts needs
+    // little thinking, and each free budget is 8,000 tokens a minute.
+    ...(isMistral(model) ? {} : { providerOptions: { groq: { ...GROQ_TEXT_OPTIONS.groq, reasoningEffort: effortFor(model) } } }),
     // gpt-oss bills its hidden reasoning against this before any reply
     // token; Qwen runs without reasoning and caps output at 1,000 a minute.
-    maxOutputTokens: model.startsWith('qwen/') ? 600 : 2000,
+    maxOutputTokens: model.startsWith('openai/gpt-oss') ? 2000 : 600,
     temperature: purpose === 'judge' ? 0 : 0.6,
-    // A rate-limited call fails fast and the plain text is shown, rather than
-    // the SDK's backoff keeping the sheet waiting 20 seconds.
+    // A rate-limited call fails fast and the next model takes over, rather
+    // than the SDK's backoff keeping the sheet waiting 20 seconds.
     maxRetries: 0,
     abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS),
     prompt,
@@ -617,7 +716,7 @@ async function attemptWrite(item: ScoredTitleWithPayload, facts: WhyFacts): Prom
     // Three tries (2026-11-06): with richer, longer texts a good draft often
     // trips one rule; the retry is told which.
     for (let attempt = 1; attempt <= 3; attempt++) {
-      const text = await draft(`${PROMPT(facts.text)}${feedback}`)
+      const text = freshenWords(await draft(`${PROMPT(facts.text)}${feedback}`))
       let problems = checkWhy(text, facts)
       if (problems.length === 0) {
         problems = (await unknownTitles(outsideTitles(text, facts)))
