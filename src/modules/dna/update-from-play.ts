@@ -73,6 +73,7 @@ const GENRE_NAMES: Record<GameGenre, string[]> = {
   romance:  ['romance'],
   anim:     ['animation'],
   anime:    ['animation'],
+  family:   ['family', 'kids'],
   doc:      ['documentary'],
   war:      ['war', 'history', 'war & politics'],
 }

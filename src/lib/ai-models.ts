@@ -77,6 +77,13 @@ export const MODELS = {
    *  writer on purpose — each has its own free budget. */
   whyJudge: 'openai/gpt-oss-20b',
 
+  /** Mistral — one-sentence plot summaries for feed cards whose catalogue
+   *  plot won't fit four lines (src/modules/engine/pipeline/card-plot.ts).
+   *  Written once per TITLE, shared by every user and cached, so volume is
+   *  low; on Mistral's free tier (no daily wall) so it never touches the
+   *  chat's or the "why" writer's Groq budgets. Non-reasoning, plain text. */
+  cardPlot: 'ministral-8b-latest',
+
   /** BULK structured enrichment (narrative extraction + lineage graphs) via
    *  structured output. Same NON-reasoning requirement as `structured`, but kept a
    *  distinct key because it is HIGH-VOLUME + rate-sensitive and may diverge

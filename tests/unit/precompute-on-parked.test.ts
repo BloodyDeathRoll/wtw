@@ -31,7 +31,7 @@ const { precomputeNextBatch } = await import('@/modules/engine/pipeline/precompu
 
 const LOCK = 'rec_precompute_lock:u1'
 const DIRTY = 'rec_precompute_dirty:u1'
-const PENDING = 'rec_pending:u1:movies'
+const PENDING = 'rec_pending2:u1:movies'
 
 beforeEach(() => {
   redis = createFakeRedis()
