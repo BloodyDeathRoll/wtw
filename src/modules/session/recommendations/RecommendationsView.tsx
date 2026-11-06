@@ -12,6 +12,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -36,7 +37,7 @@ import {
 } from "lucide-react";
 import styles from "./RecommendationsView.module.css";
 import { FingerprintLoader } from "../components/FingerprintLoader";
-import { WhyPanel } from "@/app/components/RecCard";
+import { WhyPanel, WhyTextOnly } from "@/app/components/RecCard";
 import { Emphasis } from "@/app/components/Emphasis";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
@@ -267,6 +268,46 @@ export default function RecommendationsView({
     window.addEventListener(WATCHLIST_HYDRATED_EVENT, onHydrated);
     return () => window.removeEventListener(WATCHLIST_HYDRATED_EVENT, onHydrated);
   }, [mode]);
+  // Watchlist mode only: a saved card stores the "why" line it had when saved,
+  // and before 2026-11-06 that could be an AI paragraph with invented facts.
+  // The Watchlist shows fresh lines built from facts instead
+  // (/api/recommendations/why-lines); "keep" = a brand-new user, whose saved
+  // lines are the popularity line and true.
+  const [lines, setLines] = useState<{ state: "loading" | "done" | "keep" | "failed"; byId: Record<string, string> }>(
+    { state: "loading", byId: {} },
+  );
+  useEffect(() => {
+    if (mode !== "watchlist") return;
+    const ids = getWatchlist().map((e) => e.rec.id).filter((id) => /^(movie|tv):\d+$/.test(id));
+    let cancelled = false;
+    (async () => {
+      if (ids.length === 0) {
+        setLines({ state: "done", byId: {} });
+        return;
+      }
+      try {
+        const res = await fetch("/api/recommendations/why-lines", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        });
+        if (!res.ok) throw new Error(`why-lines ${res.status}`);
+        const { lines: byId } = (await res.json()) as { lines: Record<string, string> | null };
+        if (!cancelled) setLines(byId ? { state: "done", byId } : { state: "keep", byId: {} });
+      } catch (e) {
+        console.error("[recs] watchlist lines failed", e);
+        if (!cancelled) setLines({ state: "failed", byId: {} });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, hydratedAt]);
+  const shown = useMemo(() => {
+    if (mode !== "watchlist" || lines.state === "keep") return recs;
+    return recs.map((r) => ({ ...r, reason: lines.byId[r.id] ?? "" }));
+  }, [recs, mode, lines]);
+
   // Watchlist mode only — the order the saved cards are paged in.
   const [sortKey, setSortKey] = useState<SortKey>("added");
   const [sortOpen, setSortOpen] = useState(false);
@@ -606,7 +647,8 @@ export default function RecommendationsView({
 
       <div className={`${styles.content} ${sortOpen ? styles.contentDimmed : ""}`}>
         <Feed
-          recs={recs}
+          recs={shown}
+          reasonsPending={mode === "watchlist" && lines.state === "loading"}
           loading={loading || building}
           hasMore={hasMore}
           error={error}
@@ -631,7 +673,7 @@ export default function RecommendationsView({
       </div>
 
       {detail && (
-        <WhyDetailOverlay rec={detail} onClose={() => setDetail(null)} />
+        <WhyDetailOverlay key={detail.id} rec={detail} onClose={() => setDetail(null)} />
       )}
     </div>
   );
@@ -659,8 +701,11 @@ function Feed({
   emptyMessage,
   onBrowse,
   onCalibrate,
+  reasonsPending = false,
 }: {
   recs: Recommendation[];
+  /** The Watchlist's fresh "why" lines are on their way: show a placeholder. */
+  reasonsPending?: boolean;
   loading: boolean;
   hasMore: boolean;
   error: string | null;
@@ -751,6 +796,7 @@ function Feed({
             onShare={onShare}
             saved={saved.has(rec.id)}
             onToggleWatchlist={onToggleWatchlist}
+            reasonPending={reasonsPending}
           />
           {onCalibrate && (i + 1) % NUDGE_EVERY === 0 && <CalibrateNudge onClick={onCalibrate} />}
         </Fragment>
@@ -806,8 +852,10 @@ function FeedCard({
   onShare,
   saved,
   onToggleWatchlist,
+  reasonPending = false,
 }: {
   rec: Recommendation;
+  reasonPending?: boolean;
   rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onRemove: (rec: Recommendation) => void;
@@ -851,9 +899,15 @@ function FeedCard({
       <div className={styles.heroBody}>
         {/* The text is the teaser; the Why page is the full answer. The text
             opens it too — the link is the control a keyboard reaches. */}
-        <p className={styles.heroReason} onClick={() => onWhy(rec)}>
-          <Emphasis text={rec.reason} />
-        </p>
+        {rec.reason ? (
+          <p className={styles.heroReason} onClick={() => onWhy(rec)}>
+            <Emphasis text={rec.reason} />
+          </p>
+        ) : reasonPending ? (
+          <div className={styles.heroReasonPending} aria-hidden>
+            <span /><span />
+          </div>
+        ) : null}
         <button
           type="button"
           className={styles.whyLink}
@@ -1117,6 +1171,42 @@ function toResult(data: ExplainData, rec: Recommendation): RecommendationResult 
 const SHEET_EXIT_MS = 220;
 const SWIPE_CLOSE_PX = 90;
 
+// The sheet's "Why", written from facts (/api/recommendations/why). Kept for
+// the rest of the session so reopening a card is instant; the server keeps it
+// for 3 days.
+const whyTextCache = new Map<string, string | null>();
+
+function useWhyText(rec: Recommendation): string | null | "pending" | "failed" {
+  // rec.id is "type:tmdb_id"; a legacy bare slug has nothing to look up. The
+  // sheet is keyed by rec.id, so this starts fresh for every title.
+  const [type, tmdb_id] = rec.id.split(":");
+  const [why, setWhy] = useState<string | null | "pending" | "failed">(() =>
+    whyTextCache.has(rec.id) ? whyTextCache.get(rec.id)! : tmdb_id ? "pending" : null,
+  );
+  useEffect(() => {
+    if (whyTextCache.has(rec.id) || !tmdb_id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/recommendations/why?tmdb_id=${encodeURIComponent(tmdb_id)}&type=${encodeURIComponent(type)}`,
+        );
+        if (!res.ok) throw new Error(`why ${res.status}`);
+        const { text } = (await res.json()) as { text: string | null };
+        whyTextCache.set(rec.id, text);
+        if (!cancelled) setWhy(text);
+      } catch (e) {
+        console.error("[recs] why text failed", e);
+        if (!cancelled) setWhy("failed");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rec.id, type, tmdb_id]);
+  return why;
+}
+
 function WhyDetailOverlay({
   rec,
   onClose,
@@ -1129,6 +1219,7 @@ function WhyDetailOverlay({
   );
   const [result, setResult] = useState<RecommendationResult | null>(null);
   const [errMsg, setErrMsg] = useState("");
+  const why = useWhyText(rec);
 
   useEffect(() => {
     let cancelled = false;
@@ -1302,12 +1393,19 @@ function WhyDetailOverlay({
               <FingerprintLoader size={66} />
             </div>
           )}
-          {status === "error" && (
+          {status === "error" && typeof why === "string" && why !== "pending" && why !== "failed" ? (
+            <WhyTextOnly text={why} />
+          ) : status === "error" && why === "pending" ? (
+            <div className={styles.whyLoading}>
+              <span className={styles.loadingEyebrow}>Reading your taste</span>
+              <FingerprintLoader size={66} />
+            </div>
+          ) : status === "error" ? (
             <div className={styles.whyError}>
               <span className={styles.error}>{errMsg}</span>
             </div>
-          )}
-          {status === "ready" && result && <WhyPanel result={result} />}
+          ) : null}
+          {status === "ready" && result && <WhyPanel result={result} why={why} />}
         </div>
       </div>
     </div>

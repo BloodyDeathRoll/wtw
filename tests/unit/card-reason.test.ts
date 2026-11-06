@@ -43,12 +43,12 @@ const item = (over: { keywords?: string[]; genres?: { id: number; name: string }
 
 const rated: RatedByPerson = new Map([
   ['488', [
-    { key: 'movie:329', title: 'Jurassic Park', reaction: 'liked' as const, votes: 16000 },
-    { key: 'movie:85', title: 'Raiders of the Lost Ark', reaction: 'loved' as const, votes: 12000 },
-    { key: 'movie:217', title: 'Indiana Jones and the Kingdom of the Crystal Skull', reaction: 'loved' as const, votes: 9000 },
+    { key: 'movie:329', title: 'Jurassic Park', reaction: 'liked' as const, votes: 16000, role: 'director' as const },
+    { key: 'movie:85', title: 'Raiders of the Lost Ark', reaction: 'loved' as const, votes: 12000, role: 'director' as const },
+    { key: 'movie:217', title: 'Indiana Jones and the Kingdom of the Crystal Skull', reaction: 'loved' as const, votes: 9000, role: 'director' as const },
   ]],
-  ['1', [{ key: 'movie:11', title: 'Star Wars', reaction: 'loved' as const, votes: 20000 }]],
-  ['3', [{ key: 'movie:87', title: 'Witness', reaction: 'liked' as const, votes: 1500 }]],
+  ['1', [{ key: 'movie:11', title: 'Star Wars', reaction: 'loved' as const, votes: 20000, role: 'writer' as const }]],
+  ['3', [{ key: 'movie:87', title: 'Witness', reaction: 'liked' as const, votes: 1500, role: 'actor' as const }]],
 ])
 
 describe('card line — reasons for only', () => {
@@ -87,7 +87,7 @@ describe('card line — people, linked to what you rated', () => {
   })
 
   it('never links a title to itself', () => {
-    const only: RatedByPerson = new Map([['488', [{ key: 'movie:217', title: 'Indiana Jones and the Kingdom of the Crystal Skull', reaction: 'loved', votes: 1 }]]])
+    const only: RatedByPerson = new Map([['488', [{ key: 'movie:217', title: 'Indiana Jones and the Kingdom of the Crystal Skull', reaction: 'loved', votes: 1, role: 'director' }]]])
     const text = cardReason(item({ p: { crew_matches: [{ name: 'Steven Spielberg', role: 'director', affinity_score: 0.3 }] } }), only)
     expect(text).toContain('Steven Spielberg directed it, and you love their work.')
   })
@@ -97,6 +97,20 @@ describe('card line — people, linked to what you rated', () => {
       .toContain('Written by George Lucas, who wrote *Star Wars*, which you loved.')
     expect(cardReason(item({ p: { crew_matches: [{ name: 'Harrison Ford', role: 'actor', affinity_score: 0.1 }] } }), rated))
       .toContain('With Harrison Ford, who you liked in *Witness*.')
+  })
+
+  it('says what they did on the title you rated, not on this one', () => {
+    // Harrison Ford acts here; if the rated title is one he directed, the link says "made".
+    const r: RatedByPerson = new Map([['3', [{ key: 'movie:9', title: 'Some Film', reaction: 'loved', votes: 1, role: 'director' }]]])
+    expect(cardReason(item({ p: { crew_matches: [{ name: 'Harrison Ford', role: 'actor', affinity_score: 0.3 }] } }), r))
+      .toContain('With Harrison Ford, who made *Some Film*, which you loved.')
+  })
+
+  it('prefers their role here when they had several on the rated title', () => {
+    // Paul Rudd acts in This Is 40, and acted in AND co-wrote Ant-Man and the Wasp.
+    const r: RatedByPerson = new Map([['3', [{ key: 'movie:9', title: 'Ant-Man and the Wasp', reaction: 'liked', votes: 1, role: 'writer', roles: ['writer', 'actor'] }]]])
+    expect(cardReason(item({ p: { crew_matches: [{ name: 'Harrison Ford', role: 'actor', affinity_score: 0.3 }] } }), r))
+      .toContain('With Harrison Ford, who you liked in *Ant-Man and the Wasp*.')
   })
 
   it('never headlines a cinematographer or someone you rated down', () => {
@@ -134,7 +148,7 @@ describe('card line — story hooks', () => {
 
 describe('card line — fits four lines', () => {
   it('drops the least personal parts first', () => {
-    const long: RatedByPerson = new Map([['1', [{ key: 'movie:1', title: 'The Lord of the Rings: The Fellowship of the Ring and Some Extra Words', reaction: 'liked', votes: 1 }]]])
+    const long: RatedByPerson = new Map([['1', [{ key: 'movie:1', title: 'The Lord of the Rings: The Fellowship of the Ring and Some Extra Words', reaction: 'liked', votes: 1, role: 'writer' }]]])
     const text = cardReason(item({
       keywords: ['treasure hunt', 'based on true story', '1950s'],
       p: { crew_matches: [{ name: 'George Lucas', role: 'writer', affinity_score: 0.3 }] },
