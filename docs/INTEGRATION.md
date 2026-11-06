@@ -176,6 +176,20 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-06 — "Why it's a match": backup writers and a richer fallback (`fix/why-backup-writer`)
+- **Why:** after testing used up the writer's (qwen) daily budget, every new sheet showed one plot sentence ("this is what most of the titles look like" — Eran).
+- **Backup chain** (`CHAIN` in `why/write-why.ts`):
+  - Writers in order: `whyWriter` (qwen) → `whyWriterBackup` (gpt-oss-20b) → `whyWriterLast` (ministral-8b, Mistral free tier, no daily wall).
+  - Fact-checkers in order: `whyJudge` (gpt-oss-20b) → `whyJudgeBackup` (ministral-8b).
+  - A model that says it's out of budget is skipped for everyone (Redis `why_model_out:<model>`, for as long as it asks, at most 1h). Every draft passes the same checks.
+- **Richer fallback** (`richFallback`), all facts:
+  - the people you rated, and the plot;
+  - "Like *X*, which you loved, it has …" (shared story tags);
+  - "Starring …";
+  - "One thing to know: …".
+- **Small fixes:** names ending in s’ (Evans’) passed the name check; "anchors the film" / "crackles with" are swapped for plain verbs rather than refusing the draft (only as verbs — a news anchor stays an anchor).
+- **Checked:** with qwen and gpt-oss-20b both out (2026-11-06), on 5 titles: 1 of 5 written before the fixes, 4 of 5 after (Mistral writing; gpt-oss-20b checking once it came back). 830 tests.
+
 ### 2026-11-06 — "Why it's a match" shorter: ~90–95 words (`fix/why-shorter`)
 - **Eran:** ~120 words read long. The writer now asks for 85–100 words (the opening, the two strongest of feel / cast / premise, then the catch) and the check accepts 70–115. Cache `why_ai:v5:*`. The 3 texts written before the budget ran out came in at 94, 95 and 97 words.
 - **⚠️ Budget:** testing on 2026-11-06 used up `MODELS.whyWriter`'s (qwen) 200k tokens/day. Until it recovers (a rolling 24h window), new sheets show the plain plot. Saved texts are unaffected. Plan test runs at ~30 sheets a day at most.

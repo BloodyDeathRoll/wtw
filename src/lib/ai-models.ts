@@ -77,6 +77,16 @@ export const MODELS = {
    *  writer on purpose — each has its own free budget. */
   whyJudge: 'openai/gpt-oss-20b',
 
+  /** "Why it's a match" backups (2026-11-06): when a model is out of its free
+   *  daily budget or down, the next one in line writes / fact-checks, so one
+   *  empty budget doesn't turn every user's sheet into plain text (it did,
+   *  2026-11-06, after testing used up whyWriter's 200k tokens). gpt-oss-20b
+   *  is also the judge — its own budget; ministral-8b is on Mistral's free
+   *  tier, no daily wall. Every draft still passes the same checks. */
+  whyWriterBackup: 'openai/gpt-oss-20b',
+  whyWriterLast: 'ministral-8b-latest',
+  whyJudgeBackup: 'ministral-8b-latest',
+
   /** Mistral — one-sentence plot summaries for feed cards whose catalogue
    *  plot won't fit four lines (src/modules/engine/pipeline/card-plot.ts).
    *  Written once per TITLE, shared by every user and cached, so volume is
