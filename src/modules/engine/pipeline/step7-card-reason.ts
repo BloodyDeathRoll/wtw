@@ -150,6 +150,18 @@ export interface RatedTitle {
   title: string
   reaction: 'loved' | 'liked'
   votes: number
+  /** What this person did on THAT title — so a sentence never says "who
+   *  directed X" about someone who acted in it. The main one (director over
+   *  writer over actor); `roles` has all of them. */
+  role: 'director' | 'writer' | 'actor'
+  /** Every role they had there: Paul Rudd acted in and co-wrote Ant-Man and
+   *  the Wasp, and in an actor's sentence "who you liked in" reads right. */
+  roles?: ('director' | 'writer' | 'actor')[]
+}
+
+/** Their role on the rated title, as close as possible to their role here. */
+export function linkRole(r: RatedTitle, roleHere: string): RatedTitle['role'] {
+  return r.roles?.includes(roleHere as RatedTitle['role']) ? (roleHere as RatedTitle['role']) : r.role
 }
 /** tmdb_person_id → the loved/liked titles they directed, wrote or starred in. */
 export type RatedByPerson = Map<string, RatedTitle[]>
@@ -186,10 +198,9 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
         if (error) throw error
         for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
           const key = `${type}:${t.tmdb_id}`
-          const rated: RatedTitle = { key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0 }
-          for (const id of peopleIn(t.crew)) {
+          for (const [id, roles] of peopleIn(t.crew)) {
             const list = out.get(id) ?? []
-            list.push(rated)
+            list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
             out.set(id, list)
           }
         }
@@ -202,13 +213,19 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
   return out
 }
 
-/** Directors, writers and the top 5 billed — the people a card can name. */
-function peopleIn(crew: TitleRow['crew'] | null | undefined): Set<string> {
-  return new Set([
-    ...(crew?.directors ?? []),
-    ...(crew?.writers ?? []),
-    ...(crew?.cast ?? []).slice(0, 5),
-  ].map(c => c.tmdb_person_id))
+/** Directors, writers and the top 5 billed — the people a card can name —
+ *  each with every role they had on that title, director first. */
+function peopleIn(crew: TitleRow['crew'] | null | undefined): Map<string, RatedTitle['role'][]> {
+  const out = new Map<string, RatedTitle['role'][]>()
+  const add = (id: string, role: RatedTitle['role']) => {
+    const roles = out.get(id) ?? []
+    if (!roles.includes(role)) roles.push(role)
+    out.set(id, roles)
+  }
+  for (const c of crew?.directors ?? []) add(c.tmdb_person_id, 'director')
+  for (const c of crew?.writers ?? []) add(c.tmdb_person_id, 'writer')
+  for (const c of (crew?.cast ?? []).slice(0, 5)) add(c.tmdb_person_id, 'actor')
+  return out
 }
 
 // ─────────────────────────────────────────────
@@ -263,11 +280,14 @@ function personSentences(item: CardReasonInput, rated: RatedByPerson, max: numbe
       .filter(r => r.key !== self)
       .sort((a, b) => (a.reaction === 'loved' ? 0 : 1) - (b.reaction === 'loved' ? 0 : 1) || b.votes - a.votes)[0]
     if (t) {
+      // The opener says their role HERE; the link says their role THERE.
       const how = t.reaction
-      linked.push(
-        m.role === 'actor' ? `With ${m.name}, who you ${how} in ${titleText(t.title)}.`
-        : m.role === 'writer' ? `Written by ${m.name}, who wrote ${titleText(t.title)}, which you ${how}.`
-        : `From ${m.name}, who made ${titleText(t.title)}, which you ${how}.`)
+      const role = linkRole(t, m.role)
+      const there = role === 'actor' ? `who you ${how} in ${titleText(t.title)}`
+        : role === 'writer' ? `who wrote ${titleText(t.title)}, which you ${how}`
+        : `who made ${titleText(t.title)}, which you ${how}`
+      const here = m.role === 'actor' ? 'With' : m.role === 'writer' ? 'Written by' : 'From'
+      linked.push(`${here} ${m.name}, ${there}.`)
     } else {
       plain.push(m.affinity_score >= STRONG
         ? `${m.name} ${ROLE_VERB[m.role]}, and you love their work.`

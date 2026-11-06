@@ -61,6 +61,22 @@ export const MODELS = {
    *  09-04). ministral-8b keeps 188 req/min free and passes json_schema output. */
   structured: 'ministral-8b-latest',
 
+  /** Groq — writes the "Why it's a match" text from facts
+   *  (src/modules/engine/why/write-why.ts). NOT `text`: that model's free
+   *  budget (200,000 tokens a day) is the chat's, and testing this feature on
+   *  it ran the budget out on 2026-11-06. Chosen 2026-11-06 over gpt-oss-20b
+   *  on the same 12 titles: Qwen kept every rule first time (gpt-oss-20b: 4
+   *  of 12 fell back to plain text). Qwen caps OUTPUT tokens at 1,000 a
+   *  minute, so it runs without reasoning (~100 output tokens a text). */
+  whyWriter: 'qwen/qwen3.8-27b',
+
+  /** Groq — the fact-check on that text: reads the facts and the draft, lists
+   *  anything the draft says that the facts don't. Measured 2026-11-06 on 8
+   *  known cases (invented scenes, a made-up dog, a scholarship, an actor):
+   *  7 right; the miss was being too strict. A different model from the
+   *  writer on purpose — each has its own free budget. */
+  whyJudge: 'openai/gpt-oss-20b',
+
   /** BULK structured enrichment (narrative extraction + lineage graphs) via
    *  structured output. Same NON-reasoning requirement as `structured`, but kept a
    *  distinct key because it is HIGH-VOLUME + rate-sensitive and may diverge

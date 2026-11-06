@@ -245,7 +245,28 @@ function storyValue(dimension: string, value: string): string {
   return dimension === "language" ? languageName(v) : v
 }
 
-export function WhyPanel({ result }: { result: RecommendationResult }) {
+/**
+ * `why` — the sheet's "Why" text written from facts (/api/recommendations/why):
+ * undefined = not asked for (the stored explanation shows), "pending" = on its
+ * way (a placeholder shows), null = nothing better (the stored explanation
+ * shows), "failed" = couldn't load (a short muted note — never a stale stored
+ * paragraph, which on an old Watchlist entry could be the AI text that
+ * invented facts).
+ */
+/** Just the "Why" section, for when the score breakdown can't load but the
+ *  written text could (an old Watchlist title the feed no longer holds). */
+export function WhyTextOnly({ text }: { text: string }) {
+  return (
+    <div className={styles.whyPanel}>
+      <div className={styles.whySection}>
+        <div className={styles.whySectionLabel}>Why</div>
+        <div className={styles.whyText}><Emphasis text={text} /></div>
+      </div>
+    </div>
+  )
+}
+
+export function WhyPanel({ result, why }: { result: RecommendationResult; why?: string | null | "pending" | "failed" }) {
   const p = result.reason_payload
 
   // Bars grow from 0 → value once mounted. Start collapsed, then flip on the
@@ -298,7 +319,15 @@ export function WhyPanel({ result }: { result: RecommendationResult }) {
     <div className={styles.whyPanel}>
       <div className={styles.whySection}>
         <div className={styles.whySectionLabel}>Why</div>
-        <div className={styles.whyText}><Emphasis text={result.explanation} /></div>
+        {why === "pending" ? (
+          <div className={styles.whySkeleton} aria-label="Writing why" role="status">
+            <span /><span /><span />
+          </div>
+        ) : why === "failed" ? (
+          <div className={`${styles.whyText} ${styles.whyTextMuted}`}>Couldn’t load this right now.</div>
+        ) : (
+          <div className={styles.whyText}><Emphasis text={why ?? result.explanation} /></div>
+        )}
       </div>
 
       {!noClaim && (

@@ -482,6 +482,29 @@
   color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
 }
+/* A Watchlist card's fresh "why" line is on its way: two quiet lines the
+   height of .heroReason's (15.5px × 1.45), so nothing jumps when it lands. */
+.heroReasonPending {
+  display: flex;
+  flex-direction: column;
+  gap: 8.5px;
+  padding: 4px 0;
+}
+.heroReasonPending span {
+  display: block;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.09);
+  animation: reasonPulse 1.3s ease-in-out infinite;
+}
+.heroReasonPending span:nth-child(2) { width: 70%; }
+@keyframes reasonPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heroReasonPending span { animation: none; }
+}
 .heroReason em {
   color: #fff;
 }
