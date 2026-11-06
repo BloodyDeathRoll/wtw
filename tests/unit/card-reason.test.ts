@@ -172,6 +172,11 @@ describe('plotLine', () => {
       .toBe('A charming thief and a band of unlikely adventurers undertake an epic heist to retrieve a lost relic.')
   })
 
+  it('drops a short trailing tag when nothing else fits ("…, Linda.")', () => {
+    expect(plotLine('A macaw named Blu never learned to fly and lives a happily domesticated life in Minnesota with his human friend and owner, the bookshop keeper Linda.', 140))
+      .toBe('A macaw named Blu never learned to fly and lives a happily domesticated life in Minnesota with his human friend and owner.')
+  })
+
   it('never splits at "U.S." or "Dr."', () => {
     expect(plotLine('Hard-luck cabbie John Winger enlists in the U.S. Army with his pal. Chaos follows.', 150))
       .toBe('Hard-luck cabbie John Winger enlists in the U.S. Army with his pal. Chaos follows.')

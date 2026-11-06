@@ -337,7 +337,14 @@ function clip(sentence: string, max: number): string | null {
     if (head.length + 1 > max) break
     if (head.length >= MIN_CLIPPED) best = `${head}.`
   }
-  return best
+  if (best) return best
+  // Last resort: drop a short trailing tag after the final comma — a name or
+  // an aside (Rio: "…lives a happily domesticated life in Minnesota with his
+  // human friend, Linda."). Never more than a few words.
+  const last = sentence.lastIndexOf(', ')
+  const tail = sentence.slice(last + 2)
+  if (last > 0 && tail.split(/\s+/).length <= 4 && last + 1 <= max && last >= MIN_CLIPPED) return `${sentence.slice(0, last)}.`
+  return null
 }
 
 /**

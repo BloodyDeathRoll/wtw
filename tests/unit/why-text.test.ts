@@ -9,6 +9,11 @@ const generateText = vi.fn()
 vi.mock('ai', () => ({ generateText: (...a: unknown[]) => generateText(...a) }))
 vi.mock('@ai-sdk/groq', () => ({ createGroq: () => (model: string) => ({ model }) }))
 vi.mock('@/lib/redis', () => ({ getRedis: () => ({ get: async () => null, set: async () => 'OK' }) }))
+// The catalogue, for comparisons to other titles: only these exist.
+const CATALOGUE = ['little miss sunshine', 'the proposal']
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({
+  from: () => ({ select: () => ({ ilike: (_: string, t: string) => ({ limit: async () => ({ data: CATALOGUE.includes(t.toLowerCase()) ? [{ id: 1 }] : [], error: null }) }) }) }),
+}) }))
 
 process.env.GROQ_API_KEY = 'test'
 const { buildWhyFacts, checkWhy, writeWhyFromFacts, similarRated, reservationFor } = await import('@/modules/engine/why/write-why')
@@ -84,7 +89,7 @@ describe('the check', () => {
     expect(checkWhy(GOOD, facts)).toEqual([])
   })
   it.each([
-    ['another film', GOOD.replace('in the best way', 'like *Little Miss Sunshine*'), /Little Miss Sunshine/],
+    ['three other titles', GOOD.replace('in the best way', 'like *A* meets *B* meets *C*'), /more than two/],
     ['a person not in the facts', GOOD.replace('Ruby is', 'Ruby, coached by Eugenio Derbez, is'), /Eugenio Derbez/],
     ['a place not in the facts', GOOD.replace('fishing business', 'fishing business in Gloucester'), /Gloucester/],
     ['a number not in the facts', GOOD.replace('First love', 'First love at 17'), /17/],
@@ -94,11 +99,14 @@ describe('the check', () => {
     ['an over-claim', GOOD.replace('in the best way', 'and a masterpiece'), /masterpiece/],
     ['what critics thought', GOOD.replace('in the best way', 'and critics loved it'), /critics/],
     ['mood labels strung together', GOOD.replace('tender and bittersweet', 'warm, hopeful'), /mood tags/],
-    ['talk about the viewer\'s taste', GOOD.replace("It's tender", 'You love warm stories, and this is tender'), /describe the film/],
+    ['a claim about what the viewer watched', GOOD.replace("It's tender", "You've seen this kind of story before, and this is tender"), /describe the film/],
     ['app-speak', GOOD.replace("It's tender", "It's a perfect match: tender"), /friend, not an app/],
     ['a stock opener', "You'll love this: " + GOOD, /opens with/],
   ])('refuses %s', (_, text, problem) => {
     expect(checkWhy(text, facts).join(' | ')).toMatch(problem)
+  })
+  it('allows friendly taste talk, the screenshots\' voice ("the kind of heart you crave")', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'with the kind of heart you crave'), facts)).toEqual([])
   })
   it('lets a plot turn use "but" ("hoped for one child but got three")', () => {
     expect(checkWhy(GOOD.replace('and the whole film lives', 'she wanted a quiet life but the whole film lives'), facts)).toEqual([])
@@ -114,6 +122,16 @@ describe('the check', () => {
     const f = buildWhyFacts(item as never, rated)
     expect(checkWhy('Troy Kotsur, who you loved in *Some Show*, is back. ' + GOOD, f).join()).toMatch(/opening words/)
     expect(checkWhy('Troy Kotsur, who you liked in *Some Show*, is back in a warm one. ' + GOOD, f)).toEqual([])
+  })
+})
+
+describe('comparisons to famous titles (option B, 2026-11-06)', () => {
+  const facts = buildWhyFacts(codaItem(), new Map())
+  it('lets the text compare to a title the facts don\'t name', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'like *Little Miss Sunshine* with more heart'), facts)).toEqual([])
+  })
+  it('never lets it claim the viewer saw one', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'like *Little Miss Sunshine*, which you loved'), facts).join()).toMatch(/describe the film/)
   })
 })
 
@@ -172,6 +190,15 @@ describe('the writer', () => {
     await vi.advanceTimersByTimeAsync(1500)
     expect((await p).source).toBe('ai')
     vi.useRealTimers()
+  })
+
+  it('refuses a comparison to a title that doesn\'t exist, and keeps one that does', async () => {
+    const madeUp = GOOD.replace('in the best way', 'like *The Fishing Lessons*')
+    const real = GOOD.replace('in the best way', 'like *Little Miss Sunshine*')
+    generateText.mockResolvedValueOnce({ text: madeUp }).mockResolvedValueOnce({ text: real }).mockResolvedValueOnce({ text: 'OK' })
+    const why = await writeWhyFromFacts(codaItem(), new Map())
+    expect(why.text).toBe(real)
+    expect(why.rejected?.join()).toMatch(/The Fishing Lessons/)
   })
 
   it('does not ask a model when the title has no plot to retell', async () => {
