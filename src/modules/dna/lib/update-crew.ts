@@ -108,3 +108,46 @@ export function replaceCrewAffinity(
     }
   }
 }
+
+/**
+ * Un-rate: take a title's reaction back out of each person's running average,
+ * as if it had never been rated. A person whose only title this was is
+ * dropped (they were only ever known from it). The score is exact, bar the
+ * [-1, 1] clamp; confidence has no record of what this title added, so it
+ * stays — it is a hint for the DNA page, not part of the score.
+ */
+export function removeCrewAffinity(
+  strand_a: StrandA,
+  crew: TitleCrew,
+  previous: Reaction,
+): void {
+  const delta = REACTION_SCORE[previous]
+
+  const groups: Array<{
+    pool:   { tmdb_person_id: string; name: string }[]
+    bucket: keyof StrandA
+  }> = [
+    { pool: crew.directors        ?? [],                    bucket: 'directors'        },
+    { pool: crew.writers          ?? [],                    bucket: 'writers'          },
+    { pool: crew.cinematographers ?? [],                    bucket: 'cinematographers' },
+    { pool: (crew.cast ?? []).slice(0, MAX_CAST),           bucket: 'actors'           },
+  ]
+
+  for (const { pool, bucket } of groups) {
+    const seen = new Set<string>()
+    for (const member of pool) {
+      if (seen.has(member.tmdb_person_id)) continue
+      seen.add(member.tmdb_person_id)
+      const existing = strand_a[bucket][member.tmdb_person_id]
+      if (!existing) continue
+      if (existing.sample_size <= 1) {
+        delete strand_a[bucket][member.tmdb_person_id]
+        continue
+      }
+      const n = existing.sample_size
+      existing.score         = clamp((existing.score * n - delta) / (n - 1), -1, 1)
+      existing.sample_size   = n - 1
+      existing.lineage_boost = lineageBoost(existing.score)
+    }
+  }
+}

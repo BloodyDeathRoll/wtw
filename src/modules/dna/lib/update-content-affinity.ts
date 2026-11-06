@@ -86,6 +86,44 @@ export function replaceContentAffinity(
   }
 }
 
+/**
+ * Un-rate: take a title's reaction back out of each running average it fed,
+ * as if it had never been rated. Same rule as removeCrewAffinity — exact for
+ * the score, an entry this title alone created is dropped, confidence stays.
+ */
+export function removeContentAffinity(
+  strand_c: StrandC,
+  title: ContentAttributes,
+  previous: Reaction,
+): void {
+  const delta = REACTION_SCORE[previous]
+  const genres = (title.genres ?? [])
+    .map(g => g?.name?.trim().toLowerCase())
+    .filter((n): n is string => !!n)
+  const language = title.original_language?.trim().toLowerCase()
+
+  const targets: [ContentAffinityBucket, string[]][] = [
+    ['genre_affinity', genres],
+    ['language_affinity', language ? [language] : []],
+    ['format_affinity', [title.type]],
+  ]
+  for (const [bucket, keys] of targets) {
+    const map = strand_c[bucket]
+    if (!map || keys.length === 0) continue
+    for (const key of new Set(keys)) {
+      const existing = map[key]
+      if (!existing) continue
+      if (existing.sample_size <= 1) {
+        delete map[key]
+        continue
+      }
+      const n = existing.sample_size
+      existing.score = clamp((existing.score * n - delta) / (n - 1), -1, 1)
+      existing.sample_size = n - 1
+    }
+  }
+}
+
 function bump(
   strand_c: StrandC,
   bucket: ContentAffinityBucket,

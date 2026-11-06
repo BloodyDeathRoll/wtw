@@ -49,6 +49,30 @@ export function applyStrandCUpdate(
 }
 
 /**
+ * Un-rate: take a title's pacing and tone deltas back out. Close, not exact:
+ * every rating since has re-centred the group, so the original nudge can't be
+ * isolated — the same limit a re-rate (applyStrandCUpdate's `previous`) has.
+ */
+export function removeStrandCContribution(
+  strand_c: StrandC,
+  title: TitleMeta,
+  previous: Reaction,
+): void {
+  if (title.pacing_tag && VALID_PACING.has(title.pacing_tag)) {
+    const key = title.pacing_tag as keyof typeof strand_c.pacing_weights
+    strand_c.pacing_weights[key] = clamp(strand_c.pacing_weights[key] - PACING_DELTA[previous], 0, 1)
+  }
+  for (const tag of title.tone_tags ?? []) {
+    if (VALID_TONES.has(tag)) {
+      const key = tag as keyof typeof strand_c.tone_weights
+      strand_c.tone_weights[key] = clamp(strand_c.tone_weights[key] - TONE_DELTA[previous], 0, 1)
+    }
+  }
+  recenterWeights(strand_c.pacing_weights)
+  recenterWeights(strand_c.tone_weights)
+}
+
+/**
  * Keep each weight group centred on 0.5. The deltas above only ever push a
  * tag UP on a loved/liked, so after a few hundred ratings every tone sat at
  * 0.97–1.0 (measured 2026-08-28: dark .97, comedic .985, hopeful 1.0) and
