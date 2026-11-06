@@ -38,7 +38,7 @@ import { getCandidates }            from './step1-candidate-gen'
 import { scoreCandidates }          from './step2-composite-score'
 import { applySoftModifiers }       from './step3-soft-modifiers'
 import { composeBatch }             from './step3b-compose-batch'
-import { capKidsShare }             from './kids-share'
+import { capKidsShare, spreadKids } from './kids-share'
 import { llmRerank }                from './step4-llm-rerank'
 import { injectStretchPick }        from './step5-stretch-pick'
 import { buildReasonPayloads }      from './step6-reason-payload'
@@ -163,7 +163,9 @@ async function runPipeline(
   t.mark('step4 rerank')
 
   // ── Step 5: stretch pick injection ───────────────────────
-  const withStretch = injectStretchPick(reranked, scored, dna)
+  // Kids' titles spread out first (kids-share.ts): in strict match order
+  // they all opened the feed.
+  const withStretch = injectStretchPick(spreadKids(reranked), scored, dna)
 
   // ── Step 6: reason payload assembly ──────────────────────
   const withPayloads = buildReasonPayloads(withStretch)

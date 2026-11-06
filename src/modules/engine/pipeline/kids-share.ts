@@ -89,3 +89,35 @@ export function capKidsShare<T extends ScoredTitle>(
     .slice(0, drop.size)
   return [...batch.filter(s => !drop.has(s)), ...fill].sort(byScore)
 }
+
+/** At most one kids' title in any this-many cards in a row. */
+export const KIDS_SPACING = 5
+
+/**
+ * The batch with its kids' titles spread out (Eran, 2026-11-06): within the
+ * allowance they are often the viewer's best matches, so in strict match
+ * order they all landed on the first cards — 7 kids' films in a row, which
+ * read as "99% kids" though it was 7 of 43. Each kids' title keeps its place
+ * unless it would come within KIDS_SPACING of the last one; then the next
+ * best other title goes first. This trades strict %-order for the feed's
+ * first impression — a decision, not an accident.
+ */
+export function spreadKids<T extends { title: { genres: { name: string }[] | null } }>(
+  items: T[],
+  spacing = KIDS_SPACING,
+): T[] {
+  const rest = [...items]
+  const out: T[] = []
+  let lastKid = -Infinity
+  while (rest.length) {
+    let i = 0
+    if (isKidsTitle(rest[0].title) && out.length - lastKid < spacing) {
+      const other = rest.findIndex(x => !isKidsTitle(x.title))
+      i = other === -1 ? 0 : other
+    }
+    const [next] = rest.splice(i, 1)
+    if (isKidsTitle(next.title)) lastKid = out.length
+    out.push(next)
+  }
+  return out
+}
