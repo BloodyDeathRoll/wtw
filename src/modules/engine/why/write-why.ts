@@ -404,7 +404,8 @@ async function unknownTitles(titles: string[]): Promise<string[]> {
 export function checkWhy(text: string, facts: WhyFacts): string[] {
   const problems: string[] = []
   const words = text.trim().split(/\s+/).length
-  if (words < 70 || words > 170) problems.push(`it is ${words} words long; write 90–140`)
+  // 85–100 asked, 70–115 accepted (Eran, 2026-11-06: 90–95 on average; ~120 read long).
+  if (words < 70 || words > 115) problems.push(`it is ${words} words long; write 85–100`)
   if (!facts.reservation && RESERVATION.test(text)) problems.push(`it contains a reservation or a contrast ("${text.match(RESERVATION)![0]}"); the facts give no reservation`)
   if (CLICHE.test(text)) problems.push(`it uses "${text.match(CLICHE)![0]}"; talk like a friend, not an app`)
   if (SAMENESS.test(text)) problems.push(`it says "${text.match(SAMENESS)![0]}"; no critics or audiences, and describe the feel in fresh words, not a list of mood tags`)
@@ -489,7 +490,7 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
 // The writer
 // ─────────────────────────────────────────────
 
-const PROMPT = (facts: string) => `You're a friend who knows films inside out, texting one person about why the title below is a great pick for THEM. The plot is already on their screen, so don't retell it: make the case. Write four to six sentences, 90 to 140 words, one paragraph — rich, specific, opinionated, fun to read.
+const PROMPT = (facts: string) => `You're a friend who knows films inside out, texting one person about why the title below is a great pick for THEM. The plot is already on their screen, so don't retell it: make the case. Write three to five sentences, 85 to 100 words — no more — one paragraph: rich, specific, opinionated, fun to read. You won't fit everything: after the opening, pick the two strongest of the feel, the cast and the premise, then the catch if there is one.
 
 What a great one has (Eran's examples: "it's like *The Proposal* meets *Fight Club*, but with a father-daughter dynamic that's both hilarious and surprisingly heartfelt. Robert De Niro's performance is chef's kiss…"):
 - Open the way HOW TO OPEN (at the end of the facts) says. Every text opens differently; don't fall back on a comparison.
@@ -639,7 +640,7 @@ async function attemptWrite(item: ScoredTitleWithPayload, facts: WhyFacts): Prom
 
 /** Three days: long enough that re-opening is instant, short enough that new ratings show up. */
 const TTL_SECONDS = 3 * 24 * 60 * 60
-export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v4:${userId}:${type}:${tmdbId}`
+export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v5:${userId}:${type}:${tmdbId}`
 
 export async function getCachedWhy(userId: string, type: string, tmdbId: string): Promise<WhyText | null> {
   return getRedis().get<WhyText>(whyAiKey(userId, type, tmdbId))

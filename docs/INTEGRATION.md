@@ -176,6 +176,10 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-06 — "Why it's a match" shorter: ~90–95 words (`fix/why-shorter`)
+- **Eran:** ~120 words read long. The writer now asks for 85–100 words (the opening, the two strongest of feel / cast / premise, then the catch) and the check accepts 70–115. Cache `why_ai:v5:*`. The 3 texts written before the budget ran out came in at 94, 95 and 97 words.
+- **⚠️ Budget:** testing on 2026-11-06 used up `MODELS.whyWriter`'s (qwen) 200k tokens/day. Until it recovers (a rolling 24h window), new sheets show the plain plot. Saved texts are unaffected. Plan test runs at ~30 sheets a day at most.
+
 ### 2026-11-06 — "Why it's a match": one opening angle per title, no "X meets Y" on every sheet (`fix/why-angles`)
 - **Why (Eran):** reading ten sheets in a row, 9 of 10 were "X meets Y", and "electric", "chemistry" and "anchors" were in nearly every one. About half fell back to the plain plot.
 - **Angles** (`angleFor` in `why/write-why.ts`): each title gets one way in, fixed by its id. The person link when there is one; otherwise a title the viewer loved that shares story ground (1 in 3 of those), or the cast / the feel / the premise / a comparison to a famous title (1 in 4). Famous-title comparisons and "meets" are allowed only on the comparison angle, once.
