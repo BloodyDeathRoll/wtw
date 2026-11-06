@@ -188,10 +188,11 @@ export function markRemovalsSynced(ids: string[]) {
 }
 
 /**
- * Tag a saved title with how it was judged. A no-op when the title isn't saved,
- * so every rating site can call it unconditionally.
+ * Tag a saved title with how it was judged — or clear the tag (null) when the
+ * user takes the rating back. A no-op when the title isn't saved, so every
+ * rating site can call it unconditionally.
  */
-export function setWatchlistRating(id: string, rating: WatchlistRating) {
+export function setWatchlistRating(id: string, rating: WatchlistRating | null) {
   const list = readList()
   const at = list.findIndex((e) => e.rec.id === id)
   if (at < 0 || list[at].rating === rating) return

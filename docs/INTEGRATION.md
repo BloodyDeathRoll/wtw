@@ -176,6 +176,24 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-06 — Seen split, slice 1: the card's two rows and un-rate (`feat/seen-split-card`)
+- **What the user sees** (mocks: `docs/prototypes/seen-split/`; decisions Eran, 2026-11-06):
+  - **"Want it?"** — Add to Watchlist with a round **X** beside it, on the feed only. The X hides once the title is on your Watchlist. **The Watchlist card has no X**: "Remove from watchlist" is how a title leaves a list you made.
+  - **"Seen it?"** — "Seen it? Tell me, and your picks get sharper" over Loved / Liked / Disliked, no X. Rating lights the chip (gold) and the line becomes "✓ Saved to Ratings" ("Seen" once that page ships). The card stays until you leave, as before.
+  - **Tap the lit chip again to clear the rating** (un-rate). Tap another to change it (the server already swapped re-rates exactly).
+  - **X:** the card slides away and the gap closes, 0.75s in all (`CARD_LEAVE_MS`, `.cardLeaving`). Instant with reduced motion.
+- **Un-rate** — `DELETE /api/recommendations/feedback` → `unrateTitle` (`src/modules/dna/unrate.ts`):
+  - history entry loses its rating (Watchlist: back to the saved marker), so the session-end fold has nothing to re-add;
+  - the signal is dropped and its contribution taken out: people and genres / language / format exact (`removeCrewAffinity`, `removeContentAffinity`; a person or genre known only from this title is dropped), story traits exact bar one case (a rating that out-voted the old value can't restore it), mood & pace close (the group is re-centred after every rating);
+  - a stretch pick's outcome and boost reset; its `recommendation_feedback` rows deleted (the Ratings page); next batch precomputed;
+  - client: the Watchlist tag and a queued 48-hour check-in are cleared; the DELETE joins the ratings' one-at-a-time queue; on failure everything is put back with "That rating didn't clear — try again."
+  - No `taste_version` bump, same as the per-click light merge (a bump restarts the feed's paging); session end bumps.
+  - An un-rated title is no longer "judged", so a later batch may recommend it again (Eran, 2026-11-06).
+- **Watchlist entries tagged "removed"** by the old Watchlist X now show unlit chips (it was never a rating).
+- **Owners:** card A1 (`RecommendationsView`), route A2, DNA undo A3 — the PR is for all three to read.
+- **Not in this slice** (backlog, Seen row): rated cards keeping their place on the next visit, the X as a light "not for me" signal, the Seen page, un-rating from the Ratings page.
+- **Checked:** `tests/unit/unrate.test.ts` (rate → un-rate returns people, genres, story traits, mood & pace to before; history, stretch, film-vs-series id). 844 tests pass, type-check clean.
+
 ### 2026-11-06 — Kids' titles spread through the feed (`fix/spread-kids`)
 - **Why:** on Eran's live data the kids' limit held (7 of 43), but all 7 were the first 7 cards, because they were his best matches. Opening the app read as "99% kids".
 - **What:** `spreadKids` (kids-share.ts, before the stretch pick in `generate.ts`) allows at most one kids' title in any 5 cards in a row. A kids' title that comes too soon waits behind the next best other title. **Eran chose this over strict match-% order** (the #178 rule), so a 71% kids' title can sit below 68% titles.

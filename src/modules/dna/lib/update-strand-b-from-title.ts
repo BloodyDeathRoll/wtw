@@ -133,3 +133,61 @@ export function applyStrandBFromTitle(
   }
   return touched
 }
+
+/**
+ * Un-rate: undo what applyStrandBFromTitle did for this title's reaction.
+ * Confidence moves back by the same amount; the numeric dimension's value is
+ * solved back from the step it took. Exact unless a clamp was hit — with one
+ * case it cannot undo: a positive rating that out-voted the old value and
+ * adopted the title's (the old value is not stored anywhere), so that
+ * dimension keeps the new value at its low starting confidence.
+ */
+export function removeStrandBFromTitle(
+  strand_b: StrandB,
+  metadata: TitleNarrativeMetadata | null | undefined,
+  previous: Reaction,
+): number {
+  if (!metadata) return 0
+  const base = DELTA[previous]
+  if (base == null) return 0
+  let touched = 0
+
+  for (const dim of DIMENSIONS) {
+    const tag = metadata[dim]
+    const current: NarrativeDimension | undefined = strand_b[dim]
+    if (!tag || !current || tag.value == null) continue
+    if (!isAllowedValue(dim, tag.value)) continue
+    const titleConf = Number(tag.confidence)
+    if (!Number.isFinite(titleConf) || titleConf < MIN_TITLE_CONFIDENCE) continue
+
+    const delta = base * titleConf
+    touched++
+
+    if (typeof tag.value === 'number' && typeof current.value === 'number') {
+      if (!Number.isFinite(tag.value)) continue
+      const t = tag.value
+      if (delta > 0) {
+        const k = delta * NUMERIC_STEP
+        const before = clamp((current.value - k * t) / (1 - k), 0, 1)
+        const agrees = Math.abs(t - before) <= AGREE_GAP
+        current.value = before
+        current.confidence = clamp(current.confidence - (agrees ? delta : -delta), 0, 1)
+      } else {
+        const k = Math.abs(delta)
+        const before = clamp((current.value + k * t) / (1 + k), 0, 1)
+        const agrees = Math.abs(t - before) <= AGREE_GAP
+        current.value = before
+        if (agrees) current.confidence = clamp(current.confidence - delta, 0, 1)
+      }
+      continue
+    }
+
+    const same = String(tag.value) === String(current.value)
+    if (delta > 0) {
+      current.confidence = clamp(current.confidence + (same ? -delta : delta), 0, 1)
+    } else if (same) {
+      current.confidence = clamp(current.confidence - delta, 0, 1) // delta < 0: back up
+    }
+  }
+  return touched
+}

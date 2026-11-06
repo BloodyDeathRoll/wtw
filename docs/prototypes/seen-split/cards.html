@@ -1,0 +1,135 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Seen split, card states (2026-11-06). Uses the real feed card CSS; only the
+     new bits (X beside Add to Watchlist, pressed chip, "Saved to Seen") are
+     styled here. Pick a state with #feed-new, #feed-loved, … (see STATES). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="../../../src/modules/session/recommendations/RecommendationsView.module.css">
+<style>
+:root{--ease-out:cubic-bezier(0.23,1,0.32,1);--ease-drawer:cubic-bezier(0.32,0.72,0,1);--enter-y:8px;--wtw-border-strong:rgba(255,255,255,0.12)}
+html,body{margin:0;width:375px;height:812px;overflow:hidden;background:#000;color:#fff;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;position:relative}
+button{font-family:inherit}
+body:not(.live) *,body:not(.live) *::before,body:not(.live) *::after{animation:none!important;transition:none!important}
+body.live{margin:0 auto;height:100%;max-height:900px}
+html:has(body.live){width:auto;height:100%;background:#000}
+.noIn{animation:none!important}
+body.live .list{overflow-y:auto}
+body.live button{cursor:pointer}
+/* live: X / remove slides the card away, then the gap closes */
+.goAway{transform:translateX(-110%) rotate(-4deg);opacity:0;transition:transform .3s cubic-bezier(.4,0,1,1),opacity .3s}
+.collapse{max-height:0!important;margin-bottom:-16px;transition:max-height .3s cubic-bezier(.23,1,.32,1),margin-bottom .3s}
+.seenChip.pop{animation:chipPop .28s cubic-bezier(.23,1,.32,1)}
+@keyframes chipPop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+.frame{position:absolute;inset:0;display:flex;flex-direction:column;isolation:isolate}
+.frame::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(120% 60% at 50% 115%,rgba(212,155,58,.65) 0%,rgba(212,155,58,.22) 35%,transparent 70%),linear-gradient(180deg,#000 50%,rgba(212,155,58,.12) 100%)}
+.posterImg{opacity:1!important}
+.list{overflow:hidden}
+
+/* NEW — "Want it?" row: Add to Watchlist + a small X beside it */
+.wantRow{display:flex;gap:8px;align-items:center}
+.wantRow .watchlistBtnPrimary{width:auto;flex:1 1 auto;min-width:0}
+.wantX{flex:0 0 50px;height:50px;display:grid;place-items:center;padding:0;border:0;border-radius:50%;
+  background:var(--rv-white-10);color:var(--rv-white-70)}
+
+/* NEW — a pressed reaction, and the note that replaces the prompt */
+.seenChip.on{background:var(--rv-yellow-20);color:#fff;font-weight:600;box-shadow:inset 0 0 0 1.5px var(--rv-yellow)}
+.savedNote{display:inline-flex;align-items:center;gap:5px;color:var(--rv-white-70)}
+.savedNote svg{color:var(--rv-yellow)}
+
+/* NEW — X tapped: the card slides away left and fades, the next one rises */
+.leaving{transform:translateX(-58%) rotate(-4deg);opacity:.35;position:relative;z-index:1}
+.rising{margin-top:-360px;position:relative;z-index:2;box-shadow:0 -12px 32px rgba(0,0,0,.6)}
+</style></head><body>
+<div class="frame"><div class="view" id="view"></div></div>
+<script>
+const I = {
+  back:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  menu:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+  down:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  star:'<svg class="metaStar" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/></svg>',
+  play:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l15 8-15 8z"/></svg>',
+  chev:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+  mark:f=>`<svg width="16" height="16" viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`,
+  x:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  xs:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  check:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  disney:'<svg class="whereIcon" viewBox="0 0 24 24" width="16" height="16"><rect width="24" height="24" rx="5" fill="#0A1E5C"/><path d="M7 6v12h3.5a6 6 0 0 0 0-12z" fill="none" stroke="#fff" stroke-width="2"/><path d="M17 9v5M14.5 11.5h5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>',
+};
+const ZOO = {title:'Zootopia',year:2016,len:'1h 49m',rating:'7.7',match:88,where:'Disney+',
+  poster:'/hlK0e0wAQ3VLuJcsfIYPvb4JVud.jpg',
+  line:"Officer Judy Hopps, the first bunny on Zootopia’s police force, teams up with a scam-artist fox to crack her first case."};
+const GBH = {title:'The Grand Budapest Hotel',year:2014,len:'1h 40m',rating:'8.0',match:84,where:null,
+  poster:'/zOVCqKUzjFKqa1eDMcOzvXwthY4.jpg',
+  line:'A legendary concierge at a famous European hotel between the wars, and the young lobby boy who becomes his trusted protégé.'};
+const REACT = [['loved','❤️','Loved'],['liked','👍','Liked'],['disliked','👎','Disliked']];
+
+function card(t,{place='feed',saved=false,rated=null,cls=''}={}){
+  const want = place==='watchlist' || saved
+    ? `<button class="watchlistBtn watchlistBtnPrimary watchlistBtnSaved">${I.mark(true)}<span>Remove from watchlist</span></button>`
+    : `<div class="wantRow"><button class="watchlistBtn watchlistBtnPrimary">${I.mark(false)}<span>Add to Watchlist</span></button><button class="wantX" aria-label="Not for me">${I.x}</button></div>`;
+  const prompt = rated
+    ? `<span class="seenItPrompt savedNote">${I.check}Saved to Seen</span>`
+    : `<span class="seenItPrompt">${new URLSearchParams(location.search).get('p') || 'Seen it? Tell me how it was'}</span>`;
+  const chips = REACT.map(([v,e,l])=>`<button class="seenChip ${rated===v?'on':''}"><span class="chipEmoji">${e}</span><span>${l}</span></button>`).join('');
+  return `<article class="card heroCard ${cls}"><div class="hero">
+    <div class="poster poster_hero" style="background:#2a2420"><img class="posterImg" src="https://image.tmdb.org/t/p/w780${t.poster}" alt=""></div>
+    <div class="heroShade"></div>
+    ${t.where?`<div class="whereBadge">${I.disney}<span>${t.where}</span></div>`:''}
+    <div class="matchRing heroRing"><div class="matchRingInner"><span><span class="matchRingPct">${t.match}</span><span class="matchRingSign">%</span></span></div></div>
+    <div class="heroFoot"><div class="cardTitleBlock"><h3 class="heroTitle">${t.title}</h3><div class="cardMeta"><span>${t.year}</span><span>${t.len}</span><span class="metaRating">${I.star}${t.rating}</span></div></div>
+      <div class="heroCircles"><button class="trailerCircle">${I.share}</button><button class="trailerCircle">${I.play}</button></div></div>
+  </div><div class="heroBody">
+    <p class="heroReason">${t.line}</p>
+    <button class="whyLink"><span>Why it’s a match</span>${I.chev}</button>
+    ${want}
+    <div class="seenIt">${prompt}<div class="seenItRow">${chips}</div></div>
+  </div></article>`;
+}
+const feedHead = `<div class="header"><button class="headerBtn">${I.back}</button><div class="typePicker"><button class="typePickerBtn">Movies${I.down}</button></div><div class="headerRight"><button class="headerBtn">${I.menu}</button></div></div>`;
+const wlHead = `<div class="header"><button class="headerBtn">${I.back}</button><span class="headerTitle">Watchlist (5)</span><div class="headerRight"><button class="headerBtn">${I.menu}</button></div></div><div class="sortBar"><span class="sortLabel">Sort by</span><div class="sortMenu"><button class="sortTrigger"><span>Date Added</span>${I.down}</button></div></div>`;
+
+const STATES = {
+  'feed-new':     ()=>feedHead+list(card(ZOO)),
+  'feed-loved':   ()=>feedHead+list(card(ZOO,{rated:'loved'})),
+  'feed-changed': ()=>feedHead+list(card(ZOO,{rated:'disliked'})),
+  'feed-saved':   ()=>feedHead+list(card(ZOO,{saved:true})),
+  'feed-x':       ()=>feedHead+list(card(ZOO,{cls:'leaving'})+card(GBH,{cls:'rising'})),
+  'wl-new':       ()=>wlHead+list(card(ZOO,{place:'watchlist'})),
+  'wl-loved':     ()=>wlHead+list(card(ZOO,{place:'watchlist',rated:'loved'})),
+};
+function list(html){return `<div class="content"><div class="list">${html}</div></div>`}
+
+/* ── Playable: #play (Recommendations) and #wl-play (Watchlist) ── */
+const KO = {title:'Knives Out',year:2019,len:'2h 11m',rating:'7.8',match:81,where:null,
+  poster:'/pThyQovXQrw2m0s9x82twj48Jq4.jpg',
+  line:'A crime novelist is found dead at his estate just after his 85th birthday, and Detective Benoit Blanc is enlisted to investigate.'};
+const PLAY = {'play':'feed','wl-play':'watchlist'};
+const key = location.hash.slice(1);
+const view = document.getElementById('view');
+if (PLAY[key]) {
+  document.body.classList.add('live');
+  const place = PLAY[key];
+  const items = [ZOO,GBH,KO].map(t=>({t,saved:place==='watchlist',rated:null}));
+  const head = place==='watchlist' ? wlHead.replace('(5)',`(${items.length})`) : feedHead;
+  view.innerHTML = head + list(items.map((it,i)=>card(it.t,{place,saved:it.saved}).replace('<article ',`<article data-i="${i}" `)).join(''));
+  const redraw = (el,it)=>{ const tmp=document.createElement('div');
+    tmp.innerHTML=card(it.t,{place,saved:it.saved,rated:it.rated}).replace('<article ',`<article data-i="${el.dataset.i}" `);
+    tmp.firstElementChild.classList.add('noIn'); el.replaceWith(tmp.firstElementChild); };
+  const leave = el=>{ el.classList.add('goAway');
+    setTimeout(()=>{ el.style.maxHeight=el.offsetHeight+'px'; el.offsetHeight; el.classList.add('collapse'); },300);
+    setTimeout(()=>{ el.remove(); if(place==='watchlist'){ const n=document.querySelectorAll('article').length; document.querySelector('.headerTitle').textContent=`Watchlist (${n})`; } },620); };
+  view.addEventListener('click',e=>{
+    const el=e.target.closest('article'); if(!el) return; const it=items[el.dataset.i];
+    if(e.target.closest('.wantX')) return leave(el);
+    const chip=e.target.closest('.seenChip');
+    if(chip){ const v=REACT[[...chip.parentNode.children].indexOf(chip)][0]; it.rated = it.rated===v?null:v; redraw(el,it);
+      const on=document.querySelector(`article[data-i="${el.dataset.i}"] .seenChip.on`); if(on){on.classList.add('pop');} return; }
+    if(e.target.closest('.watchlistBtn')){
+      if(it.saved && place==='watchlist') return leave(el);
+      it.saved=!it.saved; return redraw(el,it); }
+  });
+} else {
+  view.innerHTML = (STATES[key]||STATES['feed-new'])();
+}
+</script>
+</body></html>

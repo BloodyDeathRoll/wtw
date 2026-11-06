@@ -31,6 +31,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Check,
   Play,
   Star,
   X,
@@ -55,7 +56,7 @@ import {
   type WatchlistEntry,
   type WatchlistRating,
 } from "@/lib/watchlist";
-import { addToRegretQueue } from "@/lib/regret-queue";
+import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
 import type { ContentType } from "@/lib/content-type";
@@ -256,6 +257,8 @@ export default function RecommendationsView({
   // Watchlist membership by rec.id, seeded from localStorage on mount so the
   // CTA renders in the right state without re-reading storage per card.
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  // Cards the X is sliding off the feed (CARD_LEAVE_MS), by rec.id.
+  const [leaving, setLeaving] = useState<Set<string>>(new Set());
   // When the server's watchlist lands after mount (hydrateWatchlist): the
   // watchlist view re-pages from it; the feed only refreshes its saved marks,
   // since re-paging there would throw away the cards on screen.
@@ -576,19 +579,73 @@ export default function RecommendationsView({
     });
   }
 
+  // Un-rate — the user tapped the lit chip again. Optimistic like a rating: the
+  // chip goes dark at once, the Watchlist tag and a queued 48-hour check-in are
+  // cleared, and the DELETE joins the same one-at-a-time queue as ratings so a
+  // quick Loved → clear → Liked lands in order. On failure everything is put
+  // back and the user is told.
+  function handleUnrate(rec: Recommendation) {
+    const previous = feedbackGiven[rec.id];
+    if (!previous || previous === "removed") return;
+    const tmdb_id = tmdbIdOf(rec.id);
+    setFeedbackGiven((prev) => {
+      const next = { ...prev };
+      delete next[rec.id];
+      return next;
+    });
+    setWatchlistRating(rec.id, null);
+    removeFromRegretQueue(tmdb_id, rec.type);
+    const restore = () => {
+      setFeedbackGiven((prev) => ({ ...prev, [rec.id]: previous }));
+      setWatchlistRating(rec.id, previous);
+      if (mode === "watchlist" && (previous === "loved" || previous === "liked")) {
+        addToRegretQueue(tmdb_id, rec.title, rec.type);
+      }
+      setError("That rating didn't clear — try again.");
+    };
+    feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
+      try {
+        const res = await fetch("/api/recommendations/feedback", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tmdb_id,
+            media_type: rec.type,
+            content_type: contentType,
+            // On the Watchlist the history entry goes back to "saved".
+            saved: saved.has(rec.id),
+          }),
+        });
+        if (!res.ok) {
+          console.error(`[recs] un-rate HTTP ${res.status}`, await res.text().catch(() => ""));
+          restore();
+        }
+      } catch (e) {
+        console.error("[recs] un-rate failed", e);
+        restore();
+      }
+    });
+  }
+
   // "Remove" — suppress this title so it's never recommended again. Optimistic:
   // drop the card immediately, then persist to the removed list server-side.
   // Tracked in Supabase so a future "Removed" screen can restore it.
   function handleRemove(rec: Recommendation) {
-    // "Never recommend this again" is a suppression, not a rating — but like a
-    // rating it leaves the saved card in place, tagged. In the feed the card
-    // still disappears; there, that IS the point of the control.
-    setWatchlistRating(rec.id, "removed");
-    if (mode === "watchlist") {
-      setFeedbackGiven((prev) => ({ ...prev, [rec.id]: "removed" }));
-    } else {
+    // The feed's X ("not for me"): the card slides away, then leaves the list.
+    // The Watchlist has no X (2026-11-06) — "Remove from watchlist" is how a
+    // title leaves a list you made yourself.
+    if (leaving.has(rec.id)) return;
+    setLeaving((prev) => new Set(prev).add(rec.id));
+    const reduce = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => {
       dropCard(rec);
-    }
+      setLeaving((prev) => {
+        const next = new Set(prev);
+        next.delete(rec.id);
+        return next;
+      });
+    }, reduce ? 0 : CARD_LEAVE_MS);
     const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
     // Queued with the ratings, not fire-and-forget: "Find more" awaits this
     // chain before regenerating, so the removal is on the server before the
@@ -655,7 +712,9 @@ export default function RecommendationsView({
           feedbackGiven={feedbackGiven}
           onLoadMore={loadMore}
           onFeedback={handleFeedback}
-          onRemove={handleRemove}
+          onUnrate={handleUnrate}
+          onRemove={mode === "watchlist" ? undefined : handleRemove}
+          leaving={leaving}
           onWhy={setDetail}
           onShare={(r) => void shareTitle(r, sharerName)}
           onFindMore={onFindMore ? handleFindMore : undefined}
@@ -691,7 +750,9 @@ function Feed({
   feedbackGiven,
   onLoadMore,
   onFeedback,
+  onUnrate,
   onRemove,
+  leaving,
   onWhy,
   onShare,
   onFindMore,
@@ -712,7 +773,10 @@ function Feed({
   feedbackGiven: Record<string, WatchlistRating>;
   onLoadMore: () => void;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
-  onRemove: (rec: Recommendation) => void;
+  onUnrate: (rec: Recommendation) => void;
+  /** The X beside "Add to Watchlist" — the feed only; absent on the Watchlist. */
+  onRemove?: (rec: Recommendation) => void;
+  leaving: Set<string>;
   onWhy: (rec: Recommendation) => void;
   onShare: (rec: Recommendation) => void;
   onFindMore?: () => void;
@@ -791,7 +855,9 @@ function Feed({
             rec={rec}
             rated={feedbackGiven[rec.id]}
             onFeedback={onFeedback}
+            onUnrate={onUnrate}
             onRemove={onRemove}
+            leaving={leaving.has(rec.id)}
             onWhy={onWhy}
             onShare={onShare}
             saved={saved.has(rec.id)}
@@ -847,7 +913,9 @@ function FeedCard({
   rec,
   rated,
   onFeedback,
+  onUnrate,
   onRemove,
+  leaving = false,
   onWhy,
   onShare,
   saved,
@@ -858,14 +926,36 @@ function FeedCard({
   reasonPending?: boolean;
   rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
-  onRemove: (rec: Recommendation) => void;
+  onUnrate: (rec: Recommendation) => void;
+  onRemove?: (rec: Recommendation) => void;
+  /** The X was tapped: slide away, then close the gap (CARD_LEAVE_MS). */
+  leaving?: boolean;
   onWhy: (rec: Recommendation) => void;
   onShare: (rec: Recommendation) => void;
   saved: boolean;
   onToggleWatchlist: (rec: Recommendation) => void;
 }) {
+  const cardRef = useRef<HTMLElement>(null);
+  // The gap can only close from a measured height: pin it before the collapse
+  // class animates max-height to 0.
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!leaving || !el) return;
+    el.style.maxHeight = `${el.offsetHeight}px`;
+    void el.offsetHeight; // commit the measured height so the change below animates
+    el.style.maxHeight = "0px";
+    el.style.marginBottom = "-16px"; // the list's gap, so the next card closes right up
+  }, [leaving]);
+  // "Want it?" — the X sits beside Add to Watchlist on the feed. Once the
+  // title is saved there is nothing to turn down, so the X goes (2026-11-06).
+  const showX = !!onRemove && !saved;
+
   return (
-    <article className={`${styles.card} ${styles.heroCard}`}>
+    <article
+      ref={cardRef}
+      className={`${styles.card} ${styles.heroCard} ${leaving ? styles.cardLeaving : ""}`}
+      aria-hidden={leaving || undefined}
+    >
       {/* The poster is the card's top half (2026-10-26, Eran picked layout C,
           docs/prototypes/rec-card/g-final-*.jpg): where to watch and the
           match on top, title + trailer over the poster's fade. */}
@@ -918,14 +1008,23 @@ function FeedCard({
           <span>{rec.match > 0 ? "Why it\u2019s a match" : "Why this pick"}</span>
           <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
         </button>
-        <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
-        <FeedbackRow
-          rec={rec}
-          rated={rated}
-          onFeedback={onFeedback}
-          onRemove={onRemove}
-          chips
-        />
+        {showX ? (
+          <div className={styles.wantRow}>
+            <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
+            <button
+              type="button"
+              className={styles.wantX}
+              onClick={() => onRemove?.(rec)}
+              aria-label={`Not for me: never recommend ${rec.title} again`}
+              title="Not for me"
+            >
+              <X size={20} strokeWidth={1.8} aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
+        )}
+        <FeedbackRow rec={rec} rated={rated} onFeedback={onFeedback} onUnrate={onUnrate} />
       </div>
     </article>
   );
@@ -1044,87 +1143,63 @@ function WatchlistButton({
 // Shared bits — poster (img with motif fallback), feedback row
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * "Seen it?" — Loved / Liked / Disliked. Rating lights the chip and keeps the
+ * card where it is; tapping the lit chip again clears the rating (2026-11-06).
+ * Only the X or "Remove from watchlist" takes a card off a list.
+ */
 function FeedbackRow({
   rec,
   rated,
   onFeedback,
-  onRemove,
-  chips = false,
+  onUnrate,
 }: {
   rec: Recommendation;
   rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
-  onRemove: (rec: Recommendation) => void;
-  /** The feed card's look: a "Seen it?" prompt over one row of pills. */
-  chips?: boolean;
+  onUnrate: (rec: Recommendation) => void;
 }) {
-  if (rated) {
-    return (
-      <div className={styles.feedbackAcked}>{RATED_MESSAGE[rated]}</div>
-    );
-  }
-  if (chips) {
-    return (
-      <div className={styles.seenIt}>
-        <span className={styles.seenItPrompt}>Seen it? Tell me how it was</span>
-        <div className={styles.seenItRow}>
-          {REACTIONS.map((r) => (
+  // "removed" is a tag from the Watchlist's old X, not a rating.
+  const current = rated && rated !== "removed" ? rated : null;
+  return (
+    <div className={styles.seenIt}>
+      {current ? (
+        <span className={`${styles.seenItPrompt} ${styles.seenItSaved}`} role="status">
+          <Check size={14} strokeWidth={2.6} aria-hidden />
+          {SAVED_NOTE}
+        </span>
+      ) : (
+        <span className={styles.seenItPrompt}>{SEEN_PROMPT}</span>
+      )}
+      <div className={styles.seenItRow}>
+        {REACTIONS.map((r) => {
+          const on = current === r.value;
+          return (
             <button
               key={r.value}
               type="button"
-              className={styles.seenChip}
-              onClick={() => onFeedback(rec, r.value)}
-              aria-label={r.aria}
-              title={r.aria}
+              className={`${styles.seenChip} ${on ? styles.seenChipOn : ""}`}
+              onClick={() => (on ? onUnrate(rec) : onFeedback(rec, r.value))}
+              aria-pressed={on}
+              aria-label={on ? `${r.aria} (tap to clear)` : r.aria}
+              title={on ? "Tap to clear" : r.aria}
             >
               <span className={styles.chipEmoji} aria-hidden>{r.emoji}</span>
               <span>{r.label}</span>
             </button>
-          ))}
-          <button
-            type="button"
-            className={`${styles.seenChip} ${styles.seenChipRemove}`}
-            onClick={() => onRemove(rec)}
-            aria-label="Remove — never recommend this again"
-            title="Never recommend this again"
-          >
-            <X size={18} strokeWidth={1.8} aria-hidden />
-          </button>
-        </div>
+          );
+        })}
       </div>
-    );
-  }
-  return (
-    <div className={styles.feedback}>
-      {REACTIONS.map((r) => (
-        <button
-          key={r.value}
-          type="button"
-          className={styles.reactionBtn}
-          onClick={() => onFeedback(rec, r.value)}
-          aria-label={r.aria}
-          title={r.aria}
-        >
-          <span className={`${styles.reactionEmoji} ${styles.chipEmoji}`}>{r.emoji}</span>
-          <span className={styles.reactionLabel}>{r.label}</span>
-        </button>
-      ))}
-      {/* Remove — suppress this title from future recommendations. */}
-      <button
-        type="button"
-        className={`${styles.reactionBtn} ${styles.removeBtn}`}
-        onClick={() => onRemove(rec)}
-        aria-label="Remove — never recommend this again"
-        title="Never recommend this again"
-      >
-        <span className={styles.reactionEmoji} aria-hidden>
-          <X size={20} strokeWidth={1.5} />
-        </span>
-        <span className={styles.reactionLabel}>Remove</span>
-      </button>
     </div>
   );
 }
+
+/** The prompt over the chips — says what a rating is for (Eran, 2026-11-06). */
+const SEEN_PROMPT = "Seen it? Tell me, and your picks get sharper";
+/** Replaces the prompt once rated. "Seen" when that page ships. */
+const SAVED_NOTE = "Saved to Ratings";
+/** X: the slide away plus the gap closing, in ms (Eran, 2026-11-06). Matches .cardLeaving. */
+const CARD_LEAVE_MS = 750;
 
 // Three taste reactions (Mixed was dropped — it carries no useful signal).
 // "Remove" and "Why" are separate controls in the same row (see FeedbackRow).
@@ -1139,12 +1214,6 @@ const REACTIONS: {
   { value: "disliked", emoji: "👎", label: "Disliked", aria: "Watched it, didn't like it" },
 ];
 
-const RATED_MESSAGE: Record<WatchlistRating, string> = {
-  loved: "Loved — weighted strongly into your taste",
-  liked: "Saved to your taste",
-  disliked: "Noted — not to your taste",
-  removed: "Removed — won't be recommended again",
-};
 
 // Build a complete RecommendationResult from an explain payload + the card
 // metadata we already have on hand.
