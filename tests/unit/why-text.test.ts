@@ -16,7 +16,10 @@ vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({
 }) }))
 
 process.env.GROQ_API_KEY = 'test'
-const { buildWhyFacts, checkWhy, writeWhyFromFacts, similarRated, reservationFor } = await import('@/modules/engine/why/write-why')
+const { buildWhyFacts, checkWhy, writeWhyFromFacts, similarRated, reservationFor, angleFor } = await import('@/modules/engine/why/write-why')
+/** A title id whose angle is a comparison to a famous title. */
+const CMP_ID = [...Array(100).keys()].map(String).find(id => angleFor(id, false, false) === 'comparison')!
+const NO_CMP_ID = [...Array(100).keys()].map(String).find(id => angleFor(id, false, false) === 'cast')!
 const { MODELS } = await import('@/lib/ai-models')
 import type { RatedByPerson } from '@/modules/engine/pipeline/step7-card-reason'
 
@@ -53,7 +56,7 @@ function codaItem(over: Record<string, unknown> = {}) {
 
 // Rich, like the old paragraph Eran pointed at (2026-11-06), but every name
 // and detail from the facts; no critics, no strung-together mood labels.
-const GOOD = "Ruby is the only hearing person in her deaf family, and the whole film lives in the tug between her love of music and the fishing business her parents can't run without her. Emilia Jones carries it with a quiet, stubborn grace, and Troy Kotsur brings a gruff tenderness that sneaks up on you. It's tender and bittersweet in the best way, the kind of story that makes a kitchen-table argument feel enormous. First love and family pull in opposite directions here, and it never cheats either side."
+const GOOD = "Ruby is the only hearing person in her deaf family, and the whole film lives in the tug between her love of music and the fishing business her parents can't run without her. Emilia Jones carries it with a quiet, stubborn grace, and Troy Kotsur brings a gruff tenderness that catches you off guard. It's tender and bittersweet in the best way, the kind of story that makes a kitchen-table argument feel enormous. First love and family pull in opposite directions here, and it never cheats either side."
 
 const rel = (title: string, reaction: 'loved' | 'liked', keywords: string[], genres = ['drama']) =>
   ({ key: `movie:${title.length}`, title, reaction, genres, keywords, tone_tags: ['warm'], synopsis: `${title} is a film about ${keywords.join(' and ')}.` })
@@ -126,9 +129,24 @@ describe('the check', () => {
 })
 
 describe('comparisons to famous titles (option B, 2026-11-06)', () => {
-  const facts = buildWhyFacts(codaItem(), new Map())
-  it('lets the text compare to a title the facts don\'t name', () => {
+  const facts = buildWhyFacts(codaItem({ tmdb_id: CMP_ID }), new Map())
+  it('lets the text compare to a title the facts don\'t name — when its angle is a comparison', () => {
     expect(checkWhy(GOOD.replace('in the best way', 'like *Little Miss Sunshine* with more heart'), facts)).toEqual([])
+  })
+  it('keeps "X meets Y" to the titles whose angle is a comparison, once', () => {
+    const other = buildWhyFacts(codaItem({ tmdb_id: NO_CMP_ID }), new Map())
+    expect(checkWhy(GOOD.replace('in the best way', 'like *Little Miss Sunshine* with more heart'), other).join()).toMatch(/no comparison/)
+    expect(checkWhy(GOOD.replace('in the best way', 'like a road movie meets a kitchen drama'), other).join()).toMatch(/meets/)
+    expect(checkWhy(GOOD.replace('in the best way', 'like *Little Miss Sunshine* meets *The Proposal* meets a musical'), facts).join()).toMatch(/more than once/)
+  })
+  it('spreads the angles across titles, and opens on the person when there is a link', () => {
+    const angles = new Set([...Array(40).keys()].map(i => angleFor(String(1000 + i), false, false)))
+    expect([...angles].sort()).toEqual(['cast', 'comparison', 'feel', 'premise'])
+    expect(angleFor('1', true, true)).toBe('person')
+  })
+  it('refuses the words every text was using ("electric", "crackles"…)', () => {
+    expect(checkWhy(GOOD.replace('quiet, stubborn grace', 'quiet, electric grace'), facts).join()).toMatch(/electric/)
+    expect(checkWhy(GOOD.replace('in the best way', 'with chemistry, more chemistry'), facts).join()).toMatch(/chemistry/)
   })
   it('never lets it claim the viewer saw one', () => {
     expect(checkWhy(GOOD.replace('in the best way', 'like *Little Miss Sunshine*, which you loved'), facts).join()).toMatch(/describe the film/)
@@ -196,7 +214,7 @@ describe('the writer', () => {
     const madeUp = GOOD.replace('in the best way', 'like *The Fishing Lessons*')
     const real = GOOD.replace('in the best way', 'like *Little Miss Sunshine*')
     generateText.mockResolvedValueOnce({ text: madeUp }).mockResolvedValueOnce({ text: real }).mockResolvedValueOnce({ text: 'OK' })
-    const why = await writeWhyFromFacts(codaItem(), new Map())
+    const why = await writeWhyFromFacts(codaItem({ tmdb_id: CMP_ID }), new Map())
     expect(why.text).toBe(real)
     expect(why.rejected?.join()).toMatch(/The Fishing Lessons/)
   })

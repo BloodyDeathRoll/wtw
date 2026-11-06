@@ -73,6 +73,36 @@ export interface WhyFacts {
   compared: { title: string; reaction: 'loved' | 'liked' }[]
   /** The one honest reservation the text may end on, from the viewer's own data. Null: no reservation allowed. */
   reservation: string | null
+  /** How this text opens (`angleFor`): rotated per title so a screen of sheets doesn't all read "X meets Y". */
+  angle: Angle
+}
+
+/**
+ * The way in. Eran, 2026-11-06, reading ten in a row: "too many 'this meets
+ * that'" — nine of ten opened on a comparison. So each title gets one angle,
+ * fixed by its id (the same title always reads the same way, neighbours
+ * differ): a person the viewer rated when there is one, else the cast, the
+ * feel, the premise, or — one title in four — a comparison to a famous title.
+ */
+export type Angle = 'person' | 'rated' | 'cast' | 'feel' | 'premise' | 'comparison'
+const ROTATION: Angle[] = ['cast', 'feel', 'comparison', 'premise']
+
+export function angleFor(tmdbId: string, hasLink: boolean, hasRatedComparison: boolean): Angle {
+  if (hasLink) return 'person'
+  const h = [...tmdbId].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
+  // A title the viewer rated that shares real story ground is the most
+  // personal way in there is — but not every time, or it's the new "X meets Y".
+  if (hasRatedComparison && h % 3 === 0) return 'rated'
+  return ROTATION[h % ROTATION.length]
+}
+
+const ANGLE_LEAD: Record<Angle, string> = {
+  person: 'Open with exactly the opening words given at the end of the facts, then say what that person brings here.',
+  rated: 'Open with the title this viewer loved or liked that the facts say shares something with this one, and what they really share — in your own words.',
+  cast: 'Open with the cast: what the actors in "Starring" bring and how they play off each other.',
+  feel: 'Open with what it feels like to watch: the rhythm, the humour, the tension, the heart — specific, not generic.',
+  premise: 'Open with the hook of the premise — what makes this situation so good to watch — in one clause, then why it lands.',
+  comparison: 'Open with one comparison to a famous, real film or show that genuinely shares its feel or premise ("*X* meets *Y*", "it\'s *X* with…"), then why it lands.',
 }
 
 /** What the sheet knows beyond the scored title. Optional: without it, no comparisons and no reservation. */
@@ -274,12 +304,14 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     'Why it fits this viewer:',
     ...personal.map(x => `- ${x}`),
     '',
-    ...(comparisonLines.length ? ['Titles this viewer rated that share something with this one:', ...comparisonLines, ''] : []),
+    ...(comparisonLines.length ? ['Titles this viewer loved or liked that share something with this one:', ...comparisonLines, ''] : []),
     reservation ? `The one honest reservation (end on it, in your own words): ${reservation}` : 'Reservation: none. Mention no downside.',
     '',
     `This title and the ones linked to the viewer: ${titles.map(x => `*${x}*`).join(', ')}`,
     ...(linkClause ? ['', `Start the first sentence with exactly these words, then continue it: ${linkClause}`] : []),
   ]
+  const angle = angleFor(t.tmdb_id, Boolean(linkClause), compared.length > 0)
+  lines.push('', `HOW TO OPEN: ${ANGLE_LEAD[angle]}`)
   const text = lines.join('\n')
   return {
     text,
@@ -290,6 +322,7 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     fallback: coldStart ? null : sheetReason(item, rated),
     compared,
     reservation,
+    angle,
   }
 }
 
@@ -313,15 +346,37 @@ function knownWord(word: string, haystack: string): boolean {
 /** A reservation, not a plot turn: "they hoped for one child but got three" is
  *  fine; "it's slow, but worth it" is not. */
 const RESERVATION = /\b(however|although|though|reservation|caveat|downside|might not|may not|not for everyone|if you're not|if you are not|be warned|fair warning|know going in|heads up|give you pause|word of warning|only catch|one catch)\b|\bbut\b[^.]*\b(worth it|still|stick with it|patience|bear with|forgive)\b|\b(slow|uneven|predictable|dated|flawed|messy|silly|cheesy|long|bloated|thin)\b[^.]*\bbut\b/i
-const CLICHE = /\b(you'll be hooked|hooked|loved it as|that (critics|audiences) loved it|so you will enjoy|perfect (match|fit|blend)|matches your taste|your taste|taste profile|fingerprint|algorithm|sweet spot|data|irresistible|match(es|ing)? your|warm hug|lingers? long after|long after the credits|specific (kind of )?magic|distinct magic|surge of|radiates|clearly value|right at home|exactly the right note|you (love|enjoy|like) (warm|funny|dark|hopeful|cynical|slow-burn|fast)( and \w+)? (stories|films|movies))\b/i
+const CLICHE = /\b(you'll be hooked|hooked|loved it as|that (critics|audiences) loved it|so you will enjoy|perfect (match|fit|blend)|matches your taste|your (usual |own |kind of )?taste|taste profile|fingerprint|algorithm|sweet spot|data|irresistible|match(es|ing)? your|warm hug|lingers? long after|long after the credits|specific (kind of )?magic|distinct magic|surge of|radiates|clearly value|right at home|exactly the right note|you (love|enjoy|like) (warm|funny|dark|hopeful|cynical|slow-burn|fast)( and \w+)? (stories|films|movies))\b/i
 /** Said on every title, so they say nothing (Eran, 2026-11-06): critics/audiences, and mood tags strung together ("warm, hopeful, and whimsical"). */
 const MOOD_TAG = '(?:warm|hopeful)'
 const SAMENESS = new RegExp(`\\b(critics|audiences|reviews?|rate[sd]?|rating|${MOOD_TAG},?\\s+(?:and\\s+)?${MOOD_TAG})\\b`, 'i')
+/** Words that turned up in most texts of a ten-title read (2026-11-06): allowed `max` times. */
+const OVERUSED: { re: RegExp; max: number }[] = [
+  { re: /\belectric\w*/gi, max: 0 },
+  { re: /\bcrackl\w*/gi, max: 0 },
+  { re: /\bchemistry\b/gi, max: 1 },
+  { re: /\bdynamics?\b/gi, max: 0 },
+  { re: /\banchor(s|ed|ing)?\b/gi, max: 0 },
+  { re: /\binfectious\b/gi, max: 0 },
+  { re: /\bwhims(y|ical)\b/gi, max: 1 },
+  { re: /\bgot you\b/gi, max: 0 },
+  { re: /\bleads? the charge\b/gi, max: 0 },
+  { re: /\benergy\b/gi, max: 1 },
+  { re: /\bbreath of fresh air\b/gi, max: 0 },
+  { re: /\bunadulterated\b/gi, max: 0 },
+  { re: /\bsneaks? up on you\b/gi, max: 0 },
+  { re: /\brespects your intelligence\b/gi, max: 0 },
+  { re: /\bedge of your seat\b/gi, max: 0 },
+  { re: /\bperfect pick\b/gi, max: 0 },
+  { re: /\b(pure|genuine) joy\b/gi, max: 0 },
+  { re: /\bheart and optimism\b|\boptimism and heart\b/gi, max: 0 },
+]
+
 /** Openers that made every card sound the same in the first test run. */
 const STOCK_OPENER = /^(you'll love|you will love|since you|because you|if you|as someone who|critics loved|audiences loved|there is|there's|\*[^*]+\* is an? )/i
 /** Anything said about the viewer's own taste or history, outside the link clause. */
 /** A claim about what the viewer watched or rated, outside the link clause and the compared titles. Friendly taste talk ("the kind of humour you'd love", "you crave heart") is the screenshots' voice and allowed (Eran, 2026-11-06). */
-const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always )?(?:loved|liked|enjoyed|adored|rated|watched|seen)\b|\byour favou?rite\b/i
+const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:loved|liked|enjoyed|adored|rated|watched|seen)\b|\byour favou?rite\b/i
 /** Stronger than "critics/audiences loved it" — not in the facts. */
 const OVERCLAIM = /\b(masterpiece|universal(ly)?|rave[sd]?|raving|oscar|award|acclaim(ed)?|classic|best\b[^.]*\bever|guarantee[sd]?|hail(ed|s)?|instant favou?rite|must-see|hits exactly|prais(e|ed|es|ing)|loved it for)\b/i
 
@@ -364,7 +419,15 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
   // meets *Heathers*", Eran 2026-11-06: option B). They're allowed here and
   // checked against the catalogue by the writer (`outsideTitles`), so a
   // made-up film can't pass; nothing may be claimed about them (the judge).
-  if (outsideTitles(text, facts).length > 2) problems.push('it compares to more than two other titles; one or two at most')
+  const outside = outsideTitles(text, facts)
+  if (facts.angle !== 'comparison' && outside.length) problems.push(`it compares to *${outside[0]}*; this one has no comparison to other films — follow HOW TO OPEN`)
+  if (outside.length > 2) problems.push('it compares to more than two other titles; one or two at most')
+  const meets = (text.match(/\bmeets\b/gi) ?? []).length
+  if (meets > (facts.angle === 'comparison' ? 1 : 0)) problems.push(facts.angle === 'comparison' ? 'it uses "meets" more than once' : 'it uses an "X meets Y" comparison; this one has none — follow HOW TO OPEN')
+  for (const w of OVERUSED) {
+    const n = (text.match(w.re) ?? []).length
+    if (n > w.max) problems.push(`it uses "${text.match(w.re)![0]}"${w.max ? ' more than once' : ''}; every text was saying it — find your own words`)
+  }
   if ((text.match(/\*/g) ?? []).length % 2 === 1) problems.push('it has an unpaired asterisk')
 
   // Names, places, other titles: any capitalised word (or run of them) must
@@ -411,7 +474,7 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
   const OK_VERBS: Record<string, string> = { loved: 'loved|adored|enjoyed', liked: 'liked|enjoyed' }
   rest = rest.split(/(?<=[.!?])\s+/).map(sentence => {
     const c = facts.compared.find(x => sentence.includes(`*${norm(x.title)}*`))
-    return c ? sentence.replace(new RegExp(`\\byou(?:'ve| have)? (?:${OK_VERBS[c.reaction]})\\b`, 'g'), ' ') : sentence
+    return c ? sentence.replace(new RegExp(`\\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:${OK_VERBS[c.reaction]})\\b`, 'g'), ' ') : sentence
   }).join(' ')
   rest = rest.replace(/\bif you(?:'re| are)?\b[^.,;—]*/g, ' ')
   const claim = rest.match(VIEWER_CLAIM)
@@ -429,8 +492,8 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
 const PROMPT = (facts: string) => `You're a friend who knows films inside out, texting one person about why the title below is a great pick for THEM. The plot is already on their screen, so don't retell it: make the case. Write four to six sentences, 90 to 140 words, one paragraph — rich, specific, opinionated, fun to read.
 
 What a great one has (Eran's examples: "it's like *The Proposal* meets *Fight Club*, but with a father-daughter dynamic that's both hilarious and surprisingly heartfelt. Robert De Niro's performance is chef's kiss…"):
-- The personal hook first. If the facts end with opening words to use, start with exactly those words.
-- A comparison or two the way friends do: "*X* meets *Y*", "it's *X* with…", "if *X* got you…". Prefer titles the facts list as rated by this viewer (you may say "which you loved" / "which you liked" exactly as the facts give it); otherwise use famous, real films or shows that genuinely share this one's feel or premise. Never state a fact about those other titles (their cast, director, plot) — only the comparison.
+- Open the way HOW TO OPEN (at the end of the facts) says. Every text opens differently; don't fall back on a comparison.
+- Comparisons: titles the facts list as rated by this viewer may always be mentioned (say "which you loved" / "which you liked" exactly as the facts give it). A comparison to any OTHER film or show only when HOW TO OPEN asks for one — then just one, real and famous, and never state a fact about it (cast, director, plot).
 - What it feels like to watch, in fresh words: the humour, the tension, the heart, the energy. Don't string mood labels together ("warm, hopeful and whimsical").
 - Your take on the cast in "Starring": what they bring, how they play off each other. You don't know who plays whom, so never pair an actor with a character or a part of the story. Only call an actor the lead if they're first in "Starring".
 - At most one passing clause about the premise, from the Plot, adding nothing it doesn't say.
@@ -441,7 +504,7 @@ Rules:
 - Name no person, place, year, number or award that isn't in the facts.
 - Don't guess anyone's gender: use a name, or the plot's own words.
 - Titles go in *asterisks*; no other asterisks.
-- Skip stock phrases: "right at home", "hooked", "warm hug", "lingers long after the credits", "a specific magic", "irresistible". Never start with "You'll love", "Since you", "Because you", "If you", "There is" or "<title> is a".
+- Skip stock phrases: "right at home", "hooked", "warm hug", "lingers long after the credits", "a specific magic", "irresistible", "electric", "crackles", "breath of fresh air", "sneaks up on you", "respects your intelligence", "edge of your seat". Never say "anchors", "dynamic", "infectious" or "got you"; "chemistry" and "whimsy" at most once. Never start with "You'll love", "Since you", "Because you", "If you", "There is" or "<title> is a".
 - Reply with the paragraph only.
 
 ${facts}`
@@ -453,7 +516,7 @@ function groq() {
 }
 
 /** Per model call. A full write is at most 4 calls; the route caps the total. */
-const CALL_TIMEOUT_MS = 12000
+const CALL_TIMEOUT_MS = 14000
 /** The longest rate-limit wait worth sitting through rather than showing the plain text. */
 const MAX_RATE_WAIT_MS = 6000
 
@@ -576,7 +639,7 @@ async function attemptWrite(item: ScoredTitleWithPayload, facts: WhyFacts): Prom
 
 /** Three days: long enough that re-opening is instant, short enough that new ratings show up. */
 const TTL_SECONDS = 3 * 24 * 60 * 60
-export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v3:${userId}:${type}:${tmdbId}`
+export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v4:${userId}:${type}:${tmdbId}`
 
 export async function getCachedWhy(userId: string, type: string, tmdbId: string): Promise<WhyText | null> {
   return getRedis().get<WhyText>(whyAiKey(userId, type, tmdbId))

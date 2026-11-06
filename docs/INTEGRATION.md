@@ -176,6 +176,18 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-06 — "Why it's a match": one opening angle per title, no "X meets Y" on every sheet (`fix/why-angles`)
+- **Why (Eran):** reading ten sheets in a row, 9 of 10 were "X meets Y", and "electric", "chemistry" and "anchors" were in nearly every one. About half fell back to the plain plot.
+- **Angles** (`angleFor` in `why/write-why.ts`): each title gets one way in, fixed by its id. The person link when there is one; otherwise a title the viewer loved that shares story ground (1 in 3 of those), or the cast / the feel / the premise / a comparison to a famous title (1 in 4). Famous-title comparisons and "meets" are allowed only on the comparison angle, once.
+- **Repeats blocked across texts:** anchors, dynamic, infectious, electric, crackles, leads the charge, "got you", and more (`OVERUSED`). Chemistry, whimsy and energy are allowed once each.
+- **Fewer fallbacks:**
+  - Friendly taste talk is allowed.
+  - The fact-check treats opinions about actors and comparisons as opinions.
+  - The facts say "loved or liked", not "rated" (the writer echoed "you rated").
+  - Calls time out at 14s.
+- **Card summaries** describe only the set-up: the *Rio* drafts compressed later events wrongly, and the fact-check kept rejecting them.
+- **Results:** 20 sheets on two accounts: 17 written in full (6 of 12 before), zero "meets", ~120 words. One checked in the app on a 375px screen (`docs/prototypes/why-written/sheet-angles-the-chorus.jpg`). Cache `why_ai:v4:*`.
+
 ### 2026-11-06 — Kids' share, "Family & kids" genre, card line = link or plot, a richer "Why" (`fix/kids-share-and-card-lines`)
 - **Why (Eran, 2026-11-06 morning):** his feed was about half kids' films, and every card read "A warm and hopeful X. Critics loved it."
 - **Kids' share, for every user** (`src/modules/engine/pipeline/kids-share.ts`, step 3b in `generate.ts`). Not caused by a code change: on the same taste data the code from before #178, #205 and #209 gave the same batch. The scorer has no idea of "made for kids", so for a warm/hopeful/funny taste kids' films win on mood and story match (measured: his kids' share went 0–13% a day → 25 of 44 on Nov 5, 18 of 28 on Nov 6, after one loved *Zootopia* and a run of rejected horror). Now a kids' title (TMDB Family on movies and series, Kids on series; Animation alone is not kids) gets an allowance per 50: 3 by default, +3 per "always loved" sample in `genre_affinity.family`/`kids` (a like +1.5, a dislike about −2), down to 0. Applied after the batch is cut (the fresh/seen split had dropped every allowed one); the slots go to the next best non-kids titles. A session request about kids/family lifts it. His feed: 24 of 48 → 6 of 45.
