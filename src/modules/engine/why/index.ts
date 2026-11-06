@@ -7,9 +7,10 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { isColdStart } from '../pipeline/cold-start'
 import type { DNASchema } from '@/types/dna'
-import { scoreTitlesForUser, type TitleKey } from './score-titles'
+import { loadRatedForComparison, scoreTitlesForUser, type TitleKey } from './score-titles'
 import { cacheWhy, getCachedWhy, writeWhyFromFacts, type WhyText } from './write-why'
 import { cardReason } from '../pipeline/step7-card-reason'
+import { cardPlots } from '../pipeline/card-plot'
 
 export type { WhyText } from './write-why'
 export type { TitleKey } from './score-titles'
@@ -24,11 +25,14 @@ export async function whyForTitle(userId: string, key: TitleKey): Promise<WhyTex
     .single<{ dna: DNASchema | null }>()
   if (!data?.dna) return null
 
-  const { items, rated } = await scoreTitlesForUser(data.dna, [key])
+  const [{ items, rated }, ratedTitles] = await Promise.all([
+    scoreTitlesForUser(data.dna, [key]),
+    loadRatedForComparison(data.dna),
+  ])
   const item = items[0]
   if (!item) return null
 
-  const why = await writeWhyFromFacts(item, rated, isColdStart(data.dna))
+  const why = await writeWhyFromFacts(item, rated, isColdStart(data.dna), { dna: data.dna, ratedTitles })
   if (why.rejected?.length) {
     console.warn(`[why] ${key.type}:${key.tmdb_id} ${why.source}: ${why.rejected.join(' | ').slice(0, 400)}`)
   }
@@ -50,5 +54,6 @@ export async function cardLinesForTitles(userId: string, keys: TitleKey[]): Prom
     .single<{ dna: DNASchema | null }>()
   if (!data?.dna || isColdStart(data.dna)) return null
   const { items, rated } = await scoreTitlesForUser(data.dna, keys)
-  return Object.fromEntries(items.map(item => [`${item.title.type}:${item.title.tmdb_id}`, cardReason(item, rated)]))
+  const plots = await cardPlots(items)
+  return Object.fromEntries(items.map(item => [`${item.title.type}:${item.title.tmdb_id}`, cardReason(item, rated, plots)]))
 }

@@ -35,7 +35,12 @@ describe('candidateGenres', () => {
   })
 
   it('ignores genres the game does not have', () => {
-    expect(candidateGenres(row({ genres: [{ name: 'Family' }, { name: 'Music' }] }))).toEqual({ firm: [], hinted: [] })
+    expect(candidateGenres(row({ genres: [{ name: 'Music' }] }))).toEqual({ firm: [], hinted: [] })
+  })
+
+  it('maps Family (movies and series) and Kids (series) to "Family & kids" (2026-11-06)', () => {
+    expect(candidateGenres(row({ genres: [{ name: 'Family' }] })).firm).toEqual(['family'])
+    expect(candidateGenres(row({ type: 'tv', genres: [{ name: 'Kids' }] })).firm).toEqual(['family'])
   })
 })
 
@@ -187,3 +192,13 @@ describe('Other Side clues (data/other-clues.json)', () => {
   })
 })
 
+
+describe('saved game states from before "Family & kids"', () => {
+  it('get the new genre as meh (0), so every pick does arithmetic on a number', async () => {
+    const { withAllGenres } = await import('@/app/play/lib/brain')
+    const old = { gen: { comedy: 2, drama: 1 } as Record<string, number> }
+    withAllGenres(old)
+    expect(old.gen.family).toBe(0)
+    expect(old.gen.comedy).toBe(2)
+  })
+})

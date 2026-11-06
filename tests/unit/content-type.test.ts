@@ -41,8 +41,8 @@ describe('recCacheKey', () => {
     const movies = recCacheKey('u1', 7, 'movies')
     const series = recCacheKey('u1', 7, 'series')
     expect(movies).not.toBe(series)
-    expect(movies).toBe('rec2:u1:7:movies')
-    expect(series).toBe('rec2:u1:7:series')
+    expect(movies).toBe('rec3:u1:7:movies')
+    expect(series).toBe('rec3:u1:7:series')
   })
 
   it('still separates users and taste versions', () => {
@@ -51,7 +51,7 @@ describe('recCacheKey', () => {
   })
 
   it('defaults to the "all" bucket rather than colliding with a typed one', () => {
-    expect(recCacheKey('u1', 7)).toBe('rec2:u1:7:all')
+    expect(recCacheKey('u1', 7)).toBe('rec3:u1:7:all')
     const typed: ContentType[] = ['movies', 'series']
     for (const t of typed) expect(recCacheKey('u1', 7)).not.toBe(recCacheKey('u1', 7, t))
   })

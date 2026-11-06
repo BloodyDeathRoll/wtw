@@ -1,9 +1,11 @@
 /**
  * Step 7 — the "why" for each title, from facts only.
  *
- * Two texts per title, both built in step7-card-reason.ts and never by a
- * model:
- *   - `explanation` — the feed card's short line (`cardReason`).
+ * Two texts per title, both built in step7-card-reason.ts:
+ *   - `explanation` — the feed card's short line (`cardReason`): a person
+ *     link, else the plot — the catalogue's own sentence, or for a plot too
+ *     long for the card a one-sentence summary checked against it
+ *     (card-plot.ts, the only model involved).
  *   - the "Why it's a match" sheet's fuller text (`sheetReason`), stored
  *     beside the batch by generate.ts (step8-cache.ts, `cacheWhyTexts`).
  *
@@ -27,6 +29,7 @@ export { STRONG_CREW_AFFINITY } from './step7-card-reason'
 export function toResults(
   items: ScoredTitleWithPayload[],
   rated: RatedByPerson = new Map(),
+  plots: Map<string, string> = new Map(),
 ): RecommendationResult[] {
   const now = new Date().toISOString()
   return items.map(item => ({
@@ -35,7 +38,7 @@ export function toResults(
     type:               item.title.type,
     composite_score:    item.composite_score,
     reason_payload:     item.reason_payload,
-    explanation:        cardReason(item, rated),
+    explanation:        cardReason(item, rated, plots),
     is_stretch_pick:    item.is_stretch_pick,
     generated_at:       now,
     fingerprint_version: 0,   // set by generate.ts from dna.metadata.taste_version

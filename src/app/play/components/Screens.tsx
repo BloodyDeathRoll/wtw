@@ -20,7 +20,7 @@ const GENRE_COLOURS: Record<string, [string, string]> = {
   comedy: ['#ffad33', '#ff8a00'], drama: ['#a565d8', '#7d3fb5'], action: ['#e5533c', '#c0392b'],
   crime: ['#5b6a7d', '#3d4857'], thriller: ['#8e44ad', '#6c2e8a'], scifi: ['#3a8fd9', '#1f6fb8'],
   horror: ['#c0392b', '#962d22'], romance: ['#ee2d8f', '#c2186b'], anim: ['#1fbf9c', '#13957a'],
-  anime: ['#d42fb0', '#a01488'], doc: ['#b9a24a', '#8e7b30'], war: ['#8b7d62', '#6b5e47'],
+  anime: ['#d42fb0', '#a01488'], family: ['#7cc96b', '#4f9a3f'], doc: ['#b9a24a', '#8e7b30'], war: ['#8b7d62', '#6b5e47'],
 }
 
 export default function Screens({ ctl }: { ctl: Ctl }) {
