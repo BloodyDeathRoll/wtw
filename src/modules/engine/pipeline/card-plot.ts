@@ -51,7 +51,7 @@ export function plotLineOk(line: string, synopsis: string, title: string): boole
   return true
 }
 
-const PROMPT = (synopses: string[]) => `Condense each numbered plot below into ONE sentence of at most 140 characters: who the story follows and what sets it going. Use only what the plot says: add no place, event, award or name it doesn't mention. Keep names exactly as written. No opinions, no praise, no "you", no mention of genre or mood.
+const PROMPT = (synopses: string[]) => `Condense each numbered plot below into ONE sentence of at most 140 characters: who the story follows and the situation it starts from. Describe only the set-up — don't squeeze later events into it, that's where summaries go wrong. Use only what the plot says: add no place, event, award or name it doesn't mention. Keep names exactly as written. No opinions, no praise, no "you", no mention of genre or mood.
 
 Reply with one line per plot: its number, a "|", then the sentence. For example:
 1 | A retired spy is pulled back for one last job.
