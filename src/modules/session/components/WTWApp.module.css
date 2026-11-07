@@ -162,38 +162,6 @@
   align-items: center;
 }
 
-/* Header search (2026-11-07): the field sweeps in from the right over the
-   left slot and the title, inside the 62px header; the menu stays. Sits on
-   .shell (positioned), not .topbar (deliberately not). Its right edge is
-   where /search's field ends: 11px gutter + 40px menu + 6px gap
-   (.topbarRight), and search.module.css .header lays /search out the same. */
-.topbarSearch {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 57px;
-  height: 62px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 11px 0 11px 11px;
-  background: #000;
-  z-index: 3;
-  animation: sweepIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.topbarSearch form {
-  flex: 1;
-  min-width: 0;
-}
-@keyframes sweepIn {
-  from {
-    clip-path: inset(0 0 0 100%);
-  }
-  to {
-    clip-path: inset(0);
-  }
-}
-
 /* Left slot — back arrow or message icon. Grid lays it out; left-justify. */
 .topbarSlot {
   justify-self: start;

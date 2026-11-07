@@ -20,7 +20,6 @@ import {
   ChevronLeft,
   Gamepad2,
   MessageSquare,
-  Search,
   Sparkles,
   Volume2,
 } from "lucide-react";
@@ -51,9 +50,7 @@ import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./WTWApp.module.css";
-// The header's search field is /search's own (same stylesheet), so the
-// route swap lands on an identical twin.
-import sx from "@/app/search/search.module.css";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
 
 // How many completed AI replies before "See Recommendations" appears.
 // Modality-agnostic — every assistant message counts (voice OR text).
@@ -96,8 +93,6 @@ const I = {
   back: <ChevronLeft size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   message: <MessageSquare size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   // The forward arrow, the app's one share mark (Eran, 2026-11-03).
-  // Search took the share icon's place in the header (2026-11-07).
-  search: <Search size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   // Home-screen circles. Sparkles = the fingerprint's picks; bookmark matches
   // the "Add to watchlist" CTA on the cards.
   sparkle: <Sparkles size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
@@ -126,19 +121,10 @@ function TopBar({
   setContentType,
   voice,
   setVoice,
-  searchOpen = false,
-  onOpenSearch,
-  onSearchTyped = () => {},
-  onSearchBack,
 }: {
   hasConversation: boolean;
   onBack: () => void;
   onOpenChat: () => void;
-  /** The header search (home only): sweep the field in; letters typed; back. */
-  searchOpen?: boolean;
-  onOpenSearch?: () => void;
-  onSearchTyped?: (typed: string) => void;
-  onSearchBack?: () => void;
   onRecommend: () => void;
   onWatchlist: () => void;
   onFastLearning: () => void;
@@ -169,7 +155,7 @@ function TopBar({
 
   return (
     <>
-    <div className={styles.topbar}>
+    <div className={styles.topbar} data-header-row>
       <div className={styles.topbarSlot}>
         {hasConversation ? (
           <button
@@ -229,14 +215,9 @@ function TopBar({
       </div>
 
       <div className={styles.topbarRight}>
-        <button
-          className={styles.iconbtn}
-          onClick={onOpenSearch}
-          aria-label="search"
-          type="button"
-        >
-          {I.search}
-        </button>
+        {/* Search took the share icon's place (2026-11-07). padLeft 11: the
+            left slot's -5px pull puts the back button at 11px, not 16. */}
+        <HeaderSearch btnClass={styles.iconbtn} padLeft={11} />
         <AppMenu
           onRecommend={onRecommend}
           onWatchlist={onWatchlist}
@@ -250,31 +231,7 @@ function TopBar({
         />
       </div>
     </div>
-    {/* Search (2026-11-07): a field sweeps in from the right over the chat
-        icon and the title, inside the header. Focused as it mounts, so the
-        keyboard comes up in the tap's own gesture; /search is already on
-        its way (openSearch) and renders in place with its field right here. */}
-    {searchOpen && (
-      <div className={styles.topbarSearch}>
-        <button type="button" className={styles.iconbtn} onClick={onSearchBack} aria-label="back">
-          {I.back}
-        </button>
-        <form className={sx.field} role="search" onSubmit={(e) => e.preventDefault()}>
-          <input
-            className={sx.headerInput}
-            type="search"
-            enterKeyHint="search"
-            autoFocus
-            placeholder="Search titles and people"
-            aria-label="Search titles and people"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            onChange={(e) => onSearchTyped(e.target.value)}
-          />
-        </form>
-      </div>
-    )}
+
     </>
   );
 }
@@ -707,29 +664,6 @@ export default function WTWApp({
     return () => clearTimeout(t);
   }, [leaving]);
 
-  // The header's search icon (2026-11-07): the field sweeps into the header
-  // (TopBar) and /search is pushed at once (prefetched), rendering in place
-  // with its field in the same spot. No loader: the sweep is the transition.
-  // Letters typed before the route lands ride along in ?q= (router.replace,
-  // so Back from /search still returns home in one step).
-  const [searchOpen, setSearchOpen] = useState(false);
-  useEffect(() => {
-    router.prefetch("/search");
-  }, [router]);
-  function openSearch() {
-    if (searchOpen) return;
-    setSearchOpen(true);
-    router.push("/search");
-  }
-  function searchTyped(typed: string) {
-    router.replace(typed ? `/search?q=${encodeURIComponent(typed)}` : "/search");
-  }
-  // If the route never lands (offline, a server error), give the home back.
-  useEffect(() => {
-    if (!searchOpen) return;
-    const t = setTimeout(() => setSearchOpen(false), LEAVE_TIMEOUT_MS);
-    return () => clearTimeout(t);
-  }, [searchOpen]);
 
   async function signOut() {
     const supabase = createClient();
@@ -1064,13 +998,6 @@ export default function WTWApp({
       ) : (
         <div className={styles.shell}>
           <TopBar
-            searchOpen={searchOpen}
-            onOpenSearch={openSearch}
-            onSearchTyped={searchTyped}
-            onSearchBack={() => {
-              setSearchOpen(false);
-              router.back();
-            }}
             hasConversation={stage === "conversation"}
             onBack={backToOnboard}
             onOpenChat={() => setStage("conversation")}

@@ -29,6 +29,7 @@ import type {
 } from "@/app/api/recommendations/ratings/route";
 import { setWatchlistRating } from "@/lib/watchlist";
 import { FingerprintLoader } from "../components/FingerprintLoader";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
 import styles from "./RatingsView.module.css";
 
 type Tab = Reaction | "removed";
@@ -241,12 +242,14 @@ export default function RatingsView({
 
   return (
     <div className={`${styles.view} ${bgPoster ? styles.viewPoster : ""}`} style={viewStyle}>
-      <div className={styles.header}>
+      <div className={styles.header} data-header-row>
         <button className={styles.headerBtn} onClick={onBack} aria-label="back">
           <ChevronLeft size={30} strokeWidth={1.5} />
         </button>
         <span className={styles.headerTitle}>Ratings</span>
         <div className={styles.headerRight}>
+          {/* Search from here lists the rated titles first (2026-11-07). */}
+          <HeaderSearch btnClass={styles.headerBtn} scope="ratings" />
           {headerRight}
         </div>
       </div>

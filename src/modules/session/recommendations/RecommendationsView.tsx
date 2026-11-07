@@ -59,6 +59,7 @@ import {
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
 import type { ContentType } from "@/lib/content-type";
 
 type Mode = "recommendations" | "learning" | "watchlist";
@@ -669,7 +670,7 @@ export default function RecommendationsView({
 
   return (
     <div className={styles.view}>
-      <div className={styles.header}>
+      <div className={styles.header} data-header-row>
         <button
           type="button"
           className={styles.headerBtn}
@@ -686,6 +687,8 @@ export default function RecommendationsView({
           </span>
         )}
         <div className={styles.headerRight}>
+          {/* Search from here lists the saved titles first on the watchlist (2026-11-07). */}
+          <HeaderSearch btnClass={styles.headerBtn} scope={mode === "watchlist" ? "watchlist" : undefined} />
           {headerRight}
         </div>
       </div>

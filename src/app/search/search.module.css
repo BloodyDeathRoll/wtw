@@ -69,6 +69,15 @@
   right: 4px;
 }
 
+/* The screen's own titles first (?in=ratings | watchlist), then all titles. */
+.groupLabel {
+  margin: 8px 4px 0;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #8a8a8e;
+}
+
 .field {
   position: relative;
 }

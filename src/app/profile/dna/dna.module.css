@@ -513,3 +513,24 @@
     }
   }
 }
+
+/* Search + menu in the header's right column (2026-11-07). The search icon
+   is the back button's twin without its gutter pull. */
+.headerRight {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.headerIconBtn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--white);
+  cursor: pointer;
+}
