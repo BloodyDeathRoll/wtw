@@ -176,11 +176,11 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
-### 2026-11-07 — A search box on the home screen (`feat/home-search-box`)
-- **Ask (Shahar):** under the home circles, where the chat box used to be, a search box; tapping it focuses it and it animates into the Search view the menu opens.
-- **Code:** `HomeSearch` in `WTWApp.tsx` — `/search`'s own field (same stylesheet, `search.module.css`) under Picks · Watchlist · Games. On focus the box slides up to where `/search`'s field sits (`--search-dy`, measured from the shell: header 56px + box padding 6px) while the rest of the home fades (`.searchOpening`), and `router.push("/search")` (prefetched on mount) renders the real Search in place, field already `autoFocus`. Letters typed before the hand-over ride along in `?q=`; `SearchView` starts from it and strips it from the URL. If the route never lands, `LEAVE_TIMEOUT_MS` gives the screen back.
-- **Not checked:** in a real browser — the keyboard staying up across the route swap on iOS (focus moves from the home field to `/search`'s `autoFocus` field within the same tap) is the thing to look at.
-- **Checked:** `tests/unit/home-search-box.test.ts` (source-level, 5 cases).
+### 2026-11-07 — Search from the home header (`feat/home-search-box`)
+- **Ask (Shahar):** the header's share icon becomes a search icon; tapping it animates a search field in from right to left over the title and the chat icon — inside the header, not below it. (A first cut put a box under the circles; Shahar: "doesn't work", removed.)
+- **Code:** `TopBar` in `WTWApp.tsx` — the search icon in the right slot; `searchOpen` renders `.topbarSearch` (absolute on `.shell`, 62px, right edge 57px = gutter + menu + gap) with Back + `/search`'s field (`search.module.css .headerInput`), `clip-path` sweep from the right, `autoFocus` so the keyboard comes up in the tap. `router.push("/search")` at once (prefetched on mount); `/search`'s header is now Back + field + menu with the same geometry (`search.module.css .header`), so it renders in place without a jump. Letters typed before the route lands go into `?q=` via `router.replace` (one history entry); `SearchView` starts from `?q=` and strips it. `LEAVE_TIMEOUT_MS` gives the home back if the route never lands. The share icon left the header (`shareApp` still on the feed cards).
+- **Not checked:** in a real browser with a signed-in account — iOS keeping the keyboard up across the route swap (the header field → `/search`'s `autoFocus` field).
+- **Checked:** `tests/unit/home-search-box.test.ts` (source-level, 4 cases).
 
 ### 2026-11-07 — A dislike leaves people alone (`fix/dislike-leaves-people`)
 - **Rule (Eran, 2026-11-07):** "disliked has no effect on any of the people, at all." A bad film says little about the people in it; only loved and liked move a director, writer, actor or cinematographer. Genres, mood & pace and story traits still learn from a dislike.

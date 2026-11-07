@@ -244,11 +244,51 @@ export default function SearchView({ user }: { user: AppUser }) {
   return (
     <div className={styles.shell}>
       <div className={rv.view}>
-        <div className={rv.header}>
-          <button type="button" className={rv.headerBtn} onClick={back} aria-label="back">
+        {/* The field sits in the header, between Back and the menu — the same
+            geometry as the home header with its search swept in (WTWApp
+            TopBar), so arriving from there doesn't move a pixel (2026-11-07). */}
+        <div className={styles.header}>
+          <button type="button" className={styles.headerBtn} onClick={back} aria-label="back">
             <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
           </button>
-          <span className={rv.headerTitle}>Search</span>
+          <form
+            className={styles.field}
+            role="search"
+            onSubmit={(e) => {
+              // The keyboard's search key: search now, and put the keyboard away.
+              e.preventDefault();
+              setNow((n) => n + 1);
+              inputRef.current?.blur();
+            }}
+          >
+            <input
+              ref={inputRef}
+              className={styles.headerInput}
+              type="search"
+              enterKeyHint="search"
+              // On a card the field shows the title, on a person's page their
+              // name; tapping it brings the list back.
+              value={card ? card.title : shownWho ? shownWho.name : q}
+              onFocus={closeCard}
+              onChange={(e) => edit(e.target.value)}
+              placeholder="Search titles and people"
+              aria-label="Search titles and people"
+              autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            {q && (
+              <button
+                type="button"
+                className={`${styles.clear} ${styles.headerClear}`}
+                onClick={clear}
+                aria-label="Clear search"
+              >
+                <X size={22} strokeWidth={2} aria-hidden />
+              </button>
+            )}
+          </form>
           <div className={rv.headerRight}>
             <AppMenu
               onRecommend={go("recommendations")}
@@ -270,40 +310,7 @@ export default function SearchView({ user }: { user: AppUser }) {
           </div>
         </div>
 
-        <form
-          className={styles.box}
-          role="search"
-          onSubmit={(e) => {
-            // The keyboard's search key: search now, and put the keyboard away.
-            e.preventDefault();
-            setNow((n) => n + 1);
-            inputRef.current?.blur();
-          }}
-        >
-          <div className={styles.field}>
-            <input
-              ref={inputRef}
-              className={styles.input}
-              type="search"
-              enterKeyHint="search"
-              // On a card the field shows the title, on a person's page their
-              // name; tapping it brings the list back.
-              value={card ? card.title : shownWho ? shownWho.name : q}
-              onFocus={closeCard}
-              onChange={(e) => edit(e.target.value)}
-              placeholder="Search titles and people"
-              aria-label="Search titles and people"
-              autoFocus
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-            {q && (
-              <button type="button" className={styles.clear} onClick={clear} aria-label="Clear search">
-                <X size={22} strokeWidth={2} aria-hidden />
-              </button>
-            )}
-          </div>
+        <div className={styles.box}>
           {showHits && (
             <div className={styles.list} role="listbox" aria-label="Results">
               {hits.map((h) =>
@@ -336,7 +343,7 @@ export default function SearchView({ user }: { user: AppUser }) {
             </div>
           )}
           {note && <p className={styles.note} role="status">{note}</p>}
-        </form>
+        </div>
 
         {person?.page && person.page.titles.length > 0 && (
           <div className={rv.content}>
