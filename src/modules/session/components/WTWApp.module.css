@@ -888,12 +888,34 @@
 /* ─── Home destinations bar (Picks · Watchlist · Games), pinned to the bottom ─── */
 .homeNavBar {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
   padding: 16px 16px 24px;
   flex-shrink: 0;
 }
 .homeNavBar .circleRow {
   gap: 36px;
+}
+/* The search box under the circles: /search's field (search.module.css),
+   full width. On tap it slides up to /search's field position
+   (--search-dy, set by openSearch) while everything else fades; /search
+   then renders in place with its field exactly there. */
+.homeSearch {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.searchOpening .homeSearch {
+  transform: translateY(var(--search-dy, 0px));
+}
+.searchOpening .scroll,
+.searchOpening .regretBar,
+.searchOpening .circleRow {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
 }
 
 /* ─── 48-hour regret check-in ─── */

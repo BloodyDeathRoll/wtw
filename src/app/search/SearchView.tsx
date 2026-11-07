@@ -42,7 +42,10 @@ const IMG = "https://image.tmdb.org/t/p/";
 export default function SearchView({ user }: { user: AppUser }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [q, setQ] = useState("");
+  // ?q=: letters typed into the home screen's search box before it handed
+  // over to this route (WTWApp's HomeSearch, 2026-11-07).
+  const params = useSearchParams();
+  const [q, setQ] = useState(() => params.get("q") ?? "");
   // TMDB's last answer, and for which query (hits null = it failed).
   const [answer, setAnswer] = useState<{ q: string; hits: SearchHit[] | null }>({ q: "", hits: [] });
   // The last good list, kept on screen while the next query is in flight so it doesn't blink per letter.
@@ -56,7 +59,6 @@ export default function SearchView({ user }: { user: AppUser }) {
   // card and shows the list again instead of leaving Search (Eran, 2026-11-04).
   // A person's page the same way (/search?p=525), and a card opened from it
   // (/search?p=525&t=movie-27205): Back walks card → person → list.
-  const params = useSearchParams();
   const openKey = params.get("t");
   const openPerson = params.get("p");
   const [picked, setPicked] = useState<{ key: string; rec: Recommendation } | null>(null);
@@ -75,10 +77,11 @@ export default function SearchView({ user }: { user: AppUser }) {
     void hydrateWatchlist(user.id);
   }, [user.id]);
 
-  // A reload on /search?t=… or ?p=… has no list behind it to go back to: start clean.
+  // A reload on /search?t=… or ?p=… has no list behind it to go back to: start
+  // clean. ?q= was read once above; the URL doesn't need to keep it.
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
-    if (sp.has("t") || sp.has("p")) window.history.replaceState(null, "", "/search");
+    if (sp.has("t") || sp.has("p") || sp.has("q")) window.history.replaceState(null, "", "/search");
   }, []);
 
   useEffect(() => {

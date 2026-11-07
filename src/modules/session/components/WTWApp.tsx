@@ -9,6 +9,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -52,6 +53,9 @@ import ShareIcon from "@/app/components/ShareIcon";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import styles from "./WTWApp.module.css";
+// The home search box is /search's field, same stylesheet, so the slide-up
+// lands on an identical twin.
+import sx from "@/app/search/search.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
 // Modality-agnostic — every assistant message counts (voice OR text).
@@ -451,6 +455,38 @@ function HomeNav({
   );
 }
 
+// Under the circles, where the chat box used to be: Search (2026-11-07).
+// Looks exactly like /search's field. Tapping it focuses it and hands over
+// to /search (see openSearch); anything typed before the hand-over rides
+// along in ?q= so no letter is lost.
+function HomeSearch({ onOpen }: { onOpen: (box: HTMLElement, typed: string) => void }) {
+  const [typed, setTyped] = useState("");
+  return (
+    <form
+      className={`${sx.field} ${styles.homeSearch}`}
+      role="search"
+      onSubmit={(e) => e.preventDefault()}
+    >
+      <input
+        className={sx.input}
+        type="search"
+        enterKeyHint="search"
+        value={typed}
+        onFocus={(e) => onOpen(e.currentTarget.form ?? e.currentTarget, typed)}
+        onChange={(e) => {
+          setTyped(e.target.value);
+          onOpen(e.currentTarget.form ?? e.currentTarget, e.target.value);
+        }}
+        placeholder="Search titles and people"
+        aria-label="Search titles and people"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+      />
+    </form>
+  );
+}
+
 function InputBar({
   value,
   setValue,
@@ -670,6 +706,32 @@ export default function WTWApp({
     const t = setTimeout(() => setLeaving(null), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
+
+  // The home screen's search box (2026-11-07): tapping it focuses it (the
+  // keyboard comes up in the tap's own gesture) and slides it up to where
+  // /search's field sits while the rest of the screen fades; /search then
+  // takes over in place, its field already focused. No loader: the box
+  // itself is the transition. searchDy = how far up it travels.
+  const [searchDy, setSearchDy] = useState<number | null>(null);
+  useEffect(() => {
+    router.prefetch("/search");
+  }, [router]);
+  function openSearch(box: HTMLElement, typed: string) {
+    const shell = box.closest(`.${styles.shell}`);
+    if (shell && searchDy === null) {
+      // shortcut: /search's field top = its header (56px) + the box's 6px
+      // padding, from RecommendationsView.module.css + search.module.css;
+      // measure the mounted route instead if either changes.
+      const target = shell.getBoundingClientRect().top + 56 + 6;
+      setSearchDy(target - box.getBoundingClientRect().top);
+    }
+    router.push(typed ? `/search?q=${encodeURIComponent(typed)}` : "/search");
+  }
+  useEffect(() => {
+    if (searchDy === null) return;
+    const t = setTimeout(() => setSearchDy(null), LEAVE_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [searchDy]);
 
   async function signOut() {
     const supabase = createClient();
@@ -1002,7 +1064,10 @@ export default function WTWApp({
           <RatingsView onBack={() => setStage("onboard")} contentType={contentType} headerRight={appMenu} />
         </div>
       ) : (
-        <div className={styles.shell}>
+        <div
+          className={`${styles.shell} ${searchDy !== null ? styles.searchOpening : ""}`}
+          style={searchDy !== null ? ({ "--search-dy": `${searchDy}px` } as CSSProperties) : undefined}
+        >
           <TopBar
             hasConversation={stage === "conversation"}
             onBack={backToOnboard}
@@ -1107,7 +1172,8 @@ export default function WTWApp({
               />
             </>
           ) : (
-            // No input bar here any more: the chat is the header's icon.
+            // No chat input here any more: the chat is the header's icon. The
+            // box under the circles is Search (2026-11-07).
             <div className={styles.homeNavBar}>
               <HomeNav
                 onRecommend={handleRecommend}
@@ -1115,6 +1181,7 @@ export default function WTWApp({
                 onGames={openGames}
                 watchlistN={watchlistN}
               />
+              <HomeSearch onOpen={openSearch} />
             </div>
           )}
         </div>

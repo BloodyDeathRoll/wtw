@@ -176,6 +176,12 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-07 — A search box on the home screen (`feat/home-search-box`)
+- **Ask (Shahar):** under the home circles, where the chat box used to be, a search box; tapping it focuses it and it animates into the Search view the menu opens.
+- **Code:** `HomeSearch` in `WTWApp.tsx` — `/search`'s own field (same stylesheet, `search.module.css`) under Picks · Watchlist · Games. On focus the box slides up to where `/search`'s field sits (`--search-dy`, measured from the shell: header 56px + box padding 6px) while the rest of the home fades (`.searchOpening`), and `router.push("/search")` (prefetched on mount) renders the real Search in place, field already `autoFocus`. Letters typed before the hand-over ride along in `?q=`; `SearchView` starts from it and strips it from the URL. If the route never lands, `LEAVE_TIMEOUT_MS` gives the screen back.
+- **Not checked:** in a real browser — the keyboard staying up across the route swap on iOS (focus moves from the home field to `/search`'s `autoFocus` field within the same tap) is the thing to look at.
+- **Checked:** `tests/unit/home-search-box.test.ts` (source-level, 5 cases).
+
 ### 2026-11-07 — A dislike leaves people alone (`fix/dislike-leaves-people`)
 - **Rule (Eran, 2026-11-07):** "disliked has no effect on any of the people, at all." A bad film says little about the people in it; only loved and liked move a director, writer, actor or cinematographer. Genres, mood & pace and story traits still learn from a dislike.
 - **Code:** `movesPeople` in `src/modules/dna/lib/update-crew.ts`, applied at the one place every writer goes through (`applyCrewAffinityUpdate`: card ratings, chat sessions, games' signals), plus re-rates (disliked → loved counts as a first rating for the people; loved → disliked takes the loved one back out) and un-rate (clearing a dislike changes nothing).
