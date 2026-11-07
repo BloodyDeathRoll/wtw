@@ -372,21 +372,21 @@ export default function SearchView({
           </form>
           <div className={rv.headerRight}>
             {menu ?? (
-            <AppMenu
-              onRecommend={go("recommendations")}
-              onWatchlist={go("watchlist")}
-              onFastLearning={() => leave("/play?tab=games")}
-              onRatings={go("ratings")}
-              onProfile={() => leave("/profile/dna")}
-              user={user}
-              onSignOut={async () => {
-                await createClient().auth.signOut();
-                router.replace("/login");
-                router.refresh();
-              }}
-              voice={voice}
-              setVoice={chooseVoice}
-            />
+              <AppMenu
+                onRecommend={go("recommendations")}
+                onWatchlist={go("watchlist")}
+                onFastLearning={() => leave("/play?tab=games")}
+                onRatings={go("ratings")}
+                onProfile={() => leave("/profile/dna")}
+                user={user}
+                onSignOut={async () => {
+                  await createClient().auth.signOut();
+                  router.replace("/login");
+                  router.refresh();
+                }}
+                voice={voice}
+                setVoice={chooseVoice}
+              />
             )}
           </div>
         </div>

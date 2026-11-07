@@ -79,6 +79,20 @@ describe('<HeaderSearch />', () => {
     expect(screen.queryByRole('searchbox')).toBeNull()
   })
 
+  it('with a card open (two entries), a menu entry pops both, then runs the handler', async () => {
+    const onWatchlist = vi.fn()
+    render(<Host onWatchlist={onWatchlist} />)
+    await userEvent.click(screen.getByRole('button', { name: 'search' }))
+    // What opening a card does (SearchView): one more /search entry.
+    window.history.pushState(null, '', '/search?in=watchlist&from=watchlist&t=movie-1')
+    const menus = screen.getAllByRole('button', { name: 'menu' })
+    await userEvent.click(menus[menus.length - 1])
+    await userEvent.click(screen.getByText('Watchlist'))
+    await waitFor(() => expect(onWatchlist).toHaveBeenCalledTimes(1))
+    expect(window.location.pathname).toBe('/')
+    expect(screen.queryByRole('searchbox')).toBeNull()
+  })
+
   it('Back pops the search off without running anything', async () => {
     const onWatchlist = vi.fn()
     render(<Host onWatchlist={onWatchlist} />)
