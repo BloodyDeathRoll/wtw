@@ -154,7 +154,7 @@ function TopBar({
 
   return (
     <>
-    <div className={styles.topbar} data-header-row>
+    <div className={styles.topbar}>
       <div className={styles.topbarSlot}>
         {hasConversation ? (
           <button
@@ -214,9 +214,8 @@ function TopBar({
       </div>
 
       <div className={styles.topbarRight}>
-        {/* Search took the share icon's place (2026-11-07). padLeft 11: the
-            left slot's -5px pull puts the back button at 11px, not 16. */}
-        <HeaderSearch btnClass={styles.iconbtn} padLeft={11} />
+        {/* Search took the share icon's place (2026-11-07). */}
+        <HeaderSearch btnClass={styles.iconbtn} user={user} />
         <AppMenu
           onRecommend={onRecommend}
           onWatchlist={onWatchlist}
@@ -963,6 +962,7 @@ export default function WTWApp({
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true, more: true })}
             headerRight={appMenu}
+            user={user}
             building={buildingRecs}
             onCalibrate={calibrationNudge ? () => leaveTo("/play") : undefined}
           />
@@ -976,6 +976,7 @@ export default function WTWApp({
             sharerName={user.name}
             onBrowse={handleRecommend}
             headerRight={appMenu}
+            user={user}
           />
         </div>
       ) : stage === "learning" ? (
@@ -987,11 +988,12 @@ export default function WTWApp({
             sharerName={user.name}
             setContentType={setContentType}
             headerRight={appMenu}
+            user={user}
           />
         </div>
       ) : stage === "ratings" ? (
         <div className={styles.shell}>
-          <RatingsView onBack={() => setStage("onboard")} contentType={contentType} headerRight={appMenu} />
+          <RatingsView onBack={() => setStage("onboard")} contentType={contentType} headerRight={appMenu} user={user} />
         </div>
       ) : (
         <div className={styles.shell}>

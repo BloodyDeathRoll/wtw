@@ -138,12 +138,11 @@ export function TopBar({ ctl }: { ctl: Ctl }) {
       ? <button className="tb-back" onClick={() => ctl.leave('/?from=play')} aria-label="Back to home"><ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" /></button>
       : null
   return (
-    <div className="apptop" data-header-row>
+    <div className="apptop">
       <div className="tb-l">{left}</div>
       <div className="brand app-brand"><Image src="/logo_vector.svg" alt="" width={56} height={56} />WTW</div>
       <div className="tb-r">
-        {/* padLeft 11: .tb-back's -5px pull puts the back button at 11px. */}
-        <HeaderSearch btnClass="tb-back" padLeft={11} from="/play" />
+        <HeaderSearch btnClass="tb-back" user={ctl.user} from="/play" />
         <AppMenu
           onRecommend={go('recommendations')}
           onWatchlist={go('watchlist')}

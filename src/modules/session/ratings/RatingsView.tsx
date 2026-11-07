@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { ChevronDown, ChevronLeft, ChevronUp, RotateCcw, X } from "lucide-react";
 import type { Reaction } from "@/types/dna";
 import type { ContentType } from "@/lib/content-type";
+import type { AppUser } from "@/modules/session/types";
 import type {
   RatingsSummary,
   RatingItem,
@@ -75,12 +76,15 @@ export default function RatingsView({
   onBack,
   contentType,
   headerRight,
+  user,
 }: {
   onBack: () => void;
   /** The Movies/Series list the user is on — the batch a re-rate rebuilds. */
   contentType: ContentType;
   /** App menu — same slot on every screen (2026-08-29). */
   headerRight?: ReactNode;
+  /** For the header's search; without it (the component tests) there is none. */
+  user?: AppUser;
 }) {
   const [data, setData] = useState<RatingsSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -242,7 +246,7 @@ export default function RatingsView({
 
   return (
     <div className={`${styles.view} ${bgPoster ? styles.viewPoster : ""}`} style={viewStyle}>
-      <div className={styles.header} data-header-row>
+      <div className={styles.header}>
         <button className={styles.headerBtn} onClick={onBack} aria-label="back">
           <ChevronLeft size={30} strokeWidth={1.5} />
         </button>
@@ -251,7 +255,7 @@ export default function RatingsView({
           {/* Search travels with the app menu (both are the app's, not the
               view's): from here it lists the rated titles first, and its
               Back returns here (2026-11-07). */}
-          {headerRight && <HeaderSearch btnClass={styles.headerBtn} scope="ratings" from="ratings" />}
+          {user && <HeaderSearch btnClass={styles.headerBtn} user={user} scope="ratings" from="ratings" />}
           {headerRight}
         </div>
       </div>

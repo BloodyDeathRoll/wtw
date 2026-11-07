@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { SEARCH_FROM, safeFrom, searchUrl } from '@/app/components/HeaderSearch'
+import { SEARCH_FROM, safeFrom, searchUrl } from '@/app/search/url'
 
-// Search from every header (2026-11-07): the icon beside the menu sweeps
-// /search's field into the header row and hands over to /search, whose field
-// sits in its header. Ratings and Watchlist list their own titles first, and
-// Back returns to the screen the search was opened from. The menu's own
-// Search entry is gone.
+// Search from every header (2026-11-07): the icon beside the menu sweeps the
+// search screen in over the host screen, which stays mounted under it — only
+// the URL becomes /search (pushState), so the field focused in the tap never
+// re-mounts and the keyboard stays up (a route swap dropped it and brought it
+// back). Ratings and Watchlist list their own titles first, and Back pops
+// back to the screen the search was opened from. The menu's own Search entry
+// is gone.
 // Source-level checks, like find-more-sends-more.test.ts — these views have no render harness.
 
 const hs = readFileSync('src/app/components/HeaderSearch.tsx', 'utf8')
@@ -46,42 +48,36 @@ describe('safeFrom', () => {
 describe('header search', () => {
   it('is in every header, in place of share at home; the menu’s Search entry is gone', () => {
     expect(app).not.toMatch(/shareApp|ShareIcon|I\.share\b/)
-    expect(app).toMatch(/<HeaderSearch btnClass=\{styles\.iconbtn\} padLeft=\{11\} \/>/)
-    expect(recs).toMatch(/\{headerRight && \(\s*<HeaderSearch btnClass=\{styles\.headerBtn\} scope=\{mode === "watchlist" \? "watchlist" : undefined\} from=\{mode\} \/>/)
-    expect(ratings).toMatch(/\{headerRight && <HeaderSearch btnClass=\{styles\.headerBtn\} scope="ratings" from="ratings" \/>\}/)
-    expect(play).toMatch(/<HeaderSearch btnClass="tb-back" padLeft=\{11\} from="\/play" \/>/)
-    expect(dna).toMatch(/<HeaderSearch btnClass=\{styles\.headerIconBtn\} from="\/profile\/dna" \/>/)
-    // Each host row is marked so the overlay can measure it.
-    for (const src of [app, recs, ratings, play, dna]) expect(src).toMatch(/data-header-row/)
+    expect(app).toMatch(/<HeaderSearch btnClass=\{styles\.iconbtn\} user=\{user\} \/>/)
+    expect(recs).toMatch(/\{user && \(\s*<HeaderSearch btnClass=\{styles\.headerBtn\} user=\{user\} scope=\{mode === "watchlist" \? "watchlist" : undefined\} from=\{mode\} \/>/)
+    expect(ratings).toMatch(/\{user && <HeaderSearch btnClass=\{styles\.headerBtn\} user=\{user\} scope="ratings" from="ratings" \/>\}/)
+    expect(play).toMatch(/<HeaderSearch btnClass="tb-back" user=\{ctl\.user\} from="\/play" \/>/)
+    expect(dna).toMatch(/<HeaderSearch btnClass=\{styles\.headerIconBtn\} user=\{user\} from="\/profile\/dna" \/>/)
+    // The home passes the user down so the two views can show the icon.
+    expect(app).toMatch(/<RatingsView onBack=[\s\S]*?headerRight=\{appMenu\} user=\{user\} \/>/)
+    expect(app.match(/<RecommendationsView[\s\S]*?\/>/g)!.every((v) => v.includes('user={user}'))).toBe(true)
     expect(menu).not.toMatch(/"search"|onSearch|goingToSearch|<span>Search<\/span>/)
     expect(play).not.toMatch(/'search'/)
   })
 
-  it('the field sweeps in over the row, focused as it mounts, without positioning any header', () => {
-    expect(hs).toMatch(/closest<HTMLElement>\("\[data-header-row\]"\)/)
-    expect(hs).toMatch(/className=\{sx\.headerInput\}[\s\S]*?autoFocus/)
-    expect(hsCss).toMatch(/\.overlay \{[\s\S]*?position: fixed;[\s\S]*?animation: sweepIn/)
+  it('opens /search in place: pushState, the view in a full-screen sweep, no navigation, and Back pops it', () => {
+    expect(hs).toMatch(/window\.history\.pushState\(null, "", searchUrl\(scope, "", from\)\)/)
+    expect(hs).not.toMatch(/router\.|useRouter|usePathname/)
+    expect(hs).toMatch(/createPortal\(\s*<div className=\{styles\.overlay\}>\s*<AppShell>\s*<SearchView user=\{user\} inPlace \/>/)
+    expect(hs).toMatch(/addEventListener\("popstate", onPop\)/)
+    expect(hs).toMatch(/if \(window\.location\.pathname !== "\/search"\) setOpen\(false\)/)
+    expect(hsCss).toMatch(/\.overlay \{[\s\S]*?position: fixed;\s*inset: 0;[\s\S]*?animation: sweepIn/)
     expect(hsCss).toMatch(/@keyframes sweepIn \{\s*from \{\s*clip-path: inset\(0 0 0 100%\);/)
+    // No header is positioned for it (the menu drawer's containing block).
+    for (const src of [app, recs, ratings, play, dna]) expect(src).not.toMatch(/data-header-row/)
   })
 
-  it('pushes /search once the sweep has played, with what was typed; Back during the sweep cancels it', () => {
-    expect(hs).toMatch(/setTimeout\(\(\) => \{\s*setPushed\(true\);\s*router\.push\(searchUrl\(scope, typedRef\.current, from\)\);\s*\}, SWEEP_MS\)/)
-    expect(hs.match(/router\.push\(/g)).toHaveLength(1)
-    expect(hs).toMatch(/if \(pushed\) router\.replace\(searchUrl\(scope, v, from\)\)/)
-    expect(hs).toMatch(/function back\(\) \{\s*if \(pushed\) return;\s*setBox\(null\);/)
-    expect(hs).toMatch(/onClick=\{back\} disabled=\{pushed\}/)
-    expect(hs).not.toMatch(/router\.back\(/)
-    expect(hs).toMatch(/router\.prefetch\("\/search"\)/)
-    expect(hs).toMatch(/setTimeout\(\(\) => setBox\(null\), LEAVE_TIMEOUT_MS\)/)
-  })
-
-  it('/search: field in the header, ?q= until typed into, the screen’s own group first, Back to ?from=', () => {
+  it('/search: field in the header, focused as it mounts; the screen’s own group first; Back pops in place, else to ?from=', () => {
     const header = search.slice(search.indexOf('className={styles.header}'), search.indexOf('<AppMenu'))
     expect(header).toMatch(/className=\{styles\.headerInput\}/)
     expect(header).toMatch(/autoFocus/)
     expect(searchCss).toMatch(/\.header \{[\s\S]*?padding: 11px;/)
     expect(search).toMatch(/const q = typedHere \?\? params\.get\("q"\) \?\? "";/)
-    expect(search).not.toMatch(/sp\.has\("q"\)/)
     // The group: watchlist from the local list (card already in hand), ratings from the API.
     expect(search).toMatch(/inParam === "ratings" \|\| inParam === "watchlist"/)
     expect(search).toMatch(/getWatchlist\(\)\.map/)
@@ -92,7 +88,8 @@ describe('header search', () => {
     // Card and person URLs keep ?in= and ?from= so Back and reload stay in the group.
     expect(search).toMatch(/pushState\(null, "", url\(/)
     expect(search).not.toMatch(/pushState\(null, "", `\/search/)
-    // Back: a known home stage or route only (safeFrom), by replace; from survives the reload strip.
+    // Back: in place, pop to the host screen; after a reload, a known home stage or route only (safeFrom), by replace.
+    expect(search).toMatch(/if \(openKey \|\| openPerson \|\| inPlace\) window\.history\.back\(\);/)
     expect(search).toMatch(/const from = safeFrom\(params\.get\("from"\)\);/)
     expect(search).toMatch(/const base = searchUrl\(scope \?\? undefined, "", from \?\? undefined\);/)
     expect(search).toMatch(/router\.replace\(from\.startsWith\("\/"\) \? from : `\/\?stage=\$\{encodeURIComponent\(from\)\}`\)/)

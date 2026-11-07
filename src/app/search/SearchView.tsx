@@ -28,7 +28,7 @@ import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
 import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
-import { safeFrom, searchUrl, type SearchScope } from "@/app/components/HeaderSearch";
+import { safeFrom, searchUrl, type SearchScope } from "@/app/search/url";
 import type { PersonPage, PersonSearchHit, PersonTitle, SearchHit, TitleSearchHit } from "@/lib/tmdb";
 import type { Recommendation } from "@/types/recommendation";
 import rv from "@/modules/session/recommendations/RecommendationsView.module.css";
@@ -40,7 +40,14 @@ const VOICE_KEY = "wtw:voice";
 const PAUSE_MS = 250;
 const IMG = "https://image.tmdb.org/t/p/";
 
-export default function SearchView({ user }: { user: AppUser }) {
+export default function SearchView({
+  user,
+  inPlace = false,
+}: {
+  user: AppUser;
+  /** Opened over another screen by HeaderSearch (a pushState, not a route): Back pops back to it. */
+  inPlace?: boolean;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   // ?q=: letters typed into a header's search field before it handed over to
@@ -284,11 +291,13 @@ export default function SearchView({ user }: { user: AppUser }) {
     const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
-  // Back returns to the screen the search was opened from: a home stage
-  // ("watchlist", "ratings"…) or a route ("/play"). Replace, not push, so
-  // the phone's own Back doesn't come through /search again.
+  // Back returns to the screen the search was opened from. Opened in place,
+  // that screen is still mounted under this one: pop to it. After a reload
+  // it's gone: a home stage ("watchlist", "ratings"…) or a route ("/play")
+  // by replace, not push, so the phone's own Back doesn't come through
+  // /search again.
   function back() {
-    if (openKey || openPerson) window.history.back();
+    if (openKey || openPerson || inPlace) window.history.back();
     else if (from) {
       setLeaving(true);
       router.replace(from.startsWith("/") ? from : `/?stage=${encodeURIComponent(from)}`);
@@ -317,9 +326,9 @@ export default function SearchView({ user }: { user: AppUser }) {
   return (
     <div className={styles.shell}>
       <div className={rv.view}>
-        {/* The field sits in the header, between Back and the menu — the same
-            geometry as the home header with its search swept in (WTWApp
-            TopBar), so arriving from there doesn't move a pixel (2026-11-07). */}
+        {/* The field sits in the header, between Back and the menu — the home
+            header's geometry (WTWApp TopBar), so sweeping in over it keeps the
+            menu where it was (2026-11-07). */}
         <div className={styles.header}>
           <button type="button" className={styles.headerBtn} onClick={back} aria-label="back">
             <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />

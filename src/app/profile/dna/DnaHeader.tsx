@@ -62,7 +62,7 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
   }, [leaving]);
 
   return (
-    <header className={styles.header} data-header-row>
+    <header className={styles.header}>
       <button
         type="button"
         className={styles.backBtn}
@@ -81,7 +81,7 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
       </div>
 
       <div className={styles.headerRight}>
-        <HeaderSearch btnClass={styles.headerIconBtn} from="/profile/dna" />
+        <HeaderSearch btnClass={styles.headerIconBtn} user={user} from="/profile/dna" />
         <AppMenu
           onRecommend={go("recommendations")}
           onWatchlist={go("watchlist")}
