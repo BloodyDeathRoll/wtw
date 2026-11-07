@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { safeFrom, searchUrl } from '@/app/components/HeaderSearch'
+import { SEARCH_FROM, safeFrom, searchUrl } from '@/app/components/HeaderSearch'
 
 // Search from every header (2026-11-07): the icon beside the menu sweeps
 // /search's field into the header row and hands over to /search, whose field
@@ -35,6 +35,12 @@ describe('safeFrom', () => {
     for (const bad of ['//evil.example', '/\\evil.example', 'https://evil.example', '/login', 'intro', '', null, undefined])
       expect(safeFrom(bad)).toBeNull()
   })
+
+  it('every stage it allows is one the home deep-links (DEEP_LINK_STAGES)', () => {
+    const list = /const DEEP_LINK_STAGES[^=]*=\s*\[([^\]]*)\]/.exec(app)![1]
+    const stages = [...list.matchAll(/"([a-z]+)"/g)].map((m) => m[1])
+    for (const f of SEARCH_FROM) if (!f.startsWith('/')) expect(stages).toContain(f)
+  })
 })
 
 describe('header search', () => {
@@ -59,10 +65,11 @@ describe('header search', () => {
   })
 
   it('pushes /search once the sweep has played, with what was typed; Back during the sweep cancels it', () => {
-    expect(hs).toMatch(/setTimeout\(\(\) => \{\s*pushed\.current = true;\s*router\.push\(searchUrl\(scope, typedRef\.current, from\)\);\s*\}, SWEEP_MS\)/)
+    expect(hs).toMatch(/setTimeout\(\(\) => \{\s*setPushed\(true\);\s*router\.push\(searchUrl\(scope, typedRef\.current, from\)\);\s*\}, SWEEP_MS\)/)
     expect(hs.match(/router\.push\(/g)).toHaveLength(1)
-    expect(hs).toMatch(/if \(pushed\.current\) router\.replace\(searchUrl\(scope, v, from\)\)/)
-    expect(hs).toMatch(/function back\(\) \{\s*if \(pushed\.current\) return;\s*setBox\(null\);/)
+    expect(hs).toMatch(/if \(pushed\) router\.replace\(searchUrl\(scope, v, from\)\)/)
+    expect(hs).toMatch(/function back\(\) \{\s*if \(pushed\) return;\s*setBox\(null\);/)
+    expect(hs).toMatch(/onClick=\{back\} disabled=\{pushed\}/)
     expect(hs).not.toMatch(/router\.back\(/)
     expect(hs).toMatch(/router\.prefetch\("\/search"\)/)
     expect(hs).toMatch(/setTimeout\(\(\) => setBox\(null\), LEAVE_TIMEOUT_MS\)/)

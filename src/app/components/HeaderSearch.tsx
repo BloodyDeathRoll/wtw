@@ -66,8 +66,9 @@ export function HeaderSearch({
   const btnRef = useRef<HTMLButtonElement>(null);
   const [box, setBox] = useState<CSSProperties | null>(null);
   const [typed, setTyped] = useState("");
-  // Back during the sweep cancels the push; after it, /search is on its way.
-  const pushed = useRef(false);
+  // Back during the sweep cancels the push; after it, /search is on its way
+  // and the overlay's Back is disabled until it lands.
+  const [pushed, setPushed] = useState(false);
 
   useEffect(() => {
     router.prefetch("/search");
@@ -76,9 +77,8 @@ export function HeaderSearch({
   // then; letters after that only replace the URL (one history entry).
   useEffect(() => {
     if (!box) return;
-    pushed.current = false;
     const t = setTimeout(() => {
-      pushed.current = true;
+      setPushed(true);
       router.push(searchUrl(scope, typedRef.current, from));
     }, SWEEP_MS);
     return () => clearTimeout(t);
@@ -105,6 +105,7 @@ export function HeaderSearch({
     const row = btn.closest<HTMLElement>("[data-header-row]") ?? btn.parentElement!;
     const r = row.getBoundingClientRect();
     setTyped("");
+    setPushed(false);
     setBox({
       top: r.top,
       left: r.left,
@@ -115,13 +116,13 @@ export function HeaderSearch({
   }
   function edit(v: string) {
     setTyped(v);
-    if (pushed.current) router.replace(searchUrl(scope, v, from));
+    if (pushed) router.replace(searchUrl(scope, v, from));
   }
   // Back during the sweep cancels the push; once pushed, /search is landing
   // and will take over (its own Back returns here) — a history step back
-  // now could land past this screen.
+  // now could land past this screen, so the button is disabled meanwhile.
   function back() {
-    if (pushed.current) return;
+    if (pushed) return;
     setBox(null);
   }
 
@@ -132,7 +133,7 @@ export function HeaderSearch({
       </button>
       {box && (
         <div className={styles.overlay} style={box}>
-          <button type="button" className={btnClass} onClick={back} aria-label="back">
+          <button type="button" className={btnClass} onClick={back} disabled={pushed} aria-label="back">
             <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
           </button>
           <form className={sx.field} role="search" onSubmit={(e) => e.preventDefault()}>

@@ -1,5 +1,7 @@
 /** Hands the app's URL to the OS share sheet, falling back to the clipboard
- *  on desktop browsers that don't implement Web Share. */
+ *  on desktop browsers that don't implement Web Share.
+ *  No caller since 2026-11-07: Search took its icon in the home header
+ *  (Shahar). Kept for the day share gets a place in the menu. */
 export async function shareApp() {
   const url = window.location.origin;
   const data = {
