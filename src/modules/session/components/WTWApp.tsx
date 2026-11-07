@@ -92,7 +92,6 @@ const I = {
   chevDown: <ChevronDown size={16.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   back: <ChevronLeft size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   message: <MessageSquare size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
-  // The forward arrow, the app's one share mark (Eran, 2026-11-03).
   // Home-screen circles. Sparkles = the fingerprint's picks; bookmark matches
   // the "Add to watchlist" CTA on the cards.
   sparkle: <Sparkles size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
@@ -663,7 +662,6 @@ export default function WTWApp({
     const t = setTimeout(() => setLeaving(null), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
-
 
   async function signOut() {
     const supabase = createClient();

@@ -81,7 +81,7 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
       </div>
 
       <div className={styles.headerRight}>
-        <HeaderSearch btnClass={styles.headerIconBtn} />
+        <HeaderSearch btnClass={styles.headerIconBtn} from="/profile/dna" />
         <AppMenu
           onRecommend={go("recommendations")}
           onWatchlist={go("watchlist")}

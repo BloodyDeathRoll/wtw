@@ -43,10 +43,14 @@ const IMG = "https://image.tmdb.org/t/p/";
 export default function SearchView({ user }: { user: AppUser }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  // ?q=: letters typed into the home screen's search box before it handed
-  // over to this route (WTWApp's HomeSearch, 2026-11-07).
+  // ?q=: letters typed into a header's search field before it handed over to
+  // this route (HeaderSearch, 2026-11-07) — and still arriving, by
+  // router.replace, until this field is typed into; then this field's own
+  // text wins. The URL keeps q (nothing strips it) so that stays true.
   const params = useSearchParams();
-  const [q, setQ] = useState(() => params.get("q") ?? "");
+  const [typedHere, setTypedHere] = useState<string | null>(null);
+  const q = typedHere ?? params.get("q") ?? "";
+  const setQ = setTypedHere;
   // TMDB's last answer, and for which query (hits null = it failed).
   const [answer, setAnswer] = useState<{ q: string; hits: SearchHit[] | null }>({ q: "", hits: [] });
   // The last good list, kept on screen while the next query is in flight so it doesn't blink per letter.
@@ -127,11 +131,10 @@ export default function SearchView({ user }: { user: AppUser }) {
     void hydrateWatchlist(user.id);
   }, [user.id]);
 
-  // A reload on /search?t=… or ?p=… has no list behind it to go back to: start
-  // clean. ?q= was read once above; the URL doesn't need to keep it.
+  // A reload on /search?t=… or ?p=… has no list behind it to go back to: start clean.
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
-    if (sp.has("t") || sp.has("p") || sp.has("q")) window.history.replaceState(null, "", base);
+    if (sp.has("t") || sp.has("p")) window.history.replaceState(null, "", base);
   }, [base]);
 
   useEffect(() => {
@@ -279,9 +282,17 @@ export default function SearchView({ user }: { user: AppUser }) {
     const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
+  // Back returns to the screen the search was opened from (?from=, set by
+  // HeaderSearch): a home stage ("watchlist", "ratings"…) or a route
+  // ("/play"). Replace, not push, so the phone's own Back doesn't come
+  // through /search again.
+  const from = params.get("from");
   function back() {
     if (openKey || openPerson) window.history.back();
-    else if (window.history.length > 1) router.back();
+    else if (from) {
+      setLeaving(true);
+      router.replace(from.startsWith("/") ? from : `/?stage=${from}`);
+    } else if (window.history.length > 1) router.back();
     else leave("/");
   }
 
@@ -358,8 +369,6 @@ export default function SearchView({ user }: { user: AppUser }) {
               onFastLearning={() => leave("/play?tab=games")}
               onRatings={go("ratings")}
               onProfile={() => leave("/profile/dna")}
-              // Already here: AppMenu closes the drawer itself.
-              onSearch={() => {}}
               user={user}
               onSignOut={async () => {
                 await createClient().auth.signOut();

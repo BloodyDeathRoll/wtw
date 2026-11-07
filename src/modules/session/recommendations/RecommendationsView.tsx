@@ -687,8 +687,12 @@ export default function RecommendationsView({
           </span>
         )}
         <div className={styles.headerRight}>
-          {/* Search from here lists the saved titles first on the watchlist (2026-11-07). */}
-          <HeaderSearch btnClass={styles.headerBtn} scope={mode === "watchlist" ? "watchlist" : undefined} />
+          {/* Search travels with the app menu (both are the app's, not the
+              view's): on the watchlist it lists the saved titles first, and
+              its Back returns to this screen (2026-11-07). */}
+          {headerRight && (
+            <HeaderSearch btnClass={styles.headerBtn} scope={mode === "watchlist" ? "watchlist" : undefined} from={mode} />
+          )}
           {headerRight}
         </div>
       </div>
