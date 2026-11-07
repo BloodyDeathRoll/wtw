@@ -176,6 +176,14 @@ Found, not fixed (report only): chat-extracted signals duplicate per session (`m
 - DNA Writer reads from two tables: `messages` (user role) + `recommendation_feedback`.
 - "Skip calibration" maturity heuristic is `>= 10 total signals` — `MATURE_THRESHOLD` in `src/lib/welcome.ts`. Tunable.
 
+### 2026-11-07 — A dislike leaves people alone (`fix/dislike-leaves-people`)
+- **Rule (Eran, 2026-11-07):** "disliked has no effect on any of the people, at all." A bad film says little about the people in it; only loved and liked move a director, writer, actor or cinematographer. Genres, mood & pace and story traits still learn from a dislike.
+- **Code:** `movesPeople` in `src/modules/dna/lib/update-crew.ts`, applied at the one place every writer goes through (`applyCrewAffinityUpdate`: card ratings, chat sessions, games' signals), plus re-rates (disliked → loved counts as a first rating for the people; loved → disliked takes the loved one back out) and un-rate (clearing a dislike changes nothing).
+- **Still moves people:** the 48-hour check-in's small nudges ("Wish I hadn't" −, "Yes, glad I did" +) — their own signal, kept until Eran decides otherwise.
+- **Past dislikes:** `scripts/remove-dislikes-from-people.mts` takes them back out (exact inverse; a person known only from a dislike is dropped). Dry run 2026-11-07, 7 accounts: people below 0 went 85→0, 20→0, 362→8, 6→0, 132→5, 590→3, 108→2 (the few left are check-in nudges). **Not applied yet — run `--apply` once, right after this deploys, with Eran's OK.**
+- **Readers of a negative person score** (engine people scoring, the "Why" Crew bar): nothing depends on dislikes there; they just see fewer negatives.
+- **Checked:** `tests/unit/dislike-leaves-people.test.ts`; `rerate-replace.test.ts` updated (loved → disliked now leaves one title on the person, not two). 850 tests pass, type-check clean.
+
 ### 2026-11-06 — Seen split, slice 1: the card's two rows and un-rate (`feat/seen-split-card`)
 - **What the user sees** (mocks: `docs/prototypes/seen-split/`; decisions Eran, 2026-11-06):
   - **"Want it?"** — Add to Watchlist with a round **X** beside it, on the feed only. The X hides once the title is on your Watchlist. **The Watchlist card has no X**: "Remove from watchlist" is how a title leaves a list you made.
