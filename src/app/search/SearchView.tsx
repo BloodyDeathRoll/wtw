@@ -16,7 +16,7 @@
 // The header, list and card reuse the feed's styles (RecommendationsView.module.css)
 // so the card looks exactly like a recommendation; search.module.css holds the rest.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bookmark, ChevronLeft, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -42,22 +42,21 @@ const IMG = "https://image.tmdb.org/t/p/";
 
 export default function SearchView({
   user,
-  inPlace = false,
+  menu,
 }: {
   user: AppUser;
-  /** Opened over another screen by HeaderSearch (a pushState, not a route): Back pops back to it. */
-  inPlace?: boolean;
+  /**
+   * Opened over another screen by HeaderSearch (a pushState, not a route):
+   * that screen's own menu, shown in place of this one's, and Back pops back
+   * to it.
+   */
+  menu?: ReactNode;
 }) {
+  const inPlace = menu !== undefined;
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  // ?q=: letters typed into a header's search field before it handed over to
-  // this route (HeaderSearch, 2026-11-07) — and still arriving, by
-  // router.replace, until this field is typed into; then this field's own
-  // text wins. The URL keeps q (nothing strips it) so that stays true.
   const params = useSearchParams();
-  const [typedHere, setTypedHere] = useState<string | null>(null);
-  const q = typedHere ?? params.get("q") ?? "";
-  const setQ = setTypedHere;
+  const [q, setQ] = useState("");
   // TMDB's last answer, and for which query (hits null = it failed).
   const [answer, setAnswer] = useState<{ q: string; hits: SearchHit[] | null }>({ q: "", hits: [] });
   // The last good list, kept on screen while the next query is in flight so it doesn't blink per letter.
@@ -91,7 +90,7 @@ export default function SearchView({
   const scope: SearchScope | null = inParam === "ratings" || inParam === "watchlist" ? inParam : null;
   // Where Back returns (?from=, set by HeaderSearch; only known screens).
   const from = safeFrom(params.get("from"));
-  const base = searchUrl(scope ?? undefined, "", from ?? undefined);
+  const base = searchUrl(scope ?? undefined, from ?? undefined);
   const url = (extra: string) => `${base}${base.includes("?") ? "&" : "?"}${extra}`;
   const [mine, setMine] = useState<LocalHit[]>([]);
   useEffect(() => {
@@ -372,6 +371,7 @@ export default function SearchView({
             )}
           </form>
           <div className={rv.headerRight}>
+            {menu ?? (
             <AppMenu
               onRecommend={go("recommendations")}
               onWatchlist={go("watchlist")}
@@ -387,6 +387,7 @@ export default function SearchView({
               voice={voice}
               setVoice={chooseVoice}
             />
+            )}
           </div>
         </div>
 

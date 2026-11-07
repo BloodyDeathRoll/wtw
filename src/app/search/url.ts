@@ -15,15 +15,10 @@ export function safeFrom(v: string | null | undefined): SearchFrom | null {
 }
 
 /**
- * /search, with the screen's group first, where Back should return
- * (?from=: a home stage like "watchlist", or a route like "/play") and
- * whatever was typed so far.
+ * /search, with the screen's group first and where Back should return after
+ * a reload (?from=: a home stage like "watchlist", or a route like "/play").
  */
-export function searchUrl(scope: SearchScope | undefined, typed = "", from?: SearchFrom): string {
-  const parts = [
-    scope && `in=${scope}`,
-    from && `from=${encodeURIComponent(from)}`,
-    typed && `q=${encodeURIComponent(typed)}`,
-  ].filter(Boolean);
+export function searchUrl(scope: SearchScope | undefined, from?: SearchFrom): string {
+  const parts = [scope && `in=${scope}`, from && `from=${encodeURIComponent(from)}`].filter(Boolean);
   return parts.length ? `/search?${parts.join("&")}` : "/search";
 }

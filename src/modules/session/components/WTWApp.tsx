@@ -152,6 +152,19 @@ function TopBar({
   }, [brandOpen]);
 
 
+  const menu = (
+    <AppMenu
+      onRecommend={onRecommend}
+      onWatchlist={onWatchlist}
+      onFastLearning={onFastLearning}
+      onRatings={onRatings}
+      onProfile={onProfile}
+      user={user}
+      onSignOut={onSignOut}
+      voice={voice}
+      setVoice={setVoice}
+    />
+  );
   return (
     <>
     <div className={styles.topbar}>
@@ -215,18 +228,8 @@ function TopBar({
 
       <div className={styles.topbarRight}>
         {/* Search took the share icon's place (2026-11-07). */}
-        <HeaderSearch btnClass={styles.iconbtn} user={user} />
-        <AppMenu
-          onRecommend={onRecommend}
-          onWatchlist={onWatchlist}
-          onFastLearning={onFastLearning}
-          onRatings={onRatings}
-          onProfile={onProfile}
-          user={user}
-          onSignOut={onSignOut}
-          voice={voice}
-          setVoice={setVoice}
-        />
+        <HeaderSearch btnClass={styles.iconbtn} user={user} menu={menu} />
+        {menu}
       </div>
     </div>
 

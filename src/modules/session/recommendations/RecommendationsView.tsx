@@ -695,7 +695,13 @@ export default function RecommendationsView({
               view's): on the watchlist it lists the saved titles first, and
               its Back returns to this screen (2026-11-07). */}
           {user && (
-            <HeaderSearch btnClass={styles.headerBtn} user={user} scope={mode === "watchlist" ? "watchlist" : undefined} from={mode} />
+            <HeaderSearch
+              btnClass={styles.headerBtn}
+              user={user}
+              menu={headerRight}
+              scope={mode === "watchlist" ? "watchlist" : undefined}
+              from={mode}
+            />
           )}
           {headerRight}
         </div>

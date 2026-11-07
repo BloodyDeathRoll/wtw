@@ -255,7 +255,7 @@ export default function RatingsView({
           {/* Search travels with the app menu (both are the app's, not the
               view's): from here it lists the rated titles first, and its
               Back returns here (2026-11-07). */}
-          {user && <HeaderSearch btnClass={styles.headerBtn} user={user} scope="ratings" from="ratings" />}
+          {user && <HeaderSearch btnClass={styles.headerBtn} user={user} menu={headerRight} scope="ratings" from="ratings" />}
           {headerRight}
         </div>
       </div>
