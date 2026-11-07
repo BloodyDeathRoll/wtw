@@ -85,6 +85,9 @@ export function HeaderSearch({
   }, [box, router, scope, from]);
   // What's typed, for the timer above — it must not re-arm per letter.
   const typedRef = useRef("");
+  useEffect(() => {
+    typedRef.current = typed;
+  }, [typed]);
   // If the route never lands (offline, a server error), give the header
   // back — the push itself can't be taken back, as with the other route hops.
   useEffect(() => {
@@ -102,7 +105,6 @@ export function HeaderSearch({
     const row = btn.closest<HTMLElement>("[data-header-row]") ?? btn.parentElement!;
     const r = row.getBoundingClientRect();
     setTyped("");
-    typedRef.current = "";
     setBox({
       top: r.top,
       left: r.left,
@@ -113,12 +115,11 @@ export function HeaderSearch({
   }
   function edit(v: string) {
     setTyped(v);
-    typedRef.current = v;
     if (pushed.current) router.replace(searchUrl(scope, v, from));
   }
   // Back during the sweep cancels the push; once pushed, /search is landing
-  // and will take over (its own Back returns here) — a router.back() now
-  // could step past this screen.
+  // and will take over (its own Back returns here) — a history step back
+  // now could land past this screen.
   function back() {
     if (pushed.current) return;
     setBox(null);
