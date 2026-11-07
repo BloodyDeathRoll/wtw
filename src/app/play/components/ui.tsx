@@ -13,6 +13,7 @@ import { SCALE_LABELS, type Scale } from '../lib/scales'
 import { conf, est, type PlayState, type Title } from '../lib/brain'
 import type { SaveSource } from '../lib/watchlist'
 import type { Ctl } from './types'
+import { HeaderSearch } from '@/app/components/HeaderSearch'
 
 /**
  * The watchlist ribbon on a poster's corner (Eran picked the ribbon,
@@ -103,7 +104,7 @@ export const Icon = {
 
 /** Same key WTWApp keeps the Gemini Live voice under. */
 const VOICE_KEY = 'wtw:voice'
-const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'search', 'ratings', 'profile', 'voice']
+const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'ratings', 'profile', 'voice']
 const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile']
 
 /**
@@ -137,10 +138,12 @@ export function TopBar({ ctl }: { ctl: Ctl }) {
       ? <button className="tb-back" onClick={() => ctl.leave('/?from=play')} aria-label="Back to home"><ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" /></button>
       : null
   return (
-    <div className="apptop">
+    <div className="apptop" data-header-row>
       <div className="tb-l">{left}</div>
       <div className="brand app-brand"><Image src="/logo_vector.svg" alt="" width={56} height={56} />WTW</div>
       <div className="tb-r">
+        {/* padLeft 11: .tb-back's -5px pull puts the back button at 11px. */}
+        <HeaderSearch btnClass="tb-back" padLeft={11} from="/play" />
         <AppMenu
           onRecommend={go('recommendations')}
           onWatchlist={go('watchlist')}

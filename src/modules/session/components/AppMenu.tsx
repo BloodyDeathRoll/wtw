@@ -12,7 +12,6 @@
 // (guarded by tests/unit/drawer-containing-block.test.ts).
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,7 +20,6 @@ import {
   Play,
   X,
 } from "lucide-react";
-import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import type { AppUser } from "../types";
 import styles from "./WTWApp.module.css";
 
@@ -57,7 +55,8 @@ export { VOICES };
 export type { Voice };
 
 /** Menu entries a screen can leave out (sign out is always there). */
-export type MenuItem = "recommend" | "watchlist" | "play" | "search" | "ratings" | "profile" | "voice";
+// Search left the menu (2026-11-07): it's the icon beside the hamburger in every header (HeaderSearch).
+export type MenuItem = "recommend" | "watchlist" | "play" | "ratings" | "profile" | "voice";
 
 // ─────────────────────────────────────────────────────────────
 // AppMenu — the hamburger and its drawer.
@@ -78,7 +77,6 @@ export function AppMenu({
   onFastLearning,
   onRatings,
   onProfile,
-  onSearch,
   user,
   onSignOut,
   voice,
@@ -90,8 +88,6 @@ export function AppMenu({
   onFastLearning: () => void;
   onRatings: () => void;
   onProfile: () => void;
-  /** Menu → Search (its own route, /search). Defaults to going there. */
-  onSearch?: () => void;
   user: AppUser;
   onSignOut: () => void;
   voice: Voice;
@@ -100,30 +96,7 @@ export function AppMenu({
   hide?: readonly MenuItem[];
 }) {
   const shown = (item: MenuItem) => !hide.includes(item);
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  // Search is its own route, rendered on the server (sign-in check first), so
-  // the tap would otherwise leave the old screen sitting still for a second or
-  // two. Cover it with the Loading screen at once, as the Taste DNA page does
-  // when you leave it (Eran, 2026-11-04).
-  const [goingToSearch, setGoingToSearch] = useState(false);
-  const search =
-    onSearch ??
-    (() => {
-      setGoingToSearch(true);
-      router.push("/search");
-    });
-  // If the navigation never lands (offline, a server error), give the screen back.
-  useEffect(() => {
-    if (!goingToSearch) return;
-    const t = setTimeout(() => setGoingToSearch(false), LEAVE_TIMEOUT_MS);
-    return () => clearTimeout(t);
-  }, [goingToSearch]);
-  // Fetch Search ahead while the menu is open, so the tap often lands at once.
-  const searchShown = shown("search") && !onSearch;
-  useEffect(() => {
-    if (menuOpen && searchShown) router.prefetch("/search");
-  }, [menuOpen, searchShown, router]);
   const [menuView, setMenuView] = useState<"root" | "voice">("root");
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
@@ -306,20 +279,6 @@ export function AppMenu({
                   <span className={styles.userMenuTrail}>{I.chevRight}</span>
                 </button>
               )}
-              {shown("search") && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={styles.userMenuItem}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    search();
-                  }}
-                >
-                  <span>Search</span>
-                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
-                </button>
-              )}
               {shown("ratings") && (
                 <button
                   type="button"
@@ -425,7 +384,6 @@ export function AppMenu({
         </div>
       </div>
     )}
-      {goingToSearch && <RouteLoading label="Loading" overlay />}
     </>
   );
 }

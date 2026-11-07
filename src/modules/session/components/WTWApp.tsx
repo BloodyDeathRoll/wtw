@@ -47,10 +47,9 @@ import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from "../voice/intro-copy"
 import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
-import { shareApp } from "@/lib/share";
-import ShareIcon from "@/app/components/ShareIcon";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
 import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
@@ -93,8 +92,6 @@ const I = {
   chevDown: <ChevronDown size={16.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   back: <ChevronLeft size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   message: <MessageSquare size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
-  // The forward arrow, the app's one share mark (Eran, 2026-11-03).
-  share: <ShareIcon size={30} strokeWidth={ICON_STROKE} />,
   // Home-screen circles. Sparkles = the fingerprint's picks; bookmark matches
   // the "Add to watchlist" CTA on the cards.
   sparkle: <Sparkles size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
@@ -157,7 +154,7 @@ function TopBar({
 
   return (
     <>
-    <div className={styles.topbar}>
+    <div className={styles.topbar} data-header-row>
       <div className={styles.topbarSlot}>
         {hasConversation ? (
           <button
@@ -217,14 +214,9 @@ function TopBar({
       </div>
 
       <div className={styles.topbarRight}>
-        <button
-          className={styles.iconbtn}
-          onClick={shareApp}
-          aria-label="share WTW"
-          type="button"
-        >
-          {I.share}
-        </button>
+        {/* Search took the share icon's place (2026-11-07). padLeft 11: the
+            left slot's -5px pull puts the back button at 11px, not 16. */}
+        <HeaderSearch btnClass={styles.iconbtn} padLeft={11} />
         <AppMenu
           onRecommend={onRecommend}
           onWatchlist={onWatchlist}
