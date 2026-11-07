@@ -130,10 +130,17 @@ export function avoidSummary(dna: DNASchema): string {
 // ─────────────────────────────────────────────
 
 /** Jev's "would dislike" probability at or above this drops the candidate.
- *  From `scripts/jev-threshold-probe.mts` (8 titles, two runs on
- *  2026-11-05): fits 0.04–0.13, avoided 0.70–0.97; hard avoids 0.95+, a
- *  soft "wants less of" title sits at the line. Re-run it before changing. */
-export const JEV_DISLIKE_THRESHOLD = 0.7
+ *
+ *  0.8 since 2026-11-07, from real ratings: Jev was asked step 4's exact
+ *  question about 193 titles Eran, Shahar and Alon had rated but never
+ *  rated in the app. At 0.7 it would drop 45 of 84 loved titles to catch
+ *  31 of 41 disliked; at 0.8, 24 loved for 23 disliked; at 0.9, 4 loved
+ *  for 11 disliked. 0.8 is a first step; see docs/INTEGRATION.md.
+ *
+ *  The first value, 0.7, came from `scripts/jev-threshold-probe.mts` (one
+ *  made-up viewer, 8 titles, two runs on 2026-11-05): fits 0.04–0.13,
+ *  avoided 0.70–0.97. */
+export const JEV_DISLIKE_THRESHOLD = 0.8
 
 /**
  * Removes the items Jev is sure the viewer would dislike; order is untouched
