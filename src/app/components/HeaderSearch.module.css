@@ -1,21 +1,11 @@
-/* Search from any header (HeaderSearch.tsx, 2026-11-07). The field sweeps in
-   from the right over the header row, up to the menu, which stays. Fixed and
-   measured at open (the row's box), so it works in every header without any
-   of them becoming positioned — the app menu's drawer needs them not to be
-   (tests/unit/drawer-containing-block.test.ts). */
+/* Search from any header (HeaderSearch.tsx, 2026-11-07). The search screen
+   sweeps in from the right over the host screen, which stays mounted under
+   it. Below RouteLoading's overlay (1000), which a menu tap from here shows. */
 .overlay {
   position: fixed;
-  z-index: 30;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #000;
-  animation: sweepIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.overlay form {
-  flex: 1;
-  min-width: 0;
+  inset: 0;
+  z-index: 900;
+  animation: sweepIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @keyframes sweepIn {
   from {

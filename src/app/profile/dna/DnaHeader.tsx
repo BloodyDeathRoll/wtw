@@ -61,8 +61,28 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
     return () => clearTimeout(t);
   }, [leaving]);
 
+  const menu = (
+    <AppMenu
+      onRecommend={go("recommendations")}
+      onWatchlist={go("watchlist")}
+      onFastLearning={() => leave("/play?tab=games")}
+      onRatings={go("ratings")}
+      // Already on this page. AppMenu closes the drawer itself, so there is
+      // nothing to do — a router.refresh() here would refetch the whole
+      // server component for no change.
+      onProfile={() => {}}
+      user={user}
+      onSignOut={async () => {
+        await createClient().auth.signOut();
+        router.replace("/login");
+        router.refresh();
+      }}
+      voice={voice}
+      setVoice={chooseVoice}
+    />
+  );
   return (
-    <header className={styles.header} data-header-row>
+    <header className={styles.header}>
       <button
         type="button"
         className={styles.backBtn}
@@ -81,25 +101,8 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
       </div>
 
       <div className={styles.headerRight}>
-        <HeaderSearch btnClass={styles.headerIconBtn} from="/profile/dna" />
-        <AppMenu
-          onRecommend={go("recommendations")}
-          onWatchlist={go("watchlist")}
-          onFastLearning={() => leave("/play?tab=games")}
-          onRatings={go("ratings")}
-          // Already on this page. AppMenu closes the drawer itself, so there is
-          // nothing to do — a router.refresh() here would refetch the whole
-          // server component for no change.
-          onProfile={() => {}}
-          user={user}
-          onSignOut={async () => {
-            await createClient().auth.signOut();
-            router.replace("/login");
-            router.refresh();
-          }}
-          voice={voice}
-          setVoice={chooseVoice}
-        />
+        <HeaderSearch btnClass={styles.headerIconBtn} user={user} menu={menu} from="/profile/dna" />
+        {menu}
       </div>
       {leaving && <RouteLoading label="Loading" overlay />}
     </header>

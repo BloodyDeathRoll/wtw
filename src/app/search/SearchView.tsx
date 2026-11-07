@@ -16,7 +16,7 @@
 // The header, list and card reuse the feed's styles (RecommendationsView.module.css)
 // so the card looks exactly like a recommendation; search.module.css holds the rest.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bookmark, ChevronLeft, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -28,7 +28,7 @@ import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
 import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
-import { safeFrom, searchUrl, type SearchScope } from "@/app/components/HeaderSearch";
+import { safeFrom, searchUrl, type SearchScope } from "@/app/search/url";
 import type { PersonPage, PersonSearchHit, PersonTitle, SearchHit, TitleSearchHit } from "@/lib/tmdb";
 import type { Recommendation } from "@/types/recommendation";
 import rv from "@/modules/session/recommendations/RecommendationsView.module.css";
@@ -40,17 +40,23 @@ const VOICE_KEY = "wtw:voice";
 const PAUSE_MS = 250;
 const IMG = "https://image.tmdb.org/t/p/";
 
-export default function SearchView({ user }: { user: AppUser }) {
+export default function SearchView({
+  user,
+  menu,
+}: {
+  user: AppUser;
+  /**
+   * Opened over another screen by HeaderSearch (a pushState, not a route):
+   * that screen's own menu, shown in place of this one's, and Back pops back
+   * to it.
+   */
+  menu?: ReactNode;
+}) {
+  const inPlace = menu !== undefined;
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  // ?q=: letters typed into a header's search field before it handed over to
-  // this route (HeaderSearch, 2026-11-07) — and still arriving, by
-  // router.replace, until this field is typed into; then this field's own
-  // text wins. The URL keeps q (nothing strips it) so that stays true.
   const params = useSearchParams();
-  const [typedHere, setTypedHere] = useState<string | null>(null);
-  const q = typedHere ?? params.get("q") ?? "";
-  const setQ = setTypedHere;
+  const [q, setQ] = useState("");
   // TMDB's last answer, and for which query (hits null = it failed).
   const [answer, setAnswer] = useState<{ q: string; hits: SearchHit[] | null }>({ q: "", hits: [] });
   // The last good list, kept on screen while the next query is in flight so it doesn't blink per letter.
@@ -84,7 +90,7 @@ export default function SearchView({ user }: { user: AppUser }) {
   const scope: SearchScope | null = inParam === "ratings" || inParam === "watchlist" ? inParam : null;
   // Where Back returns (?from=, set by HeaderSearch; only known screens).
   const from = safeFrom(params.get("from"));
-  const base = searchUrl(scope ?? undefined, "", from ?? undefined);
+  const base = searchUrl(scope ?? undefined, from ?? undefined);
   const url = (extra: string) => `${base}${base.includes("?") ? "&" : "?"}${extra}`;
   const [mine, setMine] = useState<LocalHit[]>([]);
   useEffect(() => {
@@ -284,11 +290,13 @@ export default function SearchView({ user }: { user: AppUser }) {
     const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
-  // Back returns to the screen the search was opened from: a home stage
-  // ("watchlist", "ratings"…) or a route ("/play"). Replace, not push, so
-  // the phone's own Back doesn't come through /search again.
+  // Back returns to the screen the search was opened from. Opened in place,
+  // that screen is still mounted under this one: pop to it. After a reload
+  // it's gone: a home stage ("watchlist", "ratings"…) or a route ("/play")
+  // by replace, not push, so the phone's own Back doesn't come through
+  // /search again.
   function back() {
-    if (openKey || openPerson) window.history.back();
+    if (openKey || openPerson || inPlace) window.history.back();
     else if (from) {
       setLeaving(true);
       router.replace(from.startsWith("/") ? from : `/?stage=${encodeURIComponent(from)}`);
@@ -317,9 +325,9 @@ export default function SearchView({ user }: { user: AppUser }) {
   return (
     <div className={styles.shell}>
       <div className={rv.view}>
-        {/* The field sits in the header, between Back and the menu — the same
-            geometry as the home header with its search swept in (WTWApp
-            TopBar), so arriving from there doesn't move a pixel (2026-11-07). */}
+        {/* The field sits in the header, between Back and the menu — the home
+            header's geometry (WTWApp TopBar), so sweeping in over it keeps the
+            menu where it was (2026-11-07). */}
         <div className={styles.header}>
           <button type="button" className={styles.headerBtn} onClick={back} aria-label="back">
             <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
@@ -363,21 +371,23 @@ export default function SearchView({ user }: { user: AppUser }) {
             )}
           </form>
           <div className={rv.headerRight}>
-            <AppMenu
-              onRecommend={go("recommendations")}
-              onWatchlist={go("watchlist")}
-              onFastLearning={() => leave("/play?tab=games")}
-              onRatings={go("ratings")}
-              onProfile={() => leave("/profile/dna")}
-              user={user}
-              onSignOut={async () => {
-                await createClient().auth.signOut();
-                router.replace("/login");
-                router.refresh();
-              }}
-              voice={voice}
-              setVoice={chooseVoice}
-            />
+            {menu ?? (
+              <AppMenu
+                onRecommend={go("recommendations")}
+                onWatchlist={go("watchlist")}
+                onFastLearning={() => leave("/play?tab=games")}
+                onRatings={go("ratings")}
+                onProfile={() => leave("/profile/dna")}
+                user={user}
+                onSignOut={async () => {
+                  await createClient().auth.signOut();
+                  router.replace("/login");
+                  router.refresh();
+                }}
+                voice={voice}
+                setVoice={chooseVoice}
+              />
+            )}
           </div>
         </div>
 

@@ -61,6 +61,7 @@ import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import type { ContentType } from "@/lib/content-type";
+import type { AppUser } from "@/modules/session/types";
 
 type Mode = "recommendations" | "learning" | "watchlist";
 
@@ -99,6 +100,8 @@ interface Props {
    * (decided 2026-08-29).
    */
   headerRight?: ReactNode;
+  /** For the header's search; without it (the component tests) there is none. */
+  user?: AppUser;
   /**
    * The player skipped the taste games part-way: every NUDGE_EVERY cards the
    * list shows a card asking them to finish (2026-10-20). Tapping it opens the games.
@@ -239,6 +242,7 @@ export default function RecommendationsView({
   onFindMore,
   onBrowse,
   headerRight,
+  user,
   onCalibrate,
   building = false,
 }: Props) {
@@ -670,7 +674,7 @@ export default function RecommendationsView({
 
   return (
     <div className={styles.view}>
-      <div className={styles.header} data-header-row>
+      <div className={styles.header}>
         <button
           type="button"
           className={styles.headerBtn}
@@ -690,8 +694,14 @@ export default function RecommendationsView({
           {/* Search travels with the app menu (both are the app's, not the
               view's): on the watchlist it lists the saved titles first, and
               its Back returns to this screen (2026-11-07). */}
-          {headerRight && (
-            <HeaderSearch btnClass={styles.headerBtn} scope={mode === "watchlist" ? "watchlist" : undefined} from={mode} />
+          {user && (
+            <HeaderSearch
+              btnClass={styles.headerBtn}
+              user={user}
+              menu={headerRight}
+              scope={mode === "watchlist" ? "watchlist" : undefined}
+              from={mode}
+            />
           )}
           {headerRight}
         </div>
