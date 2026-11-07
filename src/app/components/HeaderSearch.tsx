@@ -20,6 +20,17 @@ import styles from "./HeaderSearch.module.css";
 
 export type SearchScope = "ratings" | "watchlist";
 
+/**
+ * Where /search's Back may return (?from=): the home stages WTWApp deep-links
+ * (its DEEP_LINK_STAGES) and the routes with a header search. Anything else
+ * — including a crafted "//host" — is ignored and Back goes home.
+ */
+export const SEARCH_FROM = ["recommendations", "watchlist", "learning", "ratings", "/play", "/profile/dna"] as const;
+export type SearchFrom = (typeof SEARCH_FROM)[number];
+export function safeFrom(v: string | null | undefined): SearchFrom | null {
+  return (SEARCH_FROM as readonly string[]).includes(v ?? "") ? (v as SearchFrom) : null;
+}
+
 /** How long the sweep plays before /search is pushed (HeaderSearch.module.css). */
 export const SWEEP_MS = 280;
 
@@ -28,7 +39,7 @@ export const SWEEP_MS = 280;
  * (?from=: a home stage like "watchlist", or a route like "/play") and
  * whatever was typed so far.
  */
-export function searchUrl(scope: SearchScope | undefined, typed = "", from?: string): string {
+export function searchUrl(scope: SearchScope | undefined, typed = "", from?: SearchFrom): string {
   const parts = [
     scope && `in=${scope}`,
     from && `from=${encodeURIComponent(from)}`,
@@ -49,7 +60,7 @@ export function HeaderSearch({
   /** Where the host's back button starts, when it isn't the row's own padding. */
   padLeft?: number;
   /** Where /search's Back returns: a home stage ("watchlist") or a route ("/play"); the home when unset. */
-  from?: string;
+  from?: SearchFrom;
 }) {
   const router = useRouter();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -105,9 +116,12 @@ export function HeaderSearch({
     typedRef.current = v;
     if (pushed.current) router.replace(searchUrl(scope, v, from));
   }
+  // Back during the sweep cancels the push; once pushed, /search is landing
+  // and will take over (its own Back returns here) — a router.back() now
+  // could step past this screen.
   function back() {
+    if (pushed.current) return;
     setBox(null);
-    if (pushed.current) router.back();
   }
 
   return (

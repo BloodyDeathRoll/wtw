@@ -28,7 +28,7 @@ import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
 import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
-import { searchUrl, type SearchScope } from "@/app/components/HeaderSearch";
+import { safeFrom, searchUrl, type SearchScope } from "@/app/components/HeaderSearch";
 import type { PersonPage, PersonSearchHit, PersonTitle, SearchHit, TitleSearchHit } from "@/lib/tmdb";
 import type { Recommendation } from "@/types/recommendation";
 import rv from "@/modules/session/recommendations/RecommendationsView.module.css";
@@ -82,8 +82,10 @@ export default function SearchView({ user }: { user: AppUser }) {
   // listed above the TMDB results, which then leave them out (2026-11-07).
   const inParam = params.get("in");
   const scope: SearchScope | null = inParam === "ratings" || inParam === "watchlist" ? inParam : null;
-  const base = searchUrl(scope ?? undefined);
-  const url = (extra: string) => `${base}${scope ? "&" : "?"}${extra}`;
+  // Where Back returns (?from=, set by HeaderSearch; only known screens).
+  const from = safeFrom(params.get("from"));
+  const base = searchUrl(scope ?? undefined, "", from ?? undefined);
+  const url = (extra: string) => `${base}${base.includes("?") ? "&" : "?"}${extra}`;
   const [mine, setMine] = useState<LocalHit[]>([]);
   useEffect(() => {
     if (!scope) return;
@@ -282,16 +284,14 @@ export default function SearchView({ user }: { user: AppUser }) {
     const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
-  // Back returns to the screen the search was opened from (?from=, set by
-  // HeaderSearch): a home stage ("watchlist", "ratings"…) or a route
-  // ("/play"). Replace, not push, so the phone's own Back doesn't come
-  // through /search again.
-  const from = params.get("from");
+  // Back returns to the screen the search was opened from: a home stage
+  // ("watchlist", "ratings"…) or a route ("/play"). Replace, not push, so
+  // the phone's own Back doesn't come through /search again.
   function back() {
     if (openKey || openPerson) window.history.back();
     else if (from) {
       setLeaving(true);
-      router.replace(from.startsWith("/") ? from : `/?stage=${from}`);
+      router.replace(from.startsWith("/") ? from : `/?stage=${encodeURIComponent(from)}`);
     } else if (window.history.length > 1) router.back();
     else leave("/");
   }

@@ -49,8 +49,8 @@ import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
-import styles from "./WTWApp.module.css";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
+import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
 // Modality-agnostic — every assistant message counts (voice OR text).
