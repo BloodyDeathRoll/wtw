@@ -40,11 +40,12 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
 - **Two places hold the plan:**
   - This file is the **spec**: what to build and how.
   - **GitHub Issues** hold the **status**: one issue per work package (WP), with the WP id in the title, e.g. `[P1-E3] Formula v2 in step 2`. Don't tick boxes in this file.
-- **Claiming a WP:**
-  1. `gh issue list --label phase-1 --state open`
-  2. Pick an issue that is unassigned and whose `Deps` are all closed.
-  3. Assign yourself: `gh issue edit <n> --add-assignee @me`.
-  4. Branch off `main`, named after the WP, e.g. `feat/p1-e3-formula-v2` (see `GITGUIDE.md`).
+- **Your tasks are already assigned** (Eran, 2026-11-10). See §3a "Who does what". To pick the next one:
+  1. Find your list, **in order**, in §3a. The same list is on GitHub: `gh issue list --assignee @me --state open`.
+  2. Take the first task whose "Depends on" issues are all closed. If it is blocked, take the next one and say so on the blocked issue.
+  3. Move its card to "In progress" on the WTW v2 board, and branch off `main`, named after the WP, e.g. `feat/p1-e3-formula-v2` (see `GITGUIDE.md`).
+  4. Work phase by phase. The one planned exception is track U's design and card work, which starts during phase 1, switched off for users (§2).
+  5. Reassigning a task is fine. Tell the others and change the assignee on the issue.
 - **One WP is one branch and one PR.** Split a PR that grows past roughly 600 changed lines.
   - The PR body says `Closes #<n>`.
   - If the WP changes ranking, the PR body also gives the harness numbers (P1-D5).
@@ -102,7 +103,7 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
 
 > **In plain words:** three tracks of work, each with its own files, so two people never edit the same file: the **engine** (how titles are scored), **data & model** (scoring the catalogue, building the taste model, the test tool, cutting the chat off from the profile, fixing rules) and the **user front** (design, onboarding screens, the Taste DNA page). Take a track, not a single task. The three are roughly even: about 10–13 days each.
 
-Work splits into three lanes by file set, so two people never edit the same files. Assign people to lanes, not to WPs.
+Work splits into three lanes by file set, so two people never edit the same files. Who does what is in §3a; it follows the lanes, with two small swaps (P1-E2 to Alon early, P1-E7 to Shahar).
 
 | Lane | Files it owns during phases 1–2 | WPs, in order | Effort* |
 |---|---|---|---|
@@ -131,6 +132,31 @@ week 4:  P3-G ── soft launch
 Phase 3 (chat) goes to whichever of lanes E or D frees up first after P1-G. It is session code, so it fits A1's owner. It owns `src/app/api/conversation/**`, which C1 (lane D) has already emptied of DNA writes.
 
 **Why the split looks like this** (Eran, 2026-11-09): C1 and C2 moved from U to D. They are pure engineering, they touch A1's session code, and they are needed before the phase 1 gate, so they shouldn't wait behind design rounds. Lane U keeps the design and UI work. E and D carry the critical path; U has slack until P1-G.
+
+### 3a. Who does what (Eran, 2026-11-10)
+
+The issues are assigned to match this. Shahar = `BloodyDeathRoll` (A1), Alon = `booster212` (A2), Eran = `eran-manor` (A3).
+
+| | Phase 1 — in this order | Phase 2 | Phase 3 |
+|---|---|---|---|
+| **Shahar** (~22 days) | #227 P1-D1 scales setup → #230 P1-D4 taste model → #235 P1-C1 chat cut-off → #228 P1-D2 catalogue scoring (runs at night) → #236 P1-C2 rules fix → #238 P1-D5 test tool → #239 P1-E7 Jev keep/fix/off | #248 P2-U7 reset tool; reviews #244 (the ratings path) | All of it: #251–#255, and the gate #256 |
+| **Alon** (~16 days) | #225 P1-E1 crowd fix → #226 P1-E2 Jev input bugs → #231 P1-E3 new formula → #232 P1-E4 downstream → #233 P1-E5 "Why this?" → #234 P1-E6 step 1 by taste → #229 P1-D3 nightly scales → **drives #240 P1-G** (switch the formula on) | #246 P2-U5 first feed | — |
+| **Eran** | #237 P1-C3 rules dropdown | #241 P2-U0 design → #242 P2-U1 card set → #243 P2-U2 genre screen → #244 P2-U3 cards → #245 P2-U4 this-or-that → #247 P2-U6 routing → #249 P2-U8 Taste DNA → **drives #250 P2-G** | — |
+
+**Why:**
+- **Each person gets their own module where possible:** the chat and session code is A1, Shahar's; the engine is A2, Alon's.
+- **Shahar takes the larger share and the precision work:** the taste model, and the test tool that referees everyone's numbers. Jev is his too: he built it.
+- **Alon is never idle.** His formula (#231) waits for #227 and #230, so his first days go to #225 and #226. Agree `trainTasteModel`'s signature with Shahar on day 1, so #231 can be built against it before #230 lands.
+
+**Reviews on two-domain tasks:**
+- Alon reviews the database part of #227.
+- Eran reviews the DNA files in #235 and #255.
+- Shahar reviews the ratings path in #244.
+
+**Gates:**
+- #240: Alon drives it, Shahar supplies the test-tool numbers.
+- #250: Eran drives it, all three test.
+- #256: Shahar.
 
 ---
 
