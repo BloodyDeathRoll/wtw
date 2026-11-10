@@ -23,7 +23,7 @@ The numbers and methods behind every decision are in `docs/plan/EVIDENCE.md`.
 
 Phases are about what *reaches users*. Work on phase 2 screens starts during phase 1, behind an on/off switch.
 
-**How we work without stepping on each other.** Three tracks, each with its own files and about the same amount of work: the engine; data & model (which also cuts the chat off from the profile and fixes rules); and the user front, which is Eran's: design, onboarding screens, the Taste DNA page. Every task is a GitHub issue. You claim one, build it on its own branch, and open a PR. Anything that changes recommendations stays switched off until a test tool shows it beats today on our own answers.
+**How we work without stepping on each other.** Three tracks, each with its own files and about the same amount of work: the engine; data & model (which also cuts the chat off from the profile and fixes rules); and the user front, which is Eran's: design, onboarding screens, the Taste DNA page. Every task is a GitHub issue, and they all sit on one board: [WTW v2](https://github.com/users/BloodyDeathRoll/projects/1) (Todo / In Progress / Done). You claim one, build it on its own branch, and open a PR. Anything that changes recommendations stays switched off until a test tool shows it beats today on our own answers.
 
 **Still undecided:**
 - how fine the genres should be (T2, being tested now);
@@ -40,10 +40,11 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
 - **Two places hold the plan:**
   - This file is the **spec**: what to build and how.
   - **GitHub Issues** hold the **status**: one issue per work package (WP), with the WP id in the title, e.g. `[P1-E3] Formula v2 in step 2`. Don't tick boxes in this file.
+  - **The board** shows all of it at a glance: **WTW v2**, https://github.com/users/BloodyDeathRoll/projects/1 (columns Todo / In Progress / Done). With `gh` (needs the `project` scope: `gh auth refresh -s project`): `gh project item-list 1 --owner BloodyDeathRoll`.
 - **Your tasks are already assigned** (Eran, 2026-11-10). See §3a "Who does what". To pick the next one:
   1. Find your list, **in order**, in §3a. The same list is on GitHub: `gh issue list --assignee @me --state open`.
   2. Take the first task whose "Depends on" issues are all closed. If it is blocked, take the next one and say so on the blocked issue.
-  3. Move its card to "In progress" on the WTW v2 board, and branch off `main`, named after the WP, e.g. `feat/p1-e3-formula-v2` (see `GITGUIDE.md`).
+  3. Move its card to "In Progress" on the [WTW v2 board](https://github.com/users/BloodyDeathRoll/projects/1), and branch off `main`, named after the WP, e.g. `feat/p1-e3-formula-v2` (see `GITGUIDE.md`).
   4. Work phase by phase. The one planned exception is track U's design and card work, which starts during phase 1, switched off for users (§2).
   5. Reassigning a task is fine. Tell the others and change the assignee on the issue.
 - **One WP is one branch and one PR.** Split a PR that grows past roughly 600 changed lines.
