@@ -59,6 +59,7 @@ export function contributions(w: number[], x: number[]): number[] {
  * Only `duel` events count (season duels and onboarding picks), as PLAN
  * P1-D4 specifies; knockout, showdown and mind reader also record a
  * `chosen` but are played under their own rules, so they are left out.
+ * A pair played twice counts twice: a repeated choice is stronger evidence.
  */
 export interface DuelPick { a: string; b: string; chosen: string }
 
@@ -79,6 +80,7 @@ export function buildTraining(signals: DNASignal[], picks: DuelPick[], vecs: Map
   }
   const pairs: TastePair[] = []
   for (const p of picks) {
+    if (p.a === p.b) continue
     const other = p.chosen === p.a ? p.b : p.chosen === p.b ? p.a : null
     const chosen = vecs.get(p.chosen)
     const otherVec = other ? vecs.get(other) : undefined

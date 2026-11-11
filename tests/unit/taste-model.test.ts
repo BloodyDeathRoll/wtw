@@ -91,6 +91,7 @@ describe('buildTraining', () => {
       { a: 'movie:1', b: 'movie:2', chosen: 'movie:2' },
       { a: 'movie:1', b: 'movie:9', chosen: 'movie:1' },
       { a: 'movie:1', b: 'movie:2', chosen: 'movie:3' },
+      { a: 'movie:1', b: 'movie:1', chosen: 'movie:1' },
     ], vecs, now)
     expect(pairs).toEqual([{ chosen: vec(2), other: vec(1) }])
   })
