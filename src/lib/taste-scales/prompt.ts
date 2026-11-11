@@ -72,6 +72,18 @@ export function titleLine(c: PromptTitle, n: number): string {
    Plot: ${plot}`
 }
 
+/** The whole request for one batch: a scale guide (SCALE_GUIDE or CATALOGUE_SCALE_GUIDE) and the numbered titles. */
+export function batchPrompt(guide: string, titles: PromptTitle[]): string {
+  return `${guide}
+
+"Check genres" uses these ids: thriller = thriller or mystery, war = war or history, horror, romance, action. Confirm one only if it is truly a main genre of the title, not a side element.
+
+Titles:
+${titles.map((c, i) => titleLine(c, i + 1)).join('\n')}
+
+Return one entry per title, with n matching its number.`
+}
+
 /**
  * A near-miss (a 6, a 2.5, a genre id outside the list) shouldn't waste the
  * call: clamp and round the numbers, drop unknown genres, parse again.

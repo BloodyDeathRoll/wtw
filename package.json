@@ -25,6 +25,7 @@
     "record-intro": "node --env-file=.env.local --import tsx scripts/record-intro.mts",
     "build-play-titles": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-play-titles.mts",
     "derive-scale-norms": "node --import tsx scripts/derive-scale-norms.mts",
+    "score-catalog-scales": "node --env-file=.env.local --conditions=react-server --import tsx scripts/score-catalog-scales.mts",
     "strip-chat-from-dna": "node --env-file=.env.local --conditions=react-server --import tsx scripts/strip-chat-from-dna.mts",
     "build-six-chains": "node --env-file=.env.local --import tsx scripts/build-six-chains.mts",
     "build-cast-call": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-cast-call.mts",
