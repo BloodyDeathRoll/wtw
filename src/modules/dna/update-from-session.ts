@@ -40,15 +40,17 @@ export async function updateSchemaFromSession(
   const sigKey = (s: { type: DNASignal['type']; tmdb_id: string }) => titleKey(s.type, s.tmdb_id)
   const existingKeys = new Set(dna.signals.map(sigKey))
   const freshSignals: DNASignal[] = []
+  let chatSignals = 0
   for (const s of summary.new_signals) {
     // Titles named in chat never enter the fingerprint (DEC-5, PLAN P1-C1).
-    if (s.source.startsWith('session_')) continue
+    if (s.source.startsWith('session_')) { chatSignals++; continue }
     const k = sigKey(s)
     if (existingKeys.has(k)) continue
     existingKeys.add(k)
     freshSignals.push(s)
   }
   dna.signals.push(...freshSignals)
+  if (chatSignals) console.log(`[update-from-session] ignored ${chatSignals} chat-named title(s) (DEC-5)`)
 
   // 2. Batch-fetch title metadata for crew + visceral + narrative updates
   const tmdbIds = [...new Set(freshSignals.map(s => s.tmdb_id))]

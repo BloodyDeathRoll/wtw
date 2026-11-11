@@ -3,7 +3,9 @@
  * docs/plan/PLAN.md P1-C1). Pure; scripts/strip-chat-from-dna.mts does the
  * reads, the snapshot and the write.
  *
- *   - signals from chat (`session_*` sources) are dropped;
+ *   - signals from chat (`session_*` sources) are dropped; card ratings of
+ *     those titles, which the fold skipped because the chat signal was
+ *     there, come in as `rated` (the script folds them);
  *   - rules, soft preferences and "tonight" modifiers are all removed. Rules
  *     typed on the Taste DNA page can't be told apart from chat-made ones, so
  *     they go too and are reported, for the person to re-add (P1-C3);
@@ -46,8 +48,12 @@ export interface PlayReapply {
 
 const VALID_REACTIONS = new Set(['loved', 'liked', 'disliked'])
 
-/** `titles` must hold every kept signal's title, keyed by `type:tmdb_id` (fetchTitleCrew). */
-export function stripChat(dna: DNASchema, titles: Map<string, TitleRow>, play: PlayReapply | null): StripReport {
+/**
+ * `titles` must hold every kept and `rated` signal's title, keyed by
+ * `type:tmdb_id` (fetchTitleCrew). `rated`: card ratings to add after the chat
+ * signals are gone (foldRatedHistoryIntoSummary on the stripped signals).
+ */
+export function stripChat(dna: DNASchema, titles: Map<string, TitleRow>, play: PlayReapply | null, rated: DNASignal[] = []): StripReport {
   const playRules = new Set(readMarker(dna)?.rules ?? [])
   const logic = dna.contextual_logic
   const report: StripReport = {
@@ -65,7 +71,7 @@ export function stripChat(dna: DNASchema, titles: Map<string, TitleRow>, play: P
   // Signals: drop chat-named titles; one per title, first wins (as the merge does).
   const seen = new Set<string>()
   const kept: DNASignal[] = []
-  for (const s of dna.signals) {
+  for (const s of [...dna.signals, ...rated]) {
     const k = titleKey(s.type, s.tmdb_id)
     if (s.source.startsWith('session_')) { report.chatSignals.push(k); continue }
     if (seen.has(k)) continue

@@ -45,6 +45,12 @@ describe('stripChat', () => {
     expect(dna.metadata.taste_version).toBe(v + 1)
   })
 
+  it('adds the card rating of a title that only a chat signal had named', () => {
+    const dna = chatty()
+    stripChat(dna, noTitles, null, [sig('2', 'recommendation_accepted')])
+    expect(dna.signals.map(s => `${s.tmdb_id}/${s.source}`)).toEqual(['1/onboarding', '3/recommendation_accepted', '2/recommendation_accepted'])
+  })
+
   it('puts the games\' "Never" rules back from the play state', () => {
     const dna = chatty()
     const play: PlayReapply = {
