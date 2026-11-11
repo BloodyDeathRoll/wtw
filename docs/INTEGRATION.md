@@ -10,7 +10,7 @@ The team approved the v2 plan: the new formula, the scales on every title, the n
 
 ### v2 plan
 
-- (nothing landed yet)
+- **P1-D1 scale module + schema (#227, Shahar).** `src/lib/taste-scales/`: the shared AI prompt (`prompt.ts`, now imported by `build-play-titles.mts`, plus `audience` for the catalogue), `normalise.ts` with frozen norms from the 980 game titles (`norms.json`, written by `npm run derive-scale-norms`: 0 mismatches, 2 overrides), `features.ts` (`tasteFeatures` → 25 floats, version 1). Migration `0029` is live: `titles.taste_raw/taste_scales/game_genres/taste_vec/taste_version`, no index (exact scan of 35k × 25 ≈ 17 ms). `audience` has no norms until D2 scores the 980; re-run the derive script then.
 
 ## Earlier: Integration Phase
 
