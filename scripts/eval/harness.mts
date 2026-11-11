@@ -187,9 +187,14 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
     // Legacy 'mixed' ratings (dropped in migration 0013) have no level; leave them out.
     if (!s.source.startsWith('session_') && !pool.has(k) && s.reaction in LEVEL_RANK) pool.set(k, s.reaction)
   }
-  const { data: ev, error } = await db.from('play_events').select('payload').eq('user_id', USER).eq('kind', 'duel').not('payload->>chosen', 'is', null).order('id')
-  if (error) throw new Error(`play_events: ${error.message}`)
-  const allPicks = (ev ?? []).map(e => e.payload as DuelPick).filter(p => p.a && p.b && p.chosen)
+  // Paged: a request returns at most 1,000 rows.
+  const allPicks: DuelPick[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data: ev, error } = await db.from('play_events').select('payload').eq('user_id', USER).eq('kind', 'duel').not('payload->>chosen', 'is', null).order('id').range(from, from + 999)
+    if (error) throw new Error(`play_events: ${error.message}`)
+    allPicks.push(...(ev ?? []).map(e => e.payload as DuelPick).filter(p => p.a && p.b && p.chosen))
+    if (!ev || ev.length < 1000) break
+  }
   const titles = await loadTitles([...new Set([...pool.keys(), ...allPicks.flatMap(p => [p.a, p.b])])])
   const vecs = new Map([...titles].map(([k, r]) => [k, vecOf(r)]).filter((e): e is [string, number[]] => !!e[1]))
   const fairIn = fair.filter(([k]) => titles.has(k))
