@@ -75,6 +75,12 @@ describe('buildTraining', () => {
     expect(rows).toEqual([{ vec: vec(1), level: 3, weight: 1 }, { vec: vec(2), level: 1, weight: 0.5 }])
   })
 
+  it('skips a legacy "mixed" reaction instead of training on NaN', () => {
+    const { rows } = buildTraining([sig('1', 'mixed' as DNASignal['reaction']), sig('2', 'liked')], [], vecs, now)
+    expect(rows.map(r => r.level)).toEqual([2])
+    expect(trainTasteModel(rows, []).every(Number.isFinite)).toBe(true)
+  })
+
   it('treats a rating exactly 18 months old as recent, and a null watched_at as recent', () => {
     const edge = new Date(now - 18 * 30 * 24 * 60 * 60 * 1000).toISOString()
     const { rows } = buildTraining([sig('1', 'liked', { watched_at: edge }), sig('2', 'liked')], [], vecs, now)
@@ -94,5 +100,10 @@ describe('buildTraining', () => {
       { a: 'movie:1', b: 'movie:1', chosen: 'movie:1' },
     ], vecs, now)
     expect(pairs).toEqual([{ chosen: vec(2), other: vec(1) }])
+  })
+
+  it('drops picks touching a held-out title (evaluation)', () => {
+    const picks = [{ a: 'movie:1', b: 'movie:2', chosen: 'movie:2' }, { a: 'movie:1', b: 'movie:3', chosen: 'movie:3' }]
+    expect(buildTraining([], picks, vecs, now, new Set(['movie:2'])).pairs).toEqual([{ chosen: vec(3), other: vec(1) }])
   })
 })

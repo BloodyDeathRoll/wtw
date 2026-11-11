@@ -16,7 +16,12 @@ const PAGE = 1000
 /** Ids per `in (...)` filter, to keep the request URL short. */
 const ID_CHUNK = 300
 
-export async function loadTasteTraining(dna: DNASchema, userId: string): Promise<{ rows: TasteRow[]; pairs: TastePair[] }> {
+/**
+ * `holdOut` (title keys) is for evaluation only (scripts/eval): picks that
+ * touch a held-out title are dropped, so a model is never scored on a title
+ * its own training already ranked.
+ */
+export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?: Set<string>): Promise<{ rows: TasteRow[]; pairs: TastePair[] }> {
   const db = createServiceClient()
 
   const picks: DuelPick[] = []
@@ -52,5 +57,5 @@ export async function loadTasteTraining(dna: DNASchema, userId: string): Promise
     }
   }
 
-  return buildTraining(dna.signals, picks, vecs)
+  return buildTraining(dna.signals, picks, vecs, Date.now(), holdOut)
 }
