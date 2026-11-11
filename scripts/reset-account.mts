@@ -40,7 +40,8 @@ const KEEP_LISTS = args.includes('--keep-lists')
 if (!USER_ARG || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(USER_ARG)) throw new Error('usage: --user <uuid> [--apply --confirm <uuid>] [--keep-lists]')
 const USER: string = USER_ARG
 const confirmAt = args.indexOf('--confirm')
-if (APPLY && args[confirmAt + 1] !== USER) throw new Error('--apply needs --confirm <the same uuid>')
+const CONFIRM = confirmAt >= 0 ? args[confirmAt + 1] : undefined
+if (APPLY && CONFIRM !== USER) throw new Error('--apply needs --confirm <the same uuid>')
 
 const db = createServiceClient()
 
@@ -75,10 +76,13 @@ async function main() {
   console.log(`  redis keys               ${keys.length}`)
   if (!APPLY) { console.log('\ndry run — re-run with --apply to reset'); return }
 
-  if (dna) {
-    // storeSnapshot logs and returns on failure; this script must not go on without one.
+  // A DNA with nothing in it (a re-run after the DNA write, or a fresh account) has nothing to roll back to.
+  if (dna && (dna.signals.length > 0 || dna.learning_loop.recommendation_history.length > 0)) {
+    // storeSnapshot logs and returns on failure, and an older snapshot can share the version:
+    // only a row written by this call counts.
+    const before = new Date(Date.now() - 1000).toISOString()
     await storeSnapshot(USER, dna)
-    const { count, error: readErr } = await db.from('dna_snapshots').select('id', { count: 'exact', head: true }).eq('user_id', USER).eq('taste_version', dna.metadata.taste_version)
+    const { count, error: readErr } = await db.from('dna_snapshots').select('id', { count: 'exact', head: true }).eq('user_id', USER).eq('taste_version', dna.metadata.taste_version).gte('created_at', before)
     if (readErr) throw new Error(`could not check the snapshot (${readErr.message}) — nothing was reset`)
     if (!count) throw new Error('snapshot not stored — nothing was reset')
   }
@@ -103,7 +107,7 @@ async function main() {
   } catch (e) {
     throw new Error(`the database is reset, but Redis cleanup failed (${(e as Error).message}) — re-run to clear Redis`)
   }
-  console.log(`\nreset: DNA blank at v${blank.metadata.taste_version} (snapshot of the old one stored), ${TABLES.length} tables cleared, ${fresh.length} redis keys deleted`)
+  console.log(`\nreset: DNA blank at v${blank.metadata.taste_version} (snapshot of the old one stored if it held anything), ${TABLES.length} tables cleared, ${fresh.length} redis keys deleted`)
 }
 
 main().catch(err => { console.error(err); process.exit(1) })
