@@ -43,7 +43,7 @@
     "class-variance-authority": "^0.7",
     "clsx": "^2",
     "framer-motion": "^14",
-    "lucide-react": "^1.64",
+    "lucide-react": "^1.66",
     "next": "^16.4.3",
     "react": "^19",
     "react-dom": "^19",
