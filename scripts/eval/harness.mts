@@ -42,7 +42,11 @@ import { concordance, formulaV2, rng, shuffle, topShare, type Level, type Scored
 
 const args = process.argv.slice(2)
 const opt = (name: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined }
-const num = (name: string, def: number) => Number(opt(name) ?? def)
+const num = (name: string, def: number) => {
+  const v = Number(opt(name) ?? def)
+  if (!Number.isFinite(v)) throw new Error(`${name} needs a number`)
+  return v
+}
 const USER = opt('--user')
 const SHEET = opt('--sheet')
 const MODE = opt('--mode') ?? 'live'
@@ -52,7 +56,11 @@ const db = createServiceClient()
 const COLS = 'id, tmdb_id, title, type, synopsis, genres, release_year, runtime_minutes, tmdb_rating, tmdb_vote_count, omdb_rating, crew, pacing_tag, tone_tags, original_language, keywords, narrative_metadata, enriched_at, created_at, taste_vec, taste_version'
 type Row = TitleRow & { taste_vec: string | number[] | null; taste_version: number | null }
 
-/** Same as step 2's crowd score (`externalRatingScore`): 0.6·tmdb/10 + 0.4·omdb, a missing half rescaled. */
+/**
+ * A copy of `externalRatingScore` in src/modules/engine/pipeline/step2-composite-score.ts
+ * (private to A2's module): 0.6·tmdb/10 + 0.4·omdb, a missing half rescaled.
+ * Keep it in step with that one — live mode uses the original.
+ */
 function crowd(t: Pick<TitleRow, 'tmdb_rating' | 'omdb_rating'>): number {
   const tmdb = t.tmdb_rating != null ? (t.tmdb_rating / 10) * 0.6 : null
   const omdb = t.omdb_rating != null ? t.omdb_rating * 0.4 : null
@@ -105,8 +113,10 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   const keyOf = (t: TitleRow) => titleKey(t.type, t.tmdb_id)
   const parts = (pick: (s: (typeof scored)[number]) => number): Scored[] => scored.map(s => ({ score: pick(s), level: level.get(keyOf(s.title))! }))
 
-  // v2: the model trained as the app would (My ratings minus chat, plus picks); --shuffle is the control.
-  let training = await loadTasteTraining(dna, USER!)
+  // v2: the model trained as the app would (My ratings minus chat, plus picks), except that
+  // picks touching a fair title are held out — the model must not have ranked what it is scored on.
+  // --shuffle is the control.
+  let training = await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))
   if (args.includes('--shuffle')) {
     const rand = rng(num('--seed', 1))
     const levels = shuffle(training.rows.map(r => r.level), rand)
@@ -119,7 +129,7 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   const model = raw.map(x => x ?? mean)
   const v2 = formulaV2(scored.map(s => s.crew_affinity_score), scored.map(s => s.external_rating_score), model)
 
-  console.log(`[eval] live · ${scored.length} fair titles scored (${missing} not in catalogue, ${raw.length - known.length} without a taste vector) · model trained on ${training.rows.length} ratings + ${training.pairs.length} picks${args.includes('--shuffle') ? ' (SHUFFLED)' : ''}`)
+  console.log(`[eval] live · ${scored.length} fair titles scored (${missing} not in catalogue, ${raw.length - known.length} without a taste vector) · model trained on ${training.rows.length} ratings + ${training.pairs.length} picks (fair-title picks held out)${args.includes('--shuffle') ? ' (SHUFFLED)' : ''}`)
   console.log('  part                   concordance (L/D)')
   line('creators', parts(s => s.crew_affinity_score))
   line('story match', parts(s => s.narrative_match_score))
@@ -149,7 +159,7 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
   const titles = await loadTitles([...new Set([...pool.keys(), ...allPicks.flatMap(p => [p.a, p.b])])])
   const vecs = new Map([...titles].map(([k, r]) => [k, vecOf(r)]).filter((e): e is [string, number[]] => !!e[1]))
   const fairIn = fair.filter(([k]) => titles.has(k))
-  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} fair titles in catalogue · ${allPicks.length} duel picks${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL' : ''}`)
+  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} fair titles in catalogue · ${allPicks.length} duel picks${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
   if (fairIn.length < 20) throw new Error('fewer than 20 fair titles in the catalogue')
 
   const res = { all: [] as number[], ld: [] as number[], loved: [] as number[], disliked: [] as number[] }
@@ -158,13 +168,18 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
     const test = shuffle(fairIn, rand).slice(0, 20)
     const testKeys = new Set(test.map(([k]) => k))
     let cards = shuffle([...pool].filter(([k]) => !testKeys.has(k) && titles.has(k)), rand).slice(0, CARDS)
-    if (args.includes('--control')) cards = cards.map(([k]) => [k, levels[Math.floor(rand() * 3)]] as [string, Level])
-    const picks = allPicks.filter(p => !testKeys.has(p.a) && !testKeys.has(p.b)).slice(0, PICKS)
+    let picks = allPicks.filter(p => !testKeys.has(p.a) && !testKeys.has(p.b)).slice(0, PICKS)
+    // The control answers everything at random: the cards, and which side of each pick won.
+    if (args.includes('--control')) {
+      cards = cards.map(([k]) => [k, levels[Math.floor(rand() * 3)]] as [string, Level])
+      picks = picks.map(p => ({ ...p, chosen: rand() < 0.5 ? p.a : p.b }))
+    }
 
     // Creators, rebuilt from the cards as update-crew.ts does (a dislike leaves people alone).
     const strandA = createBlankDNA('eval').strand_a_creative_affinity
     for (const [k, l] of cards) applyCrewAffinityUpdate(strandA, titles.get(k)!.crew, l)
-    // The taste model on the cards + picks, as load-taste-training.ts builds them.
+    // The taste model on the cards + picks, as load-taste-training.ts builds them. Cards carry no
+    // date (a first run's answers are all fresh), so no 18-month decay here, unlike live training.
     const cardSignals = cards.map(([k, l]) => { const { type, tmdb_id } = parseTitleKey(k); return { type, tmdb_id, reaction: l, source: 'onboarding', watched_at: null } as unknown as DNASignal })
     const { rows, pairs } = buildTraining(cardSignals, picks, vecs)
     const w = trainTasteModel(rows, pairs as TastePair[])

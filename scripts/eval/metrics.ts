@@ -30,7 +30,7 @@ export function concordance(items: Scored[], ldOnly = false): number {
   return pairs ? (100 * agree) / pairs : NaN
 }
 
-/** Of the k best-scored, the share (0–100) loved and disliked. */
+/** Of the k best-scored, the share (0–100) loved and disliked. A tie at the cut keeps the earlier item (stable sort). */
 export function topShare(items: Scored[], k = 5): { loved: number; disliked: number } {
   const top = [...items].sort((a, b) => b.score - a.score).slice(0, k)
   const share = (l: Level) => (top.length ? (100 * top.filter(t => t.level === l).length) / top.length : NaN)

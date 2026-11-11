@@ -44,6 +44,19 @@ describe('formulaV2', () => {
   })
 })
 
+describe('edges', () => {
+  it('z-scores nothing to nothing', () => {
+    expect(zScores([])).toEqual([])
+  })
+  it('breaks a tie at the top-k cut by input order', () => {
+    expect(topShare([s(1, 'loved'), s(1, 'disliked')], 1)).toEqual({ loved: 100, disliked: 0 })
+  })
+  it('draws in [0, 1)', () => {
+    const r = rng(3)
+    for (let i = 0; i < 1000; i++) { const x = r(); expect(x >= 0 && x < 1).toBe(true) }
+  })
+})
+
 describe('rng / shuffle', () => {
   it('is repeatable for a seed and keeps every item', () => {
     const a = shuffle([1, 2, 3, 4, 5], rng(7))
