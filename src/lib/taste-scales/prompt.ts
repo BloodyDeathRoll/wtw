@@ -105,6 +105,11 @@ export function repairBatch<S extends typeof batchSchema | typeof catalogueBatch
       ? t.confirmed_genres.filter(g => (GAME_GENRE_IDS as readonly unknown[]).includes(g))
       : []
   }
+  // One title with a missing score shouldn't cost the other nine: drop it (it is retried next run).
+  const item = schema.shape.titles.element
+  const kept = raw.titles.filter(t => item.safeParse(t).success)
+  if (kept.length < raw.titles.length) console.warn(`[play-titles] dropped ${raw.titles.length - kept.length} incomplete title(s) from a batch`)
+  raw.titles = kept
   const parsed = schema.safeParse(raw)
   if (parsed.success) {
     console.warn('[play-titles] repaired an off-schema batch')

@@ -87,6 +87,14 @@ describe('repairBatch', () => {
   })
 })
 
+describe('repairBatch drops only the broken title', () => {
+  it('keeps the rest of the batch when one title lacks a score', () => {
+    const ok = { tone: 1, energy: 0, pace: 0, dark: 0, complex: 0, fantastic: 0, audience: 2, confirmed_genres: [] }
+    const text = JSON.stringify({ titles: [{ n: 1, ...ok }, { n: 2, ...ok, fantastic: undefined }, { n: 3, ...ok }] })
+    expect(repairBatch({ text }, catalogueBatchSchema)?.titles.map(t => t.n)).toEqual([1, 3])
+  })
+})
+
 describe('norms.json', () => {
   it('reproduces the game titles\' scales with the committed norms (overrides aside)', async () => {
     const titles = (await import('@/app/play/data/titles.json')).default as unknown as GameTitle[]
