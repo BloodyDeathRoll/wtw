@@ -41,7 +41,13 @@ import type { DNASchema, DNASignal } from '@/types/dna'
 import { concordance, formulaV2, rng, shuffle, topShare, type Level, type Scored } from './metrics'
 
 const args = process.argv.slice(2)
-const opt = (name: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined }
+const opt = (name: string) => {
+  const i = args.indexOf(name)
+  if (i < 0) return undefined
+  const v = args[i + 1]
+  if (v === undefined || v.startsWith('--')) throw new Error(`${name} needs a value`)
+  return v
+}
 const num = (name: string, def: number, min = 0) => {
   const v = Number(opt(name) ?? def)
   if (!Number.isInteger(v) || v < min) throw new Error(`${name} needs a whole number ≥ ${min}`)
@@ -129,7 +135,9 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   const w = trainTasteModel(training.rows, training.pairs)
   const raw = scored.map(s => { const v = vecOf(s.title as Row); return v ? predict(w, v) : null })
   const known = raw.filter((x): x is number => x != null)
-  const mean = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 0
+  // No vector anywhere would make the model a constant (z = 0) and v2 silently creators + crowd.
+  if (known.length === 0) throw new Error('no fair title has a taste vector — run score-catalog-scales --finalise first')
+  const mean = known.reduce((a, b) => a + b, 0) / known.length
   const model = raw.map(x => x ?? mean)
   const v2 = formulaV2(scored.map(s => s.crew_affinity_score), scored.map(s => s.external_rating_score), model)
 
