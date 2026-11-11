@@ -74,10 +74,13 @@ export function buildTraining(signals: DNASignal[], picks: DuelPick[], vecs: Map
   const rows: TasteRow[] = []
   for (const s of signals) {
     if (s.source.startsWith('session_')) continue
+    // 'mixed' was dropped in migration 0013 but old signals may still carry it; its level would be NaN.
+    const level = LEVEL[s.reaction]
+    if (!level) continue
     const vec = vecs.get(titleKey(s.type, s.tmdb_id))
     if (!vec) continue
     const old = s.watched_at != null && now - new Date(s.watched_at).getTime() > DECAY_AFTER_MS
-    rows.push({ vec, level: LEVEL[s.reaction], weight: old ? 0.5 : 1 })
+    rows.push({ vec, level, weight: old ? 0.5 : 1 })
   }
   const pairs: TastePair[] = []
   for (const p of picks) {

@@ -4,6 +4,7 @@
  *
  *   npm run eval -- --user <uuid> --sheet .eval-data/<name>.json --mode live
  *   npm run eval -- --user <uuid> --sheet … --mode live --shuffle      # control: model trained on shuffled labels (~50)
+ *   npm run eval -- --user <uuid> --sheet … --dna-version 157           # score against a stored snapshot (dna_snapshots), e.g. the DNA a past measurement saw
  *   npm run eval -- --user <uuid> --sheet … --mode new [--cards 30] [--picks 12] [--draws 200] [--control] [--seed 1]
  *
  * The sheet is one tester's answers, `{ "movie:603": "loved" | "liked" |
@@ -103,9 +104,13 @@ async function main() {
   // A typo ("love", a bare id) would score as a plausible wrong number, so refuse it.
   const bad = Object.entries(sheet).filter(([k, v]) => !parseTitleKey(k).type || !['loved', 'liked', 'disliked', 'unseen'].includes(v))
   if (bad.length) throw new Error(`sheet: ${bad.length} bad entr${bad.length === 1 ? 'y' : 'ies'}, e.g. ${JSON.stringify(bad[0])} — keys are "movie:603" / "tv:1396", values loved | liked | disliked | unseen`)
-  const { data: u, error } = await db.from('users').select('dna').eq('id', USER).single<{ dna: DNASchema | null }>()
-  if (error || !u?.dna) throw new Error(`no DNA for that user id${error ? `: ${error.message}` : ''}`)
+  const version = opt('--dna-version')
+  const { data: u, error } = version
+    ? await db.from('dna_snapshots').select('dna:snapshot').eq('user_id', USER).eq('taste_version', Number(version)).limit(1).single<{ dna: DNASchema | null }>()
+    : await db.from('users').select('dna').eq('id', USER).single<{ dna: DNASchema | null }>()
+  if (error || !u?.dna) throw new Error(`no DNA for that user id${version ? ` at version ${version}` : ''}${error ? `: ${error.message}` : ''}`)
   const dna = u.dna
+  if (version) console.log(`[eval] DNA snapshot v${version}`)
   const rated = new Set(dna.signals.map(s => titleKey(s.type, s.tmdb_id)))
   const seen = Object.entries(sheet).filter((e): e is [string, Level] => e[1] !== 'unseen')
   const fair = seen.filter(([k]) => !rated.has(k))
