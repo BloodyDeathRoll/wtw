@@ -35,8 +35,8 @@ import { readFile } from 'node:fs/promises'
 import { createServiceClient } from '@/lib/supabase/service'
 import { titleKey, parseTitleKey, type MediaType } from '@/lib/title-key'
 import { TASTE_FEATURE_VERSION } from '@/lib/taste-scales/features'
-import { scoreCandidates } from '@/modules/engine/pipeline/step2-composite-score'
-import { avoidSummary, dropDisliked, profileSummary } from '@/modules/engine/pipeline/step4-llm-rerank'
+import { externalRatingScore as crowd, scoreCandidates } from '@/modules/engine/pipeline/step2-composite-score'
+import { dropDisliked, jevState } from '@/modules/engine/pipeline/step4-llm-rerank'
 import { jevNoul } from '@/lib/jev'
 import { computeCrewAffinity } from '@/modules/engine/scoring/crew-affinity'
 import type { TitleRow } from '@/modules/engine/types'
@@ -70,20 +70,6 @@ if (MODE === 'new' && args.includes('--shuffle')) throw new Error('--shuffle is 
 const db = createServiceClient()
 const COLS = 'id, tmdb_id, title, type, synopsis, genres, release_year, runtime_minutes, tmdb_rating, tmdb_vote_count, omdb_rating, crew, pacing_tag, tone_tags, original_language, keywords, narrative_metadata, enriched_at, created_at, taste_vec, taste_version'
 type Row = TitleRow & { taste_vec: string | number[] | null; taste_version: number | null }
-
-/**
- * A copy of `externalRatingScore` in src/modules/engine/pipeline/step2-composite-score.ts
- * (private to A2's module): 0.6·tmdb/10 + 0.4·omdb, a missing half rescaled.
- * Keep it in step with that one — live mode uses the original.
- */
-function crowd(t: Pick<TitleRow, 'tmdb_rating' | 'omdb_rating'>): number {
-  const tmdb = t.tmdb_rating != null ? (t.tmdb_rating / 10) * 0.6 : null
-  const omdb = t.omdb_rating != null ? t.omdb_rating * 0.4 : null
-  if (tmdb === null && omdb === null) return 0.5
-  if (tmdb === null) return (omdb! / 0.4) * 0.5
-  if (omdb === null) return (tmdb / 0.6) * 0.5
-  return tmdb + omdb
-}
 
 const vecOf = (r: Row): number[] | null =>
   r.taste_vec == null || r.taste_version !== TASTE_FEATURE_VERSION ? null : typeof r.taste_vec === 'string' ? JSON.parse(r.taste_vec) : r.taste_vec
@@ -190,16 +176,14 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
 
 /**
  * Step 4's question for one ranking's top half, the way llmRerank asks it.
- * The state and the title line copy llmRerank's (step4-llm-rerank.ts) —
- * switch to its `jevState` once PR #260 lands.
+ * The state is llmRerank's own; the title line copies llmRerank's (step4-llm-rerank.ts).
  */
 async function jevCheck(dna: DNASchema, rankings: [string, TitleRow[]][], level: Map<string, Level>) {
   const CAP = num('--jev-calls', 2)
   const keyOf = (t: TitleRow) => titleKey(t.type, t.tmdb_id)
   const describe = (t: TitleRow) =>
     `"${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${t.crew.directors[0]?.name ?? 'unknown director'} — Genres: ${t.genres.map(g => g.name).join(', ')} — Tone: ${t.tone_tags.join(', ') || 'unknown'}`
-  const avoids = avoidSummary(dna)
-  const state = `VIEWER PROFILE:\n${profileSummary(dna)}${avoids ? `\n\nWHAT THIS VIEWER AVOIDS:\n${avoids}` : ''}`
+  const state = jevState(dna)
   let calls = 0
   for (const [name, ranked] of rankings) {
     if (calls >= CAP) { console.log(`[eval] jev: --jev-calls ${CAP} reached, ${name} skipped`); continue }
