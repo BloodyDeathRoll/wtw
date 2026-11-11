@@ -18,7 +18,6 @@
  *   what the user says in session (lib/apply-directives.ts)
  *
  * API routes owned by this module:
- * - POST /api/dna/update-from-session
  * - POST /api/dna/bootstrap
  * - GET  /api/dna/summary
  * - DELETE /api/dna/rules  (remove one standing rule — the Taste DNA page)

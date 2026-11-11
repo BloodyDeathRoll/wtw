@@ -12,6 +12,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // v2 plan flags the client needs too (src/lib/flags.ts): inlined at build,
+  // so changing one in Vercel takes a redeploy.
+  env: {
+    CHAT_MODE: process.env.CHAT_MODE ?? "",
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "image.tmdb.org" },

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { AppUser } from "../types";
 import styles from "./WTWApp.module.css";
+import { chatMode } from "@/lib/flags";
 
 // Gemini Live prebuilt voices. Display name === voice ID (constellations
 // and mythology). Descriptors come from Google's own catalogue and give the
@@ -95,7 +96,8 @@ export function AppMenu({
   /** Entries to leave out, e.g. the taste games keep a short menu for new users. */
   hide?: readonly MenuItem[];
 }) {
-  const shown = (item: MenuItem) => !hide.includes(item);
+  // The voice picker only configures the chat, so it goes when the chat is off (DEC-5).
+  const shown = (item: MenuItem) => !hide.includes(item) && !(item === "voice" && chatMode() === "off");
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<"root" | "voice">("root");
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);

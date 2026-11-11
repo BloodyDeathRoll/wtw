@@ -11,7 +11,6 @@ import { rewriteChangedDimensionNotes } from './lib/rewrite-dimension-notes'
 import { regenerateEmbedding } from './lib/regenerate-embedding'
 import { recordStretchPick } from './lib/record-stretch-pick'
 import { storeSnapshot } from './lib/snapshot'
-import { applyDirectives } from './lib/apply-directives'
 import { applyReRates } from './merge-feedback-signal'
 
 export async function updateSchemaFromSession(
@@ -42,6 +41,8 @@ export async function updateSchemaFromSession(
   const existingKeys = new Set(dna.signals.map(sigKey))
   const freshSignals: DNASignal[] = []
   for (const s of summary.new_signals) {
+    // Titles named in chat never enter the fingerprint (DEC-5, PLAN P1-C1).
+    if (s.source.startsWith('session_')) continue
     const k = sigKey(s)
     if (existingKeys.has(k)) continue
     existingKeys.add(k)
@@ -88,17 +89,8 @@ export async function updateSchemaFromSession(
     }
   }
 
-  // 6b. Contextual logic — standing instructions the user gave in chat.
-  //     Merged before the version bump below, so the rec cache (keyed by
-  //     taste_version) is busted by the same write that adds the rule and the
-  //     very next batch is generated under it.
-  const merged = applyDirectives(dna.contextual_logic, summary.directives)
-  if (merged.exclusions_added > 0 || merged.soft_preferences_added > 0) {
-    console.log(
-      `[update-from-session] +${merged.exclusions_added} exclusion(s), ` +
-      `+${merged.soft_preferences_added} soft preference(s)`,
-    )
-  }
+  // 6b. No standing instructions from chat (DEC-5): rules and preferences are
+  //     set on the Taste DNA page only, so summary.directives is ignored.
 
   // 7. Mark recommendation outcome if provided
   if (summary.recommendation_made && summary.recommendation_accepted !== null) {
