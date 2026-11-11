@@ -8,8 +8,8 @@
  *
  * With --apply, in this order (a failed run can simply be re-run: the DNA is
  * written last, so it still holds what --keep-lists needs):
- *   - a snapshot of the current DNA is stored and read back — no snapshot, no
- *     reset (dna_snapshots keeps the last 5, so the oldest may go);
+ *   - a snapshot of the current DNA is stored — no snapshot, no reset (the app
+ *     prunes dna_snapshots to the last 5, so it is a rollback point for a while);
  *   - the DNA becomes blank (blank-dna.ts), but taste_version keeps counting
  *     up, so no cache keyed by an old version is ever served again;
  *   - deleted: play_state, play_events, served_titles, the conversations
@@ -29,7 +29,6 @@ import { getRedis } from '@/lib/redis'
 import { isSavedMarker } from '@/lib/title-key'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
-import { storeSnapshot } from '@/modules/dna/lib/snapshot'
 import type { DNASchema } from '@/types/dna'
 
 const args = process.argv.slice(2)
@@ -76,15 +75,12 @@ async function main() {
   console.log(`  redis keys               ${keys.length}`)
   if (!APPLY) { console.log('\ndry run — re-run with --apply to reset'); return }
 
-  // A DNA with nothing in it (a re-run after the DNA write, or a fresh account) has nothing to roll back to.
-  if (dna && (dna.signals.length > 0 || dna.learning_loop.recommendation_history.length > 0)) {
-    // storeSnapshot logs and returns on failure, and an older snapshot can share the version:
-    // only a row written by this call counts.
-    const before = new Date(Date.now() - 60_000).toISOString() // 60 s of slack for clock skew with the database
-    await storeSnapshot(USER, dna)
-    const { count, error: readErr } = await db.from('dna_snapshots').select('id', { count: 'exact', head: true }).eq('user_id', USER).eq('taste_version', dna.metadata.taste_version).gte('created_at', before)
-    if (readErr) throw new Error(`could not check the snapshot (${readErr.message}) — nothing was reset`)
-    if (!count) throw new Error('snapshot not stored — nothing was reset')
+  // A DNA with no signals (a re-run after the DNA write, or a fresh account) has nothing to roll back to.
+  if (dna && dna.signals.length > 0) {
+    // Inserted here, not through storeSnapshot (which logs and returns on failure): no snapshot, no reset.
+    // The app's next storeSnapshot prunes back to the last 5.
+    const { error: snapErr } = await db.from('dna_snapshots').insert({ user_id: USER, taste_version: dna.metadata.taste_version, snapshot: dna })
+    if (snapErr) throw new Error(`snapshot not stored (${snapErr.message}) — nothing was reset`)
   }
 
   for (const t of TABLES) {
