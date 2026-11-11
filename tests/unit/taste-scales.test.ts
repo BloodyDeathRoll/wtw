@@ -13,6 +13,10 @@ describe('rankAgainst', () => {
     set.forEach((v, i) => expect(rankAgainst(set, v)).toBe(want[i]))
   })
 
+  it('handles a one-title set', () => {
+    expect([1999, 2000, 2001].map(x => rankAgainst([2000], x))).toEqual([-1, 0, 1])
+  })
+
   it('interpolates between set values and clamps outside', () => {
     // 2005 sits halfway between rank 1.5 (the 2000 tie) and rank 3 (2010): 2.25 / 4 → 0.13
     expect(rankAgainst(set, 2005)).toBe(0.13)
@@ -42,6 +46,11 @@ describe('normaliseScales', () => {
     expect(normaliseScales({ ...base, game_genres: ['comedy'] }, norms).humor).toBe(1)
   })
 
+  it('stays finite when the set holds a title with 0 votes', () => {
+    const indie = normaliseScales({ ...base, tmdb_vote_count: 5 }, { ...norms, votes: { movie: [0, 100], tv: [10, 100] } }).indie
+    expect(Number.isFinite(indie)).toBe(true)
+  })
+
   it('puts a title with no votes at the off-beat end, and commit on series only', () => {
     expect(normaliseScales({ ...base, tmdb_vote_count: null }, norms).indie).toBe(1)
     expect(normaliseScales({ ...base, type: 'tv', tmdb_vote_count: 10, episodes: 100 }, norms)).toMatchObject({ indie: 1, commit: 1 })
@@ -59,6 +68,10 @@ describe('tasteFeatures', () => {
     expect(x[23]).toBe(-0.4) // tone
     expect(x[24]).toBe(0.9) // audience
     expect(x.reduce((s, v) => s + v, 0)).toBeCloseTo(3 + 1 + 0.1 + 0.9)
+  })
+
+  it('gives no genre weight to a title with no genres', () => {
+    expect(tasteFeatures({ tmdb_rating: 7.6258, game_genres: [], taste_scales: {} }).slice(1, 14)).toEqual(new Array(13).fill(0))
   })
 
   it('treats a missing rating and missing scales as 0', () => {

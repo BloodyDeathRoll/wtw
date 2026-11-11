@@ -77,6 +77,14 @@ export function rankAgainst(sorted: number[], x: number): number {
   return round2((rank / (n - 1)) * 2 - 1)
 }
 
+const logCache = new WeakMap<number[], number[]>()
+/** log10 of a set's vote counts, once per array (the catalogue scorer calls this ~35k times). Floored at 1 vote: log10(0) would make the interpolation NaN. */
+function logVotes(votes: number[]): number[] {
+  let logs = logCache.get(votes)
+  if (!logs) logCache.set(votes, logs = votes.map(v => Math.log10(Math.max(1, v))))
+  return logs
+}
+
 const AI: CatalogueAIScale[] = ['tone', 'energy', 'pace', 'dark', 'complex', 'fantastic', 'humor', 'audience']
 
 export function normaliseScales(t: ScaleInput, norms: ScaleNorms = NORMS as ScaleNorms): Partial<Record<TasteScale, number>> {
@@ -91,7 +99,7 @@ export function normaliseScales(t: ScaleInput, norms: ScaleNorms = NORMS as Scal
   if (t.release_year != null) out.modern = rankAgainst(norms.years, t.release_year)
   // log10 so a title between two set values interpolates on the scale TMDB fame grows on; no votes sits below the set (+1).
   const votes = t.tmdb_vote_count ?? 0
-  out.indie = votes > 0 ? -rankAgainst(norms.votes[t.type].map(Math.log10), Math.log10(votes)) : 1
+  out.indie = votes > 0 ? -rankAgainst(logVotes(norms.votes[t.type]), Math.log10(votes)) : 1
   if (t.type === 'tv' && t.episodes) out.commit = rankAgainst(norms.episodes, t.episodes)
   return out
 }

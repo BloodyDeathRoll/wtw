@@ -3,9 +3,11 @@
  * uses to put any catalogue title on the season's scales (docs/plan/PLAN.md,
  * P1-D1). Reads the 980 game titles only; no network.
  *
- *   npm run derive-scale-norms
+ *   npm run derive-scale-norms            # check only: derive, compare with norms.json, verify
+ *   npm run derive-scale-norms -- --write # overwrite norms.json (moves every catalogue title:
+ *                                         # bump TASTE_FEATURE_VERSION unless only nulls were filled)
  *
- * Writes src/lib/taste-scales/norms.json, then checks it: every game title,
+ * Derives the norms, then checks them: every game title,
  * normalised from its raw facts and AI scores, must match its titles.json
  * scales within 0.01. Only title-fixes.json overrides may differ; anything
  * else exits 1. Run once; re-running after P1-D2 adds `audience` to the
@@ -45,15 +47,25 @@ const norms: ScaleNorms = {
   votes: { movie: asc(titles.filter(t => t.type === 'movie').map(t => t.votes)), tv: asc(titles.filter(t => t.type === 'tv').map(t => t.votes)) },
   episodes: asc(titles.filter(t => t.type === 'tv' && t.episodes).map(t => t.episodes!)),
 }
-await writeFile(OUT, JSON.stringify(norms) + '\n')
-console.log(`[norms] wrote ${OUT}`)
+const json = JSON.stringify(norms) + '\n'
+const current = await readFile(OUT, 'utf8').catch(() => null)
+if (process.argv.includes('--write')) {
+  await writeFile(OUT, json)
+  console.log(`[norms] wrote ${OUT}`)
+} else if (current !== json) {
+  console.log(`[norms] DIFFERS from ${OUT} — re-run with --write only if that is intended`)
+} else {
+  console.log(`[norms] matches ${OUT}`)
+}
 for (const s of AI) console.log(`  ${s.padEnd(9)} ${norms.ai[s] ? `mean ${norms.ai[s]!.mean.toFixed(4)} sd ${norms.ai[s]!.sd.toFixed(4)}` : 'not scored yet'}`)
 console.log(`  years ${norms.years.length} · votes ${norms.votes.movie.length} movies, ${norms.votes.tv.length} series · episodes ${norms.episodes.length}`)
 
 const rating = stats(titles.map(t => t.rating))!
-console.log(`  rating    mean ${rating.mean.toFixed(4)} sd ${rating.sd.toFixed(4)} (features.ts uses 7.6258 / 0.6436)`)
+const { RATING_MEAN, RATING_SD } = await import('@/lib/taste-scales/features')
+const ratingOk = Math.abs(rating.mean - RATING_MEAN) < 5e-5 && Math.abs(rating.sd - RATING_SD) < 5e-5
+console.log(`  rating    mean ${rating.mean.toFixed(4)} sd ${rating.sd.toFixed(4)} — ${ratingOk ? 'matches' : 'MISMATCH with'} features.ts ${RATING_MEAN} / ${RATING_SD}`)
 
-// Imported after the write: normalise.ts reads norms.json at load.
+// Imported late: normalise.ts reads norms.json at load (it may not exist before the first --write).
 const { normaliseScales } = await import('@/lib/taste-scales/normalise')
 let bad = 0, overrides = 0
 for (const t of titles) {
@@ -73,4 +85,4 @@ for (const t of titles) {
   }
 }
 console.log(`[norms] ${titles.length} titles checked: ${bad} mismatches, ${overrides} overrides`)
-if (bad) process.exit(1)
+if (bad || !ratingOk || (current !== json && !process.argv.includes('--write'))) process.exit(1)

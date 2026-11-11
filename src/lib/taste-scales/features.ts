@@ -19,9 +19,9 @@ export const FEATURE_SCALES = [
   'commit', 'complex', 'dark', 'energy', 'fantastic', 'humor', 'indie', 'modern', 'pace', 'tone',
 ] as const satisfies readonly TasteScale[]
 
-/** TMDB rating mean and sd over the 980 game titles. */
-const RATING_MEAN = 7.6258
-const RATING_SD = 0.6436
+/** TMDB rating mean and sd over the 980 game titles (EVIDENCE §R); scripts/derive-scale-norms.mts fails if they drift. */
+export const RATING_MEAN = 7.6258
+export const RATING_SD = 0.6436
 
 export interface FeatureRow {
   tmdb_rating: number | null
