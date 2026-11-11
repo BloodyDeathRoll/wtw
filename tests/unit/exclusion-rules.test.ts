@@ -459,6 +459,18 @@ describe('classifyRuleTarget', () => {
     expect(ruleTargets({ type: 'genre', name: 'Romance' }).genres).toEqual(['romance'])
   })
 
+  it('a name that is both a game genre and a TMDB genre means the game genre\'s set', () => {
+    expect(ruleTargets({ type: 'genre', name: 'war' }).genres.sort()).toEqual(['history', 'war', 'war & politics'])
+    expect(ruleTargets({ type: 'genre', name: 'thriller' }).genres.sort()).toEqual(['mystery', 'thriller'])
+    // A TMDB name that is no game genre stays exact.
+    expect(ruleTargets({ type: 'genre', name: 'Western' }).genres).toEqual(['western'])
+  })
+
+  it('a genre rule naming no genre hides nothing', () => {
+    expect(ruleTargets({ type: 'genre', name: 'rom-coms' })).toMatchObject({ genres: [], keywords: [] })
+    expect(isExcluded(title({ genres: [{ name: 'Romance' }, { name: 'Comedy' }] }), [rule({ type: 'genre', name: 'rom-coms' })])).toBe(false)
+  })
+
   it('"Never: Music" does not hide Whiplash for being a drama', () => {
     const whiplash = title({ genres: [{ name: 'Drama' }, { name: 'Music' }], keywords: ['musician', 'jazz'] })
     expect(matchesRule(whiplash, rule({ type: 'genre', name: 'Romance' }))).toBe(false)

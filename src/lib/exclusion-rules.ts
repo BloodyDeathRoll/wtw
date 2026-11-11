@@ -80,7 +80,12 @@ const TMDB_GENRES = new Set([
 /** A game genre by id ("scifi") or label ("Sci-fi & fantasy"). */
 const GAME_GENRE_BY_NAME = new Map(GAME_GENRES.flatMap(g => [[g.id, g.id], [g.label.toLowerCase(), g.id]] as const))
 
-/** The TMDB genres a genre rule hides: its game genre's set, or the one TMDB genre it names; [] when it names neither. */
+/**
+ * The TMDB genres a genre rule hides: its game genre's set, or the one TMDB
+ * genre it names; [] when it names neither. A game genre wins when the name is
+ * both — rules come from a game genre picked from a list, so "war" hides War,
+ * History and War & Politics, the set the list item stands for.
+ */
 function genreSet(name: string): string[] {
   const game = GAME_GENRE_BY_NAME.get(name)
   if (game) return tmdbGenresOf(game)
@@ -124,7 +129,11 @@ export function canonicalGenre(name: string): string {
   return n
 }
 
-/** Is this a category word beyond plain genres and keywords? Only anime now. */
+/**
+ * Is this a category word beyond plain genres and keywords? Only anime now.
+ * Its one caller, the chat's directive-patterns.ts, is unused since P1-C1 and
+ * goes in P3-5.
+ */
 export function isKnownCategory(name: string): boolean {
   return norm(name) === 'anime'
 }
