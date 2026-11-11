@@ -59,6 +59,7 @@ const SHEET = opt('--sheet')
 const MODE = opt('--mode') ?? 'live'
 if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new]')
 if (MODE !== 'live' && MODE !== 'new') throw new Error(`--mode must be live or new, not ${MODE}`)
+if (MODE === 'new' && args.includes('--shuffle')) throw new Error('--shuffle is the live-mode control; in --mode new use --control')
 
 const db = createServiceClient()
 const COLS = 'id, tmdb_id, title, type, synopsis, genres, release_year, runtime_minutes, tmdb_rating, tmdb_vote_count, omdb_rating, crew, pacing_tag, tone_tags, original_language, keywords, narrative_metadata, enriched_at, created_at, taste_vec, taste_version'
@@ -104,7 +105,7 @@ async function main() {
   // A typo ("love", a bare id) would score as a plausible wrong number, so refuse it.
   const bad = Object.entries(sheet).filter(([k, v]) => !parseTitleKey(k).type || !['loved', 'liked', 'disliked', 'unseen'].includes(v))
   if (bad.length) throw new Error(`sheet: ${bad.length} bad entr${bad.length === 1 ? 'y' : 'ies'}, e.g. ${JSON.stringify(bad[0])} — keys are "movie:603" / "tv:1396", values loved | liked | disliked | unseen`)
-  const version = opt('--dna-version')
+  const version = opt('--dna-version') === undefined ? undefined : num('--dna-version', 0, 1)
   const { data: u, error } = version
     ? await db.from('dna_snapshots').select('dna:snapshot').eq('user_id', USER).eq('taste_version', Number(version)).limit(1).single<{ dna: DNASchema | null }>()
     : await db.from('users').select('dna').eq('id', USER).single<{ dna: DNASchema | null }>()
@@ -186,7 +187,7 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
     // Legacy 'mixed' ratings (dropped in migration 0013) have no level; leave them out.
     if (!s.source.startsWith('session_') && !pool.has(k) && s.reaction in LEVEL_RANK) pool.set(k, s.reaction)
   }
-  const { data: ev, error } = await db.from('play_events').select('payload').eq('user_id', USER).eq('kind', 'duel').not('payload->>chosen', 'is', null).order('id').limit(500)
+  const { data: ev, error } = await db.from('play_events').select('payload').eq('user_id', USER).eq('kind', 'duel').not('payload->>chosen', 'is', null).order('id')
   if (error) throw new Error(`play_events: ${error.message}`)
   const allPicks = (ev ?? []).map(e => e.payload as DuelPick).filter(p => p.a && p.b && p.chosen)
   const titles = await loadTitles([...new Set([...pool.keys(), ...allPicks.flatMap(p => [p.a, p.b])])])
