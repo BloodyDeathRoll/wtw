@@ -321,3 +321,53 @@ describe('the one honest reservation', () => {
     expect(checkWhy(GOOD + ' Just know going in that it has melancholic stretches.', f)).toEqual([])
   })
 })
+
+// ── Formula v2 (P1-E5): the facts come from the taste model ──────
+describe('why facts under formula v2', () => {
+  // complex is input 15, dark 16, crime 5 (src/lib/taste-scales/features.ts)
+  const vec = new Array(25).fill(0); vec[15] = 0.9; vec[16] = 0.7; vec[5] = 1
+  const contributions = new Array(25).fill(0); contributions[15] = 0.3; contributions[5] = 0.2; contributions[16] = -0.25
+  const v2Item = (over: Record<string, unknown> = {}) => {
+    const item = codaItem() as Record<string, unknown>
+    item.formula_v2 = { z_creators: 0, z_crowd: 0, z_model: 0.4, model_score: 0.3, s: 0.2, composite: 0.7, pool_size: 200, vec, contributions, ...over }
+    return item as never
+  }
+
+  it('the personal lines are the model\'s two strongest pulls, not strand C', () => {
+    const f = buildWhyFacts(v2Item(), new Map(), false, {})
+    expect(f.text).toContain('This viewer goes for twisty stories, and this one is twisty.')
+    expect(f.text).toContain('Crime is a genre this viewer goes for.')
+    // The v1 lines from dimension_matches are gone.
+    expect(f.text).not.toContain('rates highly')
+  })
+
+  it('the catch is the model\'s strongest pull away, said plainly', () => {
+    expect(reservationFor(v2Item(), undefined)).toBe("It's darker than this viewer usually goes for.")
+    const f = buildWhyFacts(v2Item(), new Map(), false, {})
+    expect(f.reservation).toBe("It's darker than this viewer usually goes for.")
+  })
+
+  it('without a model catch, the length still is one; the strand-C catches are gone', () => {
+    const none = new Array(25).fill(0)
+    expect(reservationFor(v2Item({ contributions: none, vec: none }), undefined)).toBeNull()
+    const long = codaItem({ runtime_minutes: 165, tone_tags: ['dark'] }) as Record<string, unknown>
+    long.formula_v2 = { z_creators: 0, z_crowd: 0, z_model: 0, model_score: 0, s: 0, composite: 0.5, pool_size: 1 }
+    expect(reservationFor(long as never, undefined)).toBe('It runs 2 hours 45 minutes.')
+  })
+
+  it('with no pull to name, says nothing about taste when the model is not for it', () => {
+    const none = new Array(25).fill(0)
+    const f = buildWhyFacts(v2Item({ contributions: none, vec: none, model_score: -0.2 }), new Map(), false, {})
+    expect(f.text).toContain('say nothing about what this viewer likes')
+  })
+})
+
+describe('the text speaks to "you", never of "this viewer"', () => {
+  it('is rejected when it copies the facts\' wording', () => {
+    const facts = buildWhyFacts(codaItem(), new Map(), false, {})
+    const text = 'Ruby is torn between her deaf family and her love of music, and Emilia Jones carries every scene with quiet grit. ' +
+      'Troy Kotsur brings warmth and real comic timing to the father, and the fishing boat scenes give the drama a working-class weight. ' +
+      'Sian Heder keeps it honest and unsentimental, letting the singing land without forcing it. Just know going in that it is gentler than this viewer usually goes for.'
+    expect(checkWhy(text, facts).join(' | ')).toMatch(/says "this viewer"; talk to the reader as "you"/)
+  })
+})

@@ -36,7 +36,7 @@ import {
 import { scoreFormulaV2 } from '../scoring/formula-v2'
 import { fetchTasteVectors, vecKey } from '../scoring/taste-vectors'
 import { formulaV2Enabled } from '@/lib/flags'
-import { trainTasteModel, predict } from '@/modules/dna/taste-model'
+import { trainTasteModel, predict, contributions } from '@/modules/dna/taste-model'
 import { loadTasteTraining } from '@/modules/dna/load-taste-training'
 import type { DNASchema } from '@/types/dna'
 import type { TitleRow, ScoredTitle } from '../types'
@@ -239,8 +239,11 @@ export async function scoreCandidates(
       }
     }))
     scored.forEach((s, i) => {
+      const vec = model?.vecs.get(vecKey(s.title))
       s.composite_score = v2Scores[i].composite
-      s.formula_v2      = v2Scores[i]
+      s.formula_v2      = model && vec
+        ? { ...v2Scores[i], vec, contributions: contributions(model.w, vec) }
+        : v2Scores[i]
     })
   }
 

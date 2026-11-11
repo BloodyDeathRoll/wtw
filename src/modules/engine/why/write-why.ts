@@ -33,6 +33,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { STRONG_CREW_AFFINITY, linkRole, sheetReason, type RatedByPerson } from '../pipeline/step7-card-reason'
 import type { ScoredTitleWithPayload } from '../pipeline/step6-reason-payload'
 import type { RatedForComparison } from './score-titles'
+import { hasTasteFacts, tasteCatch, tasteLikes } from './taste-facts'
 import type { DNASchema } from '@/types/dna'
 
 // ─────────────────────────────────────────────
@@ -158,6 +159,22 @@ const HEAVY_TONES = ['melancholic', 'tense', 'gritty', 'bleak', 'tragic']
  * Null when nothing in the data says so: then there is no reservation.
  */
 export function reservationFor(item: ScoredTitleWithPayload, dna: DNASchema | undefined): string | null {
+  // Formula v2 (P1-E5): the taste model's strongest pull away, then the
+  // language catch and the length. The strand-C catches (tone and pace
+  // weights, rated-down genres) are gone with the parts they came from.
+  const v2 = item.formula_v2
+  if (v2) {
+    const t = item.title
+    if (hasTasteFacts(v2)) {
+      const c = tasteCatch(v2.contributions, v2.vec)
+      if (c) return c
+    }
+    const a = item.content_avoided
+    if (a && a.dimension === 'language') return `It's in ${LANGUAGE[a.value] ?? a.value}, which hasn't worked for this viewer before.`
+    if ((t.runtime_minutes ?? 0) >= 150) return `It runs ${Math.floor(t.runtime_minutes! / 60)} hours ${t.runtime_minutes! % 60} minutes.`
+    return null
+  }
+
   if (!dna) return null
   const t = item.title
   const c = dna.strand_c_visceral_specs
@@ -246,8 +263,12 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     linkedNames.push(m.name)
   }
 
-  // ── Moods, genre, language the viewer rates highly, that this title has
-  const dim = new Map(p.dimension_matches.map(d => [d.dimension, d]))
+  // ── What pulls this viewer in. Formula v2 (P1-E5): the taste model's two
+  // strongest pulls among the title's scales and genres. v1: the moods, genre,
+  // pace and language the viewer rates highly, from strand C.
+  const v2 = item.formula_v2
+  if (hasTasteFacts(v2)) personal.push(...tasteLikes(v2.contributions, v2.vec))
+  const dim = new Map((v2 ? [] : p.dimension_matches).map(d => [d.dimension, d]))
   const split = (s?: string) => String(s ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean)
   const tone = dim.get('tone')
   const sharedTones = tone ? split(tone.title_value).filter(x => split(tone.user_value).includes(x)).map(x => TONE_WORD[x]).filter(Boolean) : []
@@ -287,7 +308,11 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     linkedNames.splice(0)
     personal.push('Nothing yet about this viewer: describe the title itself.')
   } else if (personal.length === 0) {
-    personal.push('Its story and mood are close to what this viewer rates highly.')
+    personal.push(
+      !v2 ? 'Its story and mood are close to what this viewer rates highly.'
+      : (v2.model_score ?? 0) > 0 ? 'It is close to the kind of titles this viewer goes for.'
+      : 'Describe the title itself; say nothing about what this viewer likes.',
+    )
   }
 
   const keywords = (t.keywords ?? []).filter(k => !JUNK_KEYWORD.test(k)).slice(0, 12)
@@ -465,6 +490,9 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
   if (SAMENESS.test(text)) problems.push(`it says "${text.match(SAMENESS)![0]}"; no critics or audiences, and describe the feel in fresh words, not a list of mood tags`)
   if (STOCK_OPENER.test(norm(text))) problems.push(`it opens with "${text.match(/^\S+(\s+\S+)?/)![0]}"; open with something specific about this title or the person`)
   if (/\n/.test(text.trim())) problems.push('it has a line break; one paragraph')
+  // The facts speak of "this viewer"; the text speaks to the reader (seen
+  // 2026-11-11: "it's more mainstream than this viewer usually goes for").
+  if (/\b(this|the) viewer\b/i.test(text)) problems.push(`it says "${text.match(/\b(this|the) viewer\b/i)![0]}"; talk to the reader as "you"`)
   const self = facts.titles[0]
   if (self && norm(text).includes(`*${norm(self)}* with`)) problems.push(`it compares *${self}* to itself; compare only to a title the facts list as rated by the viewer, or don't compare`)
 
@@ -739,7 +767,7 @@ async function attemptWrite(item: ScoredTitleWithPayload, facts: WhyFacts): Prom
 
 /** Three days: long enough that re-opening is instant, short enough that new ratings show up. */
 const TTL_SECONDS = 3 * 24 * 60 * 60
-export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v5:${userId}:${type}:${tmdbId}`
+export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v6:${userId}:${type}:${tmdbId}`
 
 export async function getCachedWhy(userId: string, type: string, tmdbId: string): Promise<WhyText | null> {
   return getRedis().get<WhyText>(whyAiKey(userId, type, tmdbId))

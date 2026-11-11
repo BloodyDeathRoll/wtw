@@ -69,6 +69,12 @@ export interface V2Score {
   s: number
   /** Φ(s / sd(s)), in (0,1). 0.5 when nothing in the pool differs. */
   composite: number
+  /** How many titles the z-scores were taken over. A pool of a few says little (P1-E5's bars need ≥ BARS_MIN_POOL). */
+  pool_size: number
+  /** The title's taste vector, when it has one (the "What it's like" lines, P1-E5). Set by step 2. */
+  vec?: number[]
+  /** w_k·x_k per input, when it has a vector (the Why facts, P1-E5). Set by step 2. */
+  contributions?: number[]
 }
 
 /** Scores a whole pool at once: every z is relative to the others. */
@@ -95,5 +101,6 @@ export function scoreFormulaV2(parts: V2Parts[]): V2Score[] {
     model_score: p.model,
     s: s[i],
     composite: sdS < FLAT ? 0.5 : normalCdf(s[i] / sdS),
+    pool_size: parts.length,
   }))
 }

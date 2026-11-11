@@ -13,46 +13,59 @@
  */
 
 import type { ReasonPayload } from '@/types/dna'
-import type { ScoredTitle } from '../types'
+import type { ScoredTitle, ReasonPayloadWithTaste } from '../types'
+import { hasTasteFacts, tasteBars, tasteNegatives, whatItsLike } from '../why/taste-facts'
 
 export interface ScoredTitleWithPayload extends ScoredTitle {
-  reason_payload: ReasonPayload
+  reason_payload: ReasonPayloadWithTaste
 }
 
 function buildNegativeSignals(item: ScoredTitle): string[] {
   const negatives: string[] = []
 
-  if (item.crew_matches.length === 0) {
+  // v1 only: the sheet hides this line anyway (RecCard's NO_CREW_FILLER), and
+  // under v2 it would take one of the two places from a real reason — and
+  // "based on narrative and tone fit" isn't true of v2.
+  if (!item.formula_v2 && item.crew_matches.length === 0) {
     negatives.push('No crew members from your watch history — recommendation is based on narrative and tone fit.')
   }
 
-  if (item.narrative_match_score < 0.45) {
-    negatives.push('Narrative dimensions are a partial mismatch with your usual preferences.')
-  }
-
-  if (item.visceral_match_score < 0.4) {
-    const tag = item.title.pacing_tag?.replace('_', ' ')
-    if (tag) {
-      negatives.push(`Pacing (${tag}) differs from what you typically rate highly.`)
-    } else {
-      negatives.push('Tone differs from your usual preferences.')
+  if (item.formula_v2) {
+    // Formula v2 (P1-E5): what the taste model holds against it, and a crowd
+    // score well below the pool's. Narrative, visceral and genre habits have
+    // weight 0 under v2, so they are no reason against.
+    negatives.push(...tasteNegatives(item.formula_v2))
+    // Language is not a model input: keep it (the language catch, PLAN P1-E5).
+    if (item.content_avoided?.dimension === 'language') negatives.push(`You have rated ${item.content_avoided.value} down before.`)
+  } else {
+    if (item.narrative_match_score < 0.45) {
+      negatives.push('Narrative dimensions are a partial mismatch with your usual preferences.')
     }
-  }
 
-  // The fingerprint's own answer to "why might they not want this" — the genre
-  // (or language, or format) they have rated down repeatedly. Ahead of the
-  // ratings caveat because it is about them, not about the title.
-  if (item.content_avoided) {
-    const { dimension, value } = item.content_avoided
-    negatives.push(
-      dimension === 'format'
-        ? `You rate ${value === 'tv' ? 'series' : 'films'} lower than the other.`
-        : `You have rated ${value} down before.`,
-    )
-  }
+    if (item.visceral_match_score < 0.4) {
+      const tag = item.title.pacing_tag?.replace('_', ' ')
+      if (tag) {
+        negatives.push(`Pacing (${tag}) differs from what you typically rate highly.`)
+      } else {
+        negatives.push('Tone differs from your usual preferences.')
+      }
+    }
 
-  if (item.external_rating_score < 0.55) {
-    negatives.push('Lower critical/audience ratings than your usual picks.')
+    // The fingerprint's own answer to "why might they not want this" — the genre
+    // (or language, or format) they have rated down repeatedly. Ahead of the
+    // ratings caveat because it is about them, not about the title.
+    if (item.content_avoided) {
+      const { dimension, value } = item.content_avoided
+      negatives.push(
+        dimension === 'format'
+          ? `You rate ${value === 'tv' ? 'series' : 'films'} lower than the other.`
+          : `You have rated ${value} down before.`,
+      )
+    }
+
+    if (item.external_rating_score < 0.55) {
+      negatives.push('Lower critical/audience ratings than your usual picks.')
+    }
   }
 
   if (item.is_stretch_pick && item.dimensions_stretched.length > 0) {
@@ -78,7 +91,7 @@ export function buildReasonPayloads(
       external_ratings.push({ source: 'OMDB (RT/Meta weighted)', score: t.omdb_rating })
     }
 
-    const reason_payload: ReasonPayload = {
+    const reason_payload: ReasonPayloadWithTaste = {
       crew_matches:              item.crew_matches,
       lineage_connections:       item.lineage_connections,
       dimension_matches:         item.dimension_matches,
@@ -88,6 +101,16 @@ export function buildReasonPayloads(
       stretch_rationale:         item.stretch_rationale,
       groq_rationale:            item.groq_rationale,
       negative_signals:          buildNegativeSignals(item),
+    }
+    const v2 = item.formula_v2
+    if (v2) {
+      // A title with no taste vector yet still has its three z-scores (its
+      // model z is 0); it just has nothing to say about what it's like.
+      const bars = tasteBars(v2)
+      reason_payload.taste = {
+        ...(bars ? { bars } : {}),
+        like: hasTasteFacts(v2) ? whatItsLike(v2.vec, t.original_language) : [],
+      }
     }
 
     return { ...item, reason_payload }
