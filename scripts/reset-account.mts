@@ -95,9 +95,14 @@ async function main() {
   if (saveErr) throw new Error(`users: ${saveErr.message}`)
 
   // Scanned again now, so a key written while the rows were going is caught too.
-  await invalidateDNACache(USER)
-  const fresh = await redisKeys()
-  if (fresh.length) await getRedis().del(...fresh)
+  let fresh: string[]
+  try {
+    await invalidateDNACache(USER)
+    fresh = await redisKeys()
+    if (fresh.length) await getRedis().del(...fresh)
+  } catch (e) {
+    throw new Error(`the database is reset, but Redis cleanup failed (${(e as Error).message}) — re-run to clear Redis`)
+  }
   console.log(`\nreset: DNA blank at v${blank.metadata.taste_version} (snapshot of the old one stored), ${TABLES.length} tables cleared, ${fresh.length} redis keys deleted`)
 }
 
