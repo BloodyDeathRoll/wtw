@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { avoidSummary } from '@/modules/engine/pipeline/step4-llm-rerank'
+import {
+  avoidSummary,
+  RATED_DOWN_MAX_SCORE,
+  RATED_DOWN_MIN_SAMPLES,
+} from '@/modules/engine/pipeline/step4-llm-rerank'
 import { narrativeToEmbeddingText } from '@/modules/engine/enrichment/enrich-title-narrative'
 import { applyContentAffinityUpdate } from '@/modules/dna/lib/update-content-affinity'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
@@ -61,9 +65,9 @@ describe('rerank prompt — what the viewer avoids', () => {
   it('reports what the user rated down without ever saying so', () => {
     const d = dnaWith(x => rate(x, 27, 'disliked', ['Animation'], 'ja'))
     const s = avoidSummary(d)
-    expect(s).toContain('Has repeatedly rated down:')
-    expect(s).toContain('animation (27 rated down)')
-    expect(s).toContain('ja (27 rated down)')
+    expect(s).toContain('Has repeatedly rated down: ')
+    expect(s).toMatch(/rated down: .*\banimation\b/)
+    expect(s).toMatch(/rated down: .*\bja\b/)
   })
 
   it('ranks the best-evidenced dislikes first, across both buckets', () => {
@@ -80,9 +84,47 @@ describe('rerank prompt — what the viewer avoids', () => {
     })
     const s = avoidSummary(d)
 
-    expect(s).toContain('ja (30 rated down)')
+    expect(s).toMatch(/rated down: .*\bja\b/)
     // The thinly-evidenced genres lose their places to the well-evidenced ones.
     expect(s).not.toContain('soap')
+  })
+
+  // P1-E2 (b): the line printed sample_size as "N rated down", but
+  // sample_size counts every rating of the genre, likes included, and any
+  // genre averaging below 0 was listed.
+  it('names the genre only, with no count', () => {
+    const d = dnaWith(x => rate(x, 4, 'disliked', ['Horror']))
+    expect(avoidSummary(d)).toBe('Has repeatedly rated down: horror, en.')
+  })
+
+  it('does not report a genre rated half up, half down', () => {
+    // 6 dislikes and 6 likes of comedy (-0.20 / +0.15) average well above -0.10.
+    const d = dnaWith(x => {
+      rate(x, 6, 'disliked', ['Comedy'])
+      rate(x, 6, 'liked', ['Comedy'])
+    })
+    expect(avoidSummary(d)).not.toContain('comedy')
+  })
+
+  it(`does not report a genre rated down fewer than ${RATED_DOWN_MIN_SAMPLES} times`, () => {
+    const d = dnaWith(x => rate(x, RATED_DOWN_MIN_SAMPLES - 1, 'disliked', ['Western']))
+    expect(avoidSummary(d)).toBe('')
+  })
+
+  it(`reports a genre at exactly ${RATED_DOWN_MAX_SCORE}, not one just above it`, () => {
+    const at = dnaWith(x => {
+      x.strand_c_visceral_specs.genre_affinity = {
+        war: { score: RATED_DOWN_MAX_SCORE, confidence: 0.5, sample_size: 5 },
+      }
+    })
+    expect(avoidSummary(at)).toBe('Has repeatedly rated down: war.')
+
+    const above = dnaWith(x => {
+      x.strand_c_visceral_specs.genre_affinity = {
+        war: { score: RATED_DOWN_MAX_SCORE + 0.01, confidence: 0.5, sample_size: 5 },
+      }
+    })
+    expect(avoidSummary(above)).toBe('')
   })
 
   it('does not report a genre the user likes', () => {

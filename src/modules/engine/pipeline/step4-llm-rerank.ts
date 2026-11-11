@@ -35,17 +35,23 @@ import type { ScoredTitle } from '../types'
 // Profile → natural language (for the prompt)
 // ─────────────────────────────────────────────
 
-function profileSummary(dna: DNASchema): string {
+/** A crew member needs at least this many ratings to be named a favourite. */
+export const FAVOURITE_CREW_MIN_SAMPLES = 2
+
+export function profileSummary(dna: DNASchema): string {
   const b = dna.strand_b_narrative_dimensions
   const c = dna.strand_c_visceral_specs
 
-  // Top crew affinities (score > 0.3, sorted by score × confidence)
+  // Top crew affinities: liked on balance, rated at least twice, strongest
+  // score × confidence first. A strand A score is a running average reaction
+  // level that tops out at +0.30 (src/modules/dna/lib/reaction-score.ts), so
+  // the old `score > 0.3` left this line empty for almost everyone (P1-E2).
   const topCrew = [
     ...Object.values(dna.strand_a_creative_affinity.directors).map(e => ({ ...e, role: 'director' })),
     ...Object.values(dna.strand_a_creative_affinity.writers).map(e => ({ ...e, role: 'writer' })),
     ...Object.values(dna.strand_a_creative_affinity.cinematographers).map(e => ({ ...e, role: 'cinematographer' })),
   ]
-    .filter(e => e.score > 0.3)
+    .filter(e => e.score > 0 && e.sample_size >= FAVOURITE_CREW_MIN_SAMPLES)
     .sort((a, b) => (b.score * b.confidence) - (a.score * a.confidence))
     .slice(0, 5)
     .map(e => `${e.name} (${e.role}, affinity ${(e.score * e.confidence).toFixed(2)})`)
@@ -112,17 +118,38 @@ export function avoidSummary(dna: DNASchema): string {
   // score is a running average reaction level, so everything the user has
   // always disliked converges on the same −0.20 whether it was rated 4 times
   // or 40. Confidence is what carries "how sure are we".
+  //
+  // Only the key is printed (P1-E2). It used to print `sample_size` as
+  // "N rated down", but sample_size counts every rating of that genre, likes
+  // included, and any genre averaging below 0 was listed. Now a genre must
+  // average at or below RATED_DOWN_MAX_SCORE over RATED_DOWN_MIN_SAMPLES+
+  // ratings — mostly dislikes, not a mixed bag.
   const ratedDown = [
-    ...strongestContentAffinities(c.genre_affinity),
-    ...strongestContentAffinities(c.language_affinity),
+    ...strongestContentAffinities(c.genre_affinity, RATED_DOWN_MIN_SAMPLES),
+    ...strongestContentAffinities(c.language_affinity, RATED_DOWN_MIN_SAMPLES),
   ]
-    .filter(([, e]) => e.score < 0)
+    .filter(([, e]) => e.score <= RATED_DOWN_MAX_SCORE)
     .sort((a, b) => a[1].score * a[1].confidence - b[1].score * b[1].confidence)
     .slice(0, 5)
-    .map(([key, e]) => `${key} (${e.sample_size} rated down)`)
+    .map(([key]) => key)
   if (ratedDown.length > 0) parts.push(`Has repeatedly rated down: ${ratedDown.join(', ')}.`)
 
   return parts.join(' ')
+}
+
+/**
+ * "Rated down" thresholds. Scores are running averages of reaction levels
+ * (loved +0.30, liked +0.15, disliked −0.20), so −0.10 needs at least ~71%
+ * dislikes against likes, or 80% against loves. A genre the viewer rates
+ * half up, half down averages around 0 and is not "rated down".
+ */
+export const RATED_DOWN_MAX_SCORE = -0.10
+export const RATED_DOWN_MIN_SAMPLES = 3
+
+/** The viewer text Jev is given: the profile, then what they avoid. */
+export function jevState(dna: DNASchema): string {
+  const avoids = avoidSummary(dna)
+  return `VIEWER PROFILE:\n${profileSummary(dna)}${avoids ? `\n\nWHAT THIS VIEWER AVOIDS:\n${avoids}` : ''}`
 }
 
 // ─────────────────────────────────────────────
@@ -183,8 +210,7 @@ export async function llmRerank(
     return `"${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${director} — Genres: ${genres} — Tone: ${tones}`
   }
 
-  const avoids = avoidSummary(dna)
-  const state = `VIEWER PROFILE:\n${profileSummary(dna)}${avoids ? `\n\nWHAT THIS VIEWER AVOIDS:\n${avoids}` : ''}`
+  const state = jevState(dna)
   const questions = Object.fromEntries(
     top50.map(s => [
       keyOf(s),
