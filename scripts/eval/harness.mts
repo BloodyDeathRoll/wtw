@@ -39,7 +39,7 @@ import { applyCrewAffinityUpdate } from '@/modules/dna/lib/update-crew'
 import { buildTraining, predict, trainTasteModel, type DuelPick, type TastePair } from '@/modules/dna/taste-model'
 import { loadTasteTraining } from '@/modules/dna/load-taste-training'
 import type { DNASchema, DNASignal } from '@/types/dna'
-import { concordance, formulaV2, rng, shuffle, topShare, type Level, type Scored } from './metrics'
+import { concordance, formulaV2, LEVEL_RANK, rng, shuffle, topShare, type Level, type Scored } from './metrics'
 
 const args = process.argv.slice(2)
 const opt = (name: string) => {
@@ -110,7 +110,7 @@ async function main() {
     : await db.from('users').select('dna').eq('id', USER).single<{ dna: DNASchema | null }>()
   if (error || !u?.dna) throw new Error(`no DNA for that user id${version ? ` at version ${version}` : ''}${error ? `: ${error.message}` : ''}`)
   const dna = u.dna
-  if (version) console.log(`[eval] DNA snapshot v${version}`)
+  if (version) console.log(`[eval] DNA snapshot v${version} — duel picks and titles are read as of today, so only v1 is historical`)
   const rated = new Set(dna.signals.map(s => titleKey(s.type, s.tmdb_id)))
   const seen = Object.entries(sheet).filter((e): e is [string, Level] => e[1] !== 'unseen')
   const fair = seen.filter(([k]) => !rated.has(k))
@@ -183,7 +183,8 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
   const pool = new Map<string, Level>(seen)
   for (const s of dna.signals as DNASignal[]) {
     const k = titleKey(s.type, s.tmdb_id)
-    if (!s.source.startsWith('session_') && !pool.has(k)) pool.set(k, s.reaction)
+    // Legacy 'mixed' ratings (dropped in migration 0013) have no level; leave them out.
+    if (!s.source.startsWith('session_') && !pool.has(k) && s.reaction in LEVEL_RANK) pool.set(k, s.reaction)
   }
   const { data: ev, error } = await db.from('play_events').select('payload').eq('user_id', USER).eq('kind', 'duel').not('payload->>chosen', 'is', null).order('id').limit(500)
   if (error) throw new Error(`play_events: ${error.message}`)
