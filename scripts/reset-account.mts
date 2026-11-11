@@ -80,7 +80,7 @@ async function main() {
   if (dna && (dna.signals.length > 0 || dna.learning_loop.recommendation_history.length > 0)) {
     // storeSnapshot logs and returns on failure, and an older snapshot can share the version:
     // only a row written by this call counts.
-    const before = new Date(Date.now() - 1000).toISOString()
+    const before = new Date(Date.now() - 60_000).toISOString() // 60 s of slack for clock skew with the database
     await storeSnapshot(USER, dna)
     const { count, error: readErr } = await db.from('dna_snapshots').select('id', { count: 'exact', head: true }).eq('user_id', USER).eq('taste_version', dna.metadata.taste_version).gte('created_at', before)
     if (readErr) throw new Error(`could not check the snapshot (${readErr.message}) — nothing was reset`)
