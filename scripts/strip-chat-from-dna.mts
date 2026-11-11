@@ -36,7 +36,10 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const APPLY = process.argv.includes('--apply')
-const ONLY = process.argv.includes('--user') ? process.argv[process.argv.indexOf('--user') + 1] : null
+const userAt = process.argv.indexOf('--user')
+const ONLY = userAt === -1 ? null : process.argv[userAt + 1]
+// A bare --user must not fall through to every user: a second full run would reset strand B again.
+if (userAt !== -1 && (!ONLY || ONLY.startsWith('--'))) throw new Error('--user needs a user id')
 const list = (xs: string[]) => (xs.length ? xs.join(', ') : '—')
 
 async function main() {
