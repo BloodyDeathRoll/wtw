@@ -50,6 +50,7 @@ import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
+import { chatMode } from "@/lib/flags";
 import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
@@ -123,7 +124,8 @@ function TopBar({
 }: {
   hasConversation: boolean;
   onBack: () => void;
-  onOpenChat: () => void;
+  /** Absent when the chat is off (CHAT_MODE=off): no chat icon. */
+  onOpenChat?: () => void;
   onRecommend: () => void;
   onWatchlist: () => void;
   onFastLearning: () => void;
@@ -178,7 +180,7 @@ function TopBar({
           >
             {I.back}
           </button>
-        ) : (
+        ) : onOpenChat && (
           // The chat (text and voice) lives behind this icon since the home
           // screen dropped its input bar (2026-10-20).
           <button
@@ -244,17 +246,22 @@ function Onboard({
   continuePrompt,
   matureGreeting,
   onPlayVoice,
+  chatEnabled = true,
 }: {
   continuePrompt?: string;
   matureGreeting?: string;
   onPlayVoice?: (primer: string) => void;
+  chatEnabled?: boolean;
 }) {
   // Priority: mature greeting (server-rendered, situational) →
-  // continuation of an in-progress chat → cold-start calibration.
+  // continuation of an in-progress chat → cold-start calibration. With the
+  // chat off, nothing invites the user to name titles to it.
   const hint =
     matureGreeting ??
     continuePrompt ??
-    "Let's calibrate your taste: name a few of your all time favorite flicks.";
+    (chatEnabled
+      ? "Let's calibrate your taste: name a few of your all time favorite flicks."
+      : "What are you in the mood for tonight?");
   const spoken =
     matureGreeting ??
     continuePrompt ??
@@ -507,6 +514,8 @@ export default function WTWApp({
   calibrationNudge?: boolean;
 }) {
   const router = useRouter();
+  // CHAT_MODE=off (DEC-5): no way into the chat, text or voice.
+  const chatEnabled = chatMode() !== "off";
   // Every login (and every reload) lands on the welcome/continue screen,
   // not directly inside the chat. The chat is still one tap away (via the
   // message icon in the top-left when there's history) and the Onboard
@@ -1003,7 +1012,7 @@ export default function WTWApp({
           <TopBar
             hasConversation={stage === "conversation"}
             onBack={backToOnboard}
-            onOpenChat={() => setStage("conversation")}
+            onOpenChat={chatEnabled ? () => setStage("conversation") : undefined}
             onRecommend={handleRecommend}
             onWatchlist={handleWatchlist}
             onFastLearning={handleFastLearning}
@@ -1021,13 +1030,14 @@ export default function WTWApp({
             {stage === "onboard" && (
               <Onboard
                 continuePrompt={
-                  textOf(messages.findLast((m) => m.role === "assistant"))
+                  chatEnabled ? textOf(messages.findLast((m) => m.role === "assistant")) : undefined
                 }
                 matureGreeting={matureGreeting}
-                onPlayVoice={(primer) => {
+                onPlayVoice={chatEnabled ? (primer) => {
                   setVoicePrimer(primer);
                   setVoiceOpen(true);
-                }}
+                } : undefined}
+                chatEnabled={chatEnabled}
               />
             )}
             {stage === "welcome" && (
