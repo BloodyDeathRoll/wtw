@@ -32,9 +32,7 @@ export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?
     if (error) throw new Error(`Taste training failed (play_events): ${error.message}`)
     for (const { payload } of data ?? []) {
       const p = payload as Partial<DuelPick>
-      if (typeof p.a !== 'string' || typeof p.b !== 'string' || typeof p.chosen !== 'string') continue
-      if (holdOut?.has(p.a) || holdOut?.has(p.b)) continue
-      picks.push({ a: p.a, b: p.b, chosen: p.chosen })
+      if (typeof p.a === 'string' && typeof p.b === 'string' && typeof p.chosen === 'string') picks.push({ a: p.a, b: p.b, chosen: p.chosen })
     }
     if (!data || data.length < PAGE) break
   }
@@ -59,5 +57,5 @@ export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?
     }
   }
 
-  return buildTraining(dna.signals, picks, vecs)
+  return buildTraining(dna.signals, picks, vecs, Date.now(), holdOut)
 }

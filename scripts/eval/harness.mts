@@ -42,15 +42,16 @@ import { concordance, formulaV2, rng, shuffle, topShare, type Level, type Scored
 
 const args = process.argv.slice(2)
 const opt = (name: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined }
-const num = (name: string, def: number) => {
+const num = (name: string, def: number, min = 0) => {
   const v = Number(opt(name) ?? def)
-  if (!Number.isFinite(v)) throw new Error(`${name} needs a number`)
+  if (!Number.isInteger(v) || v < min) throw new Error(`${name} needs a whole number ≥ ${min}`)
   return v
 }
 const USER = opt('--user')
 const SHEET = opt('--sheet')
 const MODE = opt('--mode') ?? 'live'
 if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new]')
+if (MODE !== 'live' && MODE !== 'new') throw new Error(`--mode must be live or new, not ${MODE}`)
 
 const db = createServiceClient()
 const COLS = 'id, tmdb_id, title, type, synopsis, genres, release_year, runtime_minutes, tmdb_rating, tmdb_vote_count, omdb_rating, crew, pacing_tag, tone_tags, original_language, keywords, narrative_metadata, enriched_at, created_at, taste_vec, taste_version'
@@ -93,6 +94,9 @@ const line = (label: string, items: Scored[]) => console.log(`  ${label.padEnd(2
 
 async function main() {
   const sheet = JSON.parse(await readFile(SHEET!, 'utf8')) as Record<string, Level | 'unseen'>
+  // A typo ("love", a bare id) would score as a plausible wrong number, so refuse it.
+  const bad = Object.entries(sheet).filter(([k, v]) => !parseTitleKey(k).type || !['loved', 'liked', 'disliked', 'unseen'].includes(v))
+  if (bad.length) throw new Error(`sheet: ${bad.length} bad entr${bad.length === 1 ? 'y' : 'ies'}, e.g. ${JSON.stringify(bad[0])} — keys are "movie:603" / "tv:1396", values loved | liked | disliked | unseen`)
   const { data: u, error } = await db.from('users').select('dna').eq('id', USER).single<{ dna: DNASchema | null }>()
   if (error || !u?.dna) throw new Error(`no DNA for that user id${error ? `: ${error.message}` : ''}`)
   const dna = u.dna
@@ -145,7 +149,7 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
 // ── new user ─────────────────────────────────────────────────────
 
 async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, Level][]) {
-  const CARDS = num('--cards', 30), PICKS = num('--picks', 12), DRAWS = num('--draws', 200)
+  const CARDS = num('--cards', 30), PICKS = num('--picks', 12), DRAWS = num('--draws', 200, 1)
   const rand = rng(num('--seed', 1))
   // Everything the tester rated: the sheet's seen titles, plus My ratings (not chat-named) the sheet doesn't hold.
   const pool = new Map<string, Level>(seen)

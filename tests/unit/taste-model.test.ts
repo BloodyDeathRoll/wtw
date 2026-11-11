@@ -95,4 +95,9 @@ describe('buildTraining', () => {
     ], vecs, now)
     expect(pairs).toEqual([{ chosen: vec(2), other: vec(1) }])
   })
+
+  it('drops picks touching a held-out title (evaluation)', () => {
+    const picks = [{ a: 'movie:1', b: 'movie:2', chosen: 'movie:2' }, { a: 'movie:1', b: 'movie:3', chosen: 'movie:3' }]
+    expect(buildTraining([], picks, vecs, now, new Set(['movie:2'])).pairs).toEqual([{ chosen: vec(3), other: vec(1) }])
+  })
 })
