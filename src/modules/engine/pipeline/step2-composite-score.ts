@@ -68,14 +68,18 @@ export function toPercentiles(scores: Map<string, number>): Map<string, number> 
   return out
 }
 
-function externalRatingScore(title: TitleRow): number {
-  const tmdb = title.tmdb_rating != null ? (title.tmdb_rating / 10) * 0.6 : null
-  const omdb = title.omdb_rating != null ? title.omdb_rating * 0.4 : null
+/**
+ * Crowd score, 0–1. `tmdb_rating` is stored 0–10, `omdb_rating` 0–1
+ * (src/lib/omdb.ts). With only one of the two, that one is the whole score:
+ * until P1-E1 it was halved, which sank 48 of the 923 tested titles.
+ */
+export function externalRatingScore(title: Pick<TitleRow, 'tmdb_rating' | 'omdb_rating'>): number {
+  const { tmdb_rating: tmdb, omdb_rating: omdb } = title
 
-  if (tmdb === null && omdb === null) return 0.5   // no data → neutral
-  if (tmdb === null) return (omdb! / 0.4) * 0.5   // re-normalize to full range
-  if (omdb === null) return (tmdb / 0.6) * 0.5
-  return tmdb + omdb
+  if (tmdb == null && omdb == null) return 0.5   // no data → neutral
+  if (omdb == null) return tmdb! / 10
+  if (tmdb == null) return omdb
+  return 0.6 * (tmdb / 10) + 0.4 * omdb
 }
 
 function recencyScore(releaseYear: number | null): number {
