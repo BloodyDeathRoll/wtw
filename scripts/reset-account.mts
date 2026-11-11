@@ -77,9 +77,11 @@ async function main() {
 
   // A DNA with no signals (a re-run after the DNA write, or a fresh account) has nothing to roll back to.
   if (dna && dna.signals.length > 0) {
-    // Inserted here, not through storeSnapshot (which logs and returns on failure): no snapshot, no reset.
-    // The app's next storeSnapshot prunes back to the last 5.
-    const { error: snapErr } = await db.from('dna_snapshots').insert({ user_id: USER, taste_version: dna.metadata.taste_version, snapshot: dna })
+    // Written here, not through storeSnapshot (which logs and returns on failure): no snapshot, no reset.
+    // The app usually snapshotted this version already (unique per user + version), so overwrite it
+    // with exactly the DNA read now. The app's next storeSnapshot prunes back to the last 5.
+    const { error: snapErr } = await db.from('dna_snapshots')
+      .upsert({ user_id: USER, taste_version: dna.metadata.taste_version, snapshot: dna }, { onConflict: 'user_id,taste_version' })
     if (snapErr) throw new Error(`snapshot not stored (${snapErr.message}) — nothing was reset`)
   }
 
