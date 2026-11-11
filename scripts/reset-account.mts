@@ -6,8 +6,10 @@
  *   npm run reset-account -- --user <uuid> --apply              # do it
  *   npm run reset-account -- --user <uuid> --apply --keep-lists # keep removed titles and the watchlist
  *
- * With --apply:
- *   - a snapshot of the current DNA is stored first (dna_snapshots, rollback);
+ * With --apply, in this order (a failed run can simply be re-run: the DNA is
+ * written last, so it still holds what --keep-lists needs):
+ *   - a snapshot of the current DNA is stored and read back — no snapshot, no
+ *     reset (dna_snapshots keeps the last 5, so the oldest may go);
  *   - the DNA becomes blank (blank-dna.ts), but taste_version keeps counting
  *     up, so no cache keyed by an old version is ever served again;
  *   - deleted: play_state, play_events, served_titles, the conversations
@@ -19,22 +21,24 @@
  *     history, so saved titles stay off the feed);
  *   - every Redis key that holds the user id (the DNA and rec caches, the
  *     greeting, the precompute lock, …).
- * The auth account and earlier snapshots are kept. The user id is an
- * argument; nothing here prints an email.
+ * The auth account is kept. The user id is an argument; nothing here prints
+ * an email. The summary names the database host, since .env.local decides it.
  */
 import { createServiceClient } from '@/lib/supabase/service'
 import { getRedis } from '@/lib/redis'
 import { isSavedMarker } from '@/lib/title-key'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
+import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { storeSnapshot } from '@/modules/dna/lib/snapshot'
 import type { DNASchema } from '@/types/dna'
 
 const args = process.argv.slice(2)
 const userAt = args.indexOf('--user')
-const USER = userAt >= 0 ? args[userAt + 1] : undefined
+const USER_ARG = userAt >= 0 ? args[userAt + 1] : undefined
 const APPLY = args.includes('--apply')
 const KEEP_LISTS = args.includes('--keep-lists')
-if (!USER || !/^[0-9a-f-]{36}$/.test(USER)) throw new Error('usage: --user <uuid> [--apply] [--keep-lists]')
+if (!USER_ARG || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(USER_ARG)) throw new Error('usage: --user <uuid> [--apply] [--keep-lists]')
+const USER: string = USER_ARG
 
 const db = createServiceClient()
 
@@ -59,7 +63,7 @@ async function main() {
   if (!row) throw new Error('no such user')
   const dna = row.dna
 
-  console.log(`[reset] user ${USER} · DNA v${dna?.metadata.taste_version ?? '—'}, ${dna?.signals.length ?? 0} signals${KEEP_LISTS ? ' · keeping removed titles + watchlist' : ''}`)
+  console.log(`[reset] ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://unknown').host} · user ${USER} · DNA v${dna?.metadata.taste_version ?? '—'}, ${dna?.signals.length ?? 0} signals${KEEP_LISTS ? ' · keeping removed titles + watchlist' : ''}`)
   for (const t of TABLES) {
     const { count, error: e } = await db.from(t).select('*', { count: 'exact', head: true }).eq('user_id', USER)
     if (e) throw new Error(`${t}: ${e.message}`)
@@ -69,20 +73,29 @@ async function main() {
   console.log(`  redis keys               ${keys.length}`)
   if (!APPLY) { console.log('\ndry run — re-run with --apply to reset'); return }
 
-  if (dna) await storeSnapshot(USER!, dna)
-  const blank = createBlankDNA(USER!)
+  if (dna) {
+    // storeSnapshot logs and returns on failure; this script must not go on without one.
+    await storeSnapshot(USER, dna)
+    const { count } = await db.from('dna_snapshots').select('id', { count: 'exact', head: true }).eq('user_id', USER).eq('taste_version', dna.metadata.taste_version)
+    if (!count) throw new Error('snapshot not stored — nothing was reset')
+  }
+
+  for (const t of TABLES) {
+    const { error: e } = await db.from(t).delete().eq('user_id', USER)
+    if (e) throw new Error(`${t}: ${e.message} (the DNA is untouched; re-run to finish)`)
+  }
+
+  const blank = createBlankDNA(USER)
   blank.metadata.taste_version = (dna?.metadata.taste_version ?? 0) + 1
   if (KEEP_LISTS && dna) blank.learning_loop.recommendation_history = dna.learning_loop.recommendation_history.filter(isSavedMarker)
   const { error: saveErr } = await db.from('users').update({ dna: blank, updated_at: new Date().toISOString() }).eq('id', USER)
   if (saveErr) throw new Error(`users: ${saveErr.message}`)
 
-  for (const t of TABLES) {
-    const { error: e } = await db.from(t).delete().eq('user_id', USER)
-    if (e) throw new Error(`${t}: ${e.message}`)
-  }
-  // After the DB, so a cache can't be refilled from the old rows in between.
-  if (keys.length) await getRedis().del(...keys)
-  console.log(`\nreset: DNA blank at v${blank.metadata.taste_version} (snapshot of the old one stored), ${TABLES.length} tables cleared, ${keys.length} redis keys deleted`)
+  // Scanned again now, so a key written while the rows were going is caught too.
+  await invalidateDNACache(USER)
+  const fresh = await redisKeys()
+  if (fresh.length) await getRedis().del(...fresh)
+  console.log(`\nreset: DNA blank at v${blank.metadata.taste_version} (snapshot of the old one stored), ${TABLES.length} tables cleared, ${fresh.length} redis keys deleted`)
 }
 
 main().catch(err => { console.error(err); process.exit(1) })
