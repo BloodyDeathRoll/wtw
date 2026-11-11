@@ -5,7 +5,8 @@
  *
  *   npm run derive-scale-norms            # check only: derive, compare with norms.json, verify
  *   npm run derive-scale-norms -- --write # overwrite norms.json (moves every catalogue title:
- *                                         # bump TASTE_FEATURE_VERSION unless only nulls were filled)
+ *                                         # bump TASTE_FEATURE_VERSION; filling only `audience` still
+ *                                         # means rebuilding any taste_vec built before it)
  *
  * Derives the norms, then checks them: every game title,
  * normalised from its raw facts and AI scores, must match its titles.json
