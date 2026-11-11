@@ -5,6 +5,7 @@
  *
  *   npm run strip-chat-from-dna            # dry run: per user, what would go
  *   npm run strip-chat-from-dna -- --apply # snapshot, then write
+ *   npm run strip-chat-from-dna -- --apply --user <id>  # one user only (re-run a skipped row)
  *
  * The dry run lists every rule, soft preference and "tonight" modifier that
  * would be removed, per user, so each person can re-add what they meant
@@ -19,7 +20,8 @@
  * rollback points out of the keep-last-5), then save under a compare-and-set
  * on updated_at (NOT NULL) — a row that changed since the read is skipped and
  * reported; re-run for it. Not idempotent for strand B (values are kept,
- * confidence reset), like rebuild-strands.mts: run it once.
+ * confidence reset), like rebuild-strands.mts: run it once, and re-run a
+ * skipped row alone with --user.
  */
 import { createServiceClient } from '@/lib/supabase/service'
 import { fetchTitleCrew, invalidateDNACache } from '@/modules/dna/lib/load-save'
@@ -34,12 +36,15 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const APPLY = process.argv.includes('--apply')
+const ONLY = process.argv.includes('--user') ? process.argv[process.argv.indexOf('--user') + 1] : null
 const list = (xs: string[]) => (xs.length ? xs.join(', ') : '—')
 
 async function main() {
   const db = createServiceClient()
   const gameTitles = JSON.parse(await readFile(resolve(process.cwd(), 'src/app/play/data/titles.json'), 'utf8')) as GameTitle[]
-  const { data: users, error } = await db.from('users').select('id, dna, updated_at')
+  let q = db.from('users').select('id, dna, updated_at')
+  if (ONLY) q = q.eq('id', ONLY)
+  const { data: users, error } = await q
   if (error) throw new Error(error.message)
   const { data: authUsers } = await db.auth.admin.listUsers({ perPage: 1000 })
   const emailOf = new Map((authUsers?.users ?? []).map(u => [u.id, u.email ?? '?']))
