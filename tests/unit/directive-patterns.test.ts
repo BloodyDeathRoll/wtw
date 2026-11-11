@@ -75,7 +75,6 @@ describe('in-turn directives — what the catalog can match', () => {
     ['no sci-fi', 'science fiction'],
     ['no rom-coms', 'romance'],
     ['no reality tv', 'reality'],
-    ['no k-drama', 'k-drama'],
   ])('normalises %j to %j', (text, expected) => {
     expect(names(text)).toEqual([expected])
   })
@@ -208,10 +207,10 @@ describe('a recognised category must be one the catalog can filter on', () => {
     expect(canonicalTarget('subtitles')).toBeNull()
   })
 
-  it('still accepts the categories that do widen into something', () => {
-    for (const name of ['anime', 'k-drama', 'bollywood', 'cartoons']) {
-      expect(isKnownCategory(name)).toBe(true)
-    }
+  // P1-C2 removed the category aliases; anime is the one category left.
+  it('accepts anime, the one category left', () => {
+    expect(isKnownCategory('anime')).toBe(true)
+    for (const name of ['k-drama', 'bollywood', 'cartoons']) expect(isKnownCategory(name)).toBe(false)
   })
 
   it('every category it accepts can actually match a title', () => {

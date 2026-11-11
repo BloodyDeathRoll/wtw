@@ -431,7 +431,7 @@ Example: *"You gravitate toward morally complex stories with sharp dialogue and 
 **Stack:** Next.js 15, Tailwind, shadcn/ui, Supabase (JSONB updates + pgvector), Vercel AI SDK, Groq, Mistral (embeddings).
 
 **API routes to build:**
-- `POST /api/dna/update-from-session` — receives SessionSummary, runs full update pipeline
+- ~~`POST /api/dna/update-from-session`~~ — deleted 2026-11-11 (P1-C1): nothing called it; `session/end` calls `updateSchemaFromSession()` in-process
 - `POST /api/dna/update-regret` — receives regret signal for a specific watch entry
 - `POST /api/dna/update-stretch-feedback` — receives stretch pick outcome
 - `DELETE /api/dna/rules` — removes one standing rule (the Taste DNA page's Remove control). Rules are WRITTEN from conversation: analyzeSession extracts them, applyDirectives merges them. There was a `POST /api/dna/parse-instruction` here; it was never called by anything, and it wrote person rules with an empty id, so it was deleted 2026-08-29.

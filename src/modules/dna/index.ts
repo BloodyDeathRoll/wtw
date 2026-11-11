@@ -14,11 +14,10 @@
  * - Dimension notes rewriting (LLM)
  * - Versioned snapshots (keep-last-5, rollback)
  * - Profile UI: /profile/dna
- * - Standing instructions (exclusion rules + soft preferences), merged from
- *   what the user says in session (lib/apply-directives.ts)
+ * - Standing instructions (exclusion rules + soft preferences), set on the
+ *   Taste DNA page (lib/apply-directives.ts). Never from chat (DEC-5).
  *
  * API routes owned by this module:
- * - POST /api/dna/update-from-session
  * - POST /api/dna/bootstrap
  * - GET  /api/dna/summary
  * - DELETE /api/dna/rules  (remove one standing rule — the Taste DNA page)

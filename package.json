@@ -25,6 +25,8 @@
     "record-intro": "node --env-file=.env.local --import tsx scripts/record-intro.mts",
     "build-play-titles": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-play-titles.mts",
     "derive-scale-norms": "node --import tsx scripts/derive-scale-norms.mts",
+    "eval": "node --env-file=.env.local --conditions=react-server --import tsx scripts/eval/harness.mts",
+    "strip-chat-from-dna": "node --env-file=.env.local --conditions=react-server --import tsx scripts/strip-chat-from-dna.mts",
     "build-six-chains": "node --env-file=.env.local --import tsx scripts/build-six-chains.mts",
     "build-cast-call": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-cast-call.mts",
     "build-line-up": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-line-up.mts"
@@ -42,7 +44,7 @@
     "class-variance-authority": "^0.7",
     "clsx": "^2",
     "framer-motion": "^14",
-    "lucide-react": "^1.64",
+    "lucide-react": "^1.66",
     "next": "^16.4.3",
     "react": "^19",
     "react-dom": "^19",
