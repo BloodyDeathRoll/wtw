@@ -280,9 +280,19 @@ async function scoreAll(set: Candidate[]): Promise<Record<string, AIScore>> {
 
 // ── 4. Assemble ─────────────────────────────────────────────────
 
+/** A period that isn't the end of a sentence: "Dr.", "Mr.", "U.S.", "vs.", a single initial. */
+const ABBREV = /(?:^|\s)(?:Dr|Mr|Mrs|Ms|Mx|St|Jr|Sr|Capt|Lt|Col|Gen|Sgt|Cpl|Maj|Adm|Prof|Rev|Hon|Gov|Sen|Rep|Pres|Mt|Ft|No|vs|etc|U\.S|U\.K|[A-Z])\.\s*$/
+
 /** Whole sentences up to ~220 characters (always at least the first one). */
 function shortOverview(text: string): string {
-  const sentences = text.trim().match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) ?? [text]
+  const parts = text.trim().match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) ?? [text]
+  // Glue back what the split cut after an abbreviation, so "When Dr." isn't a sentence.
+  const sentences: string[] = []
+  for (const p of parts) {
+    const last = sentences.length - 1
+    if (last >= 0 && ABBREV.test(sentences[last])) sentences[last] += p
+    else sentences.push(p)
+  }
   let out = ''
   for (const s of sentences) {
     if (out && (out + s).trim().length > 220) break
