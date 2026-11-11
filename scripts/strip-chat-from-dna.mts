@@ -49,6 +49,7 @@ async function main() {
   if (ONLY) q = q.eq('id', ONLY)
   const { data: users, error } = await q
   if (error) throw new Error(error.message)
+  if (ONLY && !users?.length) throw new Error(`no such user: ${ONLY}`)
   const { data: authUsers } = await db.auth.admin.listUsers({ perPage: 1000 })
   const emailOf = new Map((authUsers?.users ?? []).map(u => [u.id, u.email ?? '?']))
 
