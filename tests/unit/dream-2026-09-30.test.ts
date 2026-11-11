@@ -31,8 +31,11 @@ describe('sub-genres are keyword rules, not their parent genre', () => {
   const dieHard = { genres: [{ name: 'Action' }], keywords: ['police', 'terrorist'] }
   const avengers = { genres: [{ name: 'Action' }], keywords: ['superhero'] }
 
-  it.each(['superhero', 'slasher', 'gore', 'biography'])('"no %s" writes a keyword rule', word => {
-    expect(extractDirectivesFromText(`no ${word}`)).toMatchObject([{ kind: 'exclusion', target_type: 'keyword', name: word }])
+  // The chat no longer writes rules (P1-C1), so this pins the matching side:
+  // a sub-genre keyword rule never reaches its parent genre (P1-C2).
+  it.each(['superhero', 'slasher', 'gore', 'biography'])('a "%s" keyword rule hides only that keyword', word => {
+    expect(matchesRule({ genres: [{ name: 'Action' }, { name: 'Horror' }, { name: 'Drama' }], keywords: [word] }, rule(word))).toBe(true)
+    expect(matchesRule({ genres: [{ name: 'Action' }, { name: 'Horror' }, { name: 'Drama' }], keywords: [] }, rule(word))).toBe(false)
   })
 
   it('"no superhero" excludes superhero films, not all of Action', () => {

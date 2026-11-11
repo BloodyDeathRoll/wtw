@@ -36,7 +36,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { generateText, Output } from 'ai'
 import { createMistral } from '@ai-sdk/mistral'
-import { z } from 'zod'
+import type { z } from 'zod'
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { MODELS } from '@/lib/ai-models'
@@ -47,6 +47,7 @@ import {
 import { GAME_GENRE_IDS, candidateGenres, neverGenres, type GameGenre } from '@/app/play/lib/genres'
 import { selectBalanced } from '@/app/play/lib/select'
 import { pickWatchProvider } from '@/lib/watch-providers'
+import { SCALE_GUIDE, batchSchema, titleLine, repairBatch } from '@/lib/taste-scales/prompt'
 import { AI_SCALES, spread, rankSpread, type AIScale, type GameTitle, type Scale } from '@/app/play/lib/scales'
 
 // ── Knobs ──────────────────────────────────────────────────────
@@ -197,72 +198,6 @@ async function seriesFacts(tmdb_id: string): Promise<SeriesFacts> {
 // ── 3. Model scores ─────────────────────────────────────────────
 
 type AIScore = Record<Exclude<AIScale, 'humor'>, number> & { humor: number | null; confirmed: GameGenre[] }
-
-const score = z.number().int().min(-5).max(5)
-const batchSchema = z.object({
-  titles: z.array(z.object({
-    n: z.number().int().describe('The number of the title in the list'),
-    tone: score, energy: score, pace: score, dark: score, complex: score, fantastic: score,
-    humor: score.nullable().describe('Only for titles marked COMEDY; null otherwise'),
-    confirmed_genres: z.array(z.enum(GAME_GENRE_IDS as [GameGenre, ...GameGenre[]]))
-      .describe('Which of the title\'s "Check genres" are a main genre of it; empty if none or none listed'),
-  })),
-})
-
-const SCALE_GUIDE = `Score each title on every scale from -5 to +5 (0 = middle). Judge the title itself as most viewers experience it, not its genre label.
-- tone: -5 deadly serious ... +5 a comedy first and foremost
-- energy: -5 driven by conversation and character ... +5 driven by action, fights, chases, set pieces
-- pace: -5 slow burn, patient ... +5 fast, relentless
-- dark: -5 light, warm, feel-good ... +5 bleak, disturbing, violent, morally grim. Tense or serious is NOT automatically dark.
-- complex: -5 easy, switch-off viewing ... +5 a puzzle: non-linear, layered, demands attention
-- fantastic: -5 grounded real world ... +5 another world: sci-fi, fantasy, supernatural, animation worlds
-- humor (COMEDY titles only, else null): -5 silly, slapstick, broad ... +5 dry, deadpan, ironic wit
-
-Reference points (tone, energy, pace, dark, complex, fantastic, humor):
-- Friends (series): +5, -4, +2, -4, -4, -4, -2
-- The Dark Knight: -3, +4, +3, +3, +1, +1, null
-- Schindler's List: -5, -1, -3, +5, 0, -5, null
-- Inception: -2, +3, +2, +1, +5, +3, null
-- Shrek: +4, +1, +2, -3, -3, +4, -2
-- Fleabag (series): +3, -5, +2, +1, +1, -4, +5
-- The Notebook: -2, -4, -2, -2, -3, -4, null
-- Mad Max: Fury Road: -2, +5, +5, +2, -2, +3, null
-
-Use the whole range across the list; don't put everything near 0.`
-
-function titleLine(c: Candidate, n: number): string {
-  const comedy = c.firm.includes('comedy') ? ' COMEDY' : ''
-  const genres = (c.genres ?? []).map(g => g.name).join(', ')
-  const keywords = (c.keywords ?? []).slice(0, 8).join(', ')
-  const check = c.hinted.length ? `\n   Check genres: ${c.hinted.join(', ')}` : ''
-  const plot = (c.synopsis ?? '').slice(0, 400)
-  return `${n}. "${c.title}" (${c.release_year ?? '?'}, ${c.type === 'tv' ? 'series' : 'movie'})${comedy}
-   TMDB genres: ${genres || 'none'}. Keywords: ${keywords || 'none'}${check}
-   Plot: ${plot}`
-}
-
-function repairBatch(err: unknown): z.infer<typeof batchSchema> | null {
-  const text = (err as { text?: unknown }).text
-  if (typeof text !== 'string') return null
-  let raw: { titles?: Record<string, unknown>[] }
-  try { raw = JSON.parse(text) } catch { return null }
-  if (!Array.isArray(raw.titles)) return null
-  const fix = (v: unknown) => typeof v === 'number' ? Math.max(-5, Math.min(5, Math.round(v))) : v
-  for (const t of raw.titles) {
-    for (const k of ['tone', 'energy', 'pace', 'dark', 'complex', 'fantastic', 'humor']) t[k] = fix(t[k])
-    if (t.humor === undefined) t.humor = null
-    t.confirmed_genres = Array.isArray(t.confirmed_genres)
-      ? t.confirmed_genres.filter(g => (GAME_GENRE_IDS as readonly unknown[]).includes(g))
-      : []
-  }
-  const parsed = batchSchema.safeParse(raw)
-  if (parsed.success) {
-    console.warn('[play-titles] repaired an off-schema batch')
-    return parsed.data
-  }
-  console.warn(`[play-titles] unrepairable: ${JSON.stringify(parsed.error.issues[0]).slice(0, 200)}`)
-  return null
-}
 
 async function scoreBatch(batch: Candidate[]): Promise<Map<string, AIScore>> {
   const mistral = createMistral({ apiKey: batchMistralApiKey() })

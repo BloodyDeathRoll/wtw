@@ -1,10 +1,12 @@
 /**
  * POST /api/session/end
  *
- * The Session Brain's end-of-conversation hook. Given a conversation_id it:
- *   1. loads the transcript (ownership-checked),
+ * The Session Brain's end-of-session hook. Given a conversation_id it:
+ *   1. checks the conversation is the user's,
  *   2. ensures the user has a DNA fingerprint (bootstraps a blank one if not),
- *   3. analyzes the transcript into a SessionSummary (real DNASignals),
+ *   3. folds the user's card ratings into a SessionSummary — the chat
+ *      transcript is NOT read: the chat changes nothing in the fingerprint
+ *      (DEC-5, docs/plan/PLAN.md P1-C1),
  *   4. merges it into the fingerprint via the DNA Writer (bumps taste_version),
  *   5. runs the recommendation engine, which caches fresh recs in Redis.
  *
@@ -31,7 +33,6 @@ import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
 import { adoptPendingBatch } from '@/modules/engine/pipeline/precompute'
 import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
-import { analyzeSession } from '@/modules/session/analyze-session'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
 import { markSavedInHistory, unmarkSavedInHistory } from '@/modules/session/watchlist-intent'
@@ -39,8 +40,7 @@ import type { DNASchema, SessionSummary } from '@/types/dna'
 
 export const runtime = 'nodejs'
 
-// Each call can spend a Mistral call on the shared free-tier key (dream
-// review 2026-09-30); the window is generous for a real user.
+// A call can run the recommendation pipeline; the window is generous for a real user.
 const RATE_LIMIT = { scope: 'session-end', perUser: 20, windowSec: 10 * 60 }
 
 export async function POST(req: NextRequest) {
@@ -55,9 +55,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const conversationId: string | undefined = body.conversation_id
-  // "Find more" sets this: the chat didn't change while the user was rating
-  // cards, so re-running the LLM transcript extraction (~5-10s) would only
-  // produce signals that dedup away. Ratings are folded regardless.
+  // "Find more" sets this: the same sitting continues, so the conversation is
+  // not rotated (step 6). Ratings are folded regardless.
   const skipTranscript: boolean = body.skip_transcript === true
   // "Find more": the user has read the current batch to its end and wants the
   // next one. Only that button sends it (the warm-up and leave-cards calls
@@ -85,22 +84,14 @@ export async function POST(req: NextRequest) {
 
   const t = startTimer('session/end')
 
-  // ── 1. Load conversation (ownership check) + transcript ──────
-  // The three reads are independent — one round trip, not three. The
-  // transcript is skipped on "Find more" (it was fetched and never used).
-  const [{ data: convo }, { data: messages }, { data: userRow }] = await Promise.all([
+  // ── 1. Load conversation (ownership check) ───────────────────
+  // The two reads are independent — one round trip, not two.
+  const [{ data: convo }, { data: userRow }] = await Promise.all([
     db
       .from('conversations')
       .select('id, user_id')
       .eq('id', conversationId)
       .single<{ id: string; user_id: string }>(),
-    skipTranscript
-      ? Promise.resolve({ data: null })
-      : db
-          .from('messages')
-          .select('role, content')
-          .eq('conversation_id', conversationId)
-          .order('created_at', { ascending: true }),
     // ── 2. Ensure a DNA fingerprint exists (idempotent bootstrap) ─
     db
       .from('users')
@@ -166,18 +157,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 3. Transcript → SessionSummary (real signals) ────────────
-  // Skipped on "Find more" (no new chat since the last run — the extraction
-  // LLM call is the slowest part and its output would dedup to nothing).
-  //
-  // An extraction failure is REPORTED, not swallowed (2026-09-06): while
-  // Mistral answered 429 the analyzer returned an empty summary, the merge
-  // reported ok, and every rule and signal in the transcript was lost with
-  // nothing anywhere to say so. The session still proceeds — card ratings and
-  // the version bump are independent of it — but the response carries the
-  // failure so the client logs it and the user's next batch is not quietly
-  // built from a transcript nobody read.
-  const emptySummary: SessionSummary = {
+  // ── 3. SessionSummary: card ratings only ─────────────────────
+  // The transcript is not analysed (P1-C1): no titles, rules, moods or
+  // dimension updates come from the chat. This also saves a Mistral call.
+  const summary: SessionSummary = {
     session_number: sessionNumber,
     new_signals: [],
     dimension_updates: {},
@@ -185,16 +168,6 @@ export async function POST(req: NextRequest) {
     new_open_questions: [],
     recommendation_made: null,
     recommendation_accepted: null,
-  }
-  let extractionFailed = false
-  let summary: SessionSummary = emptySummary
-  if (!skipTranscript) {
-    try {
-      summary = await analyzeSession(messages ?? [], sessionNumber)
-    } catch (err) {
-      console.error('[session/end] transcript extraction failed:', err)
-      extractionFailed = true
-    }
   }
 
   // ── 3b. Fold 👍/👎 card ratings into signals ──────────────────
@@ -256,7 +229,6 @@ export async function POST(req: NextRequest) {
         unchanged: true,
         watchlist_recorded: watchlistRecorded,
         watchlist_synced: watchlistSynced,
-        ...extractionReport(extractionFailed),
       })
     }
     // "Find more" with nothing to merge: the no-op above would hand back the
@@ -286,7 +258,6 @@ export async function POST(req: NextRequest) {
         rec_count,
         watchlist_recorded: watchlistRecorded,
         watchlist_synced: watchlistSynced,
-        ...extractionReport(extractionFailed),
         ...(warning ? { warning } : {}),
       })
     }
@@ -334,28 +305,24 @@ export async function POST(req: NextRequest) {
       rec_count: 0,
       watchlist_recorded: watchlistRecorded,
       watchlist_synced: watchlistSynced,
-      ...extractionReport(extractionFailed),
       warning: 'Fingerprint updated but recommendation generation failed',
     })
   }
 
   // ── 6. Rotate the conversation ───────────────────────────
-  // A real session just ended: its transcript is merged into the fingerprint,
-  // so the next visit starts a fresh conversation. NOT on a "Find more"
+  // A real session just ended, so the next visit starts a fresh conversation. NOT on a "Find more"
   // (skip_transcript) — that is the same sitting continuing, and rotating
   // there would split one conversation into a dozen.
   //
   // Without this nothing ever closed a conversation, so every user had exactly
-  // one for life: session_number stuck at 1, and this route re-read and
-  // re-analysed the whole history — 105 messages on one live account — through
-  // the extraction LLM on every call.
+  // one for life: session_number stuck at 1.
   //
   // Best-effort: a failure leaves the user in the conversation they are in,
   // which is the old behaviour rather than a broken one.
   // Inline on purpose (2026-11-05): moving this into after() was tried for
   // speed and reverted — a message sent right after "Find more" could land in
   // the conversation still being ended. The response guarantees rotation.
-  if (!skipTranscript && !extractionFailed) {
+  if (!skipTranscript) {
     await endConversation(db, conversationId).catch(err =>
       console.warn('[session/end] conversation rotation failed (non-fatal):', err instanceof Error ? err.message : err),
     )
@@ -368,21 +335,5 @@ export async function POST(req: NextRequest) {
     rec_count,
     watchlist_recorded: watchlistRecorded,
     watchlist_synced: watchlistSynced,
-    ...extractionReport(extractionFailed),
   })
-}
-
-/**
- * What the client is told when the transcript could not be read. `warning` is
- * what WTWApp logs; `extraction_failed` is the machine-readable half, so a
- * future UI can say "I didn't catch that — say it again" rather than leaving
- * the user to discover it over the next five sessions.
- */
-function extractionReport(failed: boolean) {
-  return failed
-    ? {
-        extraction_failed: true,
-        warning: 'Transcript extraction failed — no titles or rules were taken from this conversation',
-      }
-    : {}
 }

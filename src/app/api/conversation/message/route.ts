@@ -8,10 +8,9 @@
 // no strands, no signals — which is why it would agree to "no anime" and then
 // have no way to honour it, and why every title it named inline was a guess.
 //
-// Standing instructions stated plainly ("no horror") are now written in the
-// turn itself by pattern (2026-09-20), so the rule exists before the reply is
-// generated and the reply can only claim what is on disk. Title signals, people
-// and unusual phrasings are still extracted at session end.
+// The chat changes nothing in the fingerprint (DEC-5, docs/plan/PLAN.md P1-C1):
+// no rules, preferences, moods or titles are taken from it, here or at session
+// end. With CHAT_MODE=off the route is closed.
 
 import { groq } from "@ai-sdk/groq";
 import { MODELS, GROQ_TEXT_OPTIONS } from "@/lib/ai-models";
@@ -28,10 +27,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { boundedTail } from "@/lib/bounded-tail";
-import { loadDNA, saveDNA, bumpVersion } from "@/modules/dna/lib/load-save";
+import { loadDNA } from "@/modules/dna/lib/load-save";
 import { dnaPromptContext } from "@/modules/dna/lib/prompt-context";
-import { applyDirectives, directivesChanged } from "@/modules/dna/lib/apply-directives";
-import { extractDirectivesFromText } from "@/modules/session/directive-patterns";
+import { chatMode } from "@/lib/flags";
 import {
   saveMessage,
   updateConversationState,
@@ -79,13 +77,7 @@ If the user explicitly asks for a recommendation:
 - If you have several signals, name one or two titles inline in prose with a one-line "why this".
 - Anything you name in conversation is a conversational suggestion; the ranked batch comes from the recommendation engine.
 
-If the user gives you a standing instruction ("never show me anime", "less
-romance", "nothing with that actor"), acknowledge in a few words that you heard
-it and move on. Never say an instruction has been saved, recorded, stored or
-applied unless a RECORDED line below names it — if there is no such line, you
-do not know whether it was captured, and saying "got it, no more anime" when
-nothing was written is how a user ended up asking for the same thing across
-five sessions. Never promise to "keep it in mind" either.`;
+Nothing said in this chat is saved or remembered: not rules ("never show me anime", "less romance"), not titles, not moods. If the user gives you a standing instruction, say in a few words that rules are set on the Taste DNA page, and move on. Never say anything has been saved, recorded, stored, applied or kept in mind.`;
 
 function messageText(m: UIMessage): string {
   // A tab still running the pre-v7 bundle during a deploy sends `content`.
@@ -99,49 +91,8 @@ function toPartsMessage(m: UIMessage): UIMessage {
   return { id: m.id, role: m.role, parts: [{ type: "text", text: messageText(m) }] };
 }
 
-/**
- * Write the standing instructions this turn stated plainly, and return the
- * names actually written. Bumps taste_version because the rec cache is keyed
- * by it — a new rule has to bust the batch it was not applied to.
- *
- * Best-effort: a write failure returns nothing, which is exactly right. The
- * assistant is only ever told about rules that are on disk, so a failure here
- * can make it under-claim, never over-claim.
- */
-async function recordDirectives(userId: string, text: string): Promise<string[]> {
-  const directives = extractDirectivesFromText(text);
-  if (directives.length === 0) return [];
-
-  try {
-    const dna = await loadDNA(userId);
-    const merged = applyDirectives(dna.contextual_logic, directives);
-    // `updated` counts too: saying "less romance" over an existing weaker
-    // preference tightens it in place without adding anything, and saving only
-    // on an added count discarded exactly the change the user just asked for.
-    if (!directivesChanged(merged)) {
-      // Already known, unchanged — still true, so the assistant may say so.
-      return directives.map((d) => d.name);
-    }
-    bumpVersion(dna);
-    await saveDNA(userId, dna);
-    console.log(
-      `[conversation] recorded ${merged.exclusions_added} rule(s), ` +
-        `${merged.soft_preferences_added} preference(s) and ` +
-        `${merged.updated} update(s) from this turn`,
-    );
-    return directives.map((d) => d.name);
-  } catch (e) {
-    console.error("[conversation] directive write failed", e);
-    return [];
-  }
-}
-
-function recordedContext(names: string[]): string {
-  if (names.length === 0) return "";
-  return `\n\nRECORDED: this turn's instruction about ${names.join(", ")} is now stored and applies to every future batch. You may confirm that, briefly.`;
-}
-
 export async function POST(req: Request) {
+  if (chatMode() === "off") return NextResponse.json({ error: "chat is off" }, { status: 404 });
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
   if (!user) {
@@ -179,8 +130,7 @@ export async function POST(req: Request) {
   // until migration 0022 — got "Couldn't reach the model" on every turn, with
   // nothing to do about it. The cost guard is satisfied by sending less, not
   // by answering nothing. The most recent turns are the ones that matter for
-  // the next question, and the whole transcript is re-read at session end
-  // anyway (analyze-session.ts, which bounds itself the same way).
+  // the next question.
   const history = boundedTail(messages, messageText, MAX_MESSAGES, MAX_HISTORY_CHARS);
   if (history.length < messages.length) {
     console.log(`[conversation] history trimmed: ${messages.length} → ${history.length} messages`);
@@ -213,12 +163,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Standing instructions stated plainly in this turn are written NOW, before
-  // the assistant answers — pattern-matched, so there is no model call that can
-  // 429 and leave the rule unwritten while the chat says "got it". Anything the
-  // patterns don't recognise is still the session-end extractor's job.
-  const recorded = await recordDirectives(user.id, userTurn);
-
   // The fingerprint briefing. Best-effort: a DNA read failure degrades the
   // turn to the old context-free behaviour rather than failing the chat.
   // loadDNA is cached (60s), so this is usually not a round trip.
@@ -232,7 +176,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: groq(MODELS.text),
     providerOptions: GROQ_TEXT_OPTIONS,
-    instructions: SYSTEM_PROMPT + dnaContext + recordedContext(recorded),
+    instructions: SYSTEM_PROMPT + dnaContext,
     messages: await convertToModelMessages(history.map(toPartsMessage)),
     maxOutputTokens: MAX_REPLY_TOKENS,
     onEnd: async ({ text }) => {

@@ -65,6 +65,15 @@ const BY_TMDB_GENRE: Record<'movie' | 'tv', Record<string, GameGenre>> = {
 }
 
 /**
+ * The TMDB genres (lowercased, movie and TV names) a game genre stands for —
+ * what a "Never" or "Less of" rule for it hides (P1-C2). Empty for anime,
+ * which is not a TMDB genre (src/lib/exclusion-rules.ts matches it).
+ */
+export function tmdbGenresOf(g: GameGenre): string[] {
+  return [...new Set((['movie', 'tv'] as const).flatMap(t => Object.keys(BY_TMDB_GENRE[t]).filter(n => BY_TMDB_GENRE[t][n] === g)))]
+}
+
+/**
  * Movies only: "Adventure" is on Toy Story and Harry Potter as much as on
  * Mad Max, so it only hints at Action and the model confirms.
  */

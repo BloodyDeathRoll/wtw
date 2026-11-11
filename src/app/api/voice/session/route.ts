@@ -7,6 +7,7 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
 import { NextResponse } from "next/server";
+import { chatMode } from "@/lib/flags";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
@@ -59,6 +60,7 @@ const ALLOWED_VOICES = [
 const DEFAULT_VOICE = "Aoede";
 
 export async function POST(req: Request) {
+  if (chatMode() === "off") return NextResponse.json({ error: "chat is off" }, { status: 404 });
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
   if (!user) {
