@@ -3,7 +3,7 @@
  * tester's own answers, so every ranking change comes with numbers.
  *
  *   npm run eval -- --user <uuid> --sheet .eval-data/<name>.json --mode live
- *   npm run eval -- --user <uuid> --sheet … --mode live --shuffle      # control: model trained on shuffled labels (~50)
+ *   npm run eval -- --user <uuid> --sheet … --shuffle [--shuffles 20]   # control: model on shuffled labels, mean over shuffles (~50)
  *   npm run eval -- --user <uuid> --sheet … --dna-version 157           # score against a stored snapshot (dna_snapshots), e.g. the DNA a past measurement saw
  *   npm run eval -- --user <uuid> --sheet … --mode new [--cards 30] [--picks 12] [--draws 200] [--control] [--seed 1]
  *
@@ -131,22 +131,37 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   // v2: the model trained as the app would (My ratings minus chat, plus picks), except that
   // picks touching a fair title are held out — the model must not have ranked what it is scored on.
   // --shuffle is the control.
-  let training = await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))
-  if (args.includes('--shuffle')) {
-    const rand = rng(num('--seed', 1))
-    const levels = shuffle(training.rows.map(r => r.level), rand)
-    training = { rows: training.rows.map((r, i) => ({ ...r, level: levels[i] })), pairs: training.pairs.map(p => (rand() < 0.5 ? p : { chosen: p.other, other: p.chosen })) }
+  const training = await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))
+  // The model's scores on the fair titles; a title without a vector gets the mean (z = 0).
+  const modelScores = (t: typeof training) => {
+    const w = trainTasteModel(t.rows, t.pairs)
+    const raw = scored.map(s => { const v = vecOf(s.title as Row); return v ? predict(w, v) : null })
+    const known = raw.filter((x): x is number => x != null)
+    // No vector anywhere would make the model a constant (z = 0) and v2 silently creators + crowd.
+    if (known.length === 0) throw new Error('no fair title has a taste vector — run score-catalog-scales --finalise first')
+    const mean = known.reduce((a, b) => a + b, 0) / known.length
+    return { raw, model: raw.map(x => x ?? mean) }
   }
-  const w = trainTasteModel(training.rows, training.pairs)
-  const raw = scored.map(s => { const v = vecOf(s.title as Row); return v ? predict(w, v) : null })
+  if (args.includes('--shuffle')) {
+    // The control: labels and pick sides shuffled. One shuffle of ~50 titles swings ±15, so average many.
+    const runs = num('--shuffles', 20, 1), rand = rng(num('--seed', 1))
+    const got: number[] = []
+    for (let i = 0; i < runs; i++) {
+      const levels = shuffle(training.rows.map(r => r.level), rand)
+      const t = { rows: training.rows.map((r, j) => ({ ...r, level: levels[j] })), pairs: training.pairs.map(p => (rand() < 0.5 ? p : { chosen: p.other, other: p.chosen })) }
+      const { model } = modelScores(t)
+      got.push(concordance(scored.map((s, j) => ({ score: model[j], level: level.get(keyOf(s.title))! }))))
+    }
+    const m = got.reduce((a, b) => a + b, 0) / runs
+    const sd = Math.sqrt(got.reduce((a, b) => a + (b - m) ** 2, 0) / runs)
+    console.log(`[eval] shuffled-label control · taste model alone over ${runs} shuffles: mean ${fmt(m)} (sd ${fmt(sd)}, range ${fmt(Math.min(...got))}–${fmt(Math.max(...got))}) — should sit near 50`)
+    return
+  }
+  const { raw, model } = modelScores(training)
   const known = raw.filter((x): x is number => x != null)
-  // No vector anywhere would make the model a constant (z = 0) and v2 silently creators + crowd.
-  if (known.length === 0) throw new Error('no fair title has a taste vector — run score-catalog-scales --finalise first')
-  const mean = known.reduce((a, b) => a + b, 0) / known.length
-  const model = raw.map(x => x ?? mean)
   const v2 = formulaV2(scored.map(s => s.crew_affinity_score), scored.map(s => s.external_rating_score), model)
 
-  console.log(`[eval] live · ${scored.length} fair titles scored (${missing} not in catalogue, ${raw.length - known.length} without a taste vector) · model trained on ${training.rows.length} ratings + ${training.pairs.length} picks (fair-title picks held out)${args.includes('--shuffle') ? ' (SHUFFLED)' : ''}`)
+  console.log(`[eval] live · ${scored.length} fair titles scored (${missing} not in catalogue, ${raw.length - known.length} without a taste vector) · model trained on ${training.rows.length} ratings + ${training.pairs.length} picks (fair-title picks held out)`)
   console.log('  part                   concordance (L/D)')
   line('creators', parts(s => s.crew_affinity_score))
   line('story match', parts(s => s.narrative_match_score))
