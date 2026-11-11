@@ -35,7 +35,7 @@ import type { ScoredTitle } from '../types'
 // Profile → natural language (for the prompt)
 // ─────────────────────────────────────────────
 
-function profileSummary(dna: DNASchema): string {
+export function profileSummary(dna: DNASchema): string {
   const b = dna.strand_b_narrative_dimensions
   const c = dna.strand_c_visceral_specs
 

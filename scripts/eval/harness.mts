@@ -5,6 +5,7 @@
  *   npm run eval -- --user <uuid> --sheet .eval-data/<name>.json --mode live
  *   npm run eval -- --user <uuid> --sheet … --shuffle [--shuffles 20]   # control: model on shuffled labels, mean over shuffles (~50)
  *   npm run eval -- --user <uuid> --sheet … --dna-version 157           # score against a stored snapshot (dna_snapshots), e.g. the DNA a past measurement saw
+ *   npm run eval -- --user <uuid> --sheet … --mode jev [--jev-calls 2]
  *   npm run eval -- --user <uuid> --sheet … --mode new [--cards 30] [--picks 12] [--draws 200] [--control] [--seed 1]
  *
  * The sheet is one tester's answers, `{ "movie:603": "loved" | "liked" |
@@ -23,8 +24,11 @@
  *          touching a test title dropped); 20 hidden fair titles, scored by
  *          formula v2; averaged over the draws. --control answers the cards at
  *          random. Reproduces "howmany", "thisorthat" and "firstuser".
- *   (jev, step 4 at 0.7 / 0.8 / 0.9, follows once PR #260 exports step 4's
- *    viewer summary.)
+ *   jev  — live, then step 4's question ("would this viewer dislike it?") for
+ *          the top half of the v1 and the v2 ranking, one Jev request each
+ *          (TYPESAFE_API_KEY; --jev-calls caps the requests, default 2). At
+ *          0.7 / 0.8 / 0.9: the disliked titles it would drop, and the loved
+ *          and liked ones it would lose. Feeds P1-E7 (keep, fix or off).
  */
 import { readFile } from 'node:fs/promises'
 
@@ -32,6 +36,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { titleKey, parseTitleKey, type MediaType } from '@/lib/title-key'
 import { TASTE_FEATURE_VERSION } from '@/lib/taste-scales/features'
 import { scoreCandidates } from '@/modules/engine/pipeline/step2-composite-score'
+import { avoidSummary, dropDisliked, profileSummary } from '@/modules/engine/pipeline/step4-llm-rerank'
+import { jevNoul } from '@/lib/jev'
 import { computeCrewAffinity } from '@/modules/engine/scoring/crew-affinity'
 import type { TitleRow } from '@/modules/engine/types'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
@@ -57,8 +63,8 @@ const num = (name: string, def: number, min = 0) => {
 const USER = opt('--user')
 const SHEET = opt('--sheet')
 const MODE = opt('--mode') ?? 'live'
-if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new]')
-if (MODE !== 'live' && MODE !== 'new') throw new Error(`--mode must be live or new, not ${MODE}`)
+if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new|jev]')
+if (MODE !== 'live' && MODE !== 'new' && MODE !== 'jev') throw new Error(`--mode must be live, new or jev, not ${MODE}`)
 if (MODE === 'new' && args.includes('--shuffle')) throw new Error('--shuffle is the live-mode control; in --mode new use --control')
 
 const db = createServiceClient()
@@ -173,6 +179,43 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   line('ENGINE v1', parts(s => s.composite_score))
   line('taste model alone', scored.map((s, i) => ({ score: model[i], level: level.get(keyOf(s.title))! })))
   line('FORMULA v2', scored.map((s, i) => ({ score: v2[i], level: level.get(keyOf(s.title))! })))
+
+  if (MODE === 'jev') {
+    const order = (score: (i: number) => number) => scored.map((s, i) => ({ s, score: score(i) })).sort((a, b) => b.score - a.score).map(x => x.s.title)
+    await jevCheck(dna, [['v1', order(i => scored[i].composite_score)], ['v2', order(i => v2[i])]], level)
+  }
+}
+
+// ── jev ──────────────────────────────────────────────────────────
+
+/**
+ * Step 4's question for one ranking's top half, the way llmRerank asks it.
+ * The state and the title line copy llmRerank's (step4-llm-rerank.ts) —
+ * switch to its `jevState` once PR #260 lands.
+ */
+async function jevCheck(dna: DNASchema, rankings: [string, TitleRow[]][], level: Map<string, Level>) {
+  const CAP = num('--jev-calls', 2)
+  const keyOf = (t: TitleRow) => titleKey(t.type, t.tmdb_id)
+  const describe = (t: TitleRow) =>
+    `"${t.title}" (${t.type}, ${t.release_year ?? '?'}) — Dir: ${t.crew.directors[0]?.name ?? 'unknown director'} — Genres: ${t.genres.map(g => g.name).join(', ')} — Tone: ${t.tone_tags.join(', ') || 'unknown'}`
+  const avoids = avoidSummary(dna)
+  const state = `VIEWER PROFILE:\n${profileSummary(dna)}${avoids ? `\n\nWHAT THIS VIEWER AVOIDS:\n${avoids}` : ''}`
+  let calls = 0
+  for (const [name, ranked] of rankings) {
+    if (calls >= CAP) { console.log(`[eval] jev: --jev-calls ${CAP} reached, ${name} skipped`); continue }
+    const top = ranked.slice(0, Math.ceil(ranked.length / 2))
+    const questions = Object.fromEntries(top.map(t => [keyOf(t), `Would this viewer dislike ${describe(t)}? True if it is something they avoid or have rated down; false if it fits their taste.`]))
+    calls++
+    const answers = await jevNoul(state, questions, 30_000)
+    const count = (ts: TitleRow[], l: Level) => ts.filter(t => level.get(keyOf(t)) === l).length
+    console.log(`[eval] jev on the ${name} top half: ${top.length} titles (${count(top, 'loved')} loved · ${count(top, 'liked')} liked · ${count(top, 'disliked')} disliked) · answered ${Object.keys(answers).length}, unanswered ${top.length - Object.keys(answers).length} (kept, as step 4 does)`)
+    for (const t of [0.7, 0.8, 0.9]) {
+      const dropped = top.filter(x => (answers[keyOf(x)] ?? 0) >= t)
+      // Step 4 drops nothing when more than half would go (dropDisliked's guard).
+      const guarded = dropDisliked(top, answers, keyOf, t).length === top.length && dropped.length > 0
+      console.log(`  at ${t}: drops ${dropped.length} — disliked caught ${count(dropped, 'disliked')}/${count(top, 'disliked')} · loved lost ${count(dropped, 'loved')}/${count(top, 'loved')} · liked lost ${count(dropped, 'liked')}/${count(top, 'liked')}${guarded ? ' (step 4 would drop none: over half)' : ''}`)
+    }
+  }
 }
 
 // ── new user ─────────────────────────────────────────────────────
