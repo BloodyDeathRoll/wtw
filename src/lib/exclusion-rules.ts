@@ -77,8 +77,11 @@ const TMDB_GENRES = new Set([
   'soap', 'talk', 'action & adventure', 'sci-fi & fantasy', 'war & politics',
 ])
 
-/** A game genre by id ("scifi") or label ("Sci-fi & fantasy"). */
-const GAME_GENRE_BY_NAME = new Map(GAME_GENRES.flatMap(g => [[g.id, g.id], [g.label.toLowerCase(), g.id]] as const))
+/** A game genre by id ("scifi") or label ("Sci-fi & fantasy") → its TMDB genres, built once (step 3 asks per candidate × rule). */
+const GAME_GENRE_SETS = new Map(GAME_GENRES.flatMap(g => {
+  const set = tmdbGenresOf(g.id)
+  return [[g.id, set], [g.label.toLowerCase(), set]] as const
+}))
 
 /**
  * The TMDB genres a genre rule hides: its game genre's set, or the one TMDB
@@ -87,8 +90,8 @@ const GAME_GENRE_BY_NAME = new Map(GAME_GENRES.flatMap(g => [[g.id, g.id], [g.la
  * History and War & Politics, the set the list item stands for.
  */
 function genreSet(name: string): string[] {
-  const game = GAME_GENRE_BY_NAME.get(name)
-  if (game) return tmdbGenresOf(game)
+  const game = GAME_GENRE_SETS.get(name)
+  if (game) return game
   const tmdb = canonicalGenre(name)
   return TMDB_GENRES.has(tmdb) ? [tmdb] : []
 }
