@@ -99,7 +99,14 @@ export interface ScoredTitle {
   content_avoided:        AvoidedAttribute | null
   external_rating_score:  number    // 0.0 – 1.0
   recency_boost:          number    // 0.0 – 1.0 (multiplied by 0.05 in composite)
-  composite_score:        number    // weighted sum, 0.0 – 1.0
+  composite_score:        number    // weighted sum, 0.0 – 1.0 (v2: Φ of the z-sum, "better than X% of the pool")
+
+  /**
+   * Formula v2 only (FORMULA_V2, P1-E3): each part's z within the pool, the
+   * taste model's raw score, and the sum before Φ. For the Why lines (P1-E5)
+   * and debugging. Absent under v1.
+   */
+  formula_v2?:            import('./scoring/formula-v2').V2Score
 
   // ── Step 2: reason payload sources ────────────────────
   crew_matches:           import('@/types/dna').ReasonPayload['crew_matches']
