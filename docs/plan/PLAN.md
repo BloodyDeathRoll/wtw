@@ -110,7 +110,7 @@ Work splits into three lanes by file set, so two people never edit the same file
 |---|---|---|---|
 | **E — Engine** (A2) | `src/modules/engine/**`, `src/app/api/recommendations/generate/route.ts`, `src/app/components/RecCard.tsx` (match % lines only) | E1, E2 → E3 → E4 → E5 → E6 → E7 → **P1-G** → P2-U5 → phase 3 (chat), unless D frees up first | ~10 days, + ~5 for the chat |
 | **D — Data & model, plus chat cut-off and rules** (A3 lead; A2 for enrichment; A1 for the session files) | `src/lib/taste-scales/**`, `src/modules/dna/taste-model.ts`, `scripts/score-catalog-scales.mts`, `scripts/eval/**`, `src/modules/engine/enrichment/nightly-enrichment.ts` (scales hook only), migrations 0029–0030; for C1/C2: `src/app/api/conversation/**`, `src/app/api/session/**`, `src/modules/session/**`, `src/modules/dna/update-from-session.ts`, `src/lib/exclusion-rules.ts`, `scripts/strip-chat-from-dna.mts` | D1 → C1 → D2 (overnight runs; C2 fits in the waits) → C2 → D4 → D3 → D5 → P2-U7 | ~11–13 days, plus nights of calls |
-| **U — User front** (A3 games/page; Eran) | `src/app/play/**`, `src/app/onboarding/**` (new), `src/app/profile/dna/**`, `src/app/api/dna/rules/**`, `src/app/api/dna/taste/**` (new), `src/app/api/onboarding/**` (new), `src/app/page.tsx` | U0 (**Eran**, design) → U1 → C3 → U2 → U3 → U4 → U6 → U8 (**Eran**) → P2-G | ~11–13 days, including design rounds |
+| **U — User front** (A3 games/page; Eran) | `src/app/play/**`, `src/app/onboarding/**` (new), `src/app/profile/dna/**`, `src/app/api/dna/rules/**`, `src/app/api/dna/taste/**` (new), `src/app/api/onboarding/**` (new), `src/app/page.tsx` | U0 (**Eran**, design of the whole onboarding) → U1 → C3 → U2 → U3 → U4 → U6 → U8 (**Eran**) → P2-G | ~14–16 days, including design rounds (U0 widened to the whole onboarding on 2026-11-10) |
 
 \*Effort means one person working with Claude Code. S ≤ 1 day, M = 2–4 days, L = 5+ days. These are guesses, not commitments.
 
@@ -142,7 +142,7 @@ The issues are assigned to match this. Shahar = `BloodyDeathRoll` (A1), Alon = `
 |---|---|---|---|
 | **Shahar** (~22 days) | #227 P1-D1 scales setup → #230 P1-D4 taste model → #235 P1-C1 chat cut-off → #228 P1-D2 catalogue scoring (runs at night) → #236 P1-C2 rules fix → #238 P1-D5 test tool → #239 P1-E7 Jev keep/fix/off | #248 P2-U7 reset tool; reviews #244 (the ratings path) | All of it: #251–#255, and the gate #256 |
 | **Alon** (~16 days) | #225 P1-E1 crowd fix → #226 P1-E2 Jev input bugs → #231 P1-E3 new formula → #232 P1-E4 downstream → #233 P1-E5 "Why this?" → #234 P1-E6 step 1 by taste → #229 P1-D3 nightly scales → **drives #240 P1-G** (switch the formula on) | #246 P2-U5 first feed | — |
-| **Eran** | #237 P1-C3 rules dropdown | #241 P2-U0 design → #242 P2-U1 card set → #243 P2-U2 genre screen → #244 P2-U3 cards → #245 P2-U4 this-or-that → #247 P2-U6 routing → #249 P2-U8 Taste DNA → **drives #250 P2-G** | — |
+| **Eran** | #237 P1-C3 rules dropdown | #241 P2-U0 design of the whole onboarding → #242 P2-U1 card set → #243 P2-U2 genre screen → #244 P2-U3 cards → #245 P2-U4 this-or-that → #247 P2-U6 routing → #249 P2-U8 Taste DNA → **drives #250 P2-G** | — |
 
 **Why:**
 - **Each person gets their own module where possible:** the chat and session code is A1, Shahar's; the engine is A2, Alon's.
@@ -466,21 +466,78 @@ The format of each entry: **ID · title** — owner · lane · size · deps · f
 
 ### Phase 2 — first run (sign-up → onboarding → first recommendations)
 
-The screen designs come from `docs/prototypes/first-run/` (genres, learner 2a/2b/2c, this-or-that, feed). Eran approves each state as a JPEG before it's built.
+The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved JPEG per screen and state. Eran approves each one before it's built. Each screen is signed off on its own, so U2 / U3 / U4 can start as soon as their screens are approved.
 
-**P2-U0 · Design: the learner cards and the this-or-that rules** — **Eran** — product/design · U · M · deps: none (starts now)
-> **In plain words:** before anything in phase 2 is built, Eran and Claude finish the design of the rating cards (how a card looks and behaves) and refine the this-or-that rules (how pairs are chosen and shown). The builders build what comes out of this.
+**P2-U0 · Design: the whole onboarding, UX and UI** — **Eran** — product/design · U · L · deps: none (starts now)
+> **In plain words:** Eran and Claude design the whole first run, screen by screen, down to the pixel, and set every rule behind it. The builders build exactly what comes out of this. (Widened from "the cards and the this-or-that rules" by Eran on 2026-11-10.)
 
-- **Cards (design):**
-  - Mocks so far are in `docs/prototypes/first-run/` (2a / 2b / 2c learner, from the mocks session of 2026-11-09).
-  - Output: one approved JPEG per state (memory rule: one JPEG per state, rendered and checked).
-  - Open in design: which of 2a / 2b / 2c; how "haven't seen" looks; progress toward 30; what happens at the 90 cap.
-- **This-or-that (rules):**
-  - Starting point: the season's picker (`nextPair` in `src/app/play/lib/brain.ts`), which produced the measured gain (+12 picks = +3 / +7 / +3, EVIDENCE §5).
-  - To refine: how many picks, what a pair may contain (both seen? either?), whether "can't choose / haven't seen either" exists, and the pool (the 980 titles minus "never" genres).
-  - **Any change to the pair rules is checked with the harness (P1-D5, mode b)** before it is built. The +7 for Shahar came from these rules.
-- **The genre list:** settle the final list (proposal in T2, 16 chips) together with the genre screen's design.
-- **Done when:** Eran signs off the card states, the final this-or-that rules and the final genre list, and they are written into P2-U2 / P2-U3 / P2-U4 here.
+- **What it covers, in this order** (Eran, 2026-11-10):
+  1. **The cards** (the rating card, and the this-or-that pair): pixel-perfect design. *In progress, first.*
+  2. **The genre screen:** pixel-perfect design, plus the final genre list (proposal in T2, 16 chips).
+  3. **The cards' other screens:** what we say when it isn't going well, to keep people going (e.g. 10 cards shown and only 2 seen, or worse), and the 90-card cap.
+  4. **A screen between the cards and this-or-that.**
+  5. **This-or-that rules** *(signed off 2026-11-11, see below)*: how many picks; what a pair may contain; "Haven't seen" (how many times per pair, and on the second title); Love both / Neither / Skip; the pool (the 980 titles minus "never" genres).
+     - Starting point: the season's picker (`nextPair` in `src/app/play/lib/brain.ts`), which produced the measured gain (+12 picks = +3 / +7 / +3, EVIDENCE §5).
+     - **Any change to how pairs are chosen is checked with the harness (P1-D5, mode b)** before it is built. The +7 for Shahar came from these rules. Changes to buttons and wording don't need it.
+  6. **The closing screen after the last pick.** It also covers the wait for the first feed (P2-U5: at most 3 s, or a loading state).
+  7. **Skipping:** can people skip the whole onboarding, or a part of it, and where? Decide yes or no; if yes, design it, and P2-U6 routes it. If it's added, it goes in the top-left corner of the screen (Eran, 2026-11-10), so the card layout doesn't change for it.
+- **Output:** one approved JPEG per screen and state, at 375×812, plus a small-Android check (360×680). The JPEGs are rendered by `docs/prototypes/first-run/build.py` + `render.sh` (`W=360 H=680 SUF=-360 ./render.sh …`). The rules go into P2-U2 / U3 / U4 / U6 here.
+- **Decided so far:**
+  - **Rating card = version A, revised** (2026-11-10). JPEGs `2-card-1-first` … `2-card-4-long`.
+    - Three tiles: ❤️ Loved / 👍 Liked / 👎 Disliked, 96px tall, 8px apart, radius 16, game pill colour, emoji 27px over a 16px semibold label.
+    - **"Haven't seen":** the this-or-that's own button (`.unseen`: 47px, 16px, `#c8c8cc`), full width, 16px under the tiles (Eran doubled it from 8, 2026-11-10). Outline only, with no fill: a 1px inset outline, white at 28%. Radius 16, like the tiles. It has the struck-out eye (lucide `eye-off`, 18px), 8px from the words.
+    - **This-or-that pair** (`4-this-or-that`):
+      - It uses the same "Haven't seen" button.
+      - Its bottom buttons use the Games style (`.screen.game-screen`: 56px, 18px semibold, spread across the width), with the 16px corner instead of a pill, not the season's 47px ones.
+      - Spare height is split 1 : 2 above the question and under the posters, so the pair sits a little above the middle instead of leaving an empty band. On a 360×680 screen there is no spare height and everything fits.
+      - Which bottom buttons stay is part 5 (the rules).
+    - **One corner for everything you tap in onboarding: 16px** (Eran, 2026-11-10). That covers the tiles, "Haven't seen" and the pair's bottom buttons. **The message buttons (orange "Keep going", dark "Move on") are pills.** Posters keep their 12px.
+    - **No going back.** A wrong answer is fixed later in My ratings.
+    - The "X of 30" count and the bar move only on a rating. "Haven't seen" just brings the next card.
+    - **Screen heights:** 375×812 is the reference. On shorter screens the gap above the tiles shrinks first (to 12px), then the poster (down to 210px tall); the buttons never leave the screen. On taller screens the poster grows (up to 450px tall) before any gap does. Titles over 32 characters drop from 26px to 22px, so they stay at 2 lines.
+    - The last button ends 30px above the bottom of the screen, on the card and on the pair.
+    - A series gets the SERIES tag on its poster. Every creator is named.
+  - **The cards' other screens (part 3) — locked, "cut, print"** (Eran, 2026-11-11). The whole flow is on one board: `2-cards-flow.jpg` (made by `flow.py`).
+    - **Milestones at 10 and 20 rated.** The next card's step name ("Rate what you've seen") is replaced, in gold, by **"A third of the way"** (10) and **"10 more to go"** (20). JPEGs `2-card-5-mile10`, `2-card-6-mile20`; GIFs `2-card-5-mile10.gif` / `-closeup.gif`.
+      - It arrives with one short animation, about 1 s, played once: the words rise 8px and fade in (320 ms), one lighter band sweeps across them (700 ms), and the progress bar glows once (900 ms). With "reduce motion" on, the words only turn gold.
+      - Any tap on that card (a rating or "Haven't seen") brings the next card, and "Rate what you've seen" with it.
+      - No milestone at 30: reaching 30 opens the screen before the picks (part 4), which starts by saying so.
+    - **Message 1, a slow start:** after 10 cards shown with 2 or fewer rated. Once per run. JPEG `2-msg-1-slow`.
+      - **"Lots of new ones?"** / "No problem. Tap "Haven't seen" as often as you need. We stop as soon as you've rated 30."
+      - One orange pill: **Keep going**.
+    - **Message 2, still slow:** after 20 cards shown with 4 or fewer rated. Once per run, whether or not message 1 appeared. JPEG `2-msg-2-very-slow`.
+      - **"Not seen many of these?"** / "You've rated {n} so far. Keep looking, or go on to 12 quick picks. Those work even with titles you haven't seen." ({n} = their own count.)
+      - Orange pill **Keep looking** (more cards, until 30 rated or 90 shown); dark pill **Go to quick picks** (to the screen before the picks, part 4).
+    - **A message takes the place of one card:** the same top bar and count. In the poster's place: their own last three "Haven't seen" titles, fanned, dimmed, with the struck-out eye. Then the question and one line, centred in the free space; the buttons sit where the tiles were.
+    - **Every way out of the cards leads to the screen before the picks:** 30 rated, 90 cards shown, or "Go to quick picks". That screen replaces the old gold-line hand-off (`3-after-30`, `3-after-cap`), so the 90-cap wording moves there.
+  - **The screen before the picks (part 4)** (Eran, 2026-11-11). JPEGs `3-between-1-thirty` … `3-between-4-none`, plus `3-between-1-thirty-swipe-mid` / `-swipe-end`.
+    - **No progress bar and no step row** on this screen: the cards are done. Top bar only.
+    - **Heading by case:** "That's 30." / "{n} rated. That's enough." (90 cards shown) / "{n} rated. That's fine." + "The picks will do the rest." ("Go to quick picks") / "On to the picks." + "No ratings yet, and that's fine: the picks work even with titles you haven't seen." (nothing rated).
+    - **Their own numbers:** "You loved {a}, liked {b} and disliked {c}." No claims about their taste.
+    - **Their posters, all of them:** a gold label "What you loved" (or "What you rated", with each poster's ❤️ / 👍 / 👎, when they went to the picks early). One row of 96px posters, 8px apart, from the content edge to the screen edge. It scrolls sideways with a swipe and snaps so a poster's left edge lines up with the content edge. A 70px fade on the right while more posters wait there; a 40px fade on the left once some have scrolled out. With 3 or fewer posters nothing moves and nothing fades. (The other option, two rows with a "+N more" tile, was dropped: it invites a tap that would need its own screen.)
+    - **The box** (the app's `.learned-box`): "**LAST STEP:** 12 QUICK PICKS" ("Last step:" in bold) / → "Two titles at a time. Tap the one you'd rather watch." / → "Then you're done." Anything about unseen titles waits for the pair rules.
+    - **One orange pill: Start the picks**, 30px from the bottom.
+  - **Quick picks: the pair screen and its rules (part 5) — signed off** (Eran, 2026-11-11). JPEGs `4-this-or-that`, `4-pair-2-swapped`, `4-pair-3-last-swap`, `4-pair-4-no-swaps`, `4-pair-5-long-title`, `4-pair-6-longest`.
+    - **Name on screen: "Quick picks"**, the name the box before them promises. Under the top bar: its own progress bar and step row, "Quick picks · {n} of 12".
+    - **When it ends: 12 picks or 18 pairs, whichever comes first.** The counter and the bar show picks. A pick is a tap on a poster. A pair counts toward the 18 when it's answered: a poster tap or "Can't decide". Swaps inside a pair don't count.
+    - **Question:** "Which would you rather watch?" / "Tap a poster."
+    - **One bottom button, dark: "Can't decide".** It brings a new pair. It's not a pick, but it counts toward the 18 pairs. **Love both, Neither and Skip are gone:** the new taste model (P1-D4) learns only from a picked poster, so they taught it nothing.
+    - **"Haven't seen": two swaps per side.** Each tap swaps that title for a similar one (the season's `replaceSide`), and the gold line says "Swapped in something similar.", then "Swapped again: the last swap on this side." After the second, that side's button is off (opacity .35, like the Games' other off buttons). With both sides off, the line under the question reads "No more swaps. Go with your gut." **No plot pair:** the season's "Which sounds better tonight?" mode isn't used here. If no similar title is left to swap in, that side's button goes off early.
+    - **No messages or milestones between pairs.**
+    - **Titles stop at 3 lines, then "…".** On a 360px phone that's 6 of the 980 titles (e.g. Birds of Prey's full title). If the screen is still too tall, both posters shrink by the same amount, keeping their shape and left edge, until "Can't decide" fits; titles, buttons and columns keep their width, and the + and share buttons move with the poster's corner. Normal pairs don't change.
+    - The two "Haven't seen" buttons stay on one line, whatever the title lengths.
+    - **No hover movement on the posters** (Eran, 2026-11-11). The season lifts a poster 3px with a ring and a shadow on hover; the quick picks don't. The tap feedback stays: the picked poster gets the gold ring, the other one fades.
+    - **Playable run:** `docs/prototypes/first-run/play.html` (built by `play.py` from the same mocks): 5 cards → the screen before the picks → 5 quick picks, shortened on purpose. Its swaps are close to, not the same as, `replaceSide`.
+  - **Motion: Flow, the same on the cards and the pairs — signed off** (Eran, 2026-11-11). Feel it on the Flow link (`play-artifact-flow.html`, built by `pack.py`); GIFs `4-pair-pick-left.gif`, `4-pair-pick-right.gif`.
+    - **Only the title moves:** the poster with its + and share buttons, the name, the year. The top bar, the counter, the question and every button stay still; the progress bar slides to its new length (480 ms).
+    - **Next card, a swap, "Can't decide":** the old title drifts 48px left and fades (320 ms, `cubic-bezier(.4,0,.2,1)`); the new one drifts in from 48px right (480 ms, `cubic-bezier(.16,1,.3,1)`), starting 90 ms in. They overlap, so there's never an empty (black) frame. On the card the name and year follow the poster by 50 ms. A swap moves only its own side; the gold line fades in with it.
+    - **A pick:** the picked poster gets a 4px gold ring (the season's is 3px), and the other one isn't dimmed. The other poster slides across (600 ms, easing out), *under* the picked one when the left is picked and *over* it when the right is picked, stopping 12px short so a sliver still shows. At 450 ms (75% of the slide) the pile leaves to the left (390 ms, speeding up, `cubic-bezier(.45,0,.75,.4)`), fading over its last fifth. The names and years fade in the first ~0.2 s, so they never print over each other. The next pair starts drifting in at 760 ms.
+    - **The last pick:** the next screen, and the old question and buttons, wait until the pair has left (~0.72 s); then they crossfade.
+    - **Taps during a motion are ignored** (about 0.5 s on a card, about 1.2 s on a pick), so a double tap counts once.
+    - **"Reduce motion" / Android "Remove animations":** a plain crossfade, no movement. (The prototype ignores it, so it can be judged on a phone that has it on.)
+    - **For the build:** only `transform` and `opacity` move, which phones handle cheaply. Load the next pair's posters before it comes in, so a poster never slides in empty. Depth (sink back with a blur) was tried and dropped.
+    - **Proposed, needs the harness first (P1-D5 mode b):** leave the titles they marked "Haven't seen" on the cards out of the pool, so they aren't asked about again. It changes which titles can be picked.
+- **Done when:** Eran signs off every screen and state above, the this-or-that rules and the genre list, and they are written into P2-U2 / U3 / U4 / U6 here.
 
 **P2-U1 · Learner card set** — A3 · U · S–M · deps: none (can start now)
 > **In plain words:** Choose the ~120 well-known titles new users rate first, and their order: most-voted first, spread across genres and scales.
@@ -502,13 +559,13 @@ The screen designs come from `docs/prototypes/first-run/` (genres, learner 2a/2b
 **P2-U2 · Genre step** — A3 · U · S · deps: C2, U0 (final genre list; proposal in T2)
 > **In plain words:** The first screen: pick the genres you never want to see. It reuses the games' genre screen.
 
-- Reuse the `/play` genre step (`GAME_GENRES`), following mock `1-genres` (no Movies / Series / Both).
+- Reuse the `/play` genre step (`GAME_GENRES`), following P2-U0's approved genre-screen JPEGs and final genre list (no Movies / Series / Both).
 - Its "Never" writes `exclusion_rules` through `src/modules/dna/update-from-play.ts`, with game-owned rule ids.
 
 **P2-U3 · Learner cards UI** — A3 (UI), A1 reviews (the ratings path) · U · M · deps: U0, U1
 > **In plain words:** The rating cards screen: loved / liked / disliked / haven't seen, until 30 are seen or 90 are shown. The answers appear in My ratings.
 
-- **Mock:** whichever of 2a / 2b / 2c Eran picks.
+- **Mock:** P2-U0's approved JPEGs: the card (`2-card-*`, version A revised) and the cards' other screens (messages that keep people going, the 90 cap, the screen before this-or-that), plus P2-U0's "Motion: Flow" for the move from card to card.
 - **New route `POST /api/onboarding/cards`** (shared `src/app/api`), taking batches of up to 10 answers:
   - **Seen answers** go through **the same write path as a feed rating** (`POST /api/recommendations/feedback`, action `watched` + reaction: factor out its core rather than calling over HTTP).
     - That writes `recommendation_feedback`, which is what My ratings reads (`src/app/api/recommendations/ratings/route.ts`), so the answer appears there (DEC-12).
@@ -517,12 +574,14 @@ The screen designs come from `docs/prototypes/first-run/` (genres, learner 2a/2b
     - Tag the signal `source: 'onboarding'` (already a valid `SignalSource`) if that is cheap. Otherwise leave the source as the feed path sets it.
   - **"Haven't seen"** → `play_events` with kind `card_unseen` and `item_key` = the title key. It is not a signal; the title stays eligible for the feed.
   - **Bump `taste_version` once per batch**, not once per card.
-  - Going back and changing an answer must not write twice.
+  - There is no going back (Eran, 2026-11-10). A double tap must not write twice.
 
 **P2-U4 · This-or-that** — A3 · U · M · deps: U0
 > **In plain words:** About 12 "which would you rather watch?" picks, chosen the same way the season chooses them.
 
-- **Mock:** `4-this-or-that`. 12 picks.
+- **Mock and rules:** P2-U0's approved JPEGs (`4-this-or-that`, `4-pair-*`, the closing screen) and its quick-pick rules (part 5, signed off 2026-11-11): 12 picks or 18 pairs, one "Can't decide" button, two swaps per side, no plot pair, titles at most 3 lines.
+  - Onboarding keeps its own swap count per side; `replaceSide`'s switch to plot mode (`unseenCount >= 2`) must not fire here.
+  - The motion is part of the mock: P2-U0's "Motion: Flow" (timings, the pick's stack-and-exit, the last pick waiting).
 - **Pairs:** use `nextPair` in `src/app/play/lib/brain.ts`. It is the picker that produced the measured picks.
   - Run it on a fresh `PlayState` seeded with the user's genres.
   - The pool is the 980 game titles minus the "never" genres.
@@ -534,7 +593,7 @@ The screen designs come from `docs/prototypes/first-run/` (genres, learner 2a/2b
 
 - **After the last card:** start a precompute (`generateRecommendations` with `precompute: true`, the existing lock in `precompute.ts`).
 - **After the last pick:** bump `taste_version` and generate the final batch. The picks change `w`.
-- **Target:** at most 3 s from the last pick to a visible feed (see `docs/speed-plan.md`). Otherwise show the loading state from mock `5-feed`.
+- **Target:** at most 3 s from the last pick to a visible feed (see `docs/speed-plan.md`). Otherwise the wait is covered by P2-U0's closing screen.
 - After the cards, a user with 10+ signals runs the normal pipeline. Below 10, `cold-start.ts` runs, as it does today.
 
 **P2-U6 · Routing; the season moves to Games** — shared `src/app` · U · S–M · deps: U2–U4 · flag `ONBOARDING_V2`
@@ -545,6 +604,7 @@ The screen designs come from `docs/prototypes/first-run/` (genres, learner 2a/2b
   - Redirect to `/onboarding` until `play_state.state.onboarding.done_at` is set. This adds no DNA field (DEC-9).
   - The season is reachable only from Games and the menu.
   - **Existing accounts** (DEC-8): any user with 10 or more signals when the flag goes on is marked done and skips onboarding. Everyone else goes through it.
+- **Skipping:** if P2-U0 decides people may skip onboarding (or part of it), route it here.
 - **Flag off** = today's behaviour.
 
 **P2-U7 · Account reset tool** — A3 · D · S · deps: none
