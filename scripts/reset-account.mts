@@ -3,8 +3,8 @@
  * P2-U7), so the new onboarding can be walked through again.
  *
  *   npm run reset-account -- --user <uuid>                      # dry run: what would go
- *   npm run reset-account -- --user <uuid> --apply              # do it
- *   npm run reset-account -- --user <uuid> --apply --keep-lists # keep removed titles and the watchlist
+ *   npm run reset-account -- --user <uuid> --apply --confirm <uuid>   # do it (the id twice, on purpose)
+ *   … --apply --confirm <uuid> --keep-lists                             # keep removed titles and the watchlist
  *
  * With --apply, in this order (a failed run can simply be re-run: the DNA is
  * written last, so it still holds what --keep-lists needs):
@@ -37,8 +37,10 @@ const userAt = args.indexOf('--user')
 const USER_ARG = userAt >= 0 ? args[userAt + 1] : undefined
 const APPLY = args.includes('--apply')
 const KEEP_LISTS = args.includes('--keep-lists')
-if (!USER_ARG || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(USER_ARG)) throw new Error('usage: --user <uuid> [--apply] [--keep-lists]')
+if (!USER_ARG || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(USER_ARG)) throw new Error('usage: --user <uuid> [--apply --confirm <uuid>] [--keep-lists]')
 const USER: string = USER_ARG
+const confirmAt = args.indexOf('--confirm')
+if (APPLY && args[confirmAt + 1] !== USER) throw new Error('--apply needs --confirm <the same uuid>')
 
 const db = createServiceClient()
 
@@ -76,7 +78,8 @@ async function main() {
   if (dna) {
     // storeSnapshot logs and returns on failure; this script must not go on without one.
     await storeSnapshot(USER, dna)
-    const { count } = await db.from('dna_snapshots').select('id', { count: 'exact', head: true }).eq('user_id', USER).eq('taste_version', dna.metadata.taste_version)
+    const { count, error: readErr } = await db.from('dna_snapshots').select('id', { count: 'exact', head: true }).eq('user_id', USER).eq('taste_version', dna.metadata.taste_version)
+    if (readErr) throw new Error(`could not check the snapshot (${readErr.message}) — nothing was reset`)
     if (!count) throw new Error('snapshot not stored — nothing was reset')
   }
 
