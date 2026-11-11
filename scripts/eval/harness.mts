@@ -63,7 +63,7 @@ const num = (name: string, def: number, min = 0) => {
 const USER = opt('--user')
 const SHEET = opt('--sheet')
 const MODE = opt('--mode') ?? 'live'
-if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new]')
+if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new|jev]')
 if (MODE !== 'live' && MODE !== 'new' && MODE !== 'jev') throw new Error(`--mode must be live, new or jev, not ${MODE}`)
 if (MODE === 'new' && args.includes('--shuffle')) throw new Error('--shuffle is the live-mode control; in --mode new use --control')
 
@@ -208,7 +208,7 @@ async function jevCheck(dna: DNASchema, rankings: [string, TitleRow[]][], level:
     calls++
     const answers = await jevNoul(state, questions, 30_000)
     const count = (ts: TitleRow[], l: Level) => ts.filter(t => level.get(keyOf(t)) === l).length
-    console.log(`[eval] jev on the ${name} top half: ${top.length} titles (${count(top, 'loved')} loved · ${count(top, 'liked')} liked · ${count(top, 'disliked')} disliked) · answered ${Object.keys(answers).length}`)
+    console.log(`[eval] jev on the ${name} top half: ${top.length} titles (${count(top, 'loved')} loved · ${count(top, 'liked')} liked · ${count(top, 'disliked')} disliked) · answered ${Object.keys(answers).length}, unanswered ${top.length - Object.keys(answers).length} (kept, as step 4 does)`)
     for (const t of [0.7, 0.8, 0.9]) {
       const dropped = top.filter(x => (answers[keyOf(x)] ?? 0) >= t)
       // Step 4 drops nothing when more than half would go (dropDisliked's guard).
