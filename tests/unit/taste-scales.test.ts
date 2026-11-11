@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { rankSpread, spread } from '@/app/play/lib/scales'
+import { rankSpread, spread, type GameTitle } from '@/app/play/lib/scales'
 import { rankAgainst, spreadOne, normaliseScales, type ScaleNorms } from '@/lib/taste-scales/normalise'
 import { tasteFeatures, TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
 import { catalogueBatchSchema, repairBatch } from '@/lib/taste-scales/prompt'
@@ -84,5 +84,19 @@ describe('repairBatch', () => {
     const text = JSON.stringify({ titles: [{ n: 1, tone: 6, energy: 0, pace: 0, dark: 0, complex: 0, fantastic: 0, audience: 7.4, confirmed_genres: ['nope'] }] })
     const out = repairBatch({ text }, catalogueBatchSchema)
     expect(out?.titles[0]).toMatchObject({ tone: 5, audience: 5, humor: null, confirmed_genres: [] })
+  })
+})
+
+describe('norms.json', () => {
+  it('reproduces the game titles\' scales with the committed norms (overrides aside)', async () => {
+    const titles = (await import('@/app/play/data/titles.json')).default as unknown as GameTitle[]
+    const scores = (await import('@/app/play/data/ai-scores.json')).default as unknown as Record<string, Record<string, number | null>>
+    const fixes = (await import('@/app/play/data/title-fixes.json')).default as Record<string, { scales?: Record<string, number> }>
+    for (const t of titles) {
+      const got = normaliseScales({ type: t.type, release_year: t.year, tmdb_vote_count: t.votes, episodes: t.episodes, game_genres: t.genres, raw: scores[t.id] })
+      for (const [k, v] of Object.entries(t.scales)) {
+        if (fixes[t.id]?.scales?.[k] === undefined) expect(Math.abs(got[k as keyof typeof got]! - v), `${t.id} ${k}`).toBeLessThanOrEqual(0.01)
+      }
+    }
   })
 })
