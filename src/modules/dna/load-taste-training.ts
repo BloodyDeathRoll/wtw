@@ -34,7 +34,8 @@ export async function loadTasteTraining(dna: DNASchema, userId: string): Promise
 
   const keys = new Set<string>(dna.signals.map(s => titleKey(s.type, s.tmdb_id)))
   for (const p of picks) { keys.add(p.a); keys.add(p.b) }
-  const ids = [...new Set([...keys].map(k => parseTitleKey(k).tmdb_id))]
+  // A bare id (no `movie:`/`tv:`) can't be matched to one title; leave it out of the query.
+  const ids = [...new Set([...keys].map(parseTitleKey).filter(k => k.type).map(k => k.tmdb_id))]
 
   const vecs = new Map<string, number[]>()
   for (let i = 0; i < ids.length; i += ID_CHUNK) {

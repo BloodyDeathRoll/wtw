@@ -7,6 +7,10 @@
  * centred on their weighted mean; a pick is x_chosen − x_other with target
  * 1; ridge with no intercept, penalty 0.5 on the rating input and 4.0 on
  * the other 24. Solved in closed form on 25×25, so it reruns on every rating.
+ *
+ * No intercept: predict() is relative to the person's own average (0 = an
+ * average title for them), not a 1–3 rating. Formula v2 z-scores it within
+ * the candidates anyway.
  */
 import type { DNASignal, Reaction } from '@/types/dna'
 import { TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
@@ -26,7 +30,7 @@ export function trainTasteModel(rows: TasteRow[], pairs: TastePair[]): number[] 
   const b = new Array<number>(d).fill(0)
   const add = (x: number[], y: number, w: number) => {
     for (let i = 0; i < d; i++) {
-      if (x[i] === 0) continue
+      if (x[i] === 0) continue // a zero input adds nothing to row i of A or to b[i]; genres are mostly zero
       b[i] += w * x[i] * y
       for (let j = 0; j < d; j++) A[i][j] += w * x[i] * x[j]
     }
@@ -50,7 +54,12 @@ export function contributions(w: number[], x: number[]): number[] {
   return w.map((wk, k) => wk * x[k])
 }
 
-/** A this-or-that answer: two title keys (`movie:603`) and the one picked. */
+/**
+ * A this-or-that answer: two title keys (`movie:603`) and the one picked.
+ * Only `duel` events count (season duels and onboarding picks), as PLAN
+ * P1-D4 specifies; knockout, showdown and mind reader also record a
+ * `chosen` but are played under their own rules, so they are left out.
+ */
 export interface DuelPick { a: string; b: string; chosen: string }
 
 /**

@@ -75,6 +75,12 @@ describe('buildTraining', () => {
     expect(rows).toEqual([{ vec: vec(1), level: 3, weight: 1 }, { vec: vec(2), level: 1, weight: 0.5 }])
   })
 
+  it('treats a rating exactly 18 months old as recent, and a null watched_at as recent', () => {
+    const edge = new Date(now - 18 * 30 * 24 * 60 * 60 * 1000).toISOString()
+    const { rows } = buildTraining([sig('1', 'liked', { watched_at: edge }), sig('2', 'liked')], [], vecs, now)
+    expect(rows.map(r => r.weight)).toEqual([1, 1])
+  })
+
   it('keys by media type, so a series never borrows a movie\'s vector', () => {
     const { rows } = buildTraining([sig('1', 'liked', { type: 'tv' })], [], vecs, now)
     expect(rows[0].vec).toEqual(vec(9))
