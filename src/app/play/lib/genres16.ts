@@ -23,7 +23,7 @@ export const GENRES_16 = [
   { id: 'horror',    label: 'Horror' },
   { id: 'romance',   label: 'Romance' },
   { id: 'adultanim', label: 'Adult animation' },
-  { id: 'anim',      label: "Kids' animation" },
+  { id: 'anim',      label: 'Kids’ animation' },
   { id: 'family',    label: 'Family & kids' },
   { id: 'anime',     label: 'Anime' },
   { id: 'doc',       label: 'Documentary' },
