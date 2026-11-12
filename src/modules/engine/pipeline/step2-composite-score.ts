@@ -36,8 +36,8 @@ import {
 import { scoreFormulaV2 } from '../scoring/formula-v2'
 import { fetchTasteVectors, vecKey } from '../scoring/taste-vectors'
 import { formulaV2Enabled } from '@/lib/flags'
-import { trainTasteModel, predict, contributions } from '@/modules/dna/taste-model'
-import { loadTasteTraining } from '@/modules/dna/load-taste-training'
+import { predict, contributions } from '@/modules/dna/taste-model'
+import { userTasteWeights } from '../scoring/taste-weights'
 import type { DNASchema } from '@/types/dna'
 import type { TitleRow, ScoredTitle } from '../types'
 
@@ -113,11 +113,9 @@ async function loadTasteModel(
   dna: DNASchema,
 ): Promise<{ w: number[]; vecs: Map<string, number[]> } | null> {
   try {
-    const [training, vecs] = await Promise.all([
-      loadTasteTraining(dna, dna.metadata.user_id),
-      fetchTasteVectors(candidates),
-    ])
-    return { w: trainTasteModel(training.rows, training.pairs), vecs }
+    // w is shared with step 1's taste pool (taste-weights.ts): one training per generation.
+    const [w, vecs] = await Promise.all([userTasteWeights(dna), fetchTasteVectors(candidates)])
+    return { w, vecs }
   } catch (err) {
     console.warn('[step2] taste model unavailable — v2 without it:', err instanceof Error ? err.message : err)
     return null

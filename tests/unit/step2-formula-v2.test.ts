@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { scoreCandidates } from '@/modules/engine/pipeline/step2-composite-score'
+import { clearTasteWeights } from '@/modules/engine/scoring/taste-weights'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import type { TitleRow } from '@/modules/engine/types'
 
@@ -51,6 +52,7 @@ const title = (tmdb_id: string, tmdb_rating: number): TitleRow => ({
 const vec = (first: number) => [first, ...new Array(24).fill(0)]
 
 beforeEach(() => {
+  clearTasteWeights() // one training per user + taste_version is memoised; each test starts fresh
   io.narrativeCalls = 0
   io.trainingFails = false
   io.vecs = new Map()
@@ -120,5 +122,21 @@ describe('step 2 — FORMULA_V2 on', () => {
 
   it('an empty pool returns nothing without loading anything', async () => {
     expect(await scoreCandidates([], createBlankDNA('u1'))).toEqual([])
+  })
+})
+
+describe('step 2 shares step 1\'s training', () => {
+  beforeEach(() => { process.env.FORMULA_V2 = 'true' })
+  it('a generation trains the taste model once, whoever asks first', async () => {
+    const { userTasteWeights } = await import('@/modules/engine/scoring/taste-weights')
+    const dna = createBlankDNA('u1')
+    const first = await userTasteWeights(dna) // what step 1 does
+    io.trainingFails = true                   // a second training would now fail…
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const out = await scoreCandidates([title('a', 7), title('b', 8)], dna)
+    expect(warn).not.toHaveBeenCalled()       // …and step 2 never hit it: it reused step 1's
+    expect(out.every(s => s.formula_v2 !== undefined)).toBe(true)
+    expect(await userTasteWeights(dna)).toBe(first)
+    warn.mockRestore()
   })
 })
