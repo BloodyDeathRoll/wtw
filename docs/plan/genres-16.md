@@ -54,7 +54,7 @@ These are the rules already in PLAN.md §9's table; this adds where they live.
 
 Option A landed first. Then #243 is mostly UI: the signed-off screen (`docs/prototypes/first-run/1-genres-*`), saving answers as the season does (`play_state.state.gen`), Nevers through `update-from-play.ts`.
 
-**Decided: A.** Proposed split of the foundation PR:
-- **Eran + Claude:** `genres.ts` (3 new ids and their matching), `exclusion-rules.ts`, `update-from-play.ts`, the 980 game titles, the season's saved states, and the mapping in `features.ts` that keeps the model's 13 inputs exactly as they are (needs Shahar's OK, it's his file).
-- **Shahar:** recompute `game_genres` for the catalogue with the new ids (rule-based, no AI).
-- **Alon:** a look at `cold-start.ts` and `GENRE_SAY` in `taste-facts.ts` (new ids map onto the existing 13 wording, or get their own).
+**Decided: A, done side by side** (2026-11-13). Building it showed that mapping the 16 back onto the 13 can't be exact (*The Dark Knight* is "Superheroes" but was never "sci-fi"), so it would have changed taste vectors. Instead:
+- **The 13 stay exactly as they are** for the taste model, the stored `game_genres` and the season. Nothing changes in Alon's or Shahar's code; no recompute.
+- **The 16 are added** (`src/app/play/lib/genres16.ts`) for what people see and choose, and a Never on them is exact (`genre16Rule()` in `exclusion-rules.ts`). Love / Like reach the 13 through `GENRE_13_OF` (quick picks, the genre lean #278).
+- Foundation PR: #285. Then #243 builds the screen on top.
