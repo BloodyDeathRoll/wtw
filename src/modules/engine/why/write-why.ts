@@ -467,9 +467,11 @@ const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always |previously
  * thrillers"). The facts' "this viewer goes for…" lines are for the text to
  * show in the title ("it's fast"), not to claim.
  */
-// "The kind of heart you crave" stays allowed: it is the voice of Eran's
-// screenshots (2026-11-06), not a claim about what the viewer has done.
-const VIEWER_TASTE = /\byour (?:preference|preferences|love of|fondness|appetite|soft spot|weakness|penchant|liking)\b|\byou (?:gravitate|tend to|typically|usually|always go)\b|\bup your alley\b|\b(?:suits|suiting|fits) you\b/i
+// "You crave" too (Eran, 2026-11-12: "it tells the viewer what they crave,
+// which we don't know"), though it was the screenshots' voice on 2026-11-06.
+// An adverb in between doesn't make it a description of the film ("the pace
+// you clearly crave", "your love for dark crime", both seen 2026-11-12).
+const VIEWER_TASTE = /\byour (?:preferences?|love|fondness|appetite|soft spot|weakness|penchant|liking|thirst|hunger|taste) (?:for|of)\b|\byour (?:preferences?|fondness|penchant|liking)\b|\byou (?:clearly |really |obviously |always |so )?(?:crave|gravitate|tend to|typically|usually|always go)\b|\bup your alley\b|\b(?:suits|suiting|fits) you\b/i
 /** Stronger than "critics/audiences loved it" — not in the facts. */
 const OVERCLAIM = /\b(masterpiece|universal(ly)?|rave[sd]?|raving|oscar|award|acclaim(ed)?|classic|best\b[^.]*\bever|guarantee[sd]?|hail(ed|s)?|instant favou?rite|must-see|hits exactly|prais(e|ed|es|ing)|loved it for)\b/i
 

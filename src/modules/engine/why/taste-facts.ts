@@ -119,21 +119,24 @@ export function tasteCatchKey(contributions: number[], vec: number[]): string | 
   return worst ? `${worst.i}:${side(vec[worst.i])}` : null
 }
 
-/** A batch needs this many titles before "most of it shares a catch" means anything. */
-export const SHARED_CATCH_MIN_BATCH = 20
+/** The cards counted: the first ones of the batch, the ones people open (Eran, 2026-11-12). */
+export const SHARED_CATCH_WINDOW = 20
 
 /**
- * Catches more than half the batch shares (Eran, 2026-11-12, on #272: "More
- * mainstream than you usually go for" ended 8 of 10 sheets). A line on every
- * card says nothing, so a shared catch is not said; on a feed where few titles
- * share it, it still is.
+ * Catches more than half of the first SHARED_CATCH_WINDOW cards share, in feed
+ * order (Eran, 2026-11-12, on #272: "More mainstream than you usually go for"
+ * ended 8 of 10 sheets; 23 of the 50 cards had it, clustered at the top). A
+ * line on every card someone opens says nothing, so a catch shared there is
+ * not said anywhere in the batch; on a feed where few titles share it — a
+ * mainstream pick in a niche-leaning feed — it still is. A batch shorter than
+ * the window shares nothing.
  */
 export function sharedCatchKeys(keys: (string | null)[]): Set<string> {
   const shared = new Set<string>()
-  if (keys.length < SHARED_CATCH_MIN_BATCH) return shared
+  if (keys.length < SHARED_CATCH_WINDOW) return shared
   const count = new Map<string, number>()
-  for (const k of keys) if (k) count.set(k, (count.get(k) ?? 0) + 1)
-  for (const [k, n] of count) if (n * 2 > keys.length) shared.add(k)
+  for (const k of keys.slice(0, SHARED_CATCH_WINDOW)) if (k) count.set(k, (count.get(k) ?? 0) + 1)
+  for (const [k, n] of count) if (n * 2 > SHARED_CATCH_WINDOW) shared.add(k)
   return shared
 }
 

@@ -124,18 +124,24 @@ describe('tasteNegatives — step 6 under v2, in the sheet\'s voice', () => {
   })
 })
 
-describe('sharedCatchKeys — a catch most of the batch shares is not said', () => {
-  const batch = (n: number, shared: number, key = '20:0') => [
-    ...new Array(shared).fill(key), ...new Array(n - shared).fill(null),
-  ]
-  it('more than half of the batch → shared', () => {
-    expect(sharedCatchKeys(batch(50, 26))).toEqual(new Set(['20:0']))
+describe('sharedCatchKeys — a catch most of the first 20 cards share is not said (Eran, #272: option b)', () => {
+  // keys in feed order; only the first 20 are counted
+  const feed = (top: (string | null)[], rest: (string | null)[] = new Array(30).fill(null)) => [...top, ...rest]
+  const k = '20:0'
+  it('more than half of the first 20 → shared, for the whole batch', () => {
+    expect(sharedCatchKeys(feed([...new Array(11).fill(k), ...new Array(9).fill(null)]))).toEqual(new Set([k]))
   })
-  it('half or fewer → still said', () => {
-    expect(sharedCatchKeys(batch(50, 25)).size).toBe(0)
+  it('half or fewer of the first 20 → still said', () => {
+    expect(sharedCatchKeys(feed([...new Array(10).fill(k), ...new Array(10).fill(null)])).size).toBe(0)
   })
-  it('too small a batch to tell → nothing shared', () => {
-    expect(sharedCatchKeys(batch(10, 9)).size).toBe(0)
+  it('only the first 20 count: a catch common further down is still said', () => {
+    expect(sharedCatchKeys(feed(new Array(20).fill(null), new Array(30).fill(k))).size).toBe(0)
+  })
+  it('the case that prompted it: 23 of 50, clustered at the top → shared', () => {
+    expect(sharedCatchKeys(feed([...new Array(15).fill(k), ...new Array(5).fill(null)], [...new Array(8).fill(k), ...new Array(22).fill(null)]))).toEqual(new Set([k]))
+  })
+  it('a batch shorter than 20 shares nothing', () => {
+    expect(sharedCatchKeys(new Array(10).fill(k)).size).toBe(0)
   })
   it('the key tells the two ends of a scale apart', () => {
     expect(tasteCatchKey(at([[S('indie'), -0.1]]), at([[S('indie'), -0.6]]))).toBe(`${S('indie')}:0`)

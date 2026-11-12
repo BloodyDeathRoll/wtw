@@ -110,8 +110,8 @@ describe('the check', () => {
   ])('refuses %s', (_, text, problem) => {
     expect(checkWhy(text, facts).join(' | ')).toMatch(problem)
   })
-  it('allows friendly taste talk, the screenshots\' voice ("the kind of heart you crave")', () => {
-    expect(checkWhy(GOOD.replace('in the best way', 'with the kind of heart you crave'), facts)).toEqual([])
+  it('refuses "the kind of heart you crave": it says what the viewer craves, which we don\'t know (Eran, 2026-11-12)', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'with the kind of heart you crave'), facts).join(' | ')).toMatch(/you crave/)
   })
   it('lets a plot turn use "but" ("hoped for one child but got three")', () => {
     expect(checkWhy(GOOD.replace('and the whole film lives', 'she wanted a quiet life but the whole film lives'), facts)).toEqual([])
@@ -385,11 +385,13 @@ describe('the text shows taste in the film, never claims it about the viewer (Er
     ['"your preference for"', 'and it suits your preference for warm family stories', /your preference/],
     ['"whose work you\'ve admired"', 'and Sian Heder, whose work you\'ve admired, keeps it honest', /whose work you|you've admired/],
     ['"you typically"', 'and it is the kind of film you typically pick', /you typically/],
+    ['"you clearly crave" (an adverb in between)', 'and it moves at the pace you clearly crave', /you clearly crave/],
+    ['"your love for"', 'and it rewards your love for dark crime', /your love for/],
   ])('refuses %s', (_, insert, problem) => {
     expect(checkWhy(GOOD.replace('in the best way', insert), facts).join(' | ')).toMatch(problem)
   })
-  it('still allows "the kind of heart you crave"', () => {
-    expect(checkWhy(GOOD.replace('in the best way', 'with the kind of heart you crave'), facts)).toEqual([])
+  it('refuses "the visceral weight you crave" (Eran, 2026-11-12)', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'with the visceral weight you crave'), facts).join(' | ')).toMatch(/you crave/)
   })
 })
 
@@ -416,5 +418,25 @@ describe('the word count accepts 60–115 (Eran, 2026-11-12: two sheets fell bac
     expect(checkWhy(w65, facts).join(' | ')).not.toMatch(/words long/)
     const w55 = Array.from({ length: 55 }, () => 'warm').join(' ')
     expect(checkWhy(w55, facts).join(' | ')).toMatch(/words long/)
+  })
+})
+
+describe('a cut-off synopsis is never pasted (Eran, 2026-11-12: Die Hard)', () => {
+  it('drops the sentence that trails off, keeps the whole one', async () => {
+    const { plotSentences, plotLine } = await import('@/modules/engine/pipeline/step7-card-reason')
+    const dieHard = 'High above the city of L.A. a team of terrorists has seized a building, taken hostages, and declared war. One man has manages to escape...'
+    expect(plotSentences(dieHard)).toEqual(['High above the city of L.A. a team of terrorists has seized a building, taken hostages, and declared war.'])
+    expect(plotLine(dieHard, 320)).not.toMatch(/manages|\.\.\./)
+  })
+  it('drops a last sentence with no closing punctuation, and "…" too', async () => {
+    const { plotSentences } = await import('@/modules/engine/pipeline/step7-card-reason')
+    expect(plotSentences('A detective returns home. She finds the town has changed and')).toEqual(['A detective returns home.'])
+    expect(plotSentences('A detective returns home. Then everything…')).toEqual(['A detective returns home.'])
+    expect(plotSentences('Nothing whole here...')).toEqual([])
+  })
+  it('keeps a quote or a question at the end', async () => {
+    const { plotSentences } = await import('@/modules/engine/pipeline/step7-card-reason')
+    expect(plotSentences('Who killed Laura Palmer?')).toEqual(['Who killed Laura Palmer?'])
+    expect(plotSentences('He says "run."')).toEqual(['He says "run."'])
   })
 })
