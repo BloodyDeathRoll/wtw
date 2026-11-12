@@ -513,6 +513,17 @@ S['1-genres-2-rated'] = (genres2(RATED, 'outline', lit=True),
 S['1-genres-3-end'] = (genres2(RATED, 'outline', end=True, lit=True),
     '<b>Genres · a few taps, scrolled to the end.</b> Never lights its row too: it\'s an answer.')
 
+# ── A save that fails (rule signed off 2026-11-12; placement proposed) ──
+# The season's own `.save-note` (Screens.tsx), in our voice. It sits in the 30px under the last button, so nothing on
+# the screen moves when it appears or goes; it goes as soon as a save works.
+SAVE_NOTE = '<div class="save-note obs">Couldn’t save. We’ll retry on your next answer.</div>'   # one line on a 360px phone
+def with_note(html):
+    return html.replace('</div></div></div></div></div></div></body>', SAVE_NOTE + '</div></div></div></div></div></div></body>', 1)   # inside .screen
+S['8-save-1-card'] = (with_note(with_skip(card(DK, 12, '2008 · Christopher Nolan'))),
+    '<b>A save failed, on a card.</b> One quiet line under the buttons. You keep going; the answer is kept on the phone and sent with the next one.')
+S['8-save-2-pair'] = (with_note(with_skip(qp(T('Pulp Fiction'), T('Se7en'), 4))),
+    '<b>A save failed, on a pair.</b> Same line, same place. It goes away by itself as soon as a save works.')
+
 if __name__ == '__main__':   # play.py imports the pieces without rewriting the mocks
     for k, (html, cap) in S.items():
         (HERE / f'{k}.html').write_text(html)

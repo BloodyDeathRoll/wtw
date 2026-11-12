@@ -229,3 +229,7 @@ html.docscroll .WTWApp-module__gS1tAq__page{position:relative!important;height:a
 html.docscroll .WTWApp-module__gS1tAq__app,html.docscroll .WTWApp-module__gS1tAq__appInner{height:auto!important;overflow:visible!important}
 html.docscroll .phone{height:auto!important;overflow:visible!important}
 html.docscroll .screen{position:relative!important;height:auto!important;min-height:100vh;overflow:visible!important}
+/* A failed save (2026-11-12): the season's .save-note, pinned in the 30px under the last button so nothing moves */
+.wtw-play .screen > .save-note.obs{position:absolute;left:0;right:0;bottom:8px;padding:0 16px;white-space:nowrap;margin:0;font-size:13px;line-height:16px;color:var(--muted);text-align:center}
+/* Genre screen: the top bar (logo, menu) stays put while the list scrolls under it (Eran, 2026-11-12) */
+html.docscroll .apptop{position:sticky;top:0;z-index:6;background:#000}
