@@ -45,7 +45,7 @@ export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?
   const vecs = new Map<string, number[]>()
   const chunks: string[][] = []
   for (let i = 0; i < ids.length; i += ID_CHUNK) chunks.push(ids.slice(i, i + ID_CHUNK))
-  // All chunks at once: one after another cost ~190 ms per 300 ids in step 1 (P1-G latency, #240).
+  // All chunks at once: one after another cost ~100 ms a chunk in v2's step 1 (P1-G latency, #240).
   const results = await Promise.all(chunks.map(chunk => db.from('titles').select('tmdb_id, type, taste_vec')
     .in('tmdb_id', chunk)
     .eq('taste_version', TASTE_FEATURE_VERSION).not('taste_vec', 'is', null)))

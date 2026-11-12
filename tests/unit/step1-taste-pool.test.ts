@@ -9,6 +9,8 @@ const io = vi.hoisted(() => ({
   w: [] as number[],
   tasteFails: false,
   trainingFails: false,
+  readFails: false,
+  trainings: 0,
   embeds: 0,
 }))
 const row = (id: string, genre = 'Drama') => ({
@@ -18,7 +20,7 @@ const row = (id: string, genre = 'Drama') => ({
 
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
-    from: () => ({ select: () => ({ eq: async () => ({ data: [], error: null }) }) }),
+    from: () => ({ select: () => ({ eq: async () => (io.readFails ? { data: null, error: { message: 'read failed' } } : { data: [], error: null }) }) }),
     rpc: async (name: string, args: Record<string, unknown>) => {
       io.rpcs.push({ name, args })
       if (name === 'get_candidate_titles') return { data: [row('v1'), row('v2')], error: null }
@@ -34,6 +36,7 @@ vi.mock('@/modules/engine/scoring/narrative-match', () => ({
 }))
 vi.mock('@/modules/dna/load-taste-training', () => ({
   loadTasteTraining: async () => {
+    io.trainings++
     if (io.trainingFails) throw new Error('play_events unavailable')
     return { rows: [], pairs: [] }
   },
@@ -55,6 +58,8 @@ beforeEach(() => {
   io.w = [0.5, ...new Array(24).fill(0.1)]
   io.tasteFails = false
   io.trainingFails = false
+  io.readFails = false
+  io.trainings = 0
   io.embeds = 0
   clearTasteWeights()
 })
@@ -113,5 +118,18 @@ describe('step 1 — FORMULA_V2 on', () => {
     expect(called('get_candidate_titles_by_taste')).toHaveLength(0)
     expect(ids(out)).toEqual(['v1', 'v2'])
     warn.mockRestore()
+  })
+
+  it('starts the taste weights before the exclusion reads, and an early throw leaves no unhandled rejection', async () => {
+    io.readFails = true
+    io.trainingFails = true
+    const unhandled: unknown[] = []
+    const onUnhandled = (e: unknown) => unhandled.push(e)
+    process.on('unhandledRejection', onUnhandled)
+    await expect(getCandidates(createBlankDNA('u1'), undefined, 'movies')).rejects.toThrow('removed_titles')
+    await new Promise(r => setTimeout(r, 0))
+    process.off('unhandledRejection', onUnhandled)
+    expect(io.trainings).toBe(1)
+    expect(unhandled).toEqual([])
   })
 })

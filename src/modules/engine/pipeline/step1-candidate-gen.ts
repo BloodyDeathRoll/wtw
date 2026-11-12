@@ -93,8 +93,8 @@ export async function getCandidates(
   const supabase = createServiceClient()
   const userId = dna.metadata.user_id
   // v2's taste pool needs w (three reads in a row); start it now so it overlaps the reads below (P1-G latency, #240).
+  // No unhandled rejection if step 1 throws first: userTasteWeights already catches its own promise.
   const weights = formulaV2Enabled() ? userTasteWeights(dna) : null
-  weights?.catch(() => {}) // a failure surfaces in tastePool; this only keeps an early throw from leaving it unhandled
 
   // ── Hard exclusions ───────────────────────────────────────
   const excluded = new Set<string>()
@@ -172,7 +172,7 @@ export async function getCandidates(
   // pool alone rather than fail the whole generation.
   const tastePool = async (): Promise<{ data: TitleRow[]; error: null }> => {
     try {
-      const w = await (weights ?? userTasteWeights(dna))
+      const w = await weights!
       if (w.every(x => x === 0)) return { data: [], error: null }
       const res = await supabase.rpc('get_candidate_titles_by_taste', {
         user_w:          w,
