@@ -299,6 +299,13 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
   // ones you like are the Crew list; a rated-down one is a reason against.
   const likedCrew = p.crew_matches.filter(m => m.affinity_score > 0)
   const dislikedCrew = p.crew_matches.filter(m => m.affinity_score < 0)
+  // One line per person, every role they had (Eran, 2026-11-12: Nolan was
+  // listed once as director and twice as writer). First appearance keeps its place.
+  const crewLines = [...likedCrew.reduce((byName, m) => {
+    const roles = byName.get(m.name) ?? []
+    if (!roles.includes(m.role)) roles.push(m.role)
+    return byName.set(m.name, roles)
+  }, new Map<string, string[]>())].map(([name, roles]) => ({ name, role: roles.join(", ") }))
   // No one you follow → an empty Crew bar, so it agrees with the line below it.
   const crewScore = likedCrew.length > 0
     ? Math.max(0, p.crew_matches.reduce((s, m) => s + m.affinity_score, 0) / p.crew_matches.length)
@@ -384,8 +391,8 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
 
       <div className={styles.whySection}>
         <div className={styles.whySectionLabel}>Crew</div>
-        {likedCrew.length > 0 ? (
-          likedCrew.map((m, i) => (
+        {crewLines.length > 0 ? (
+          crewLines.map((m, i) => (
             <div key={i} className={styles.crewInfo}>
               <span className={styles.crewName}>{m.name}</span>
               <span className={styles.crewRole}>{m.role}</span>

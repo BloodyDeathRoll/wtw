@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  tasteLikes, tasteCatch, tasteBars, whatItsLike, tasteNegatives, BARS_MIN_POOL,
+  tasteLikes, tasteCatch, tasteBars, whatItsLike, tasteNegatives, BARS_MIN_POOL, sharedCatchKeys, tasteCatchKey,
 } from '@/modules/engine/why/taste-facts'
 import { normalCdf, type V2Score } from '@/modules/engine/scoring/formula-v2'
 import { FEATURE_GENRES, FEATURE_SCALES } from '@/lib/taste-scales/features'
@@ -121,5 +121,32 @@ describe('tasteNegatives — step 6 under v2, in the sheet\'s voice', () => {
 
   it('a title without a vector has no model reason against it', () => {
     expect(tasteNegatives(v2({ z_model: -0.6, model_score: null }))).toEqual([])
+  })
+})
+
+describe('sharedCatchKeys — a catch most of the batch shares is not said', () => {
+  const batch = (n: number, shared: number, key = '20:0') => [
+    ...new Array(shared).fill(key), ...new Array(n - shared).fill(null),
+  ]
+  it('more than half of the batch → shared', () => {
+    expect(sharedCatchKeys(batch(50, 26))).toEqual(new Set(['20:0']))
+  })
+  it('half or fewer → still said', () => {
+    expect(sharedCatchKeys(batch(50, 25)).size).toBe(0)
+  })
+  it('too small a batch to tell → nothing shared', () => {
+    expect(sharedCatchKeys(batch(10, 9)).size).toBe(0)
+  })
+  it('the key tells the two ends of a scale apart', () => {
+    expect(tasteCatchKey(at([[S('indie'), -0.1]]), at([[S('indie'), -0.6]]))).toBe(`${S('indie')}:0`)
+    expect(tasteCatchKey(at([[S('indie'), -0.1]]), at([[S('indie'), 0.6]]))).toBe(`${S('indie')}:1`)
+    expect(tasteCatchKey(new Array(25).fill(0), new Array(25).fill(0))).toBeNull()
+  })
+})
+
+describe('tasteNegatives — a shared catch is left out', () => {
+  it('drops the model line, keeps the crowd line', () => {
+    const facts = { vec: at([[S('dark'), 0.8]]), contributions: at([[S('dark'), -0.3]]) }
+    expect(tasteNegatives(v2({ z_model: -0.6, model_score: -1, z_crowd: -1.5, ...facts }), true)).toEqual(['Rated lower than what you usually pick.'])
   })
 })

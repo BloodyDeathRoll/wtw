@@ -111,6 +111,8 @@ const ANGLE_LEAD: Record<Angle, string> = {
 export interface WhyContext {
   dna?: DNASchema
   ratedTitles?: RatedForComparison[]
+  /** Formula v2: most of the title's batch shares its taste catch, so it isn't said (step 6, `taste.catch_shared`). */
+  skipTasteCatch?: boolean
 }
 
 /** Genres too common to make two titles alike. */
@@ -158,14 +160,14 @@ const HEAVY_TONES = ['melancholic', 'tense', 'gritty', 'bleak', 'tragic']
  * heavier tone than they usually pick, a pace they rate low, the length.
  * Null when nothing in the data says so: then there is no reservation.
  */
-export function reservationFor(item: ScoredTitleWithPayload, dna: DNASchema | undefined): string | null {
+export function reservationFor(item: ScoredTitleWithPayload, dna: DNASchema | undefined, skipTasteCatch = false): string | null {
   // Formula v2 (P1-E5): the taste model's strongest pull away, then the
   // language catch and the length. The strand-C catches (tone and pace
   // weights, rated-down genres) are gone with the parts they came from.
   const v2 = item.formula_v2
   if (v2) {
     const t = item.title
-    if (hasTasteFacts(v2)) {
+    if (hasTasteFacts(v2) && !skipTasteCatch) {
       const c = tasteCatch(v2.contributions, v2.vec)
       if (c) return c
     }
@@ -299,7 +301,7 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
         `${plot ? ` Its plot: ${plot}` : ''}`)
     }
   }
-  const reservation = coldStart ? null : reservationFor(item, ctx.dna)
+  const reservation = coldStart ? null : reservationFor(item, ctx.dna, ctx.skipTasteCatch)
 
   if (coldStart) {
     personal.splice(0)
@@ -331,7 +333,7 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     ...personal.map(x => `- ${x}`),
     '',
     ...(comparisonLines.length ? ['Titles this viewer loved or liked that share something with this one:', ...comparisonLines, ''] : []),
-    reservation ? `The one honest reservation (end on it, in your own words): ${reservation}` : 'Reservation: none. Mention no downside.',
+    reservation ? `The one honest reservation — end on this sentence word for word, after a short lead-in: "${toYou(reservation)}"` : 'Reservation: none. Mention no downside.',
     '',
     `This title and the ones linked to the viewer: ${titles.map(x => `*${x}*`).join(', ')}`,
     ...(linkClause ? ['', `Start the first sentence with exactly these words, then continue it: ${linkClause}`] : []),
@@ -381,7 +383,10 @@ export function richFallback(
   const c = similar[0]
   if (c) {
     const tags = c.tags.filter(k => !GENERIC_TAGS.has(k) && !/[()]|universe|based on/i.test(k) && k.split(' ').length <= 3).slice(0, 2).map(k => k.replace(/\b3d\b/gi, '3D'))
-    if (tags.length) parts.push(`Like *${c.r.title}*, which you ${c.r.reaction}, it has ${listOf(tags)}.`)
+    // Tags are TMDB keywords ("secret identity", "crime fighter"), not phrases a
+    // sentence can take as objects: "it has secret identity and crime fighter"
+    // (Eran, 2026-11-12). Said as what they are.
+    if (tags.length) parts.push(`It covers some of the same ground as *${c.r.title}*, which you ${c.r.reaction} (${tags.join(', ')}).`)
   }
   const cast = t.crew.cast.slice(0, 3).map(x => x.name).filter(n => !parts[0].includes(n))
   if (cast.length) parts.push(`Starring ${listOf(cast)}.`)
@@ -455,7 +460,16 @@ const OVERUSED: { re: RegExp; max: number }[] = [
 const STOCK_OPENER = /^(you'll love|you will love|since you|because you|if you|as someone who|critics loved|audiences loved|there is|there's|\*[^*]+\* is an? )/i
 /** Anything said about the viewer's own taste or history, outside the link clause. */
 /** A claim about what the viewer watched or rated, outside the link clause and the compared titles. Friendly taste talk ("the kind of humour you'd love", "you crave heart") is the screenshots' voice and allowed (Eran, 2026-11-06). */
-const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:loved|liked|enjoyed|adored|rated|watched|seen)\b|\byour favou?rite\b/i
+const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:loved|liked|enjoyed|adored|admired|cherished|appreciated|rated|watched|seen)\b|\byour favou?rite\b|\bwhose work you\b/i
+/**
+ * The viewer's taste said about the viewer, not shown in the title (Eran,
+ * 2026-11-12, on #272: "perfectly suiting your preference for fast-moving
+ * thrillers"). The facts' "this viewer goes for…" lines are for the text to
+ * show in the title ("it's fast"), not to claim.
+ */
+// "The kind of heart you crave" stays allowed: it is the voice of Eran's
+// screenshots (2026-11-06), not a claim about what the viewer has done.
+const VIEWER_TASTE = /\byour (?:preference|preferences|love of|fondness|appetite|soft spot|weakness|penchant|liking)\b|\byou (?:gravitate|tend to|typically|usually|always go)\b|\bup your alley\b|\b(?:suits|suiting|fits) you\b/i
 /** Stronger than "critics/audiences loved it" — not in the facts. */
 const OVERCLAIM = /\b(masterpiece|universal(ly)?|rave[sd]?|raving|oscar|award|acclaim(ed)?|classic|best\b[^.]*\bever|guarantee[sd]?|hail(ed|s)?|instant favou?rite|must-see|hits exactly|prais(e|ed|es|ing)|loved it for)\b/i
 
@@ -483,8 +497,10 @@ async function unknownTitles(titles: string[]): Promise<string[]> {
 export function checkWhy(text: string, facts: WhyFacts): string[] {
   const problems: string[] = []
   const words = text.trim().split(/\s+/).length
-  // 85–100 asked, 70–115 accepted (Eran, 2026-11-06: 90–95 on average; ~120 read long).
-  if (words < 70 || words > 115) problems.push(`it is ${words} words long; write 85–100`)
+  // 85–100 asked, 60–115 accepted (Eran, 2026-11-06: 90–95 on average; ~120
+  // read long). The floor was 70 until 2026-11-12: two of ten sheets on #272
+  // fell back to the plain text at 68–69 words.
+  if (words < 60 || words > 115) problems.push(`it is ${words} words long; write 85–100`)
   if (!facts.reservation && RESERVATION.test(text)) problems.push(`it contains a reservation or a contrast ("${text.match(RESERVATION)![0]}"); the facts give no reservation`)
   if (CLICHE.test(text)) problems.push(`it uses "${text.match(CLICHE)![0]}"; talk like a friend, not an app`)
   if (SAMENESS.test(text)) problems.push(`it says "${text.match(SAMENESS)![0]}"; no critics or audiences, and describe the feel in fresh words, not a list of mood tags`)
@@ -560,8 +576,17 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
     return c ? sentence.replace(new RegExp(`\\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:${OK_VERBS[c.reaction]})\\b`, 'g'), ' ') : sentence
   }).join(' ')
   rest = rest.replace(/\bif you(?:'re| are)?\b[^.,;—]*/g, ' ')
+  // The catch is ours too, word for word (Eran, 2026-11-12: "it should come
+  // out as the fact says it"), and it is the one place "you usually" belongs.
+  if (facts.reservation) {
+    const r = norm(toYou(facts.reservation)).replace(/[.!]$/, '')
+    if (!rest.includes(r)) problems.push(`it doesn't end on the reservation as given: "${toYou(facts.reservation)}" — use it word for word`)
+    rest = rest.replace(r, ' ')
+  }
   const claim = rest.match(VIEWER_CLAIM)
   if (claim) problems.push(`it says "${claim[0]}" — describe the film, not what the viewer likes`)
+  const taste = rest.match(VIEWER_TASTE)
+  if (taste) problems.push(`it says "${taste[0]}" — show it in the film ("it's fast"), don't say it about the viewer`)
   // Titles are left out: *Safety Not Guaranteed* is not a guarantee.
   const over = facts.titles.reduce((t, x) => t.split(x).join(' '), plain).match(OVERCLAIM)
   if (over) problems.push(`it says "${over[0]}", which the facts don't support`)
@@ -580,7 +605,8 @@ What a great one has (Eran's examples: "it's like *The Proposal* meets *Fight Cl
 - What it feels like to watch, in fresh words: the humour, the tension, the heart, the energy. Don't string mood labels together ("warm, hopeful and whimsical").
 - Your take on the cast in "Starring": what they bring, how they play off each other. You don't know who plays whom, so never pair an actor with a character or a part of the story. Only call an actor the lead if they're first in "Starring".
 - At most one passing clause about the premise, from the Plot, adding nothing it doesn't say.
-- If the facts give a reservation, end with one honest sentence about it in your own words — vary it ("The one thing that might give you pause…", "Fair warning:…", "Your one likely reservation…", "Just know going in…"). If they don't, mention no downside.
+- If the facts give a reservation, end on it exactly as the facts give it, word for word, after a short lead-in of your own (vary it: "Fair warning:", "Just know going in:", "One thing to know:"). Add nothing to it: don't stretch, soften or explain it. If they don't, mention no downside.
+- What this viewer goes for ("Why it fits this viewer") is for you to show in the title itself — "it's fast and twisty" — never to say about the viewer ("your preference for…", "the energy you crave").
 
 Rules:
 - No critics, audiences, reviews or ratings. No "match", "fit", "taste", data or algorithms.

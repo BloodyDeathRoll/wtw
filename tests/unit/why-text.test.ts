@@ -279,7 +279,8 @@ describe('the plain version, when no model can write it', () => {
   it('is a short paragraph of facts, not one plot sentence', () => {
     const text = richFallback(codaItem() as never, new Map(), similarRated(codaItem(), [rel('Fishing Doc', 'loved', ['fishing', 'singing'])]), 'It has melancholic stretches, heavier than the lighter stories this viewer usually goes for.')
     expect(text).toContain('Ruby is the only hearing person in her deaf family.')
-    expect(text).toContain('Like *Fishing Doc*, which you loved, it has fishing and singing.')
+    // Tags said as tags, not as a sentence's objects (Eran, 2026-11-12: "it has secret identity and crime fighter").
+    expect(text).toContain('It covers some of the same ground as *Fishing Doc*, which you loved (fishing, singing).')
     expect(text).toContain('Starring Emilia Jones and Troy Kotsur.')
     expect(text).toContain('One thing to know: it has melancholic stretches, heavier than the lighter stories you usually go for.')
   })
@@ -318,7 +319,13 @@ describe('the one honest reservation', () => {
   it('lets the text end on it only when there is one', () => {
     const f = buildWhyFacts(codaItem({ tone_tags: ['melancholic'] }), new Map(), false, { dna: dna() })
     expect(f.reservation).toMatch(/melancholic/)
-    expect(checkWhy(GOOD + ' Just know going in that it has melancholic stretches.', f)).toEqual([])
+    expect(checkWhy(GOOD + ' Just know going in: it has melancholic stretches, heavier than the lighter stories you usually go for.', f)).toEqual([])
+  })
+  it('makes the text say it as the facts do, word for word (Eran, 2026-11-12)', () => {
+    const f = buildWhyFacts(codaItem({ tone_tags: ['melancholic'] }), new Map(), false, { dna: dna() })
+    expect(f.text).toContain('"It has melancholic stretches, heavier than the lighter stories you usually go for."')
+    expect(checkWhy(GOOD + ' Just know going in that it has melancholic stretches, far bleaker than the niche picks you love.', f).join(' | '))
+      .toMatch(/doesn't end on the reservation as given/)
   })
 })
 
@@ -369,5 +376,45 @@ describe('the text speaks to "you", never of "this viewer"', () => {
       'Troy Kotsur brings warmth and real comic timing to the father, and the fishing boat scenes give the drama a working-class weight. ' +
       'Sian Heder keeps it honest and unsentimental, letting the singing land without forcing it. Just know going in that it is gentler than this viewer usually goes for.'
     expect(checkWhy(text, facts).join(' | ')).toMatch(/says "this viewer"; talk to the reader as "you"/)
+  })
+})
+
+describe('the text shows taste in the film, never claims it about the viewer (Eran, 2026-11-12)', () => {
+  const facts = buildWhyFacts(codaItem(), new Map())
+  it.each([
+    ['"your preference for"', 'and it suits your preference for warm family stories', /your preference/],
+    ['"whose work you\'ve admired"', 'and Sian Heder, whose work you\'ve admired, keeps it honest', /whose work you|you've admired/],
+    ['"you typically"', 'and it is the kind of film you typically pick', /you typically/],
+  ])('refuses %s', (_, insert, problem) => {
+    expect(checkWhy(GOOD.replace('in the best way', insert), facts).join(' | ')).toMatch(problem)
+  })
+  it('still allows "the kind of heart you crave"', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'with the kind of heart you crave'), facts)).toEqual([])
+  })
+})
+
+describe('a catch most of the batch shares is not said (Eran, 2026-11-12)', () => {
+  const vec = new Array(25).fill(0); vec[20] = -0.8
+  const contributions = new Array(25).fill(0); contributions[20] = -0.2
+  const item = () => {
+    const i = codaItem() as Record<string, unknown>
+    i.formula_v2 = { z_creators: 0, z_crowd: 0, z_model: 0, model_score: 0.1, s: 0, composite: 0.7, pool_size: 200, vec, contributions }
+    return i as never
+  }
+  it('is the catch when the batch does not share it', () => {
+    expect(buildWhyFacts(item(), new Map(), false, {}).reservation).toBe("It's more mainstream than this viewer usually goes for.")
+  })
+  it('is no catch when it does', () => {
+    expect(buildWhyFacts(item(), new Map(), false, { skipTasteCatch: true }).reservation).toBeNull()
+  })
+})
+
+describe('the word count accepts 60–115 (Eran, 2026-11-12: two sheets fell back at 68–69)', () => {
+  const facts = buildWhyFacts(codaItem(), new Map())
+  it('a 65-word text passes on length', () => {
+    const w65 = Array.from({ length: 65 }, () => 'warm').join(' ')
+    expect(checkWhy(w65, facts).join(' | ')).not.toMatch(/words long/)
+    const w55 = Array.from({ length: 55 }, () => 'warm').join(' ')
+    expect(checkWhy(w55, facts).join(' | ')).toMatch(/words long/)
   })
 })

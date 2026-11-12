@@ -97,16 +97,44 @@ export function tasteLikes(contributions: number[], vec: number[]): string[] {
  * The catch: the most negative contribution, if it is below CATCH_BELOW.
  * Said plainly (Eran, 2026-11-09: "we shouldn't be afraid of saying that").
  */
-export function tasteCatch(contributions: number[], vec: number[]): string | null {
-  const worst = contributions
+function worstPull(contributions: number[]) {
+  return contributions
     .map((c, i) => ({ c, i, input: INPUTS[i] }))
     .filter(({ c, input }) => input && c < CATCH_BELOW)
     .sort((a, b) => a.c - b.c)[0]
+}
+
+export function tasteCatch(contributions: number[], vec: number[]): string | null {
+  const worst = worstPull(contributions)
   if (!worst) return null
   const input = worst.input!
   if (input.kind === 'scale') return `It's ${COMPARATIVE[input.key][side(vec[worst.i])]} than this viewer usually goes for.`
   const g = GENRE_SAY[input.key]
   return `It's ${vec[worst.i] < 1 ? 'partly ' : ''}${g}, and ${g} isn't a genre this viewer usually goes for.`
+}
+
+/** Which catch a title gets, as a key ("16:1" = input 16, right end), so a batch can count them. Null: no catch. */
+export function tasteCatchKey(contributions: number[], vec: number[]): string | null {
+  const worst = worstPull(contributions)
+  return worst ? `${worst.i}:${side(vec[worst.i])}` : null
+}
+
+/** A batch needs this many titles before "most of it shares a catch" means anything. */
+export const SHARED_CATCH_MIN_BATCH = 20
+
+/**
+ * Catches more than half the batch shares (Eran, 2026-11-12, on #272: "More
+ * mainstream than you usually go for" ended 8 of 10 sheets). A line on every
+ * card says nothing, so a shared catch is not said; on a feed where few titles
+ * share it, it still is.
+ */
+export function sharedCatchKeys(keys: (string | null)[]): Set<string> {
+  const shared = new Set<string>()
+  if (keys.length < SHARED_CATCH_MIN_BATCH) return shared
+  const count = new Map<string, number>()
+  for (const k of keys) if (k) count.set(k, (count.get(k) ?? 0) + 1)
+  for (const [k, n] of count) if (n * 2 > keys.length) shared.add(k)
+  return shared
 }
 
 /** The sheet's three bars, each Φ(z): Your taste, Crowd, Creators. Null when the pool is too small to compare against. */
@@ -141,10 +169,10 @@ export const toYou = (s: string) => s
   .replace(/for this viewer/g, 'for you')
   .replace(/this viewer/g, 'you')
 
-/** Step 6's "Doesn't quite fit" lines under v2, in the sheet's voice. */
-export function tasteNegatives(v2: V2Score): string[] {
+/** Step 6's "Doesn't quite fit" lines under v2, in the sheet's voice. `catchShared`: most of the batch has this catch, so it isn't said. */
+export function tasteNegatives(v2: V2Score, catchShared = false): string[] {
   const out: string[] = []
-  if (hasTasteFacts(v2) && v2.model_score != null && v2.z_model < NEG_MODEL_Z) {
+  if (!catchShared && hasTasteFacts(v2) && v2.model_score != null && v2.z_model < NEG_MODEL_Z) {
     const c = tasteCatch(v2.contributions, v2.vec)
     if (c) out.push(toYou(c))
   }

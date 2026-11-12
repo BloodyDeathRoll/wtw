@@ -143,6 +143,8 @@ export interface TasteWhy {
   bars?: { taste: number; crowd: number; creators: number }
   /** "What it's like": the title's clear scale ends, its genres, its language (an ISO 639-1 code). */
   like: { dimension: 'feel' | 'genre' | 'language'; value: string }[]
+  /** True when more than half the batch has this title's catch, so the Why text leaves it out (taste-facts.ts `sharedCatchKeys`). */
+  catch_shared?: boolean
 }
 
 export type ReasonPayloadWithTaste = import('@/types/dna').ReasonPayload & { taste?: TasteWhy }

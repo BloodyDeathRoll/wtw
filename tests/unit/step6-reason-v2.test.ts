@@ -62,3 +62,22 @@ describe('step 6 — formula v2', () => {
     expect(p.reason_payload.taste?.bars).toBeUndefined()
   })
 })
+
+describe('step 6 — a catch most of the batch shares (Eran, #272)', () => {
+  const v2 = { z_creators: 0, z_crowd: 0, z_model: -0.8, model_score: -0.4, s: -0.5, composite: 0.3, pool_size: 300, vec, contributions }
+  it('is left out of every title that has it, and marked for the writer', () => {
+    const items = Array.from({ length: 30 }, (_, i) => base({ title: { ...base().title, tmdb_id: String(i) } as never, formula_v2: v2 }))
+    const out = buildReasonPayloads(items)
+    expect(out.every(p => p.reason_payload.taste?.catch_shared === true)).toBe(true)
+    expect(out.every(p => !p.reason_payload.negative_signals.includes("It's darker than you usually go for."))).toBe(true)
+  })
+})
+
+describe('step 6 — stretch picks under v2 say it plainly', () => {
+  it('no v1 dimension names', () => {
+    const v2 = { z_creators: 0, z_crowd: 0, z_model: 0, model_score: 0, s: 0, composite: 0.3, pool_size: 300 }
+    const [p] = buildReasonPayloads([base({ formula_v2: v2, is_stretch_pick: true, dimensions_stretched: ['narrative_complexity'] })])
+    expect(p.reason_payload.negative_signals[0]).toBe('A stretch pick: chosen on purpose from outside what you usually go for.')
+    expect(p.reason_payload.negative_signals.join(' ')).not.toMatch(/narrative complexity/)
+  })
+})
