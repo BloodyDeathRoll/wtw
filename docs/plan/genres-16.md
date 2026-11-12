@@ -1,6 +1,6 @@
 # 16 genres: what the signed-off genre screen needs underneath
 
-*Written 2026-11-12 night (Eran + Claude), while starting #243 (P2-U2). For the team to decide before #243 is built. Nothing here is changed yet.*
+*Written 2026-11-12 night (Eran + Claude), while starting #243 (P2-U2).* **Decided 2026-11-13: option A** (Eran), pending Alon's and Shahar's OK on the parts in their code.
 
 ## In plain words
 
@@ -54,4 +54,7 @@ These are the rules already in PLAN.md §9's table; this adds where they live.
 
 Option A landed first. Then #243 is mostly UI: the signed-off screen (`docs/prototypes/first-run/1-genres-*`), saving answers as the season does (`play_state.state.gen`), Nevers through `update-from-play.ts`.
 
-**Decision needed:** A or B, and who takes the foundation PR.
+**Decided: A.** Proposed split of the foundation PR:
+- **Eran + Claude:** `genres.ts` (3 new ids and their matching), `exclusion-rules.ts`, `update-from-play.ts`, the 980 game titles, the season's saved states, and the mapping in `features.ts` that keeps the model's 13 inputs exactly as they are (needs Shahar's OK, it's his file).
+- **Shahar:** recompute `game_genres` for the catalogue with the new ids (rule-based, no AI).
+- **Alon:** a look at `cold-start.ts` and `GENRE_SAY` in `taste-facts.ts` (new ids map onto the existing 13 wording, or get their own).
