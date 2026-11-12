@@ -33,6 +33,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { STRONG_CREW_AFFINITY, linkRole, sheetReason, type RatedByPerson } from '../pipeline/step7-card-reason'
 import type { ScoredTitleWithPayload } from '../pipeline/step6-reason-payload'
 import type { RatedForComparison } from './score-titles'
+import { hasTasteFacts, tasteCatch, tasteLikes } from './taste-facts'
 import type { DNASchema } from '@/types/dna'
 
 // ─────────────────────────────────────────────
@@ -110,6 +111,8 @@ const ANGLE_LEAD: Record<Angle, string> = {
 export interface WhyContext {
   dna?: DNASchema
   ratedTitles?: RatedForComparison[]
+  /** Formula v2: most of the title's batch shares its taste catch, so it isn't said (step 6, `taste.catch_shared`). */
+  skipTasteCatch?: boolean
 }
 
 /** Genres too common to make two titles alike. */
@@ -157,7 +160,23 @@ const HEAVY_TONES = ['melancholic', 'tense', 'gritty', 'bleak', 'tragic']
  * heavier tone than they usually pick, a pace they rate low, the length.
  * Null when nothing in the data says so: then there is no reservation.
  */
-export function reservationFor(item: ScoredTitleWithPayload, dna: DNASchema | undefined): string | null {
+export function reservationFor(item: ScoredTitleWithPayload, dna: DNASchema | undefined, skipTasteCatch = false): string | null {
+  // Formula v2 (P1-E5): the taste model's strongest pull away, then the
+  // language catch and the length. The strand-C catches (tone and pace
+  // weights, rated-down genres) are gone with the parts they came from.
+  const v2 = item.formula_v2
+  if (v2) {
+    const t = item.title
+    if (hasTasteFacts(v2) && !skipTasteCatch) {
+      const c = tasteCatch(v2.contributions, v2.vec)
+      if (c) return c
+    }
+    const a = item.content_avoided
+    if (a && a.dimension === 'language') return `It's in ${LANGUAGE[a.value] ?? a.value}, which hasn't worked for this viewer before.`
+    if ((t.runtime_minutes ?? 0) >= 150) return `It runs ${Math.floor(t.runtime_minutes! / 60)} hours ${t.runtime_minutes! % 60} minutes.`
+    return null
+  }
+
   if (!dna) return null
   const t = item.title
   const c = dna.strand_c_visceral_specs
@@ -246,8 +265,12 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     linkedNames.push(m.name)
   }
 
-  // ── Moods, genre, language the viewer rates highly, that this title has
-  const dim = new Map(p.dimension_matches.map(d => [d.dimension, d]))
+  // ── What pulls this viewer in. Formula v2 (P1-E5): the taste model's two
+  // strongest pulls among the title's scales and genres. v1: the moods, genre,
+  // pace and language the viewer rates highly, from strand C.
+  const v2 = item.formula_v2
+  if (hasTasteFacts(v2)) personal.push(...tasteLikes(v2.contributions, v2.vec))
+  const dim = new Map((v2 ? [] : p.dimension_matches).map(d => [d.dimension, d]))
   const split = (s?: string) => String(s ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean)
   const tone = dim.get('tone')
   const sharedTones = tone ? split(tone.title_value).filter(x => split(tone.user_value).includes(x)).map(x => TONE_WORD[x]).filter(Boolean) : []
@@ -278,7 +301,7 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
         `${plot ? ` Its plot: ${plot}` : ''}`)
     }
   }
-  const reservation = coldStart ? null : reservationFor(item, ctx.dna)
+  const reservation = coldStart ? null : reservationFor(item, ctx.dna, ctx.skipTasteCatch)
 
   if (coldStart) {
     personal.splice(0)
@@ -287,7 +310,11 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     linkedNames.splice(0)
     personal.push('Nothing yet about this viewer: describe the title itself.')
   } else if (personal.length === 0) {
-    personal.push('Its story and mood are close to what this viewer rates highly.')
+    personal.push(
+      !v2 ? 'Its story and mood are close to what this viewer rates highly.'
+      : (v2.model_score ?? 0) > 0 ? 'It is close to the kind of titles this viewer goes for.'
+      : 'Describe the title itself; say nothing about what this viewer likes.',
+    )
   }
 
   const keywords = (t.keywords ?? []).filter(k => !JUNK_KEYWORD.test(k)).slice(0, 12)
@@ -306,7 +333,7 @@ export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson
     ...personal.map(x => `- ${x}`),
     '',
     ...(comparisonLines.length ? ['Titles this viewer loved or liked that share something with this one:', ...comparisonLines, ''] : []),
-    reservation ? `The one honest reservation (end on it, in your own words): ${reservation}` : 'Reservation: none. Mention no downside.',
+    reservation ? `The one honest reservation — end on this sentence word for word, after a short lead-in: "${toYou(reservation)}"` : 'Reservation: none. Mention no downside.',
     '',
     `This title and the ones linked to the viewer: ${titles.map(x => `*${x}*`).join(', ')}`,
     ...(linkClause ? ['', `Start the first sentence with exactly these words, then continue it: ${linkClause}`] : []),
@@ -356,7 +383,10 @@ export function richFallback(
   const c = similar[0]
   if (c) {
     const tags = c.tags.filter(k => !GENERIC_TAGS.has(k) && !/[()]|universe|based on/i.test(k) && k.split(' ').length <= 3).slice(0, 2).map(k => k.replace(/\b3d\b/gi, '3D'))
-    if (tags.length) parts.push(`Like *${c.r.title}*, which you ${c.r.reaction}, it has ${listOf(tags)}.`)
+    // Tags are TMDB keywords ("secret identity", "crime fighter"), not phrases a
+    // sentence can take as objects: "it has secret identity and crime fighter"
+    // (Eran, 2026-11-12). Said as what they are.
+    if (tags.length) parts.push(`It covers some of the same ground as *${c.r.title}*, which you ${c.r.reaction} (${tags.join(', ')}).`)
   }
   const cast = t.crew.cast.slice(0, 3).map(x => x.name).filter(n => !parts[0].includes(n))
   if (cast.length) parts.push(`Starring ${listOf(cast)}.`)
@@ -430,7 +460,18 @@ const OVERUSED: { re: RegExp; max: number }[] = [
 const STOCK_OPENER = /^(you'll love|you will love|since you|because you|if you|as someone who|critics loved|audiences loved|there is|there's|\*[^*]+\* is an? )/i
 /** Anything said about the viewer's own taste or history, outside the link clause. */
 /** A claim about what the viewer watched or rated, outside the link clause and the compared titles. Friendly taste talk ("the kind of humour you'd love", "you crave heart") is the screenshots' voice and allowed (Eran, 2026-11-06). */
-const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:loved|liked|enjoyed|adored|rated|watched|seen)\b|\byour favou?rite\b/i
+const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:loved|liked|enjoyed|adored|admired|cherished|appreciated|rated|watched|seen)\b|\byour favou?rite\b|\bwhose work you\b/i
+/**
+ * The viewer's taste said about the viewer, not shown in the title (Eran,
+ * 2026-11-12, on #272: "perfectly suiting your preference for fast-moving
+ * thrillers"). The facts' "this viewer goes for…" lines are for the text to
+ * show in the title ("it's fast"), not to claim.
+ */
+// "You crave" too (Eran, 2026-11-12: "it tells the viewer what they crave,
+// which we don't know"), though it was the screenshots' voice on 2026-11-06.
+// An adverb in between doesn't make it a description of the film ("the pace
+// you clearly crave", "your love for dark crime", both seen 2026-11-12).
+const VIEWER_TASTE = /\byour (?:preferences?|love|fondness|appetite|soft spot|weakness|penchant|liking|thirst|hunger|taste) (?:for|of)\b|\byour (?:preferences?|fondness|penchant|liking)\b|\byou (?:clearly |really |obviously |always |so )?(?:crave|gravitate|tend to|typically|usually|always go)\b|\bup your alley\b|\b(?:suits|suiting|fits) you\b/i
 /** Stronger than "critics/audiences loved it" — not in the facts. */
 const OVERCLAIM = /\b(masterpiece|universal(ly)?|rave[sd]?|raving|oscar|award|acclaim(ed)?|classic|best\b[^.]*\bever|guarantee[sd]?|hail(ed|s)?|instant favou?rite|must-see|hits exactly|prais(e|ed|es|ing)|loved it for)\b/i
 
@@ -458,13 +499,18 @@ async function unknownTitles(titles: string[]): Promise<string[]> {
 export function checkWhy(text: string, facts: WhyFacts): string[] {
   const problems: string[] = []
   const words = text.trim().split(/\s+/).length
-  // 85–100 asked, 70–115 accepted (Eran, 2026-11-06: 90–95 on average; ~120 read long).
-  if (words < 70 || words > 115) problems.push(`it is ${words} words long; write 85–100`)
+  // 85–100 asked, 60–115 accepted (Eran, 2026-11-06: 90–95 on average; ~120
+  // read long). The floor was 70 until 2026-11-12: two of ten sheets on #272
+  // fell back to the plain text at 68–69 words.
+  if (words < 60 || words > 115) problems.push(`it is ${words} words long; write 85–100`)
   if (!facts.reservation && RESERVATION.test(text)) problems.push(`it contains a reservation or a contrast ("${text.match(RESERVATION)![0]}"); the facts give no reservation`)
   if (CLICHE.test(text)) problems.push(`it uses "${text.match(CLICHE)![0]}"; talk like a friend, not an app`)
   if (SAMENESS.test(text)) problems.push(`it says "${text.match(SAMENESS)![0]}"; no critics or audiences, and describe the feel in fresh words, not a list of mood tags`)
   if (STOCK_OPENER.test(norm(text))) problems.push(`it opens with "${text.match(/^\S+(\s+\S+)?/)![0]}"; open with something specific about this title or the person`)
   if (/\n/.test(text.trim())) problems.push('it has a line break; one paragraph')
+  // The facts speak of "this viewer"; the text speaks to the reader (seen
+  // 2026-11-11: "it's more mainstream than this viewer usually goes for").
+  if (/\b(this|the) viewer\b/i.test(text)) problems.push(`it says "${text.match(/\b(this|the) viewer\b/i)![0]}"; talk to the reader as "you"`)
   const self = facts.titles[0]
   if (self && norm(text).includes(`*${norm(self)}* with`)) problems.push(`it compares *${self}* to itself; compare only to a title the facts list as rated by the viewer, or don't compare`)
 
@@ -532,8 +578,17 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
     return c ? sentence.replace(new RegExp(`\\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:${OK_VERBS[c.reaction]})\\b`, 'g'), ' ') : sentence
   }).join(' ')
   rest = rest.replace(/\bif you(?:'re| are)?\b[^.,;—]*/g, ' ')
+  // The catch is ours too, word for word (Eran, 2026-11-12: "it should come
+  // out as the fact says it"), and it is the one place "you usually" belongs.
+  if (facts.reservation) {
+    const r = norm(toYou(facts.reservation)).replace(/[.!]$/, '')
+    if (!rest.includes(r)) problems.push(`it doesn't end on the reservation as given: "${toYou(facts.reservation)}" — use it word for word`)
+    rest = rest.replace(r, ' ')
+  }
   const claim = rest.match(VIEWER_CLAIM)
   if (claim) problems.push(`it says "${claim[0]}" — describe the film, not what the viewer likes`)
+  const taste = rest.match(VIEWER_TASTE)
+  if (taste) problems.push(`it says "${taste[0]}" — show it in the film ("it's fast"), don't say it about the viewer`)
   // Titles are left out: *Safety Not Guaranteed* is not a guarantee.
   const over = facts.titles.reduce((t, x) => t.split(x).join(' '), plain).match(OVERCLAIM)
   if (over) problems.push(`it says "${over[0]}", which the facts don't support`)
@@ -552,7 +607,8 @@ What a great one has (Eran's examples: "it's like *The Proposal* meets *Fight Cl
 - What it feels like to watch, in fresh words: the humour, the tension, the heart, the energy. Don't string mood labels together ("warm, hopeful and whimsical").
 - Your take on the cast in "Starring": what they bring, how they play off each other. You don't know who plays whom, so never pair an actor with a character or a part of the story. Only call an actor the lead if they're first in "Starring".
 - At most one passing clause about the premise, from the Plot, adding nothing it doesn't say.
-- If the facts give a reservation, end with one honest sentence about it in your own words — vary it ("The one thing that might give you pause…", "Fair warning:…", "Your one likely reservation…", "Just know going in…"). If they don't, mention no downside.
+- If the facts give a reservation, end on it exactly as the facts give it, word for word, after a short lead-in of your own (vary it: "Fair warning:", "Just know going in:", "One thing to know:"). Add nothing to it: don't stretch, soften or explain it. If they don't, mention no downside.
+- What this viewer goes for ("Why it fits this viewer") is for you to show in the title itself — "it's fast and twisty" — never to say about the viewer ("your preference for…", "the energy you crave").
 
 Rules:
 - No critics, audiences, reviews or ratings. No "match", "fit", "taste", data or algorithms.
@@ -739,7 +795,7 @@ async function attemptWrite(item: ScoredTitleWithPayload, facts: WhyFacts): Prom
 
 /** Three days: long enough that re-opening is instant, short enough that new ratings show up. */
 const TTL_SECONDS = 3 * 24 * 60 * 60
-export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v5:${userId}:${type}:${tmdbId}`
+export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v6:${userId}:${type}:${tmdbId}`
 
 export async function getCachedWhy(userId: string, type: string, tmdbId: string): Promise<WhyText | null> {
   return getRedis().get<WhyText>(whyAiKey(userId, type, tmdbId))

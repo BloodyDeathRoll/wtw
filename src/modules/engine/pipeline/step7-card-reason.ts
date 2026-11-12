@@ -315,8 +315,16 @@ export function plotSentences(synopsis: string | null | undefined): string[] {
     cur = ''
   }
   if (cur) out.push(cur)
-  return out.filter(x => x.length > 1)
+  // TMDB overviews are sometimes cut off ("One man has manages to escape...",
+  // Die Hard; Eran, 2026-11-12). A sentence that trails off, or a last one
+  // with no closing punctuation, is not shown: the plot is never pasted broken.
+  return out.filter((x, i) => x.length > 1 && !TRAILS_OFF.test(x) && (i < out.length - 1 || ENDS_WHOLE.test(x)))
 }
+
+/** Ends in "..." or "…": cut off, not finished. */
+const TRAILS_OFF = /(?:\.\.\.|…)["”')]?$/
+/** Ends the way a whole sentence does. */
+const ENDS_WHOLE = /[.!?]["”')]?$/
 
 /**
  * Where a long sentence can stop and still read whole: before the twist

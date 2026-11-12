@@ -150,7 +150,7 @@ async function runPipeline(
   t.mark('step2 scoring')
 
   // ── Step 3: soft modifiers ────────────────────────────────
-  const modified = applySoftModifiers(scored, dna, sessionContext)
+  const modified = applySoftModifiers(scored, dna)
 
   // ── Step 3b: 80% fresh / 20% previously-served, by score ─
   // Kids' titles first get the share this viewer has earned for them

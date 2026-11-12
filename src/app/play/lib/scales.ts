@@ -12,8 +12,14 @@ export const EXTRA_SCALES = ['humor', 'commit'] as const
 export type CoreScale = (typeof CORE_SCALES)[number]
 export type ExtraScale = (typeof EXTRA_SCALES)[number]
 export type Scale = CoreScale | ExtraScale
+/**
+ * Every scale the catalogue carries: the season's ten plus `audience` (made
+ * for kids ↔ for adults, docs/plan/PLAN.md P1-D1). The season doesn't play
+ * `audience`; the Why lines and the Taste DNA page name it.
+ */
+export type TasteScale = Scale | 'audience'
 
-export const SCALE_LABELS: Record<Scale, [left: string, right: string]> = {
+export const SCALE_LABELS: Record<TasteScale, [left: string, right: string]> = {
   tone:      ['Serious', 'Funny'],
   energy:    ['Talk', 'Action'],
   pace:      ['Slow burn', 'Fast'],
@@ -24,6 +30,7 @@ export const SCALE_LABELS: Record<Scale, [left: string, right: string]> = {
   indie:     ['Blockbuster', 'Off-beat'],
   humor:     ['Silly', 'Dry wit'],
   commit:    ['Mini-series', 'Long haul'],
+  audience:  ['For kids', 'For adults'],
 }
 
 /**
@@ -31,7 +38,7 @@ export const SCALE_LABELS: Record<Scale, [left: string, right: string]> = {
  * it talky"). SCALE_LABELS read well on a slider but not in a sentence: found
  * 2026-10-19 as "It's puzzle, and so are the titles you pick."
  */
-export const SCALE_WORDS: Record<Scale, [left: string, right: string]> = {
+export const SCALE_WORDS: Record<TasteScale, [left: string, right: string]> = {
   tone:      ['serious', 'funny'],
   energy:    ['talky', 'action-packed'],
   pace:      ['slow-burning', 'fast'],
@@ -42,6 +49,7 @@ export const SCALE_WORDS: Record<Scale, [left: string, right: string]> = {
   indie:     ['mainstream', 'off-beat'],
   humor:     ['silly', 'dry'],
   commit:    ['short', 'long-running'],
+  audience:  ['kid-friendly', 'grown-up'],
 }
 
 /** Scales the model judges. The rest come from facts (year, votes, seasons). */

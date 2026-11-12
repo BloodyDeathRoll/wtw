@@ -116,10 +116,10 @@ describe('other rule shapes', () => {
     expect(matchesRule(TOY_STORY, rule({ type: 'genre', name: 'Family' }))).toBe(true)
   })
 
-  it('reads a language rule out of "no French films"', () => {
+  // P1-C2: a keyword rule is that keyword, nothing read into it.
+  it('no longer reads a language rule out of "no French films"', () => {
     const french = title({ original_language: 'fr', genres: [{ name: 'Drama' }] })
-    expect(matchesRule(french, rule({ type: 'keyword', name: 'French films' }))).toBe(true)
-    expect(matchesRule(TOY_STORY, rule({ type: 'keyword', name: 'French films' }))).toBe(false)
+    expect(matchesRule(french, rule({ type: 'keyword', name: 'French films' }))).toBe(false)
   })
 
   it('matches a franchise on its TMDB keyword', () => {
@@ -137,13 +137,14 @@ describe('other rule shapes', () => {
 })
 
 describe('soft preferences', () => {
-  it('matches through the same widening as a rule', () => {
+  it('matches exactly like a rule', () => {
     expect(matchesSoftSignal(NARUTO, 'anime')).toBe(true)
   })
 
-  it('keeps the old substring behaviour', () => {
+  // P1-C2: "Less of" is exact too — no substring match into tone tags or keywords.
+  it('has no substring fallback', () => {
     const noir = title({ tone_tags: ['neo-noir'] })
-    expect(matchesSoftSignal(noir, 'noir')).toBe(true)
+    expect(matchesSoftSignal(noir, 'noir')).toBe(false)
   })
 
   // 2026-10-07 (Dream 2026-10-07): the substring fallback matched the
@@ -155,20 +156,18 @@ describe('soft preferences', () => {
     expect(matchesSoftSignal(war, 'warm stuff')).toBe(false)
     expect(matchesSoftSignal(war, 'awards-bait dramas')).toBe(false)
     expect(matchesSoftSignal(war, 'war')).toBe(true)
-    expect(matchesSoftSignal(war, 'world war')).toBe(true)
+    // P1-C2: exact keywords only — "world war" is not the keyword "world war ii".
+    expect(matchesSoftSignal(war, 'world war')).toBe(false)
+    expect(matchesSoftSignal(war, 'world war ii')).toBe(true)
   })
 
-  it('still allows a plural on either side when that side is a single word', () => {
-    const slasher = title({ keywords: ['slasher'] })
-    expect(matchesSoftSignal(slasher, 'slashers')).toBe(true)
-    const aliens = title({ keywords: ['aliens'] })
-    expect(matchesSoftSignal(aliens, 'alien')).toBe(true)
-    const cops = title({ keywords: ['cops'] })
-    expect(matchesSoftSignal(cops, 'cop')).toBe(true)
+  it('reads a plural genre as the genre, but a keyword only as itself', () => {
     const war = title({ genres: [{ name: 'War' }] })
     expect(matchesSoftSignal(war, 'wars')).toBe(true)
-    // Inside a phrase "wars" is a name, not the plural of the genre.
     expect(matchesSoftSignal(war, 'star wars')).toBe(false)
+    const slasher = title({ keywords: ['slasher'] })
+    expect(matchesSoftSignal(slasher, 'slasher')).toBe(true)
+    expect(matchesSoftSignal(slasher, 'slashers')).toBe(false)
   })
 
   it('honours a person named softly — "less Adam Sandler"', () => {
@@ -431,21 +430,51 @@ describe('classifyRuleTarget', () => {
     expect(classifyRuleTarget(name)).toBe('genre')
   })
 
-  it.each(['anime', 'reality tv', 'Marvel', 'found footage'])('calls %j a keyword', name => {
+  // anime is a game genre (the genre step offers it), so it is a genre rule now.
+  it.each(['anime', 'Sci-fi & fantasy', 'scifi'])('calls the game genre %j a genre', name => {
+    expect(classifyRuleTarget(name)).toBe('genre')
+  })
+
+  it.each(['reality tv', 'Marvel', 'found footage'])('calls %j a keyword', name => {
     expect(classifyRuleTarget(name)).toBe('keyword')
   })
 
   it.each([
     ['sci-fi', 'science fiction'],
-    ['scifi', 'science fiction'],
-    ['rom-com', 'romance'],
     ['westerns', 'western'],
     ['comedies', 'comedy'],
-    ['musicals', 'music'],
-  ])('reads %j as the genre %j rather than an inert keyword', (typed, genre) => {
+  ])('reads the spelling %j as the genre %j', (typed, genre) => {
     expect(classifyRuleTarget(typed)).toBe('genre')
-    // And the rule it produces actually reaches that genre in the catalog.
-    expect(ruleTargets({ type: 'genre', name: typed }).genres).toContain(genre)
+    expect(ruleTargets({ type: 'genre', name: typed }).genres).toEqual([genre])
+  })
+
+  // P1-C2: a narrower word is never mapped onto a broader genre.
+  it.each(['rom-com', 'musicals', 'cartoons'])('does not widen %j into a genre', typed => {
+    expect(classifyRuleTarget(typed)).toBe('keyword')
+    expect(ruleTargets({ type: 'keyword', name: typed }).genres).toEqual([])
+  })
+
+  it('a game genre hides exactly its TMDB genres, movie and TV', () => {
+    expect(ruleTargets({ type: 'genre', name: 'scifi' }).genres.sort()).toEqual(['fantasy', 'sci-fi & fantasy', 'science fiction'])
+    expect(ruleTargets({ type: 'genre', name: 'Romance' }).genres).toEqual(['romance'])
+  })
+
+  it('a name that is both a game genre and a TMDB genre means the game genre\'s set', () => {
+    expect(ruleTargets({ type: 'genre', name: 'war' }).genres.sort()).toEqual(['history', 'war', 'war & politics'])
+    expect(ruleTargets({ type: 'genre', name: 'thriller' }).genres.sort()).toEqual(['mystery', 'thriller'])
+    // A TMDB name that is no game genre stays exact.
+    expect(ruleTargets({ type: 'genre', name: 'Western' }).genres).toEqual(['western'])
+  })
+
+  it('a genre rule naming no genre hides nothing', () => {
+    expect(ruleTargets({ type: 'genre', name: 'rom-coms' })).toMatchObject({ genres: [], keywords: [] })
+    expect(isExcluded(title({ genres: [{ name: 'Romance' }, { name: 'Comedy' }] }), [rule({ type: 'genre', name: 'rom-coms' })])).toBe(false)
+  })
+
+  it('"Never: Music" does not hide Whiplash for being a drama', () => {
+    const whiplash = title({ genres: [{ name: 'Drama' }, { name: 'Music' }], keywords: ['musician', 'jazz'] })
+    expect(matchesRule(whiplash, rule({ type: 'genre', name: 'Romance' }))).toBe(false)
+    expect(matchesRule(whiplash, rule({ type: 'keyword', name: 'musicals' }))).toBe(false)
   })
 
   it('still matches a typed abbreviation against a real title', () => {
@@ -457,9 +486,9 @@ describe('classifyRuleTarget', () => {
     expect(classifyRuleTarget('Adam Sandler')).toBe('keyword')
   })
 
-  it('leaves a keyword rule able to match a genre anyway', () => {
-    // The distinction is for display: ruleTargets widens a keyword to both.
-    const t = ruleTargets({ type: 'keyword', name: 'horror' })
-    expect(t.genres).toContain('horror')
+  // P1-C2: a keyword rule matches TMDB keywords exactly, never genre names.
+  it('never lets a keyword rule match a genre', () => {
+    expect(ruleTargets({ type: 'keyword', name: 'horror' })).toMatchObject({ genres: [], keywords: ['horror'] })
+    expect(matchesRule(title({ genres: [{ name: 'Horror' }] }), rule({ type: 'keyword', name: 'horror' }))).toBe(false)
   })
 })

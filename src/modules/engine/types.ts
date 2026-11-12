@@ -99,7 +99,14 @@ export interface ScoredTitle {
   content_avoided:        AvoidedAttribute | null
   external_rating_score:  number    // 0.0 – 1.0
   recency_boost:          number    // 0.0 – 1.0 (multiplied by 0.05 in composite)
-  composite_score:        number    // weighted sum, 0.0 – 1.0
+  composite_score:        number    // weighted sum, 0.0 – 1.0 (v2: Φ of the z-sum, "better than X% of the pool")
+
+  /**
+   * Formula v2 only (FORMULA_V2, P1-E3): each part's z within the pool, the
+   * taste model's raw score, and the sum before Φ. For the Why lines (P1-E5)
+   * and debugging. Absent under v1.
+   */
+  formula_v2?:            import('./scoring/formula-v2').V2Score
 
   // ── Step 2: reason payload sources ────────────────────
   crew_matches:           import('@/types/dna').ReasonPayload['crew_matches']
@@ -124,3 +131,20 @@ export interface NarrativeExtractionResult {
   tone_tags: string[]
   narrative_metadata: TitleNarrativeMetadata
 }
+
+/**
+ * Formula v2's part of the "Why this?" sheet (P1-E5), carried on the reason
+ * payload as an extra, optional field. `ReasonPayload` itself
+ * (src/types/dna.ts, the shared contract) is not changed (DEC-9): a payload
+ * without `taste` (v1, an older cached batch) shows the sheet as before.
+ */
+export interface TasteWhy {
+  /** Φ(z) of each part within the pool: Your taste, Crowd, Creators. Absent when the pool was too small to compare. */
+  bars?: { taste: number; crowd: number; creators: number }
+  /** "What it's like": the title's clear scale ends, its genres, its language (an ISO 639-1 code). */
+  like: { dimension: 'feel' | 'genre' | 'language'; value: string }[]
+  /** True when more than half the batch has this title's catch, so the Why text leaves it out (taste-facts.ts `sharedCatchKeys`). */
+  catch_shared?: boolean
+}
+
+export type ReasonPayloadWithTaste = import('@/types/dna').ReasonPayload & { taste?: TasteWhy }

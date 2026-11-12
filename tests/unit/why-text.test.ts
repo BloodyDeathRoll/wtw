@@ -110,8 +110,8 @@ describe('the check', () => {
   ])('refuses %s', (_, text, problem) => {
     expect(checkWhy(text, facts).join(' | ')).toMatch(problem)
   })
-  it('allows friendly taste talk, the screenshots\' voice ("the kind of heart you crave")', () => {
-    expect(checkWhy(GOOD.replace('in the best way', 'with the kind of heart you crave'), facts)).toEqual([])
+  it('refuses "the kind of heart you crave": it says what the viewer craves, which we don\'t know (Eran, 2026-11-12)', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'with the kind of heart you crave'), facts).join(' | ')).toMatch(/you crave/)
   })
   it('lets a plot turn use "but" ("hoped for one child but got three")', () => {
     expect(checkWhy(GOOD.replace('and the whole film lives', 'she wanted a quiet life but the whole film lives'), facts)).toEqual([])
@@ -279,7 +279,8 @@ describe('the plain version, when no model can write it', () => {
   it('is a short paragraph of facts, not one plot sentence', () => {
     const text = richFallback(codaItem() as never, new Map(), similarRated(codaItem(), [rel('Fishing Doc', 'loved', ['fishing', 'singing'])]), 'It has melancholic stretches, heavier than the lighter stories this viewer usually goes for.')
     expect(text).toContain('Ruby is the only hearing person in her deaf family.')
-    expect(text).toContain('Like *Fishing Doc*, which you loved, it has fishing and singing.')
+    // Tags said as tags, not as a sentence's objects (Eran, 2026-11-12: "it has secret identity and crime fighter").
+    expect(text).toContain('It covers some of the same ground as *Fishing Doc*, which you loved (fishing, singing).')
     expect(text).toContain('Starring Emilia Jones and Troy Kotsur.')
     expect(text).toContain('One thing to know: it has melancholic stretches, heavier than the lighter stories you usually go for.')
   })
@@ -318,6 +319,124 @@ describe('the one honest reservation', () => {
   it('lets the text end on it only when there is one', () => {
     const f = buildWhyFacts(codaItem({ tone_tags: ['melancholic'] }), new Map(), false, { dna: dna() })
     expect(f.reservation).toMatch(/melancholic/)
-    expect(checkWhy(GOOD + ' Just know going in that it has melancholic stretches.', f)).toEqual([])
+    expect(checkWhy(GOOD + ' Just know going in: it has melancholic stretches, heavier than the lighter stories you usually go for.', f)).toEqual([])
+  })
+  it('makes the text say it as the facts do, word for word (Eran, 2026-11-12)', () => {
+    const f = buildWhyFacts(codaItem({ tone_tags: ['melancholic'] }), new Map(), false, { dna: dna() })
+    expect(f.text).toContain('"It has melancholic stretches, heavier than the lighter stories you usually go for."')
+    expect(checkWhy(GOOD + ' Just know going in that it has melancholic stretches, far bleaker than the niche picks you love.', f).join(' | '))
+      .toMatch(/doesn't end on the reservation as given/)
+  })
+})
+
+// ── Formula v2 (P1-E5): the facts come from the taste model ──────
+describe('why facts under formula v2', () => {
+  // complex is input 15, dark 16, crime 5 (src/lib/taste-scales/features.ts)
+  const vec = new Array(25).fill(0); vec[15] = 0.9; vec[16] = 0.7; vec[5] = 1
+  const contributions = new Array(25).fill(0); contributions[15] = 0.3; contributions[5] = 0.2; contributions[16] = -0.25
+  const v2Item = (over: Record<string, unknown> = {}) => {
+    const item = codaItem() as Record<string, unknown>
+    item.formula_v2 = { z_creators: 0, z_crowd: 0, z_model: 0.4, model_score: 0.3, s: 0.2, composite: 0.7, pool_size: 200, vec, contributions, ...over }
+    return item as never
+  }
+
+  it('the personal lines are the model\'s two strongest pulls, not strand C', () => {
+    const f = buildWhyFacts(v2Item(), new Map(), false, {})
+    expect(f.text).toContain('This viewer goes for twisty stories, and this one is twisty.')
+    expect(f.text).toContain('Crime is a genre this viewer goes for.')
+    // The v1 lines from dimension_matches are gone.
+    expect(f.text).not.toContain('rates highly')
+  })
+
+  it('the catch is the model\'s strongest pull away, said plainly', () => {
+    expect(reservationFor(v2Item(), undefined)).toBe("It's darker than this viewer usually goes for.")
+    const f = buildWhyFacts(v2Item(), new Map(), false, {})
+    expect(f.reservation).toBe("It's darker than this viewer usually goes for.")
+  })
+
+  it('without a model catch, the length still is one; the strand-C catches are gone', () => {
+    const none = new Array(25).fill(0)
+    expect(reservationFor(v2Item({ contributions: none, vec: none }), undefined)).toBeNull()
+    const long = codaItem({ runtime_minutes: 165, tone_tags: ['dark'] }) as Record<string, unknown>
+    long.formula_v2 = { z_creators: 0, z_crowd: 0, z_model: 0, model_score: 0, s: 0, composite: 0.5, pool_size: 1 }
+    expect(reservationFor(long as never, undefined)).toBe('It runs 2 hours 45 minutes.')
+  })
+
+  it('with no pull to name, says nothing about taste when the model is not for it', () => {
+    const none = new Array(25).fill(0)
+    const f = buildWhyFacts(v2Item({ contributions: none, vec: none, model_score: -0.2 }), new Map(), false, {})
+    expect(f.text).toContain('say nothing about what this viewer likes')
+  })
+})
+
+describe('the text speaks to "you", never of "this viewer"', () => {
+  it('is rejected when it copies the facts\' wording', () => {
+    const facts = buildWhyFacts(codaItem(), new Map(), false, {})
+    const text = 'Ruby is torn between her deaf family and her love of music, and Emilia Jones carries every scene with quiet grit. ' +
+      'Troy Kotsur brings warmth and real comic timing to the father, and the fishing boat scenes give the drama a working-class weight. ' +
+      'Sian Heder keeps it honest and unsentimental, letting the singing land without forcing it. Just know going in that it is gentler than this viewer usually goes for.'
+    expect(checkWhy(text, facts).join(' | ')).toMatch(/says "this viewer"; talk to the reader as "you"/)
+  })
+})
+
+describe('the text shows taste in the film, never claims it about the viewer (Eran, 2026-11-12)', () => {
+  const facts = buildWhyFacts(codaItem(), new Map())
+  it.each([
+    ['"your preference for"', 'and it suits your preference for warm family stories', /your preference/],
+    ['"whose work you\'ve admired"', 'and Sian Heder, whose work you\'ve admired, keeps it honest', /whose work you|you've admired/],
+    ['"you typically"', 'and it is the kind of film you typically pick', /you typically/],
+    ['"you clearly crave" (an adverb in between)', 'and it moves at the pace you clearly crave', /you clearly crave/],
+    ['"your love for"', 'and it rewards your love for dark crime', /your love for/],
+  ])('refuses %s', (_, insert, problem) => {
+    expect(checkWhy(GOOD.replace('in the best way', insert), facts).join(' | ')).toMatch(problem)
+  })
+  it('refuses "the visceral weight you crave" (Eran, 2026-11-12)', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'with the visceral weight you crave'), facts).join(' | ')).toMatch(/you crave/)
+  })
+})
+
+describe('a catch most of the batch shares is not said (Eran, 2026-11-12)', () => {
+  const vec = new Array(25).fill(0); vec[20] = -0.8
+  const contributions = new Array(25).fill(0); contributions[20] = -0.2
+  const item = () => {
+    const i = codaItem() as Record<string, unknown>
+    i.formula_v2 = { z_creators: 0, z_crowd: 0, z_model: 0, model_score: 0.1, s: 0, composite: 0.7, pool_size: 200, vec, contributions }
+    return i as never
+  }
+  it('is the catch when the batch does not share it', () => {
+    expect(buildWhyFacts(item(), new Map(), false, {}).reservation).toBe("It's more mainstream than this viewer usually goes for.")
+  })
+  it('is no catch when it does', () => {
+    expect(buildWhyFacts(item(), new Map(), false, { skipTasteCatch: true }).reservation).toBeNull()
+  })
+})
+
+describe('the word count accepts 60–115 (Eran, 2026-11-12: two sheets fell back at 68–69)', () => {
+  const facts = buildWhyFacts(codaItem(), new Map())
+  it('a 65-word text passes on length', () => {
+    const w65 = Array.from({ length: 65 }, () => 'warm').join(' ')
+    expect(checkWhy(w65, facts).join(' | ')).not.toMatch(/words long/)
+    const w55 = Array.from({ length: 55 }, () => 'warm').join(' ')
+    expect(checkWhy(w55, facts).join(' | ')).toMatch(/words long/)
+  })
+})
+
+describe('a cut-off synopsis is never pasted (Eran, 2026-11-12: Die Hard)', () => {
+  it('drops the sentence that trails off, keeps the whole one', async () => {
+    const { plotSentences, plotLine } = await import('@/modules/engine/pipeline/step7-card-reason')
+    const dieHard = 'High above the city of L.A. a team of terrorists has seized a building, taken hostages, and declared war. One man has manages to escape...'
+    expect(plotSentences(dieHard)).toEqual(['High above the city of L.A. a team of terrorists has seized a building, taken hostages, and declared war.'])
+    expect(plotLine(dieHard, 320)).not.toMatch(/manages|\.\.\./)
+  })
+  it('drops a last sentence with no closing punctuation, and "…" too', async () => {
+    const { plotSentences } = await import('@/modules/engine/pipeline/step7-card-reason')
+    expect(plotSentences('A detective returns home. She finds the town has changed and')).toEqual(['A detective returns home.'])
+    expect(plotSentences('A detective returns home. Then everything…')).toEqual(['A detective returns home.'])
+    expect(plotSentences('Nothing whole here...')).toEqual([])
+  })
+  it('keeps a quote or a question at the end', async () => {
+    const { plotSentences } = await import('@/modules/engine/pipeline/step7-card-reason')
+    expect(plotSentences('Who killed Laura Palmer?')).toEqual(['Who killed Laura Palmer?'])
+    expect(plotSentences('He says "run."')).toEqual(['He says "run."'])
   })
 })
