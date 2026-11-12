@@ -8,7 +8,10 @@
  *            (a) the most-voted unserved titles (get_candidate_titles) and
  *            (b) the nearest unserved titles to the fingerprint embedding
  *                (get_candidate_titles_by_narrative, migration 0019),
- *          so "new" means new AND relevant, not "next most voted". Before this
+ *          so "new" means new AND relevant, not "next most voted". Under
+ *          FORMULA_V2 (P1-E6) (b) is the titles the user's taste model scores
+ *          highest instead (get_candidate_titles_by_taste, migration 0030).
+ *          Before this
  *          the pool was the top 200 by vote count, full stop — ~17,000 of
  *          17,700 titles were never considered and every regen re-scored the
  *          same popular titles the user had already scrolled past.
@@ -41,6 +44,9 @@ import { isExcluded, sqlExclusionParams } from '@/lib/exclusion-rules'
 import type { DNASchema, SessionContext } from '@/types/dna'
 import type { TitleRow } from '../types'
 import { getUserEmbedding } from '../scoring/narrative-match'
+import { userTasteWeights } from '../scoring/taste-weights'
+import { formulaV2Enabled } from '@/lib/flags'
+import { TASTE_FEATURE_VERSION } from '@/lib/taste-scales/features'
 import { capGenreShare, NARRATIVE_OVERFETCH } from './genre-cap'
 
 // Pool sizes. FRESH is two RPCs that overlap heavily for a popular-taste user,
@@ -58,6 +64,14 @@ const FRESH_BY_NARRATIVE_LIMIT = 150
 // now runs from a finished season or 10 ratings, not 15. 5,138 catalog titles
 // clear 1,000 votes — plenty for a 150-row nearest-neighbour pool.
 const FRESH_BY_NARRATIVE_MIN_VOTES = 1000
+// The taste pool (FORMULA_V2, P1-E6) takes the narrative pool's place and
+// size, and is over-fetched and genre-capped the same way. Series get a lower
+// floor: only 545 series clear 1,000 votes, against 4,613 movies. Starting
+// points from the plan, tuned in R3. If R2 shows the first feed is still
+// mostly titles people have seen, the plan's next step is 100 by votes + 200 by taste.
+const FRESH_BY_TASTE_LIMIT           = 150
+const FRESH_BY_TASTE_MIN_VOTES_MOVIE = 1000
+const FRESH_BY_TASTE_MIN_VOTES_TV    = 300
 // A title served within this window is still on the screen it was served to
 // (the rec cache and the rating counter both live 6 h — one sitting), so it is
 // neither FRESH nor SEEN until the window passes.
@@ -148,30 +162,56 @@ export async function getCandidates(
     ...ruleParams,
   })
 
-  // Taste-driven pool. The embedding comes from the same cache/row the scorer
-  // uses; if it can't be had (Mistral down, no row yet) fall back to the
-  // popularity pool alone rather than fail the whole generation.
-  const byNarrative = getUserEmbedding(
-    userId,
-    dna.metadata.taste_version,
-    dna.strand_b_narrative_dimensions,
-    dna.strand_c_visceral_specs,
-  )
-    .then(embedding =>
-      supabase.rpc('get_candidate_titles_by_narrative', {
-        query_embedding: embedding,
+  // Taste-driven pool. v1: the nearest titles to the fingerprint embedding,
+  // from the same cache/row the scorer uses. v2: the titles the taste model
+  // scores highest; none while w is all zeros (no rating or pick with a
+  // vector yet). Either way, if it can't be had, fall back to the popularity
+  // pool alone rather than fail the whole generation.
+  const tastePool = async (): Promise<{ data: TitleRow[]; error: null }> => {
+    try {
+      const w = await userTasteWeights(dna)
+      if (w.every(x => x === 0)) return { data: [], error: null }
+      const res = await supabase.rpc('get_candidate_titles_by_taste', {
+        user_w:          w,
         exclude_keys:    freshExclude,
         title_type:      titleType,
         max_runtime:     maxRuntime,
-        pool_limit:      FRESH_BY_NARRATIVE_LIMIT * NARRATIVE_OVERFETCH,
-        min_votes:       FRESH_BY_NARRATIVE_MIN_VOTES,
+        pool_limit:      FRESH_BY_TASTE_LIMIT * NARRATIVE_OVERFETCH,
+        min_votes_movie: FRESH_BY_TASTE_MIN_VOTES_MOVIE,
+        min_votes_tv:    FRESH_BY_TASTE_MIN_VOTES_TV,
+        feature_version: TASTE_FEATURE_VERSION,
         ...ruleParams,
-      }),
-    )
-    .catch(err => {
-      console.warn('[step1] narrative pool unavailable (popularity pool only):', err instanceof Error ? err.message : err)
+      })
+      if (res.error) throw new Error(res.error.message)
+      return { data: (res.data ?? []) as TitleRow[], error: null }
+    } catch (err) {
+      console.warn('[step1] taste pool unavailable (popularity pool only):', err instanceof Error ? err.message : err)
       return { data: [], error: null }
-    })
+    }
+  }
+  const byNarrative = formulaV2Enabled()
+    ? tastePool()
+    : getUserEmbedding(
+      userId,
+      dna.metadata.taste_version,
+      dna.strand_b_narrative_dimensions,
+      dna.strand_c_visceral_specs,
+    )
+      .then(embedding =>
+        supabase.rpc('get_candidate_titles_by_narrative', {
+          query_embedding: embedding,
+          exclude_keys:    freshExclude,
+          title_type:      titleType,
+          max_runtime:     maxRuntime,
+          pool_limit:      FRESH_BY_NARRATIVE_LIMIT * NARRATIVE_OVERFETCH,
+          min_votes:       FRESH_BY_NARRATIVE_MIN_VOTES,
+          ...ruleParams,
+        }),
+      )
+      .catch(err => {
+        console.warn('[step1] narrative pool unavailable (popularity pool only):', err instanceof Error ? err.message : err)
+        return { data: [], error: null }
+      })
 
   // Best-effort, like the narrative pool: the seen slice is 20% of the batch
   // at most, and this RPC matches on `type || ':' || tmdb_id` over the whole
@@ -214,7 +254,7 @@ export async function getCandidates(
   // scorer a pool that is 40% one genre (genre-cap.ts).
   const narrativePool = capGenreShare(
     (narrativeRes.data ?? []) as TitleRow[],
-    FRESH_BY_NARRATIVE_LIMIT,
+    formulaV2Enabled() ? FRESH_BY_TASTE_LIMIT : FRESH_BY_NARRATIVE_LIMIT,
   )
   for (const t of narrativePool) {
     fresh.set(titleKey(t.type, t.tmdb_id), t)
