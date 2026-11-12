@@ -27,6 +27,7 @@
 
 import { after } from 'next/server'
 import { jevNoul, recordJevFailure, JevNotConfigured } from '@/lib/jev'
+import { jevEnabled } from '@/lib/flags'
 import { strongestContentAffinities } from '@/modules/dna/lib/update-content-affinity'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
@@ -198,6 +199,7 @@ export async function llmRerank(
   const top50 = scored.slice(0, 50)
   if (top50.length === 0) return []
   const done = (items: ScoredTitle[]) => items.map(item => ({ ...item, groq_rationale: '' }))
+  if (!jevEnabled()) return done(top50)
 
   // The composite key: a bare tmdb_id would collide for a movie/TV pair
   // sharing an id.
