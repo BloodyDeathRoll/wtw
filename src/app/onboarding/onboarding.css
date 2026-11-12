@@ -1,0 +1,53 @@
+/*
+ * The new onboarding (#241), on top of the games' play.css. Values from the signed-off mocks
+ * (docs/prototypes/first-run/fr.css and PLAN.md → P2-U0).
+ */
+
+/* ── The genre step (P2-U2) ── */
+
+/* The top bar stays put while the list scrolls under it; the list scrolls inside .screen. */
+.wtw-play .ob-genres .apptop { position: sticky; top: 0; z-index: 6; background: #000; }
+
+/* "Lights, camera, genres!" stays on one line: the live 30px, a touch smaller on phones narrower than 375
+   (8% of the screen box's width; no viewport units, see tests/unit/no-viewport-units.test.ts). */
+.wtw-play .ob-genres { container-type: inline-size; }
+.wtw-play .ob-genres .setup.welcome h2 { white-space: nowrap; font-size: min(30px, 8cqw); }
+
+/* Rows: an outlined icon (no tile, no examples), then the name. */
+.wtw-play .ob-genres .gtext { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.wtw-play .ob-genres .glabel { line-height: 1.2; }
+.wtw-play .ob-genres .gname i.gline {
+  width: 26px; height: 26px; border-radius: 0; background: none; display: grid; place-items: center; flex-shrink: 0;
+}
+
+/* Grey until answered; an answer (Love, Like or Never) lights the row. */
+.wtw-play .ob-genres .grow:not(.ghead) { position: relative; overflow: hidden; }
+.wtw-play .ob-genres .grow:not(.ghead) > :not(.gwash) { position: relative; z-index: 1; }
+.wtw-play .ob-genres .grow:not(.ghead) .gname i.gline {
+  color: #5c5c61; transition: color .2s ease-in, filter .2s ease-in;
+}
+.wtw-play .ob-genres .grow:not(.ghead) .glabel { color: rgba(255, 255, 255, .72); transition: color .2s ease-in; }
+.wtw-play .ob-genres .grow.rated .gname i.gline {
+  color: var(--gc);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--gc) 70%, transparent));
+  transition: color .22s ease-out .2s, filter .22s ease-out .2s;   /* lights as the wash reaches it */
+}
+.wtw-play .ob-genres .grow.rated .glabel { color: #fff; transition: color .22s ease-out .2s; }
+
+/* The wash: in from the left edge (0.42 s, easing out); back out to the left when the answer is taken back (0.36 s). */
+.wtw-play .ob-genres .gwash {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gc) 22%, transparent), transparent 62%);
+  transform: translateX(-100%);
+  transition: transform .36s cubic-bezier(.45, 0, .6, 1);
+}
+.wtw-play .ob-genres .grow.rated .gwash { transform: translateX(0); transition: transform .42s cubic-bezier(.16, 1, .3, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wtw-play .ob-genres .gwash { transform: none; opacity: 0; transition: opacity .2s ease; }
+  .wtw-play .ob-genres .grow.rated .gwash { opacity: 1; transition: opacity .2s ease; }
+  .wtw-play .ob-genres .grow .gname i.gline, .wtw-play .ob-genres .grow .glabel { transition-delay: 0s !important; }
+}
+
+/* Behind "We'll never show you…" the area is solid (the live fade started too low and the list showed through). */
+.wtw-play .ob-genres .setup + .cta-wrap.sticky { padding-top: 40px; background: linear-gradient(rgba(0, 0, 0, 0), #000 36px); }

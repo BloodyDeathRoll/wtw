@@ -28,3 +28,11 @@ export function jevEnabled(): boolean {
   const v = process.env.JEV_ENABLED?.trim().toLowerCase()
   return !(v === 'false' || v === '0' || v === 'off')
 }
+
+/**
+ * The new onboarding at /onboarding (P2-U2 … U6). Off by default; while it's off the page exists only in local
+ * development, for building and checking it. Server-only. Gate: P2-G.
+ */
+export function onboardingV2Enabled(): boolean {
+  return isOn(process.env.ONBOARDING_V2)
+}
