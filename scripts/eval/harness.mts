@@ -5,6 +5,7 @@
  *   npm run eval -- --user <uuid> --sheet .eval-data/<name>.json --mode live
  *   npm run eval -- --user <uuid> --sheet … --shuffle [--shuffles 20]   # control: model on shuffled labels, mean over shuffles (~50)
  *   npm run eval -- --user <uuid> --sheet … --dna-version 157           # score against a stored snapshot (dna_snapshots), e.g. the DNA a past measurement saw
+ *   npm run eval -- --user <uuid> --sheet … --no-picks                  # live: train the taste model on ratings only, no duel picks
  *   npm run eval -- --user <uuid> --sheet … --mode jev [--jev-calls 2]
  *   npm run eval -- --user <uuid> --sheet … --mode new [--cards 30] [--picks 12] [--draws 200] [--control] [--seed 1]
  *
@@ -124,7 +125,9 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   // v2: the model trained as the app would (My ratings minus chat, plus picks), except that
   // picks touching a fair title are held out — the model must not have ranked what it is scored on.
   // --shuffle is the control.
-  const training = await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))
+  const loaded = await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))
+  // --no-picks: ratings only, as the deck trained (P1-G, #240).
+  const training = args.includes('--no-picks') ? { ...loaded, pairs: [] } : loaded
   // The model's scores on the fair titles; a title without a vector gets the mean (z = 0).
   const modelScores = (t: typeof training) => {
     const w = trainTasteModel(t.rows, t.pairs)
