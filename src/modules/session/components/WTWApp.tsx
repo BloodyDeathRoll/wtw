@@ -47,10 +47,10 @@ import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from "../voice/intro-copy"
 import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
-import { shareApp } from "@/lib/share";
-import ShareIcon from "@/app/components/ShareIcon";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
+import { chatMode } from "@/lib/flags";
 import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
@@ -93,8 +93,6 @@ const I = {
   chevDown: <ChevronDown size={16.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   back: <ChevronLeft size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   message: <MessageSquare size={30} strokeWidth={ICON_STROKE} aria-hidden="true" />,
-  // The forward arrow, the app's one share mark (Eran, 2026-11-03).
-  share: <ShareIcon size={30} strokeWidth={ICON_STROKE} />,
   // Home-screen circles. Sparkles = the fingerprint's picks; bookmark matches
   // the "Add to watchlist" CTA on the cards.
   sparkle: <Sparkles size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
@@ -126,7 +124,8 @@ function TopBar({
 }: {
   hasConversation: boolean;
   onBack: () => void;
-  onOpenChat: () => void;
+  /** Absent when the chat is off (CHAT_MODE=off): no chat icon. */
+  onOpenChat?: () => void;
   onRecommend: () => void;
   onWatchlist: () => void;
   onFastLearning: () => void;
@@ -155,6 +154,19 @@ function TopBar({
   }, [brandOpen]);
 
 
+  const menu = (
+    <AppMenu
+      onRecommend={onRecommend}
+      onWatchlist={onWatchlist}
+      onFastLearning={onFastLearning}
+      onRatings={onRatings}
+      onProfile={onProfile}
+      user={user}
+      onSignOut={onSignOut}
+      voice={voice}
+      setVoice={setVoice}
+    />
+  );
   return (
     <>
     <div className={styles.topbar}>
@@ -168,7 +180,7 @@ function TopBar({
           >
             {I.back}
           </button>
-        ) : (
+        ) : onOpenChat && (
           // The chat (text and voice) lives behind this icon since the home
           // screen dropped its input bar (2026-10-20).
           <button
@@ -217,25 +229,9 @@ function TopBar({
       </div>
 
       <div className={styles.topbarRight}>
-        <button
-          className={styles.iconbtn}
-          onClick={shareApp}
-          aria-label="share WTW"
-          type="button"
-        >
-          {I.share}
-        </button>
-        <AppMenu
-          onRecommend={onRecommend}
-          onWatchlist={onWatchlist}
-          onFastLearning={onFastLearning}
-          onRatings={onRatings}
-          onProfile={onProfile}
-          user={user}
-          onSignOut={onSignOut}
-          voice={voice}
-          setVoice={setVoice}
-        />
+        {/* Search took the share icon's place (2026-11-07). */}
+        <HeaderSearch btnClass={styles.iconbtn} user={user} menu={menu} />
+        {menu}
       </div>
     </div>
 
@@ -250,17 +246,22 @@ function Onboard({
   continuePrompt,
   matureGreeting,
   onPlayVoice,
+  chatEnabled = true,
 }: {
   continuePrompt?: string;
   matureGreeting?: string;
   onPlayVoice?: (primer: string) => void;
+  chatEnabled?: boolean;
 }) {
   // Priority: mature greeting (server-rendered, situational) →
-  // continuation of an in-progress chat → cold-start calibration.
+  // continuation of an in-progress chat → cold-start calibration. With the
+  // chat off, nothing invites the user to name titles to it.
   const hint =
     matureGreeting ??
     continuePrompt ??
-    "Let's calibrate your taste: name a few of your all time favorite flicks.";
+    (chatEnabled
+      ? "Let's calibrate your taste: name a few of your all time favorite flicks."
+      : "What are you in the mood for tonight?");
   const spoken =
     matureGreeting ??
     continuePrompt ??
@@ -513,6 +514,8 @@ export default function WTWApp({
   calibrationNudge?: boolean;
 }) {
   const router = useRouter();
+  // CHAT_MODE=off (DEC-5): no way into the chat, text or voice.
+  const chatEnabled = chatMode() !== "off";
   // Every login (and every reload) lands on the welcome/continue screen,
   // not directly inside the chat. The chat is still one tap away (via the
   // message icon in the top-left when there's history) and the Onboard
@@ -971,6 +974,7 @@ export default function WTWApp({
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true, more: true })}
             headerRight={appMenu}
+            user={user}
             building={buildingRecs}
             onCalibrate={calibrationNudge ? () => leaveTo("/play") : undefined}
           />
@@ -984,6 +988,7 @@ export default function WTWApp({
             sharerName={user.name}
             onBrowse={handleRecommend}
             headerRight={appMenu}
+            user={user}
           />
         </div>
       ) : stage === "learning" ? (
@@ -995,18 +1000,19 @@ export default function WTWApp({
             sharerName={user.name}
             setContentType={setContentType}
             headerRight={appMenu}
+            user={user}
           />
         </div>
       ) : stage === "ratings" ? (
         <div className={styles.shell}>
-          <RatingsView onBack={() => setStage("onboard")} contentType={contentType} headerRight={appMenu} />
+          <RatingsView onBack={() => setStage("onboard")} contentType={contentType} headerRight={appMenu} user={user} />
         </div>
       ) : (
         <div className={styles.shell}>
           <TopBar
             hasConversation={stage === "conversation"}
             onBack={backToOnboard}
-            onOpenChat={() => setStage("conversation")}
+            onOpenChat={chatEnabled ? () => setStage("conversation") : undefined}
             onRecommend={handleRecommend}
             onWatchlist={handleWatchlist}
             onFastLearning={handleFastLearning}
@@ -1024,13 +1030,14 @@ export default function WTWApp({
             {stage === "onboard" && (
               <Onboard
                 continuePrompt={
-                  textOf(messages.findLast((m) => m.role === "assistant"))
+                  chatEnabled ? textOf(messages.findLast((m) => m.role === "assistant")) : undefined
                 }
                 matureGreeting={matureGreeting}
-                onPlayVoice={(primer) => {
+                onPlayVoice={chatEnabled ? (primer) => {
                   setVoicePrimer(primer);
                   setVoiceOpen(true);
-                }}
+                } : undefined}
+                chatEnabled={chatEnabled}
               />
             )}
             {stage === "welcome" && (

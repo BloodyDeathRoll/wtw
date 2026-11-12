@@ -150,6 +150,18 @@ export interface RatedTitle {
   title: string
   reaction: 'loved' | 'liked'
   votes: number
+  /** What this person did on THAT title — so a sentence never says "who
+   *  directed X" about someone who acted in it. The main one (director over
+   *  writer over actor); `roles` has all of them. */
+  role: 'director' | 'writer' | 'actor'
+  /** Every role they had there: Paul Rudd acted in and co-wrote Ant-Man and
+   *  the Wasp, and in an actor's sentence "who you liked in" reads right. */
+  roles?: ('director' | 'writer' | 'actor')[]
+}
+
+/** Their role on the rated title, as close as possible to their role here. */
+export function linkRole(r: RatedTitle, roleHere: string): RatedTitle['role'] {
+  return r.roles?.includes(roleHere as RatedTitle['role']) ? (roleHere as RatedTitle['role']) : r.role
 }
 /** tmdb_person_id → the loved/liked titles they directed, wrote or starred in. */
 export type RatedByPerson = Map<string, RatedTitle[]>
@@ -186,10 +198,9 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
         if (error) throw error
         for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
           const key = `${type}:${t.tmdb_id}`
-          const rated: RatedTitle = { key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0 }
-          for (const id of peopleIn(t.crew)) {
+          for (const [id, roles] of peopleIn(t.crew)) {
             const list = out.get(id) ?? []
-            list.push(rated)
+            list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
             out.set(id, list)
           }
         }
@@ -202,13 +213,19 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
   return out
 }
 
-/** Directors, writers and the top 5 billed — the people a card can name. */
-function peopleIn(crew: TitleRow['crew'] | null | undefined): Set<string> {
-  return new Set([
-    ...(crew?.directors ?? []),
-    ...(crew?.writers ?? []),
-    ...(crew?.cast ?? []).slice(0, 5),
-  ].map(c => c.tmdb_person_id))
+/** Directors, writers and the top 5 billed — the people a card can name —
+ *  each with every role they had on that title, director first. */
+function peopleIn(crew: TitleRow['crew'] | null | undefined): Map<string, RatedTitle['role'][]> {
+  const out = new Map<string, RatedTitle['role'][]>()
+  const add = (id: string, role: RatedTitle['role']) => {
+    const roles = out.get(id) ?? []
+    if (!roles.includes(role)) roles.push(role)
+    out.set(id, roles)
+  }
+  for (const c of crew?.directors ?? []) add(c.tmdb_person_id, 'director')
+  for (const c of crew?.writers ?? []) add(c.tmdb_person_id, 'writer')
+  for (const c of (crew?.cast ?? []).slice(0, 5)) add(c.tmdb_person_id, 'actor')
+  return out
 }
 
 // ─────────────────────────────────────────────
@@ -216,7 +233,7 @@ function peopleIn(crew: TitleRow['crew'] | null | undefined): Set<string> {
 // ─────────────────────────────────────────────
 
 export interface CardReasonInput {
-  title: Pick<TitleRow, 'tmdb_id' | 'type'> & Partial<Pick<TitleRow, 'crew' | 'keywords' | 'genres'>>
+  title: Pick<TitleRow, 'tmdb_id' | 'type'> & Partial<Pick<TitleRow, 'crew' | 'keywords' | 'genres' | 'synopsis'>>
   reason_payload: ReasonPayload
 }
 
@@ -263,11 +280,14 @@ function personSentences(item: CardReasonInput, rated: RatedByPerson, max: numbe
       .filter(r => r.key !== self)
       .sort((a, b) => (a.reaction === 'loved' ? 0 : 1) - (b.reaction === 'loved' ? 0 : 1) || b.votes - a.votes)[0]
     if (t) {
+      // The opener says their role HERE; the link says their role THERE.
       const how = t.reaction
-      linked.push(
-        m.role === 'actor' ? `With ${m.name}, who you ${how} in ${titleText(t.title)}.`
-        : m.role === 'writer' ? `Written by ${m.name}, who wrote ${titleText(t.title)}, which you ${how}.`
-        : `From ${m.name}, who made ${titleText(t.title)}, which you ${how}.`)
+      const role = linkRole(t, m.role)
+      const there = role === 'actor' ? `who you ${how} in ${titleText(t.title)}`
+        : role === 'writer' ? `who wrote ${titleText(t.title)}, which you ${how}`
+        : `who made ${titleText(t.title)}, which you ${how}`
+      const here = m.role === 'actor' ? 'With' : m.role === 'writer' ? 'Written by' : 'From'
+      linked.push(`${here} ${m.name}, ${there}.`)
     } else {
       plain.push(m.affinity_score >= STRONG
         ? `${m.name} ${ROLE_VERB[m.role]}, and you love their work.`
@@ -277,11 +297,91 @@ function personSentences(item: CardReasonInput, rated: RatedByPerson, max: numbe
   return [...linked, ...plain].slice(0, max)
 }
 
+// ─────────────────────────────────────────────
+// The plot, in a line or two
+// ─────────────────────────────────────────────
+
+/** A period after these doesn't end a sentence ("Dr. Strange", "the U.S. Army"). */
+const ABBREVIATION = /\b(Mr|Mrs|Ms|Dr|St|Jr|Sr|Lt|Col|Gen|Capt|Sgt|Prof|Mt|Ft|vs|etc|U\.S|U\.K|D\.C|L\.A|N\.Y|[A-Z])\.$/
+
+export function plotSentences(synopsis: string | null | undefined): string[] {
+  const out: string[] = []
+  let cur = ''
+  const text = String(synopsis ?? '').replace(/\s+/g, ' ').trim()
+  for (const part of text.split(/(?<=[.!?]["”]?)\s+(?=["“A-Z0-9])/)) {
+    cur = cur ? `${cur} ${part}` : part
+    if (ABBREVIATION.test(cur)) continue
+    out.push(cur)
+    cur = ''
+  }
+  if (cur) out.push(cur)
+  // TMDB overviews are sometimes cut off ("One man has manages to escape...",
+  // Die Hard; Eran, 2026-11-12). A sentence that trails off, or a last one
+  // with no closing punctuation, is not shown: the plot is never pasted broken.
+  return out.filter((x, i) => x.length > 1 && !TRAILS_OFF.test(x) && (i < out.length - 1 || ENDS_WHOLE.test(x)))
+}
+
+/** Ends in "..." or "…": cut off, not finished. */
+const TRAILS_OFF = /(?:\.\.\.|…)["”')]?$/
+/** Ends the way a whole sentence does. */
+const ENDS_WHOLE = /[.!?]["”')]?$/
+
+/**
+ * Where a long sentence can stop and still read whole: before the twist
+ * (", but things go awry…"), the place (", where…"), the next beat
+ * (", only to…"). Never at a bare comma — "Hard-luck cabbie John Winger."
+ */
+const CLAUSE_BREAK = /(?:,\s+(?:but|where|while|until|when|only to|as|and then|so|yet|before|after|which|forcing|leading|sending|setting|embarking|unaware|hoping|determined)\s|;\s|\s?[—–]\s?|\s--\s|:\s|\sby\s(?=\w+ing\b))/g
+/** A clipped sentence shorter than this has lost its point. */
+const MIN_CLIPPED = 60
+/** A first sentence shorter than this is a set-up ("Kale has a life most teenagers would envy."): the next one says what happens. */
+const THIN_SENTENCE = 55
+
+function clip(sentence: string, max: number): string | null {
+  if (sentence.length <= max) return sentence
+  let best: string | null = null
+  for (const m of sentence.matchAll(CLAUSE_BREAK)) {
+    const head = sentence.slice(0, m.index).replace(/[\s,;:—–]+$/, '')
+    if (head.length + 1 > max) break
+    if (head.length >= MIN_CLIPPED) best = `${head}.`
+  }
+  if (best) return best
+  // Last resort: drop a short trailing tag after the final comma — a name or
+  // an aside (Rio: "…lives a happily domesticated life in Minnesota with his
+  // human friend, Linda."). Never more than a few words.
+  const last = sentence.lastIndexOf(', ')
+  const tail = sentence.slice(last + 2)
+  if (last > 0 && tail.split(/\s+/).length <= 4 && last + 1 <= max && last >= MIN_CLIPPED) return `${sentence.slice(0, last)}.`
+  return null
+}
+
+/**
+ * One or two sentences of what the story is about, within `max` characters,
+ * from the catalogue's own plot text — never rewritten, only cut where a
+ * sentence or clause ends. Null when nothing fits whole.
+ */
+export function plotLine(synopsis: string | null | undefined, max: number): string | null {
+  const ss = plotSentences(synopsis)
+  if (!ss.length) return null
+  const first = clip(ss[0], max)
+  if (!first) return null
+  const second = ss[1] && first === ss[0] && (first.length < THIN_SENTENCE || first.length + ss[1].length + 1 <= max * 0.75)
+    ? clip(ss[1], max - first.length - 1)
+    : null
+  if (first.length < THIN_SENTENCE && !second) {
+    // A set-up alone says nothing; better the hook line than "Earth is peaceful."
+    return ss.length === 1 ? first : null
+  }
+  return second ? `${first} ${second}` : first
+}
+
 interface ReasonParts {
   stretch: string | null
   people: string[]
   story: (withMood: boolean, withAbout: boolean, nExtras: number) => string
   hasStory: boolean
+  /** No story tag and no genre — the mood is all there is to say. */
+  moodOnly: boolean
   crowd: string
 }
 
@@ -335,53 +435,68 @@ function reasonParts(item: CardReasonInput, rated: RatedByPerson, maxPeople: num
     story,
     // Nothing to say about the story beyond "a film".
     hasStory: Boolean(noun || genre || mood),
+    moodOnly: !noun && !genre,
     crowd,
   }
 }
 
 /**
- * The card's short "why": reasons for only, specific to this title and this
- * user, at most CARD_REASON_MAX_CHARS. A stretch pick keeps its own
- * rationale — saying why it's outside your usual is the reason.
+ * The card's short "why", at most CARD_REASON_MAX_CHARS (Eran, 2026-11-06):
+ *   - a real link first — "Written by Jared Bush, who wrote *Zootopia*,
+ *     which you loved." — with the plot after it when there's room;
+ *   - otherwise one or two sentences of what the story actually is, from the
+ *     catalogue's plot text, so no two cards read alike.
+ * No mood labels and no "Critics loved it": on every card, they read the
+ * same ("A warm and hopeful comedy. Critics loved it." on card after card)
+ * and stopped meaning anything. A stretch pick keeps its own rationale.
  */
-export function cardReason(item: CardReasonInput, rated: RatedByPerson = new Map()): string {
+export function cardReason(
+  item: CardReasonInput,
+  rated: RatedByPerson = new Map(),
+  /** One-sentence plots for titles whose own plot text won't fit (card-plot.ts), keyed `${type}:${tmdb_id}`. */
+  plots: Map<string, string> = new Map(),
+): string {
   const r = reasonParts(item, rated, 1)
   if (r.stretch) return r.stretch
   const who = r.people[0] ?? ''
-  if (!r.hasStory) return who || 'Close to the stories you rate highest.'
+  const max = CARD_REASON_MAX_CHARS
+  const synopsis = item.title.synopsis
+  const condensed = plots.get(`${item.title.type}:${item.title.tmdb_id}`)
+  const plotWithin = (room: number) =>
+    plotLine(synopsis, room) ?? (condensed && condensed.length <= room ? condensed : null)
 
-  // Critics only when no person is named — the card has room for two reasons.
-  const crowd = who ? '' : r.crowd
-  // The fullest version that fits four lines; the least personal parts go first.
-  const tries: string[][] = [
-    [who, r.story(true, true, 2), crowd],
-    [who, r.story(true, true, 1), crowd],
-    [who, r.story(true, true, 1)],
-    [who, r.story(true, true, 0)],
-    [who, r.story(true, false, 0)],
-    [who, r.story(false, false, 0)],
-    [who],
-  ]
-  for (const parts of tries) {
-    const s = parts.filter(Boolean).join(' ')
-    if (s && visible(s) <= CARD_REASON_MAX_CHARS) return s
+  if (who) {
+    const room = max - visible(who) - 1
+    const plot = room >= MIN_CLIPPED ? plotWithin(room) : null
+    return plot ? `${who} ${plot}` : who
   }
-  return who || r.story(false, false, 0)
+  const plot = plotWithin(max)
+  if (plot) return plot
+
+  // No plot that fits: the story line, without moods or critics.
+  if (!r.hasStory) return 'Close to the stories you rate highest.'
+  // A mood word only when it's all there is ("A slow-burn film.", not "A film.").
+  const m = r.moodOnly
+  for (const s of [r.story(m, true, 2), r.story(m, true, 1), r.story(m, true, 0), r.story(m, false, 0)]) {
+    if (visible(s) <= max) return s
+  }
+  return r.story(false, false, 0)
 }
 
 /**
- * The "Why" text in the "Why it's a match" sheet: the card's reasons, in
- * full — up to two people, the whole story line, what critics thought. Same
- * facts, same rule (reasons for only; what doesn't fit is listed separately
- * in the sheet), no length cap.
+ * The "Why it's a match" sheet's plain text — shown while the written one
+ * is being made, and instead of it when the model can't produce one that
+ * passes its checks. Same facts as the card, more room: up to two people,
+ * then the plot (two sentences of the catalogue's own text). No mood labels,
+ * no critics (2026-11-06).
  */
 export function sheetReason(item: CardReasonInput, rated: RatedByPerson = new Map()): string {
   const r = reasonParts(item, rated, 2)
+  const plot = plotLine(item.title.synopsis, 320)
   const parts = [
     r.stretch ?? '',
     ...r.people,
-    r.hasStory ? r.story(true, true, 3) : '',
-    r.crowd,
+    plot ?? (r.hasStory ? r.story(false, true, 3) : ''),
   ].filter(Boolean)
   return parts.length ? parts.join(' ') : 'Close to the stories you rate highest.'
 }

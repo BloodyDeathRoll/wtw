@@ -20,6 +20,7 @@ export const GAME_GENRES = [
   { id: 'horror',   label: 'Horror' },
   { id: 'romance',  label: 'Romance' },
   { id: 'anim',     label: 'Animation' },
+  { id: 'family',   label: 'Family & kids' },
   { id: 'anime',    label: 'Anime' },
   { id: 'doc',      label: 'Documentary' },
   { id: 'war',      label: 'War & history' },
@@ -43,6 +44,7 @@ const BY_TMDB_GENRE: Record<'movie' | 'tv', Record<string, GameGenre>> = {
     'horror': 'horror',
     'romance': 'romance',
     'animation': 'anim',
+    'family': 'family',
     'documentary': 'doc',
     'war': 'war',
     'history': 'war',
@@ -55,9 +57,20 @@ const BY_TMDB_GENRE: Record<'movie' | 'tv', Record<string, GameGenre>> = {
     'mystery': 'thriller',
     'sci-fi & fantasy': 'scifi',
     'animation': 'anim',
+    'family': 'family',
+    'kids': 'family',
     'documentary': 'doc',
     'war & politics': 'war',
   },
+}
+
+/**
+ * The TMDB genres (lowercased, movie and TV names) a game genre stands for —
+ * what a "Never" or "Less of" rule for it hides (P1-C2). Empty for anime,
+ * which is not a TMDB genre (src/lib/exclusion-rules.ts matches it).
+ */
+export function tmdbGenresOf(g: GameGenre): string[] {
+  return [...new Set((['movie', 'tv'] as const).flatMap(t => Object.keys(BY_TMDB_GENRE[t]).filter(n => BY_TMDB_GENRE[t][n] === g)))]
 }
 
 /**

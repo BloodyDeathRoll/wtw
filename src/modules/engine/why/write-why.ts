@@ -1,0 +1,808 @@
+/**
+ * "Why it's a match" — written like a friend's recommendation, from facts only.
+ *
+ * Brief (Eran, 2026-11-06): when you open "Why it's a match" it reads like a
+ * friend recommending the title, and nothing in it is made up.
+ *
+ * How:
+ *   1. Gather the facts: the title's plot, moods, story tags, director,
+ *      writers and cast from our catalogue, and what ties it to THIS viewer —
+ *      people they rated well (with a title of theirs they loved), the moods
+ *      and genre they rate highly, what critics thought. (`buildWhyFacts`)
+ *   2. The model writes two sentences from those facts alone.
+ *   3. `checkWhy` reads what it wrote: any title, name, place or number not in
+ *      the facts, any reservation, any claim about what the viewer loved that
+ *      the facts don't back → rejected. One retry, told what was wrong.
+ *   4. Still rejected (or the model is down / rate-limited) → the fact-built
+ *      text (`sheetReason`), which is true by construction.
+ *
+ * History: until 2026-11-06 a small model wrote this from a one-line summary
+ * and invented credits ("Cruella's writer wrote The Big Sick"). Measured
+ * 2026-11-06 on the same facts: ministral-8b broke the rules in 5 of 6
+ * titles (comparisons to films it wasn't given, 4–6 sentences). The writer
+ * and the fact-check run on two Groq models with their own free budgets
+ * (MODELS.whyWriter / MODELS.whyJudge), never on the chat model (`text` in ai-models.ts).
+ */
+
+import { createGroq } from '@ai-sdk/groq'
+import { createMistral } from '@ai-sdk/mistral'
+import { generateText } from 'ai'
+import { MODELS, GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
+import { getRedis } from '@/lib/redis'
+import { createServiceClient } from '@/lib/supabase/service'
+import { STRONG_CREW_AFFINITY, linkRole, sheetReason, type RatedByPerson } from '../pipeline/step7-card-reason'
+import type { ScoredTitleWithPayload } from '../pipeline/step6-reason-payload'
+import type { RatedForComparison } from './score-titles'
+import { hasTasteFacts, tasteCatch, tasteLikes } from './taste-facts'
+import type { DNASchema } from '@/types/dna'
+
+// ─────────────────────────────────────────────
+// Facts
+// ─────────────────────────────────────────────
+
+const SOME = 0.07
+const TONE_WORD: Record<string, string> = {
+  comedic: 'funny', warm: 'warm', dark: 'dark', hopeful: 'hopeful', cynical: 'cynical',
+}
+/** "Moderate" says nothing a friend would say, so it isn't offered. */
+const PACE_WORD: Record<string, string> = { slow_burn: 'slow-burn', high_octane: 'fast' }
+const LANGUAGE: Record<string, string> = {
+  en: 'English', ko: 'Korean', ja: 'Japanese', fr: 'French', es: 'Spanish', de: 'German', it: 'Italian',
+  he: 'Hebrew', hi: 'Hindi', zh: 'Chinese', da: 'Danish', sv: 'Swedish', no: 'Norwegian', pt: 'Portuguese', tr: 'Turkish',
+}
+/** TMDB keywords that say nothing about the story. */
+const JUNK_KEYWORD = /stinger|woman director|based on|^duringcredits|aftercredits|^\d{4}s$|amused|excited|admiring|awestruck|enthusiastic|adoring|appreciative|audacious|cheerful|joyful|joyous|celebratory|exhilarated|frightened|baffled|horrified|angry|anxious|defiant|assertive|sympathetic|empathetic|compassionate|comforting|candid|critical|desperate|ambivalent|biting|grand|wonder|reflective|introspective|thoughtful|complex|complicated|bold|powerful|dramatic|intense|aggressive|antagonistic|provocative|shocking|distressing|disturbed|dreary|grim|somber|depressing|melodramatic|ridiculous|absurd|cliché|vibrant|playful|whimsical|lighthearted|sentimental|nostalgic|hopeful|inspirational|mysterious|ominous|suspenseful|tense|tragic|witty|hilarious|romantic|intimate|macabre|frantic|cautionary|affectation/
+
+export interface WhyFacts {
+  /** The block the model reads. */
+  text: string
+  /** Titles the text may name (this one + titles the viewer rated that a person links to). */
+  titles: string[]
+  /** Everything the text may draw a name, place or number from, lowercased. */
+  haystack: string
+  /** Names of people the facts tie to the viewer. */
+  linkedNames: string[]
+  /**
+   * The one sentence-opening the text must use word for word when a person
+   * links this title to one the viewer rated — written here, so the role
+   * ("directed", "starred in") and the reaction ("loved", "liked") are never
+   * the model's guess. Null when no one links.
+   */
+  linkClause: string | null
+  /** The plain fact-built version, the fallback. Null for a cold-start user: the sheet keeps its own line. */
+  fallback: string | null
+  /** Titles the viewer rated that share something with this one, with the reaction — "*X*, which you loved" is allowed for these. */
+  compared: { title: string; reaction: 'loved' | 'liked' }[]
+  /** The one honest reservation the text may end on, from the viewer's own data. Null: no reservation allowed. */
+  reservation: string | null
+  /** How this text opens (`angleFor`): rotated per title so a screen of sheets doesn't all read "X meets Y". */
+  angle: Angle
+}
+
+/**
+ * The way in. Eran, 2026-11-06, reading ten in a row: "too many 'this meets
+ * that'" — nine of ten opened on a comparison. So each title gets one angle,
+ * fixed by its id (the same title always reads the same way, neighbours
+ * differ): a person the viewer rated when there is one, else the cast, the
+ * feel, the premise, or — one title in four — a comparison to a famous title.
+ */
+export type Angle = 'person' | 'rated' | 'cast' | 'feel' | 'premise' | 'comparison'
+const ROTATION: Angle[] = ['cast', 'feel', 'comparison', 'premise']
+
+export function angleFor(tmdbId: string, hasLink: boolean, hasRatedComparison: boolean): Angle {
+  if (hasLink) return 'person'
+  const h = [...tmdbId].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
+  // A title the viewer rated that shares real story ground is the most
+  // personal way in there is — but not every time, or it's the new "X meets Y".
+  if (hasRatedComparison && h % 3 === 0) return 'rated'
+  return ROTATION[h % ROTATION.length]
+}
+
+const ANGLE_LEAD: Record<Angle, string> = {
+  person: 'Open with exactly the opening words given at the end of the facts, then say what that person brings here.',
+  rated: 'Open with the title this viewer loved or liked that the facts say shares something with this one, and what they really share — in your own words.',
+  cast: 'Open with the cast: what the actors in "Starring" bring and how they play off each other.',
+  feel: 'Open with what it feels like to watch: the rhythm, the humour, the tension, the heart — specific, not generic.',
+  premise: 'Open with the hook of the premise — what makes this situation so good to watch — in one clause, then why it lands.',
+  comparison: 'Open with one comparison to a famous, real film or show that genuinely shares its feel or premise ("*X* meets *Y*", "it\'s *X* with…"), then why it lands.',
+}
+
+/** What the sheet knows beyond the scored title. Optional: without it, no comparisons and no reservation. */
+export interface WhyContext {
+  dna?: DNASchema
+  ratedTitles?: RatedForComparison[]
+  /** Formula v2: most of the title's batch shares its taste catch, so it isn't said (step 6, `taste.catch_shared`). */
+  skipTasteCatch?: boolean
+}
+
+/** Genres too common to make two titles alike. */
+const COMMON_GENRES = new Set(['drama', 'comedy'])
+/** Story tags on half the catalogue: they make "it's like X" ring hollow (Finding Forrester "like" Silver Linings Playbook on "friendship"). */
+const GENERIC_TAGS = new Set(['friendship', 'male friendship', 'female friendship', 'family', 'family relationships', 'love', 'romance',
+  'villain', 'relationship', 'based on novel or book', 'sequel', 'remake', 'new york city', 'los angeles, california', 'woman director',
+  'father son relationship', 'mother son relationship', 'father daughter relationship', 'mother daughter relationship', 'husband wife relationship'])
+const storyTags = (keywords: string[] | null | undefined) => (keywords ?? []).filter(k => !JUNK_KEYWORD.test(k))
+
+/**
+ * Titles the viewer loved or liked that share real story ground with this
+ * one — at least one story tag, not just "both are dramas" — best first.
+ * This is what lets the text say "it's *The Intouchables* with…" without the
+ * model picking a film it was never given (the old paragraph's "*The
+ * Proposal* meets *Fight Club*" for a viewer who'd rated neither).
+ */
+export function similarRated(item: ScoredTitleWithPayload, rated: RatedForComparison[], max = 2) {
+  const t = item.title
+  const self = `${t.type}:${t.tmdb_id}`
+  const kw = new Set(storyTags(t.keywords))
+  const genres = new Set(t.genres.map(g => g.name.toLowerCase()))
+  const tones = new Set(t.tone_tags ?? [])
+  return rated
+    .filter(r => r.key !== self)
+    .map(r => {
+      const tags = storyTags(r.keywords).filter(k => kw.has(k))
+      const gs = r.genres.filter(g => genres.has(g) && !COMMON_GENRES.has(g))
+      const ts = r.tone_tags.filter(x => tones.has(x))
+      const specific = tags.filter(k => !GENERIC_TAGS.has(k)).length
+      return { r, tags, genres: gs, tones: ts, score: 3 * specific + (tags.length - specific) + gs.length + 0.5 * ts.length }
+    })
+    .filter(c => c.tags.some(k => !GENERIC_TAGS.has(k)) && c.score >= 5)
+    .sort((a, b) => b.score - a.score || (a.r.reaction === 'loved' ? -1 : 1))
+    .slice(0, max)
+}
+
+const TONE_RESERVE: Record<string, string> = { dark: 'dark', cynical: 'cynical', comedic: 'jokey', warm: 'sentimental', hopeful: 'upbeat' }
+const PACE_SAY: Record<string, string> = { slow_burn: 'slow-burn', high_octane: 'fast and loud', moderate: 'mid-paced' }
+const HEAVY_TONES = ['melancholic', 'tense', 'gritty', 'bleak', 'tragic']
+
+/**
+ * The one reservation worth a friend's honesty, from the viewer's own data —
+ * strongest first: something they've rated down, a mood they rate low, a
+ * heavier tone than they usually pick, a pace they rate low, the length.
+ * Null when nothing in the data says so: then there is no reservation.
+ */
+export function reservationFor(item: ScoredTitleWithPayload, dna: DNASchema | undefined, skipTasteCatch = false): string | null {
+  // Formula v2 (P1-E5): the taste model's strongest pull away, then the
+  // language catch and the length. The strand-C catches (tone and pace
+  // weights, rated-down genres) are gone with the parts they came from.
+  const v2 = item.formula_v2
+  if (v2) {
+    const t = item.title
+    if (hasTasteFacts(v2) && !skipTasteCatch) {
+      const c = tasteCatch(v2.contributions, v2.vec)
+      if (c) return c
+    }
+    const a = item.content_avoided
+    if (a && a.dimension === 'language') return `It's in ${LANGUAGE[a.value] ?? a.value}, which hasn't worked for this viewer before.`
+    if ((t.runtime_minutes ?? 0) >= 150) return `It runs ${Math.floor(t.runtime_minutes! / 60)} hours ${t.runtime_minutes! % 60} minutes.`
+    return null
+  }
+
+  if (!dna) return null
+  const t = item.title
+  const c = dna.strand_c_visceral_specs
+  const a = item.content_avoided
+  if (a && a.dimension === 'genre') return `It's partly ${a.value}, and ${a.value} hasn't worked for this viewer before.`
+  if (a && a.dimension === 'language') return `It's in ${LANGUAGE[a.value] ?? a.value}, which hasn't worked for this viewer before.`
+
+  const tw = c?.tone_weights ?? {}
+  const low = (t.tone_tags ?? [])
+    .filter(x => x in tw && (tw as Record<string, number>)[x] < 0.35)
+    .sort((x, y) => (tw as Record<string, number>)[x] - (tw as Record<string, number>)[y])[0]
+  if (low) {
+    const w = TONE_RESERVE[low] ?? low
+    return `It has ${/^[aeiou]/.test(w) ? 'an' : 'a'} ${w} streak, and ${w} isn't usually this viewer's thing.`
+  }
+
+  const heavy = (t.tone_tags ?? []).filter(x => HEAVY_TONES.includes(x))
+  const lightLover = ((tw as Record<string, number>).dark ?? 0.5) < 0.35 && Math.max((tw as Record<string, number>).hopeful ?? 0, (tw as Record<string, number>).comedic ?? 0) >= 0.5
+  if (heavy.length && lightLover) return `It has ${heavy.join(' and ')} stretches, heavier than the lighter stories this viewer usually goes for.`
+
+  const pw = c?.pacing_weights as Record<string, number> | undefined
+  const pace = t.pacing_tag
+  // "Mid-paced" is nobody's reservation: only the two ends are.
+  if (pace && pace !== 'moderate' && pw && pace in pw) {
+    const top = Math.max(...Object.values(pw))
+    if (pw[pace] <= top - 0.2) return `It's ${PACE_SAY[pace] ?? pace.replace('_', ' ')}, which isn't usually this viewer's pace.`
+  }
+  if ((t.runtime_minutes ?? 0) >= 150) {
+    return `It runs ${Math.floor(t.runtime_minutes! / 60)} hours ${t.runtime_minutes! % 60} minutes.`
+  }
+  return null
+}
+
+/** Moods as nouns: handed "warm, hopeful", the model pasted "warm, hopeful" into the text. */
+const FEEL_NOUN: Record<string, string> = {
+  warm: 'heart', hopeful: 'optimism', comedic: 'laughs', whimsical: 'whimsy', melancholic: 'melancholy', tense: 'tension',
+  dark: 'darkness', gritty: 'grit', cynical: 'cynicism', nostalgic: 'nostalgia', romantic: 'romance', bleak: 'bleakness',
+  uplifting: 'uplift', satirical: 'satire', suspenseful: 'suspense', heartfelt: 'heart',
+}
+
+const ROLE_HERE: Record<string, string> = { director: 'directed', writer: 'wrote', actor: 'stars in' }
+const ROLE_THERE: Record<string, string> = { director: 'directed', writer: 'wrote', actor: 'starred in' }
+
+/**
+ * `coldStart`: the user has no fingerprint yet (fewer than 10 ratings, season
+ * unfinished), so nothing can be said about their taste — only the title.
+ */
+export function buildWhyFacts(item: ScoredTitleWithPayload, rated: RatedByPerson, coldStart = false, ctx: WhyContext = {}): WhyFacts {
+  const t = item.title
+  const p = item.reason_payload
+  const kind = t.type === 'tv' ? 'series' : 'film'
+  const self = `${t.type}:${t.tmdb_id}`
+
+  // ── People the viewer rated well, linked to a title of theirs when there is one
+  const personal: string[] = []
+  const titles = [t.title]
+  const linkedNames: string[] = []
+  const seen = new Set<string>()
+  const idOf = new Map<string, string>()
+  for (const c of [...t.crew.directors, ...t.crew.writers, ...t.crew.cast.slice(0, 5)]) {
+    if (!idOf.has(c.name)) idOf.set(c.name, c.tmdb_person_id)
+  }
+  const people = p.crew_matches
+    .filter(m => ROLE_HERE[m.role] && m.affinity_score >= SOME)
+    .sort((a, b) => b.affinity_score - a.affinity_score)
+  let linkClause: string | null = null
+  for (const m of people) {
+    if (seen.has(m.name) || linkedNames.length >= 2) continue
+    seen.add(m.name)
+    const id = idOf.get(m.name)
+    const theirs = (id ? rated.get(id) ?? [] : [])
+      .filter(r => r.key !== self)
+      .sort((a, b) => (a.reaction === 'loved' ? 0 : 1) - (b.reaction === 'loved' ? 0 : 1) || b.votes - a.votes)
+    const r = theirs[0]
+    if (r && !linkClause) {
+      const role = linkRole(r, m.role)
+      linkClause = role === 'actor'
+        ? `${m.name}, who you ${r.reaction} in *${r.title}*,`
+        : `${m.name}, who ${ROLE_THERE[role]} *${r.title}*, which you ${r.reaction},`
+      personal.push(`${m.name} ${ROLE_HERE[m.role]} this ${kind}. ${m.name} also ${ROLE_THERE[role]} "${r.title}", which this viewer ${r.reaction}.`)
+      titles.push(r.title)
+    } else {
+      // Only one link per text: a second invites mixing up who did what.
+      personal.push(`${m.name} ${ROLE_HERE[m.role]} this ${kind}${m.affinity_score >= STRONG_CREW_AFFINITY ? ', and this viewer has loved their work before' : ''}.`)
+    }
+    linkedNames.push(m.name)
+  }
+
+  // ── What pulls this viewer in. Formula v2 (P1-E5): the taste model's two
+  // strongest pulls among the title's scales and genres. v1: the moods, genre,
+  // pace and language the viewer rates highly, from strand C.
+  const v2 = item.formula_v2
+  if (hasTasteFacts(v2)) personal.push(...tasteLikes(v2.contributions, v2.vec))
+  const dim = new Map((v2 ? [] : p.dimension_matches).map(d => [d.dimension, d]))
+  const split = (s?: string) => String(s ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean)
+  const tone = dim.get('tone')
+  const sharedTones = tone ? split(tone.title_value).filter(x => split(tone.user_value).includes(x)).map(x => TONE_WORD[x]).filter(Boolean) : []
+  // Said as what the viewer goes for, not as the tags themselves: handed
+  // "warm and hopeful", the model wrote "warm, hopeful" into every text.
+  const FEEL: Record<string, string> = { funny: 'laughs', warm: 'heart', hopeful: 'optimism', dark: 'a dark edge', cynical: 'a cynical bite' }
+  const feels = sharedTones.map(x => FEEL[x]).filter(Boolean)
+  if (feels.length) personal.push(`This viewer goes for stories with ${feels.join(' and ')}, and this one has ${feels.length > 1 ? 'both' : 'it'}.`)
+  const genre = dim.get('genre')?.title_value
+  if (genre) personal.push(`${genre[0].toUpperCase()}${genre.slice(1)} is a genre this viewer rates highly.`)
+  const pace = dim.get('pacing')?.title_value
+  if (pace && PACE_WORD[pace]) personal.push(`This viewer likes ${PACE_WORD[pace]} stories, and this one is ${PACE_WORD[pace]}.`)
+  const lang = dim.get('language')?.title_value
+  if (lang && lang !== 'en' && LANGUAGE[lang]) personal.push(`It's in ${LANGUAGE[lang]}, which this viewer watches and rates highly.`)
+
+  // ── Titles they rated that share story ground with this one
+  // No critics or audiences: said on every title, it stopped meaning anything
+  // (Eran, 2026-11-06), and the sheet shows the ratings below anyway.
+  const compared: WhyFacts['compared'] = []
+  const comparisonLines: string[] = []
+  if (!coldStart) {
+    for (const c of similarRated(item, ctx.ratedTitles ?? [])) {
+      compared.push({ title: c.r.title, reaction: c.r.reaction })
+      titles.push(c.r.title)
+      const plot = (c.r.synopsis ?? '').split(/(?<=[.!?])\s+/)[0]
+      comparisonLines.push(`- *${c.r.title}*, which this viewer ${c.r.reaction}. Shared story tags: ${c.tags.join(', ')}` +
+        `${c.genres.length ? `; both ${c.genres.join(', ')}` : ''}${c.tones.length ? `; both ${c.tones.join(', ')}` : ''}.` +
+        `${plot ? ` Its plot: ${plot}` : ''}`)
+    }
+  }
+  const reservation = coldStart ? null : reservationFor(item, ctx.dna, ctx.skipTasteCatch)
+
+  if (coldStart) {
+    personal.splice(0)
+    linkClause = null
+    titles.splice(1)
+    linkedNames.splice(0)
+    personal.push('Nothing yet about this viewer: describe the title itself.')
+  } else if (personal.length === 0) {
+    personal.push(
+      !v2 ? 'Its story and mood are close to what this viewer rates highly.'
+      : (v2.model_score ?? 0) > 0 ? 'It is close to the kind of titles this viewer goes for.'
+      : 'Describe the title itself; say nothing about what this viewer likes.',
+    )
+  }
+
+  const keywords = (t.keywords ?? []).filter(k => !JUNK_KEYWORD.test(k)).slice(0, 12)
+  const lines = [
+    `Title: "${t.title}"${t.release_year ? ` (${t.release_year})` : ''}, a ${kind}`,
+    `Genres: ${t.genres.map(g => g.name).join(', ') || 'unknown'}`,
+    `Plot: ${t.synopsis ?? 'unknown'}`,
+    `What it feels like: ${(t.tone_tags ?? []).map(x => FEEL_NOUN[x] ?? x).join(', ') || 'unknown'}`,
+    `Story tags: ${keywords.join(', ') || 'none'}`,
+    `Directed by: ${t.crew.directors.map(c => c.name).join(', ') || 'unknown'}`,
+    `Written by: ${t.crew.writers.map(c => c.name).join(', ') || 'unknown'}`,
+    `Starring (in billing order; only the first is the lead): ${t.crew.cast.slice(0, 4).map(c => c.name).join(', ') || 'unknown'}`,
+    `Original language: ${LANGUAGE[t.original_language ?? ''] ?? 'unknown'}`,
+    '',
+    'Why it fits this viewer:',
+    ...personal.map(x => `- ${x}`),
+    '',
+    ...(comparisonLines.length ? ['Titles this viewer loved or liked that share something with this one:', ...comparisonLines, ''] : []),
+    reservation ? `The one honest reservation — end on this sentence word for word, after a short lead-in: "${toYou(reservation)}"` : 'Reservation: none. Mention no downside.',
+    '',
+    `This title and the ones linked to the viewer: ${titles.map(x => `*${x}*`).join(', ')}`,
+    ...(linkClause ? ['', `Start the first sentence with exactly these words, then continue it: ${linkClause}`] : []),
+  ]
+  const angle = angleFor(t.tmdb_id, Boolean(linkClause), compared.length > 0)
+  lines.push('', `HOW TO OPEN: ${ANGLE_LEAD[angle]}`)
+  const text = lines.join('\n')
+  return {
+    text,
+    titles,
+    haystack: text.toLowerCase(),
+    linkedNames,
+    linkClause,
+    fallback: coldStart ? null : richFallback(item, rated, similarRated(item, ctx.ratedTitles ?? []), reservation),
+    compared,
+    reservation,
+    angle,
+  }
+}
+
+// ─────────────────────────────────────────────
+// The plain version, when no model can write it
+// ─────────────────────────────────────────────
+
+const listOf = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
+/** The reservation facts speak of "this viewer"; the sheet speaks to you. */
+const toYou = (s: string) => s
+  .replace(/this viewer usually goes for/g, 'you usually go for')
+  .replace(/this viewer's/g, 'your')
+  .replace(/for this viewer/g, 'for you')
+  .replace(/this viewer/g, 'you')
+
+/**
+ * What the sheet shows when no model could write a text that passes (2026-11-06,
+ * Eran: "this is what most of the titles look like" — one plot sentence). Every
+ * part is a fact: the people you rated, the plot, a title you loved that shares
+ * real story ground, who's in it, and the honest catch.
+ */
+export function richFallback(
+  item: ScoredTitleWithPayload,
+  rated: RatedByPerson,
+  similar: ReturnType<typeof similarRated>,
+  reservation: string | null,
+): string {
+  const t = item.title
+  const parts = [sheetReason(item, rated)]
+  const c = similar[0]
+  if (c) {
+    const tags = c.tags.filter(k => !GENERIC_TAGS.has(k) && !/[()]|universe|based on/i.test(k) && k.split(' ').length <= 3).slice(0, 2).map(k => k.replace(/\b3d\b/gi, '3D'))
+    // Tags are TMDB keywords ("secret identity", "crime fighter"), not phrases a
+    // sentence can take as objects: "it has secret identity and crime fighter"
+    // (Eran, 2026-11-12). Said as what they are.
+    if (tags.length) parts.push(`It covers some of the same ground as *${c.r.title}*, which you ${c.r.reaction} (${tags.join(', ')}).`)
+  }
+  const cast = t.crew.cast.slice(0, 3).map(x => x.name).filter(n => !parts[0].includes(n))
+  if (cast.length) parts.push(`Starring ${listOf(cast)}.`)
+  if (reservation) { const r = toYou(reservation); parts.push(`One thing to know: ${r[0].toLowerCase()}${r.slice(1)}`) }
+  return parts.join(' ')
+}
+
+// ─────────────────────────────────────────────
+// The check
+// ─────────────────────────────────────────────
+
+const norm = (s: string) => s.toLowerCase()
+  .replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/[\u2010-\u2015]/g, '-').replace(/\s+/g, ' ').trim()
+
+/** A capitalised word is "in the facts" as written, or as London is to Londoner. */
+function knownWord(word: string, haystack: string): boolean {
+  const w = norm(word).replace(/'s$/, '').replace(/s'$/, 's')
+  if (haystack.includes(w)) return true
+  for (const suffix of ['ers', 'er', 'ians', 'ian', 'ans', 'an', 'es', 's']) {
+    if (w.endsWith(suffix) && w.length - suffix.length >= 4 && haystack.includes(w.slice(0, -suffix.length))) return true
+  }
+  return false
+}
+
+/** A reservation, not a plot turn: "they hoped for one child but got three" is
+ *  fine; "it's slow, but worth it" is not. */
+const RESERVATION = /\b(however|although|though|reservation|caveat|downside|might not|may not|not for everyone|if you're not|if you are not|be warned|fair warning|know going in|heads up|give you pause|word of warning|only catch|one catch)\b|\bbut\b[^.]*\b(worth it|still|stick with it|patience|bear with|forgive)\b|\b(slow|uneven|predictable|dated|flawed|messy|silly|cheesy|long|bloated|thin)\b[^.]*\bbut\b/i
+const CLICHE = /\b(you'll be hooked|hooked|loved it as|that (critics|audiences) loved it|so you will enjoy|perfect (match|fit|blend)|matches your taste|your (usual |own |kind of )?taste|taste profile|fingerprint|algorithm|sweet spot|data|irresistible|match(es|ing)? your|warm hug|lingers? long after|long after the credits|specific (kind of )?magic|distinct magic|surge of|radiates|clearly value|right at home|exactly the right note|you (love|enjoy|like) (warm|funny|dark|hopeful|cynical|slow-burn|fast)( and \w+)? (stories|films|movies))\b/i
+/** Said on every title, so they say nothing (Eran, 2026-11-06): critics/audiences, and mood tags strung together ("warm, hopeful, and whimsical"). */
+const MOOD_TAG = '(?:warm|hopeful)'
+const SAMENESS = new RegExp(`\\b(critics|audiences|reviews?|rate[sd]?|rating|${MOOD_TAG},?\\s+(?:and\\s+)?${MOOD_TAG})\\b`, 'i')
+/**
+ * Two verbs every model reaches for, swapped for plain ones rather than
+ * throwing a good draft away (the backup writer used "anchors" in 4 of 5).
+ */
+export function freshenWords(text: string): string {
+  // Only where it's a verb with an object — "a news anchor" is a person
+  // (Morning Glory: "the producer and the carry" was the first try).
+  const obj = String.raw`(?=\s+(?:the|this|it|his|her|their|every|each|a|an)\b)`
+  const swap: [RegExp, string][] = [
+    [new RegExp(String.raw`\banchors${obj}`, 'g'), 'carries'], [new RegExp(String.raw`\banchoring${obj}`, 'g'), 'carrying'],
+    [/\banchored by\b/g, 'carried by'],
+    [/\bcrackles with\b/g, 'sparks with'], [/\bcrackling with\b/g, 'sparking with'],
+  ]
+  return swap.reduce((t, [re, w]) => t.replace(re, w), text)
+}
+
+/** Words that turned up in most texts of a ten-title read (2026-11-06): allowed `max` times. */
+const OVERUSED: { re: RegExp; max: number }[] = [
+  { re: /\belectric\w*/gi, max: 0 },
+  { re: /\bcrackl\w*/gi, max: 0 },
+  { re: /\bchemistry\b/gi, max: 1 },
+  { re: /\bdynamics?\b/gi, max: 0 },
+  { re: /\banchor(s|ed|ing)?\b/gi, max: 0 },
+  { re: /\binfectious\b/gi, max: 0 },
+  { re: /\bwhims(y|ical)\b/gi, max: 1 },
+  { re: /\bgot you\b/gi, max: 0 },
+  { re: /\bleads? the charge\b/gi, max: 0 },
+  { re: /\benergy\b/gi, max: 1 },
+  { re: /\bbreath of fresh air\b/gi, max: 0 },
+  { re: /\bunadulterated\b/gi, max: 0 },
+  { re: /\bsneaks? up on you\b/gi, max: 0 },
+  { re: /\brespects your intelligence\b/gi, max: 0 },
+  { re: /\bedge of your seat\b/gi, max: 0 },
+  { re: /\bperfect pick\b/gi, max: 0 },
+  { re: /\b(pure|genuine) joy\b/gi, max: 0 },
+  { re: /\bheart and optimism\b|\boptimism and heart\b/gi, max: 0 },
+]
+
+/** Openers that made every card sound the same in the first test run. */
+const STOCK_OPENER = /^(you'll love|you will love|since you|because you|if you|as someone who|critics loved|audiences loved|there is|there's|\*[^*]+\* is an? )/i
+/** Anything said about the viewer's own taste or history, outside the link clause. */
+/** A claim about what the viewer watched or rated, outside the link clause and the compared titles. Friendly taste talk ("the kind of humour you'd love", "you crave heart") is the screenshots' voice and allowed (Eran, 2026-11-06). */
+const VIEWER_CLAIM = /\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:loved|liked|enjoyed|adored|admired|cherished|appreciated|rated|watched|seen)\b|\byour favou?rite\b|\bwhose work you\b/i
+/**
+ * The viewer's taste said about the viewer, not shown in the title (Eran,
+ * 2026-11-12, on #272: "perfectly suiting your preference for fast-moving
+ * thrillers"). The facts' "this viewer goes for…" lines are for the text to
+ * show in the title ("it's fast"), not to claim.
+ */
+// "You crave" too (Eran, 2026-11-12: "it tells the viewer what they crave,
+// which we don't know"), though it was the screenshots' voice on 2026-11-06.
+// An adverb in between doesn't make it a description of the film ("the pace
+// you clearly crave", "your love for dark crime", both seen 2026-11-12).
+const VIEWER_TASTE = /\byour (?:preferences?|love|fondness|appetite|soft spot|weakness|penchant|liking|thirst|hunger|taste) (?:for|of)\b|\byour (?:preferences?|fondness|penchant|liking)\b|\byou (?:clearly |really |obviously |always |so )?(?:crave|gravitate|tend to|typically|usually|always go)\b|\bup your alley\b|\b(?:suits|suiting|fits) you\b/i
+/** Stronger than "critics/audiences loved it" — not in the facts. */
+const OVERCLAIM = /\b(masterpiece|universal(ly)?|rave[sd]?|raving|oscar|award|acclaim(ed)?|classic|best\b[^.]*\bever|guarantee[sd]?|hail(ed|s)?|instant favou?rite|must-see|hits exactly|prais(e|ed|es|ing)|loved it for)\b/i
+
+/** Titles the text names that the facts don't: comparisons, to be checked against the catalogue. */
+export function outsideTitles(text: string, facts: WhyFacts): string[] {
+  const allowed = facts.titles.map(norm)
+  return [...new Set([...text.matchAll(/\*([^*]+)\*/g)]
+    .map(m => m[1].replace(/[’']s$/, '').trim())
+    .filter(t => !allowed.includes(norm(t))))]
+}
+
+/** The ones not in our catalogue — a title the model may have made up. */
+async function unknownTitles(titles: string[]): Promise<string[]> {
+  if (!titles.length) return []
+  const supabase = createServiceClient()
+  const missing: string[] = []
+  for (const t of titles) {
+    const { data, error } = await supabase.from('titles').select('id').ilike('title', t.replace(/[%_\\]/g, '\\$&')).limit(1)
+    if (error) throw error
+    if (!data?.length) missing.push(t)
+  }
+  return missing
+}
+
+export function checkWhy(text: string, facts: WhyFacts): string[] {
+  const problems: string[] = []
+  const words = text.trim().split(/\s+/).length
+  // 85–100 asked, 60–115 accepted (Eran, 2026-11-06: 90–95 on average; ~120
+  // read long). The floor was 70 until 2026-11-12: two of ten sheets on #272
+  // fell back to the plain text at 68–69 words.
+  if (words < 60 || words > 115) problems.push(`it is ${words} words long; write 85–100`)
+  if (!facts.reservation && RESERVATION.test(text)) problems.push(`it contains a reservation or a contrast ("${text.match(RESERVATION)![0]}"); the facts give no reservation`)
+  if (CLICHE.test(text)) problems.push(`it uses "${text.match(CLICHE)![0]}"; talk like a friend, not an app`)
+  if (SAMENESS.test(text)) problems.push(`it says "${text.match(SAMENESS)![0]}"; no critics or audiences, and describe the feel in fresh words, not a list of mood tags`)
+  if (STOCK_OPENER.test(norm(text))) problems.push(`it opens with "${text.match(/^\S+(\s+\S+)?/)![0]}"; open with something specific about this title or the person`)
+  if (/\n/.test(text.trim())) problems.push('it has a line break; one paragraph')
+  // The facts speak of "this viewer"; the text speaks to the reader (seen
+  // 2026-11-11: "it's more mainstream than this viewer usually goes for").
+  if (/\b(this|the) viewer\b/i.test(text)) problems.push(`it says "${text.match(/\b(this|the) viewer\b/i)![0]}"; talk to the reader as "you"`)
+  const self = facts.titles[0]
+  if (self && norm(text).includes(`*${norm(self)}* with`)) problems.push(`it compares *${self}* to itself; compare only to a title the facts list as rated by the viewer, or don't compare`)
+
+  const plain = text.replace(/\*[^*]+\*/g, ' ')
+
+  // Titles in *asterisks* outside the facts are comparisons ("*Clueless*
+  // meets *Heathers*", Eran 2026-11-06: option B). They're allowed here and
+  // checked against the catalogue by the writer (`outsideTitles`), so a
+  // made-up film can't pass; nothing may be claimed about them (the judge).
+  const outside = outsideTitles(text, facts)
+  if (facts.angle !== 'comparison' && outside.length) problems.push(`it compares to *${outside[0]}*; this one has no comparison to other films — follow HOW TO OPEN`)
+  if (outside.length > 2) problems.push('it compares to more than two other titles; one or two at most')
+  const meets = (text.match(/\bmeets\b/gi) ?? []).length
+  if (meets > (facts.angle === 'comparison' ? 1 : 0)) problems.push(facts.angle === 'comparison' ? 'it uses "meets" more than once' : 'it uses an "X meets Y" comparison; this one has none — follow HOW TO OPEN')
+  for (const w of OVERUSED) {
+    const n = (text.match(w.re) ?? []).length
+    if (n > w.max) problems.push(`it uses "${text.match(w.re)![0]}"${w.max ? ' more than once' : ''}; every text was saying it — find your own words`)
+  }
+  if ((text.match(/\*/g) ?? []).length % 2 === 1) problems.push('it has an unpaired asterisk')
+
+  // Names, places, other titles: any capitalised word (or run of them) must
+  // appear in the facts. A sentence's first word is skipped when it's plain English.
+  for (const sentence of plain.split(/(?<=[.!?;:—])\s+/)) {
+    const tokens = sentence.match(/[A-Za-zÀ-ÿ'’.-]+/g) ?? []
+    let run: string[] = []
+    const flush = () => {
+      if (run.length) {
+        const name = run.join(' ').replace(/[’']s$/i, '').replace(/(s)[’']$/i, '$1').replace(/[.]$/, '')
+        const ok = facts.haystack.includes(norm(name)) ||
+          run.filter(w => !/^(of|the|in|on|a|de|la|von|van)$/.test(w)).every(w => knownWord(w, facts.haystack))
+        if (!ok) problems.push(`it mentions "${name}", which is not in the facts`)
+      }
+      run = []
+    }
+    tokens.forEach((tok, i) => {
+      const capital = /^[A-ZÀ-Ý]/.test(tok)
+      // A sentence's first word is capitalised anyway ("Remember", "Seeing"):
+      // it's never checked on its own; a name after it still is.
+      const starter = i === 0
+      if (capital && !starter && tok !== 'I' && tok !== 'TV') run.push(tok)
+      else if (run.length && /^(of|the|in|on|a|de|la|von|van)$/.test(tok) && /^[A-Z]/.test(tokens[i + 1] ?? '')) run.push(tok)
+      else flush()
+    })
+    flush()
+  }
+
+  // Numbers (years, money, ages, counts) must be in the facts.
+  for (const n of plain.match(/\d[\d,.]*/g) ?? []) {
+    if (!facts.haystack.includes(n.replace(/[.,]$/, ''))) problems.push(`it mentions "${n}", which is not in the facts`)
+  }
+
+  // The personal link is ours, word for word; nothing else may speak for the viewer.
+  let rest = norm(text)
+  if (facts.linkClause) {
+    const clause = norm(facts.linkClause).replace(/,$/, '')
+    if (!rest.includes(clause)) problems.push(`it doesn't use the opening words given: "${facts.linkClause}"`)
+    rest = rest.replace(clause, ' ')
+  }
+  // "*Title*, which you loved" is true for the titles the facts compare to,
+  // with the reaction the facts give; a hypothetical ("if you're after
+  // something lighter") claims nothing.
+  const OK_VERBS: Record<string, string> = { loved: 'loved|adored|enjoyed', liked: 'liked|enjoyed' }
+  rest = rest.split(/(?<=[.!?])\s+/).map(sentence => {
+    const c = facts.compared.find(x => sentence.includes(`*${norm(x.title)}*`))
+    return c ? sentence.replace(new RegExp(`\\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:${OK_VERBS[c.reaction]})\\b`, 'g'), ' ') : sentence
+  }).join(' ')
+  rest = rest.replace(/\bif you(?:'re| are)?\b[^.,;—]*/g, ' ')
+  // The catch is ours too, word for word (Eran, 2026-11-12: "it should come
+  // out as the fact says it"), and it is the one place "you usually" belongs.
+  if (facts.reservation) {
+    const r = norm(toYou(facts.reservation)).replace(/[.!]$/, '')
+    if (!rest.includes(r)) problems.push(`it doesn't end on the reservation as given: "${toYou(facts.reservation)}" — use it word for word`)
+    rest = rest.replace(r, ' ')
+  }
+  const claim = rest.match(VIEWER_CLAIM)
+  if (claim) problems.push(`it says "${claim[0]}" — describe the film, not what the viewer likes`)
+  const taste = rest.match(VIEWER_TASTE)
+  if (taste) problems.push(`it says "${taste[0]}" — show it in the film ("it's fast"), don't say it about the viewer`)
+  // Titles are left out: *Safety Not Guaranteed* is not a guarantee.
+  const over = facts.titles.reduce((t, x) => t.split(x).join(' '), plain).match(OVERCLAIM)
+  if (over) problems.push(`it says "${over[0]}", which the facts don't support`)
+  return [...new Set(problems)]
+}
+
+// ─────────────────────────────────────────────
+// The writer
+// ─────────────────────────────────────────────
+
+const PROMPT = (facts: string) => `You're a friend who knows films inside out, texting one person about why the title below is a great pick for THEM. The plot is already on their screen, so don't retell it: make the case. Write three to five sentences, 85 to 100 words — no more — one paragraph: rich, specific, opinionated, fun to read. You won't fit everything: after the opening, pick the two strongest of the feel, the cast and the premise, then the catch if there is one.
+
+What a great one has (Eran's examples: "it's like *The Proposal* meets *Fight Club*, but with a father-daughter dynamic that's both hilarious and surprisingly heartfelt. Robert De Niro's performance is chef's kiss…"):
+- Open the way HOW TO OPEN (at the end of the facts) says. Every text opens differently; don't fall back on a comparison.
+- Comparisons: titles the facts list as rated by this viewer may always be mentioned (say "which you loved" / "which you liked" exactly as the facts give it). A comparison to any OTHER film or show only when HOW TO OPEN asks for one — then just one, real and famous, and never state a fact about it (cast, director, plot).
+- What it feels like to watch, in fresh words: the humour, the tension, the heart, the energy. Don't string mood labels together ("warm, hopeful and whimsical").
+- Your take on the cast in "Starring": what they bring, how they play off each other. You don't know who plays whom, so never pair an actor with a character or a part of the story. Only call an actor the lead if they're first in "Starring".
+- At most one passing clause about the premise, from the Plot, adding nothing it doesn't say.
+- If the facts give a reservation, end on it exactly as the facts give it, word for word, after a short lead-in of your own (vary it: "Fair warning:", "Just know going in:", "One thing to know:"). Add nothing to it: don't stretch, soften or explain it. If they don't, mention no downside.
+- What this viewer goes for ("Why it fits this viewer") is for you to show in the title itself — "it's fast and twisty" — never to say about the viewer ("your preference for…", "the energy you crave").
+
+Rules:
+- No critics, audiences, reviews or ratings. No "match", "fit", "taste", data or algorithms.
+- Name no person, place, year, number or award that isn't in the facts.
+- Don't guess anyone's gender: use a name, or the plot's own words.
+- Titles go in *asterisks*; no other asterisks.
+- Skip stock phrases: "right at home", "hooked", "warm hug", "lingers long after the credits", "a specific magic", "irresistible", "electric", "crackles", "breath of fresh air", "sneaks up on you", "respects your intelligence", "edge of your seat". Never say "anchors", "dynamic", "infectious" or "got you"; "chemistry" and "whimsy" at most once. Never start with "You'll love", "Since you", "Because you", "If you", "There is" or "<title> is a".
+- Reply with the paragraph only.
+
+${facts}`
+
+function groq() {
+  const key = process.env.GROQ_API_KEY
+  if (!key) throw new Error('GROQ_API_KEY is not set')
+  return createGroq({ apiKey: key })
+}
+
+/** Per model call. A full write is at most 4 calls; the route caps the total. */
+const CALL_TIMEOUT_MS = 14000
+/** The longest rate-limit wait worth sitting through rather than showing the plain text. */
+const MAX_RATE_WAIT_MS = 6000
+
+/** In order: the next takes over when one is out of budget, rate-limited or down. */
+const CHAIN: Record<'write' | 'judge', string[]> = {
+  write: [MODELS.whyWriter, MODELS.whyWriterBackup, MODELS.whyWriterLast],
+  judge: [MODELS.whyJudge, MODELS.whyJudgeBackup],
+}
+/** How long a model is skipped after it says it's out of budget, when it doesn't say. */
+const OUT_DEFAULT_MS = 15 * 60 * 1000
+const OUT_MAX_MS = 60 * 60 * 1000
+const outKey = (model: string) => `why_model_out:${model}`
+const outLocal = new Map<string, number>()
+/** Tests only: forget which models were marked out. */
+export const resetModelOuts = () => outLocal.clear()
+
+/** "try again in 9m12.5s" / "in 2.7s" / "in 450ms" → ms; null when the error doesn't say. */
+function retryAfterMs(message: string): number | null {
+  const m = /try again in ((?:\d+h)?(?:\d+m)?(?:[\d.]+s)?|[\d.]+ms)/i.exec(message)
+  if (!m) return null
+  if (/ms$/.test(m[1])) return Number(m[1].slice(0, -2))
+  const h = /(\d+)h/.exec(m[1]), mn = /(\d+)m(?!s)/.exec(m[1]), sec = /([\d.]+)s/.exec(m[1])
+  return ((h ? +h[1] * 3600 : 0) + (mn ? +mn[1] * 60 : 0) + (sec ? +sec[1] : 0)) * 1000
+}
+const isRateLimit = (message: string) => /rate limit|429|too many requests|quota/i.test(message)
+
+async function isOut(model: string): Promise<boolean> {
+  if ((outLocal.get(model) ?? 0) > Date.now()) return true
+  try { return Boolean(await getRedis().get(outKey(model))) } catch { return false }
+}
+async function markOut(model: string, ms: number): Promise<void> {
+  const ttl = Math.min(Math.max(ms, 60_000), OUT_MAX_MS)
+  outLocal.set(model, Date.now() + ttl)
+  try { await getRedis().set(outKey(model), '1', { ex: Math.ceil(ttl / 1000) }) } catch { /* the local mark still holds */ }
+}
+
+async function draft(prompt: string, purpose: 'write' | 'judge' = 'write'): Promise<string> {
+  let last: unknown = new Error(`no ${purpose} model available`)
+  for (const model of CHAIN[purpose]) {
+    if (await isOut(model)) continue
+    for (let tries = 0; tries < 2; tries++) {
+      try {
+        return await callModel(model, prompt, purpose)
+      } catch (err) {
+        last = err
+        const msg = err instanceof Error ? err.message : String(err)
+        const ms = retryAfterMs(msg)
+        // A short wait the model asks for is worth it once; a long one means
+        // its budget is spent — skip it (for everyone) and use the next.
+        if (isRateLimit(msg) && ms != null && ms <= MAX_RATE_WAIT_MS && tries === 0) {
+          await new Promise(r => setTimeout(r, ms + 250))
+          continue
+        }
+        if (isRateLimit(msg)) await markOut(model, ms ?? OUT_DEFAULT_MS)
+        break
+      }
+    }
+  }
+  throw last
+}
+
+/** gpt-oss takes low/medium/high; Qwen takes none/default. */
+function effortFor(model: string): 'low' | 'none' {
+  return model.startsWith('qwen/') ? 'none' : 'low'
+}
+const isMistral = (model: string) => /^(ministral|mistral|open-mistral)/.test(model)
+
+async function callModel(model: string, prompt: string, purpose: 'write' | 'judge'): Promise<string> {
+  const mistralKey = process.env.MISTRAL_API_KEY
+  if (isMistral(model) && !mistralKey) throw new Error('MISTRAL_API_KEY is not set')
+  const { text } = await generateText({
+    model: isMistral(model) ? createMistral({ apiKey: mistralKey })(model) : groq()(model),
+    // The Groq ones are reasoning models; a paragraph from given facts needs
+    // little thinking, and each free budget is 8,000 tokens a minute.
+    ...(isMistral(model) ? {} : { providerOptions: { groq: { ...GROQ_TEXT_OPTIONS.groq, reasoningEffort: effortFor(model) } } }),
+    // gpt-oss bills its hidden reasoning against this before any reply
+    // token; Qwen runs without reasoning and caps output at 1,000 a minute.
+    maxOutputTokens: model.startsWith('openai/gpt-oss') ? 2000 : 600,
+    temperature: purpose === 'judge' ? 0 : 0.6,
+    // A rate-limited call fails fast and the next model takes over, rather
+    // than the SDK's backoff keeping the sheet waiting 20 seconds.
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+    prompt,
+  })
+  return text.replace(/([,;]\s+(?:and\s+)?)(Critics|Audiences)\b/g, (_, lead: string, w: string) => lead + w.toLowerCase())
+    .replace(/[\u2010-\u2015]/g, (c) => (c === '\u2014' ? '—' : c === '\u2013' ? '–' : '-'))
+    .replace(/\s+/g, ' ').trim().replace(/^["“]|["”]$/g, '').trim()
+}
+
+const JUDGE = (facts: string, text: string, clause: string | null) => `You check film recommendations for made-up details.
+
+FACTS:
+${facts}
+
+TEXT:
+${text}
+
+Does the TEXT state anything the FACTS don't support? Look for: events, scenes, objects, animals, places, characters, relationships, who-did-what — especially what a real person (actor, director) does in the story, which must match the Plot — the title used as a character's name, and anything said about critics, audiences or the viewer. These are opinions, never flag them: the tone in plain adjectives (funny, tense, heartfelt, thrilling); anything about a listed actor's performance, presence, energy, chemistry, or that they lead or anchor the film; how it feels to watch; and rephrasing what the facts say. A comparison ("*X* meets *Y*", "it's *X* with…", "like *X*") is an opinion, not a claim that this film is *X*: it's fine for any title, as long as the TEXT states no fact about that other title (its cast, crew or plot) and claims the viewer rated it only if the FACTS say so. A closing reservation is fine only if it says what the FACTS' reservation says.${clause ? `\n\nThe words "${clause}" are already verified: don't question them.` : ''}
+
+Reply "OK" if everything is supported. Otherwise reply with one line per unsupported detail, each starting with "- ".`
+
+async function judge(facts: WhyFacts, text: string): Promise<string[]> {
+  const verdict = await draft(JUDGE(facts.text, text, facts.linkClause), 'judge')
+  if (/^ok\b/i.test(verdict.trim())) return []
+  const lines = verdict.split(/\s*-\s+/).map(l => l.trim()).filter(l => l && !/^ok\b/i.test(l))
+  return lines.length ? lines.map(l => `the fact-check found something not in the facts: ${l}`) : []
+}
+
+export interface WhyText {
+  /** Null only when there's nothing better than what the sheet already shows (cold start). */
+  text: string | null
+  /** 'ai' = written by the model and passed both checks; 'facts' = the fallback. */
+  source: 'ai' | 'facts'
+  /** Why the model's drafts were refused, when they were. */
+  rejected?: string[]
+}
+
+/** The longest a sheet waits for the model before showing the plain text. */
+const TOTAL_DEADLINE_MS = 27_000
+
+/** Write the "why" for one scored title; never throws. */
+export async function writeWhyFromFacts(item: ScoredTitleWithPayload, rated: RatedByPerson, coldStart = false, ctx: WhyContext = {}): Promise<WhyText> {
+  const facts = buildWhyFacts(item, rated, coldStart, ctx)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<WhyText>(resolve => {
+    timer = setTimeout(() => resolve({ text: facts.fallback, source: 'facts', rejected: ['took too long'] }), TOTAL_DEADLINE_MS)
+  })
+  try {
+    return await Promise.race([attemptWrite(item, facts), deadline])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function attemptWrite(item: ScoredTitleWithPayload, facts: WhyFacts): Promise<WhyText> {
+  if (!item.title.synopsis) return { text: facts.fallback, source: 'facts' }
+
+  const rejected: string[] = []
+  try {
+    let feedback = ''
+    // Three tries (2026-11-06): with richer, longer texts a good draft often
+    // trips one rule; the retry is told which.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const text = freshenWords(await draft(`${PROMPT(facts.text)}${feedback}`))
+      let problems = checkWhy(text, facts)
+      if (problems.length === 0) {
+        problems = (await unknownTitles(outsideTitles(text, facts)))
+          .map(t => `it names *${t}*, which isn't a title we know; compare only to real, well-known films and shows`)
+      }
+      if (problems.length === 0) problems = await judge(facts, text)
+      if (problems.length === 0) return { text, source: 'ai', ...(rejected.length ? { rejected } : {}) }
+      rejected.push(...problems.map(p => `${attempt}: ${p}`))
+      feedback = `\n\nA previous attempt was refused because ${problems.join('; ')}. Write it again without that.`
+    }
+  } catch (err) {
+    rejected.push(`model failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  return { text: facts.fallback, source: 'facts', rejected }
+}
+
+// ─────────────────────────────────────────────
+// Cache — one text per user and title
+// ─────────────────────────────────────────────
+
+/** Three days: long enough that re-opening is instant, short enough that new ratings show up. */
+const TTL_SECONDS = 3 * 24 * 60 * 60
+export const whyAiKey = (userId: string, type: string, tmdbId: string) => `why_ai:v6:${userId}:${type}:${tmdbId}`
+
+export async function getCachedWhy(userId: string, type: string, tmdbId: string): Promise<WhyText | null> {
+  return getRedis().get<WhyText>(whyAiKey(userId, type, tmdbId))
+}
+
+/** Only model-written text is kept — a fallback is retried on the next open. */
+export async function cacheWhy(userId: string, type: string, tmdbId: string, why: WhyText): Promise<void> {
+  if (why.source !== 'ai') return
+  await getRedis().set(whyAiKey(userId, type, tmdbId), { text: why.text, source: why.source }, { ex: TTL_SECONDS })
+}

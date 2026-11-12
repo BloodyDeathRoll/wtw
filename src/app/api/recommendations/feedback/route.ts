@@ -45,6 +45,7 @@ import { isMediaType, recordMatches, titleKey, type MediaType } from '@/lib/titl
 import { isContentType, type ContentType } from '@/lib/content-type'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
+import { unrateTitle } from '@/modules/dna/unrate'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
 import { countRatingTowardRefresh, refreshIfDue } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate } from '@/modules/dna/lib/load-save'
@@ -294,6 +295,77 @@ export async function POST(req: NextRequest) {
     await updateSchemaFromStretch(user.id, tmdb_id, reaction, media_type).catch(err =>
       console.error('[feedback] updateSchemaFromStretch failed:', err)
     )
+  }
+
+  return NextResponse.json({ ok: true })
+}
+
+/**
+ * DELETE /api/recommendations/feedback — take a card rating back (the user
+ * tapped the lit Loved / Liked / Disliked chip again).
+ *
+ * Body: { tmdb_id, media_type?, content_type?, saved? }. `saved` says the title
+ * is on the user's Watchlist, so its history entry returns to the saved marker.
+ *
+ * Undoes the rating in the fingerprint (unrateTitle) and drops it from the
+ * Ratings page (its recommendation_feedback rows). Then the next batch is
+ * rebuilt in the background against the corrected fingerprint, like a rating.
+ */
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient()
+  const user = await getAuthUser(supabase)
+  if (!user) {
+    logAuthFailure('/api/recommendations/feedback')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  let tmdb_id: string
+  let media_type: MediaType | null
+  let contentType: ContentType
+  let saved: boolean
+  try {
+    const body = await req.json()
+    tmdb_id     = body.tmdb_id
+    media_type  = isMediaType(body.media_type) ? body.media_type : null
+    saved       = body.saved === true
+    contentType = isContentType(body.content_type) ? body.content_type
+                : media_type === 'movie' ? 'movies'
+                : media_type === 'tv' ? 'series'
+                : 'all'
+    if (!tmdb_id || typeof tmdb_id !== 'string') {
+      return NextResponse.json({ error: 'tmdb_id is required' }, { status: 400 })
+    }
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  const outcome = await unrateTitle(user.id, { tmdb_id, media_type, saved })
+  if (outcome === 'missing') {
+    return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+  }
+  if (outcome === 'conflict') {
+    console.error('[feedback] un-rate lost every compare-and-set; not recorded')
+    return NextResponse.json({ error: 'Failed to clear rating' }, { status: 409 })
+  }
+
+  // The Ratings page reads these rows. A typed key only matches its own title;
+  // a bare id is matched only when the caller can't say which title it is.
+  const recKey = media_type ? titleKey(media_type, tmdb_id) : tmdb_id
+  const { error } = await createServiceClient()
+    .from('recommendation_feedback')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('recommendation_id', recKey)
+  if (error) {
+    console.error('[feedback] recommendation_feedback delete failed:', error.message)
+    return NextResponse.json({ error: 'Failed to clear rating' }, { status: 500 })
+  }
+
+  if (outcome === 'saved') {
+    const userId = user.id
+    after(async () => {
+      await precomputeNextBatch(userId, contentType)
+    })
   }
 
   return NextResponse.json({ ok: true })

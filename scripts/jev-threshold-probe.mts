@@ -15,10 +15,32 @@
  * Limits: one viewer, 8 titles, hand-written descriptions. Real batches are
  * 50 titles from the catalog; the "drop nothing if more than half would go"
  * guard in step 4 is the safety net until this is measured on those.
+ *
+ * To read the viewer text step 4 sends for a real user (read-only, no Jev
+ * call), pass their users.id:
+ *
+ *   node --env-file=.env.local --conditions=react-server --import tsx scripts/jev-threshold-probe.mts --show-state <user-id>
  */
 
 import { jevNoul } from '@/lib/jev'
-import { JEV_DISLIKE_THRESHOLD } from '@/modules/engine/pipeline/step4-llm-rerank'
+import { JEV_DISLIKE_THRESHOLD, jevState } from '@/modules/engine/pipeline/step4-llm-rerank'
+import type { DNASchema } from '@/types/dna'
+
+const showStateFor = process.argv[process.argv.indexOf('--show-state') + 1]
+if (process.argv.includes('--show-state')) {
+  if (!showStateFor || showStateFor.startsWith('--')) {
+    console.error('--show-state needs a users.id')
+    process.exit(2)
+  }
+  const { createServiceClient } = await import('@/lib/supabase/service')
+  const { data, error } = await createServiceClient().from('users').select('dna').eq('id', showStateFor).single()
+  if (error || !data?.dna) {
+    console.error(`No fingerprint for ${showStateFor}: ${error?.message ?? 'dna is empty'}`)
+    process.exit(1)
+  }
+  console.log(jevState(data.dna as DNASchema))
+  process.exit(0)
+}
 
 const state = [
   'VIEWER PROFILE:',
@@ -26,7 +48,7 @@ const state = [
   'Emotional demand preference: high. Pacing: favors slow burn. Tone: gravitates toward tense, melancholic.',
   '',
   'WHAT THIS VIEWER AVOIDS:',
-  'NEVER wants: anime. Wants less of: horror. Has repeatedly rated down: comedy (6 rated down).',
+  'NEVER wants: anime. Wants less of: horror. Has repeatedly rated down: comedy.',
 ].join('\n')
 
 const titles: { expect: 'fits' | 'avoid'; line: string }[] = [

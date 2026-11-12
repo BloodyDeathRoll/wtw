@@ -16,7 +16,7 @@
 // The header, list and card reuse the feed's styles (RecommendationsView.module.css)
 // so the card looks exactly like a recommendation; search.module.css holds the rest.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bookmark, ChevronLeft, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -27,7 +27,8 @@ import { ProviderIcon } from "@/app/components/ProviderIcon";
 import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
-import { addToWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
+import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
+import { safeFrom, searchUrl, type SearchScope } from "@/app/search/url";
 import type { PersonPage, PersonSearchHit, PersonTitle, SearchHit, TitleSearchHit } from "@/lib/tmdb";
 import type { Recommendation } from "@/types/recommendation";
 import rv from "@/modules/session/recommendations/RecommendationsView.module.css";
@@ -39,9 +40,22 @@ const VOICE_KEY = "wtw:voice";
 const PAUSE_MS = 250;
 const IMG = "https://image.tmdb.org/t/p/";
 
-export default function SearchView({ user }: { user: AppUser }) {
+export default function SearchView({
+  user,
+  menu,
+}: {
+  user: AppUser;
+  /**
+   * Opened over another screen by HeaderSearch (a pushState, not a route):
+   * that screen's own menu, shown in place of this one's, and Back pops back
+   * to it.
+   */
+  menu?: ReactNode;
+}) {
+  const inPlace = menu !== undefined;
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const params = useSearchParams();
   const [q, setQ] = useState("");
   // TMDB's last answer, and for which query (hits null = it failed).
   const [answer, setAnswer] = useState<{ q: string; hits: SearchHit[] | null }>({ q: "", hits: [] });
@@ -56,7 +70,6 @@ export default function SearchView({ user }: { user: AppUser }) {
   // card and shows the list again instead of leaving Search (Eran, 2026-11-04).
   // A person's page the same way (/search?p=525), and a card opened from it
   // (/search?p=525&t=movie-27205): Back walks card → person → list.
-  const params = useSearchParams();
   const openKey = params.get("t");
   const openPerson = params.get("p");
   const [picked, setPicked] = useState<{ key: string; rec: Recommendation } | null>(null);
@@ -70,6 +83,57 @@ export default function SearchView({ user }: { user: AppUser }) {
 
   const query = q.trim();
 
+  // The screen's own titles first (?in=, from HeaderSearch): the saved ones
+  // from Watchlist, the rated ones from Ratings — matched here by title,
+  // listed above the TMDB results, which then leave them out (2026-11-07).
+  const inParam = params.get("in");
+  const scope: SearchScope | null = inParam === "ratings" || inParam === "watchlist" ? inParam : null;
+  // Where Back returns (?from=, set by HeaderSearch; only known screens).
+  const from = safeFrom(params.get("from"));
+  const base = searchUrl(scope ?? undefined, from ?? undefined);
+  const url = (extra: string) => `${base}${base.includes("?") ? "&" : "?"}${extra}`;
+  const [mine, setMine] = useState<LocalHit[]>([]);
+  useEffect(() => {
+    if (!scope) return;
+    let on = true;
+    (async () => {
+      if (scope === "watchlist") {
+        await hydrateWatchlist(user.id);
+        if (!on) return;
+        setMine(
+          getWatchlist().map((e) => ({
+            tmdb_id: e.rec.id.split(":").pop() ?? e.rec.id,
+            type: e.rec.type,
+            title: e.rec.title,
+            year: e.rec.year,
+            poster_path: null,
+            poster_url: e.rec.poster_url,
+            rec: e.rec,
+          })),
+        );
+      } else {
+        const res = await fetch("/api/recommendations/ratings");
+        if (!res.ok || !on) return;
+        const { items } = (await res.json()) as {
+          items: { title: string | null; tmdb_id: string; media_type: "movie" | "tv" | null; poster_url: string | null }[];
+        };
+        if (!on) return;
+        setMine(
+          items.flatMap((i) =>
+            i.title && i.media_type
+              ? [{ tmdb_id: i.tmdb_id, type: i.media_type, title: i.title, year: null, poster_path: null, poster_url: i.poster_url }]
+              : [],
+          ),
+        );
+      }
+    })();
+    return () => {
+      on = false;
+    };
+  }, [scope, user.id]);
+  const mineHits = query.length >= 2 ? mine.filter((t) => t.title.toLowerCase().includes(query.toLowerCase())) : [];
+  const mineKeys = new Set(mineHits.map(keyOf));
+
   // The account's watchlist first, as the app does on start, so "saved" is right.
   useEffect(() => {
     void hydrateWatchlist(user.id);
@@ -78,8 +142,8 @@ export default function SearchView({ user }: { user: AppUser }) {
   // A reload on /search?t=… or ?p=… has no list behind it to go back to: start clean.
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
-    if (sp.has("t") || sp.has("p")) window.history.replaceState(null, "", "/search");
-  }, []);
+    if (sp.has("t") || sp.has("p")) window.history.replaceState(null, "", base);
+  }, [base]);
 
   useEffect(() => {
     if (query.length < 2) return;
@@ -113,7 +177,7 @@ export default function SearchView({ user }: { user: AppUser }) {
   async function pick(h: TitleSearchHit) {
     const key = keyOf(h);
     inputRef.current?.blur();
-    window.history.pushState(null, "", openPerson ? `/search?p=${openPerson}&t=${key}` : `/search?t=${key}`);
+    window.history.pushState(null, "", url(openPerson ? `p=${openPerson}&t=${key}` : `t=${key}`));
     if (picked?.key === key) return; // the same card again: it's already loaded
     setLoadingKey(key);
     setFailedKey(null);
@@ -132,10 +196,20 @@ export default function SearchView({ user }: { user: AppUser }) {
     }
   }
 
+  /** One of the screen's own titles: the saved card is already here, no fetch. */
+  function pickMine(h: LocalHit) {
+    if (!h.rec) return pick(h);
+    const key = keyOf(h);
+    inputRef.current?.blur();
+    window.history.pushState(null, "", url(`t=${key}`));
+    setPicked({ key, rec: h.rec });
+    setSaved(isInWatchlist(h.rec.id));
+  }
+
   async function pickPerson(h: PersonSearchHit) {
     const id = h.tmdb_id;
     inputRef.current?.blur();
-    window.history.pushState(null, "", `/search?p=${id}`);
+    window.history.pushState(null, "", url(`p=${id}`));
     if (who?.id === id && who.page) return; // the same person again: already loaded
     setWho({ id, name: h.name, page: null, failed: false });
     try {
@@ -216,14 +290,24 @@ export default function SearchView({ user }: { user: AppUser }) {
     const t = setTimeout(() => setLeaving(false), LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
+  // Back returns to the screen the search was opened from. Opened in place,
+  // that screen is still mounted under this one: pop to it. After a reload
+  // it's gone: a home stage ("watchlist", "ratings"…) or a route ("/play")
+  // by replace, not push, so the phone's own Back doesn't come through
+  // /search again.
   function back() {
-    if (openKey || openPerson) window.history.back();
-    else if (window.history.length > 1) router.back();
+    if (openKey || openPerson || inPlace) window.history.back();
+    else if (from) {
+      setLeaving(true);
+      router.replace(from.startsWith("/") ? from : `/?stage=${encodeURIComponent(from)}`);
+    } else if (window.history.length > 1) router.back();
     else leave("/");
   }
 
   const status = answer.q !== query ? "searching" : answer.hits ? "done" : "error";
-  const showHits = !openKey && !openPerson && query.length >= 2 && status !== "error" && hits.length > 0;
+  const shown = hits.filter((h) => !mineKeys.has(keyOf(h)));
+  const showMine = !openKey && !openPerson && mineHits.length > 0;
+  const showHits = !openKey && !openPerson && query.length >= 2 && status !== "error" && shown.length > 0;
   let note: string | null = null;
   if (openKey) {
     if (loadingKey === openKey) note = "Loading…";
@@ -232,7 +316,7 @@ export default function SearchView({ user }: { user: AppUser }) {
     if (person?.failed) note = "Couldn’t open that one. Try again in a moment.";
     else if (!person?.page) note = "Loading…";
     else if (person.page.titles.length === 0) note = "Nothing of theirs to show yet.";
-  } else if (query.length >= 2) {
+  } else if (query.length >= 2 && !showMine) {
     if (status === "error") note = "Search isn’t working right now. Try again in a moment.";
     else if (status === "searching" && !showHits) note = "Searching…";
     else if (status === "done" && answer.hits?.length === 0) note = "Nothing like that. Check the spelling?";
@@ -241,46 +325,26 @@ export default function SearchView({ user }: { user: AppUser }) {
   return (
     <div className={styles.shell}>
       <div className={rv.view}>
-        <div className={rv.header}>
-          <button type="button" className={rv.headerBtn} onClick={back} aria-label="back">
+        {/* The field sits in the header, between Back and the menu — the home
+            header's geometry (WTWApp TopBar), so sweeping in over it keeps the
+            menu where it was (2026-11-07). */}
+        <div className={styles.header}>
+          <button type="button" className={styles.headerBtn} onClick={back} aria-label="back">
             <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
           </button>
-          <span className={rv.headerTitle}>Search</span>
-          <div className={rv.headerRight}>
-            <AppMenu
-              onRecommend={go("recommendations")}
-              onWatchlist={go("watchlist")}
-              onFastLearning={() => leave("/play?tab=games")}
-              onRatings={go("ratings")}
-              onProfile={() => leave("/profile/dna")}
-              // Already here: AppMenu closes the drawer itself.
-              onSearch={() => {}}
-              user={user}
-              onSignOut={async () => {
-                await createClient().auth.signOut();
-                router.replace("/login");
-                router.refresh();
-              }}
-              voice={voice}
-              setVoice={chooseVoice}
-            />
-          </div>
-        </div>
-
-        <form
-          className={styles.box}
-          role="search"
-          onSubmit={(e) => {
-            // The keyboard's search key: search now, and put the keyboard away.
-            e.preventDefault();
-            setNow((n) => n + 1);
-            inputRef.current?.blur();
-          }}
-        >
-          <div className={styles.field}>
+          <form
+            className={styles.field}
+            role="search"
+            onSubmit={(e) => {
+              // The keyboard's search key: search now, and put the keyboard away.
+              e.preventDefault();
+              setNow((n) => n + 1);
+              inputRef.current?.blur();
+            }}
+          >
             <input
               ref={inputRef}
-              className={styles.input}
+              className={styles.headerInput}
               type="search"
               enterKeyHint="search"
               // On a card the field shows the title, on a person's page their
@@ -296,14 +360,52 @@ export default function SearchView({ user }: { user: AppUser }) {
               spellCheck={false}
             />
             {q && (
-              <button type="button" className={styles.clear} onClick={clear} aria-label="Clear search">
+              <button
+                type="button"
+                className={`${styles.clear} ${styles.headerClear}`}
+                onClick={clear}
+                aria-label="Clear search"
+              >
                 <X size={22} strokeWidth={2} aria-hidden />
               </button>
             )}
+          </form>
+          <div className={rv.headerRight}>
+            {menu ?? (
+              <AppMenu
+                onRecommend={go("recommendations")}
+                onWatchlist={go("watchlist")}
+                onFastLearning={() => leave("/play?tab=games")}
+                onRatings={go("ratings")}
+                onProfile={() => leave("/profile/dna")}
+                user={user}
+                onSignOut={async () => {
+                  await createClient().auth.signOut();
+                  router.replace("/login");
+                  router.refresh();
+                }}
+                voice={voice}
+                setVoice={chooseVoice}
+              />
+            )}
           </div>
+        </div>
+
+        <div className={styles.box}>
+          {showMine && (
+            <>
+              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your watchlist" : "In your ratings"}</p>
+              <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : "Your ratings"}>
+                {mineHits.map((h) => (
+                  <TitleRow key={keyOf(h)} h={h} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
+                ))}
+              </div>
+              {showHits && <p className={styles.groupLabel}>All titles</p>}
+            </>
+          )}
           {showHits && (
             <div className={styles.list} role="listbox" aria-label="Results">
-              {hits.map((h) =>
+              {shown.map((h) =>
                 h.type === "person" ? (
                   <button
                     key={keyOf(h)}
@@ -333,7 +435,7 @@ export default function SearchView({ user }: { user: AppUser }) {
             </div>
           )}
           {note && <p className={styles.note} role="status">{note}</p>}
-        </form>
+        </div>
 
         {person?.page && person.page.titles.length > 0 && (
           <div className={rv.content}>
@@ -385,6 +487,8 @@ export default function SearchView({ user }: { user: AppUser }) {
 }
 
 const keyOf = (h: SearchHit) => `${h.type}-${h.tmdb_id}`;
+/** A title of the screen's own group: a full poster URL, and the saved card itself when we have it. */
+type LocalHit = TitleSearchHit & { poster_url?: string | null; rec?: Recommendation };
 const isTitle = (h: SearchHit): h is TitleSearchHit => h.type !== "person";
 
 /** "15 films", or "54 titles" once there's a series among them. */
@@ -397,12 +501,13 @@ function countOf(titles: PersonTitle[]) {
 /** One title in a list: poster, name, year (· series), and a third line —
  *  the lead actors, or who a person played. The line's space is held while
  *  it's still on its way, so rows don't move. */
-function TitleRow({ h, line, onPick }: { h: TitleSearchHit; line: string | undefined; onPick: () => void }) {
+function TitleRow({ h, line, onPick }: { h: LocalHit; line: string | undefined; onPick: () => void }) {
+  const poster = h.poster_url ?? (h.poster_path ? `${IMG}w154${h.poster_path}` : null);
   return (
     <button type="button" role="option" aria-selected="false" className={styles.row} onClick={onPick}>
-      {h.poster_path ? (
+      {poster ? (
         // eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP
-        <img className={styles.thumb} src={`${IMG}w154${h.poster_path}`} alt="" loading="lazy" />
+        <img className={styles.thumb} src={poster} alt="" loading="lazy" />
       ) : (
         <span className={styles.thumb} />
       )}

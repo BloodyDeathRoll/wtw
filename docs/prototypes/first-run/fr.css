@@ -1,0 +1,235 @@
+/* First-run mocks (2026-11-08). The live CSS (live/*.css) does everything else; only the new pieces live here. */
+html,body{margin:0;width:100vw;height:100vh;overflow:hidden;background:#000}
+*,*::before,*::after{animation:none!important;transition:none!important}
+
+/* 1 · Genres: an icon in the genre's swatch, two examples under the name */
+.wtw-play .gname i.gtile{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff}
+.wtw-play .gname i.gtile svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.wtw-play .gtext{display:flex;flex-direction:column;min-width:0;gap:2px}
+.wtw-play .glabel{line-height:1.2}
+.wtw-play .geg{font-size:12.5px;font-weight:400;color:rgba(255,255,255,.5);line-height:1.3}
+
+/* 2 · The learner */
+.wtw-play .blockbar .lcount{font-variant-numeric:tabular-nums}
+.wtw-play .blockbar .lcount b{color:var(--fg);font-weight:600}
+.wtw-play .learn{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 22px 22px;min-height:0}
+.wtw-play .learn .learn-poster{width:250px;margin:0}
+.wtw-play .learn .learn-poster .poster{width:100%;box-shadow:0 18px 40px rgba(0,0,0,.6)}
+.wtw-play .learn h2{margin:14px 0 0;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.wtw-play .learn .lmeta{margin-top:4px;color:var(--muted);font-size:14px}
+.wtw-play .learn .lfill{flex:1;min-height:12px}
+/* the three answer-button versions; all use the game pill colour, "haven't seen" is never grey-on-grey */
+.wtw-play .learn .ltiles{display:grid;gap:8px;width:100%}
+.wtw-play .learn .ltiles.three{grid-template-columns:repeat(3,1fr)}
+.wtw-play .learn .ltiles.four{grid-template-columns:repeat(4,1fr);gap:7px}
+.wtw-play .learn.vb{padding-left:16px;padding-right:16px}
+.wtw-play .learn .ltile{height:78px;border:0;border-radius:20px;background:var(--pill-dark);color:#fff;font-weight:600;font-size:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:0}
+.wtw-play .learn .ltiles.four .ltile{font-size:14.5px;border-radius:18px}
+.wtw-play .learn .ltile .seen-emoji{font-size:27px;line-height:1}
+.wtw-play .learn .ltile.out,.wtw-play .learn .lgrid button.out{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.45)}
+.wtw-play .learn .lnotseen{margin-top:10px;height:48px;border:0;background:none;color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px;padding:0 18px}
+.wtw-play .learn .lgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.wtw-play .screen.game-screen .learn .lgrid button{height:56px;border:0;border-radius:999px;background:var(--pill-dark);color:#fff;font-weight:600;font-size:18px;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 10px}
+.wtw-play .learn .lgrid .seen-emoji{font-size:20px}
+
+/* P2-U0 (2026-11-10) · version A, revised: taller tiles, a bit higher; "Haven't seen" = the duel's live .unseen, full width */
+.wtw-play .learn.va2{padding-bottom:30px}
+.wtw-play .learn.va2 .ltile{height:96px}
+.wtw-play .learn.va2 .unseen{width:100%;margin-top:10px}
+
+/* "Haven't seen" (Eran, 2026-11-10): the duel's .unseen, outline only, struck-out eye. Inset outline, so the size doesn't change. */
+.wtw-play .unseen.ol{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;gap:8px}
+.wtw-play .unseen.ol svg{flex:none}
+
+/* Pixel pass (2026-11-10). Short screens: the poster gives up height first (down to 210px), the buttons never move off
+   screen. Long titles (3+ lines at 26px) drop to 22px. The tiles and "Haven't seen" are 8px apart, like the tiles. */
+.wtw-play .learn.va2 .learn-poster{flex:3 1 375px;max-height:450px;min-height:210px;width:auto;aspect-ratio:2/3}
+.wtw-play .learn.va2 .learn-poster .poster{width:100%;height:100%}
+.wtw-play .learn.va2 .learn-poster .poster img{width:100%;height:100%;object-fit:cover}
+.wtw-play .learn.va2 .lfill{flex:1 20 72px;min-height:12px}
+.wtw-play .learn.va2 h2.long{font-size:22px}
+.wtw-play .learn.va2 .unseen{margin-top:16px}   /* Eran 2026-11-10: double the gap (was 8) */
+
+/* Pixel pass 2 (2026-11-10).
+   Card: on tall phones the poster grows (up to 450px tall) instead of leaving a hole above the buttons; 375x812 is unchanged.
+   "Haven't seen": radius 20, the tiles' corner, on both screens.
+   Pair: the Games button style (56px pills, 18px semibold, equal widths: .game-screen), and the spare height is split
+   1 : 2 above the question and under the posters, so the pair sits a little above the middle instead of leaving a band. */
+.wtw-play .unseen.ol{border-radius:20px}
+.wtw-play .ob-pair .ob-sp1{flex:1 1 0}
+.wtw-play .ob-pair .ob-sp2{flex:2 1 0}
+.wtw-play .ob-pair .actions{margin-top:0}
+.wtw-play .ob-pair .actions{padding-bottom:30px}   /* same bottom edge as the card screen's last button (30px) */
+
+/* The cards' in-between messages (2026-11-10): one card's slot, same buttons place */
+.wtw-play .lmsg{flex:3 1 375px;max-height:450px;min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.wtw-play .lmsg h2{margin:22px 0 0}
+.wtw-play .lmsg p{margin:8px 0 0;max-width:300px;font-size:16px;line-height:1.45;color:var(--muted);text-wrap:pretty}
+.wtw-play .lfan{display:flex;justify-content:center}
+.wtw-play .lfan-p{position:relative;width:92px;margin:0 -10px}
+.wtw-play .lfan-p:nth-child(1){transform:rotate(-8deg) translateY(10px)}
+.wtw-play .lfan-p:nth-child(3){transform:rotate(8deg) translateY(10px)}
+.wtw-play .lfan-p:nth-child(2){z-index:1}
+.wtw-play .lfan-p .poster{width:100%;box-shadow:0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .lfan-p .poster img{filter:brightness(.45) saturate(.6)}
+.wtw-play .lfan-p i{position:absolute;inset:0;display:grid;place-items:center;color:#c8c8cc;z-index:3}
+.wtw-play .lmsg-btns{width:100%;display:flex;flex-direction:column;gap:16px}
+.wtw-play .lmile{color:var(--gold)}
+/* the message sits in the middle of all the free space (not in the poster slot); no shadows between the fanned posters */
+.wtw-play .lmsg-screen .lmsg{flex:1 1 auto;max-height:none;padding-bottom:24px}
+.wtw-play .lmsg-screen .lfill{display:none}
+.wtw-play .lfan-p .poster{box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+
+/* One corner for everything you tap in onboarding (Eran, 2026-11-10, option 1): 16px, close to the posters' 12px.
+   Tiles, "Haven't seen", the message buttons and the pair's bottom buttons. Posters keep 12px. */
+.wtw-play .learn .ltile,
+.wtw-play .unseen.ol,
+.wtw-play .screen.game-screen .lmsg-btns :is(.cta,.opt),
+.wtw-play .screen.game-screen.ob-pair .actions .ghost{border-radius:16px}
+.wtw-play .screen.game-screen .lmsg-btns .cta{border-radius:999px}   /* Eran: the orange buttons stay pills */
+.wtw-play .screen.game-screen .lmsg-btns .opt{border-radius:999px}   /* Eran: "Move on" is a pill too */
+
+/* Milestones (2026-11-10): the gold step name arrives — rises 8px and fades in (320ms), then one lighter band sweeps
+   across the words (700ms); the bar's fill glows once (900ms). Nothing loops. These beat the global "animation:none". */
+.wtw-play .lmile{display:inline-block;color:transparent;background:linear-gradient(100deg,var(--gold) 0 38%,#ffe2a6 50%,var(--gold) 62% 100%);
+  background-size:300% 100%;background-position:0 0;-webkit-background-clip:text;background-clip:text;
+  animation:lmile-in .32s cubic-bezier(.2,.8,.2,1) both,lmile-shine .7s ease-in-out .3s both!important}
+.wtw-play .lmile-bar .sb-bar{overflow:visible}
+.wtw-play .lmile-bar i{animation:lmile-glow .9s ease-out .1s both!important}
+@keyframes lmile-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes lmile-shine{from{background-position:100% 0}to{background-position:0 0}}
+@keyframes lmile-glow{0%{box-shadow:0 0 0 0 rgba(212,155,58,0)}35%{box-shadow:0 0 12px 2px rgba(212,155,58,.75)}100%{box-shadow:0 0 0 0 rgba(212,155,58,0)}}
+@media (prefers-reduced-motion:reduce){.wtw-play .lmile,.wtw-play .lmile-bar i{animation:none!important}.wtw-play .lmile{color:var(--gold);background:none}}
+
+/* Part 4 · before the picks (2026-11-11): the block sits in the middle of the free space; the button where the tiles were */
+.wtw-play .between .bmid{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;padding-bottom:24px}
+.wtw-play .between .bmid h2{margin:0}
+.wtw-play .between .bmid > p{margin:8px 0 0;max-width:310px;font-size:16px;line-height:1.45;color:var(--muted);text-wrap:pretty}
+.wtw-play .between .bwall{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;margin-top:16px}
+.wtw-play .between .bw-p{position:relative}
+.wtw-play .between .bw-p .poster{width:100%}
+.wtw-play .between .bw-p .tvb{display:none}
+.wtw-play .between .bw-e{position:absolute;left:5px;bottom:5px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);display:grid;place-items:center;font-size:14px;line-height:1}
+.wtw-play .between .bnext{margin-top:20px}
+.wtw-play .between > .cta{flex:none}
+/* the posters' label: the learned-box heading's look (13px, .12em, uppercase, gold), left-aligned like the box */
+.wtw-play .between .blabel{align-self:stretch;margin:20px 0 0;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);text-align:left;font-weight:400}
+.wtw-play .between .bwall{margin-top:10px}
+/* (2026-11-11) The poster row: 96px posters, 8px apart, starting at the content edge and running to the screen edge;
+   past 3 posters the last 70px fade out, to say "swipe for more". The "+N more" tile for the other option. */
+.wtw-play .between .brow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;align-self:stretch;margin:10px -22px 0 0;padding-right:22px}
+.wtw-play .between .brow.more{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 70px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 70px),transparent)}
+.wtw-play .between .brow .bw-p{flex:none;width:96px}
+.wtw-play .between .bw-more{aspect-ratio:2/3;border-radius:12px;background:var(--pill-dark);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.wtw-play .between .bw-more b{font-size:22px;font-weight:700;color:#fff}
+.wtw-play .between .bw-more span{font-size:13px;color:var(--muted)}
+.wtw-play .between .bw-e{box-shadow:0 0 0 1px rgba(255,255,255,.3)}   /* a faint ring, so the badge shows on dark posters too */
+/* (2026-11-11) Swipe details: the row snaps so a poster's left edge lines up with the content edge; the fades follow
+   the scroll (.fr = more to the right: 70px fade; .fl = some scrolled out to the left: 40px fade; both, or neither). */
+.wtw-play .between .brow{scroll-snap-type:x mandatory}
+.wtw-play .between .brow .bw-p{scroll-snap-align:start}
+.wtw-play .between .brow.more{-webkit-mask-image:none;mask-image:none}
+.wtw-play .between .brow.fr{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 70px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 70px),transparent)}
+.wtw-play .between .brow.fl{-webkit-mask-image:linear-gradient(90deg,transparent,#000 40px);mask-image:linear-gradient(90deg,transparent,#000 40px)}
+.wtw-play .between .brow.fl.fr{-webkit-mask-image:linear-gradient(90deg,transparent,#000 40px,#000 calc(100% - 70px),transparent);mask-image:linear-gradient(90deg,transparent,#000 40px,#000 calc(100% - 70px),transparent)}
+.wtw-play .between .bnext h4 b{font-weight:700}   /* Eran: "Last step:" in bold */
+
+/* Part 5 · quick picks (2026-11-11): the one helper button spans the width (it's alone now) */
+.wtw-play .ob-pair .actions .ghost{flex:1}
+/* Plot pairs: the dimmed posters are cropped to squares (they're only decoration once neither is seen), so the plots
+   fit; a very long plot scrolls the screen, and "Can't decide" sits after it. The plot itself is part of the tap. */
+.wtw-play .ob-pair .duel.pitchd .poster{aspect-ratio:1/1}
+.wtw-play .ob-pair .duel.pitchd .poster img{width:100%;height:100%;object-fit:cover;object-position:top}
+.wtw-play .ob-pair .duel.pitchd .side > .shc{top:calc(100cqw - 46px)}
+.wtw-play .ob-pair .side > .unseen{margin-top:auto}   /* both "Haven't seen" on one line, whatever the title length */
+/* Eran 2026-11-11: two "Haven't seen" per side; after the second, that side's button is off. Same .35 as the Games' other off buttons. */
+.wtw-play .unseen.ol[disabled]{opacity:.35;cursor:default}
+/* Eran 2026-11-11: pair titles stop at 3 lines, then "…" (6 of the 980 titles need a 4th line on a 360px phone). */
+.wtw-play .ob-pair .pick .nm{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+/* Eran 2026-11-11: no hover lift on the pair's posters (the live season lifts them 3px with a ring and a shadow). */
+.wtw-play .ob-pair .pick:hover .poster{transform:none;box-shadow:none}
+/* Eran 2026-11-11: the picked poster's gold ring is 1px thicker in the quick picks (4px; the season's is 3px). */
+.wtw-play .ob-pair .pick.chosen .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow)}
+/* Part 6 · the closing screen (proposal 2026-11-12): the feed's own loader under the heading; one quiet note when it's slow */
+.wtw-play .between.done .bmid{padding-bottom:56px}
+.wtw-play .between.done .dfp{margin-top:32px}
+.wtw-play .between.done .bmid > p.dnote{margin:20px 0 0;font-size:14px;line-height:1.45;color:var(--muted);max-width:280px}
+/* The mocks switch every CSS animation off (line 3). JPEGs: the loader drawn in full, its fully drawn moment.
+   Playable run (no "still"): the feed loader's own animation back on, same timing as FingerprintLoader.module.css. */
+.wtw-play .dfp.still .FingerprintLoader-module__MAfjZW__live path{stroke-dashoffset:0!important;opacity:1!important}
+.wtw-play .dfp:not(.still) .FingerprintLoader-module__MAfjZW__live path{animation:2.4s cubic-bezier(.45,0,.25,1) infinite FingerprintLoader-module__MAfjZW__fp-draw!important}
+.wtw-play .dfp:not(.still) .FingerprintLoader-module__MAfjZW__live path:nth-child(2){animation-delay:.12s!important}
+.wtw-play .dfp:not(.still) .FingerprintLoader-module__MAfjZW__live path:nth-child(3){animation-delay:.2s!important}
+/* Part 6 · festive takes (2026-11-12) */
+.wtw-play .between.done.d-gold h2 .lmile{font:inherit}
+.wtw-play .dglow .sb-bar i{box-shadow:0 0 12px 2px rgba(212,155,58,.55)}
+.wtw-play .between.done.d-rays .bmid{position:relative;overflow:visible}
+.wtw-play .between.done.d-rays .rays{position:absolute;left:50%;top:42%;width:900px;height:900px;margin:-450px 0 0 -450px;pointer-events:none;opacity:.5;
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--gold) 30%,transparent) 0deg 8deg,transparent 8deg 22deg);
+  mask:radial-gradient(circle,#000 0,transparent 60%);-webkit-mask:radial-gradient(circle,#000 0,transparent 60%)}
+.wtw-play .between.done.d-rays h2.dbig{position:relative;font-family:var(--poster);font-size:52px;font-weight:400;letter-spacing:.03em;line-height:.95}
+.wtw-play .between.done.d-rays .bmid > p,.wtw-play .between.done.d-rays .dfp{position:relative}
+.wtw-play .between.done.d-picks .dpicks{margin-bottom:28px}
+.wtw-play .between.done.d-picks .dpicks .lfan-p:nth-child(2) .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-picks .dpicks .poster img{filter:none}   /* their own picks: full brightness (the "Haven't seen" fan dims) */
+/* rays + picks (2026-11-12): the rays centre on the fan; the fan and heading sit above them */
+.wtw-play .between.done.d-mix .bmid{position:relative;overflow:visible}
+.wtw-play .between.done.d-mix .rays{position:absolute;left:50%;top:38%;width:900px;height:900px;margin:-450px 0 0 -450px;pointer-events:none;opacity:.5;
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--gold) 30%,transparent) 0deg 8deg,transparent 8deg 22deg);
+  mask:radial-gradient(circle,#000 0,transparent 60%);-webkit-mask:radial-gradient(circle,#000 0,transparent 60%)}
+.wtw-play .between.done.d-mix .dpicks{position:relative;margin-bottom:36px}   /* Eran: a little more room under the fan (was 26) */
+.wtw-play .between.done.d-mix .dpicks .poster img{filter:none}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:nth-child(2) .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-mix h2.dbig{position:relative;font-family:var(--poster);font-size:52px;font-weight:400;letter-spacing:.03em;line-height:.95}
+.wtw-play .between.done.d-mix .bmid > p,.wtw-play .between.done.d-mix .dfp{position:relative}
+/* signed off 2026-11-12: two posters sit straight-ish and centred; the rays turn (40 s a turn) in the playable run */
+.wtw-play .between.done.d-mix .dpicks .lfan-p:nth-child(2):last-child .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:first-child:nth-last-child(2){transform:rotate(-6deg) translateY(6px)}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:last-child:nth-child(2){transform:rotate(6deg) translateY(6px)}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:only-child{transform:none}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:only-child .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-mix .rays.spin{animation:40s linear infinite wp-spin!important}
+/* Part 7 · Skip (2026-11-12): Eran wants it less noticeable than the season's dark pill: a quiet grey text button,
+   15px, no fill. The padding keeps a 44px-tall tap area; the negative margin keeps the word on the content edge. */
+.wtw-play .screen .tb-skip{background:none;border:0;border-radius:16px;padding:13px 12px;margin-left:-12px;font-size:15px;font-weight:500;line-height:18px;color:var(--muted)}
+/* Skip sheet (Eran 2026-11-12): the dark layer behind it a bit stronger, 80% (the season's is 60%) */
+.wtw-play .sheet-bg{background:rgba(0,0,0,.8)}
+/* Part 2 · genres (2026-11-12): the live fade starts too low, so the line over the button sat on top of the list (rows showed through it).
+   Here the wrap fades in over its 40px top padding and is solid black from there, so the line reads cleanly. */
+.wtw-play .setup + .cta-wrap.sticky{padding-top:40px;background:linear-gradient(rgba(0,0,0,0),#000 36px)}
+/* Part 2 · round 2 (2026-11-12) */
+.wtw-play .setup.welcome h2{white-space:nowrap}
+.wtw-play .gname.m-none{gap:0}
+.wtw-play .gname i.gline{width:26px;height:26px;border-radius:0;background:none;display:grid;place-items:center}
+.wtw-play .gname i.gpost{position:relative;width:44px;height:44px;border-radius:0;background:none;flex-shrink:0}
+.wtw-play .gname i.gpost .poster{position:absolute;top:2px;width:26px;aspect-ratio:2/3;border-radius:4px;padding:0;box-shadow:0 3px 8px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08)}
+.wtw-play .gname i.gpost .poster img{width:100%;height:100%;object-fit:cover}
+.wtw-play .gname i.gpost .poster .tvb{display:none}
+.wtw-play .gname i.gpost .poster:first-child{left:0;transform:rotate(-7deg)}
+.wtw-play .gname i.gpost .poster:last-child{left:16px;transform:rotate(6deg);z-index:1}
+/* "Lights, camera… genres." stays on one line: 30px (the live size), a touch smaller on phones narrower than 375 */
+.wtw-play .setup.welcome h2{font-size:min(30px,8vw)}
+/* Genres · lit rows (Eran 2026-11-12): grey until answered; an answer lights the icon and the row */
+.wtw-play .gname.m-outline i.gline{color:var(--gc)}
+.wtw-play .setup.lit .grow:not(.ghead) .gname i.gline{color:#5c5c61}
+.wtw-play .setup.lit .grow:not(.ghead) .glabel{color:rgba(255,255,255,.72)}
+.wtw-play .setup.lit .grow.rated .gname i.gline{color:var(--gc);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--gc) 70%,transparent))}   /* no !important: the tap animation must be able to run */
+.wtw-play .setup.lit .grow.rated .glabel{color:#fff}
+.wtw-play .setup.lit .grow.rated{background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 22%,transparent),transparent 62%)}
+/* Genres · the tap animation (playable run, "anim"): the wash is its own layer the page slides in from the left */
+.wtw-play .setup.lit.anim .grow:not(.ghead){position:relative;overflow:hidden}
+.wtw-play .setup.lit.anim .grow.rated{background:none}
+.wtw-play .setup.lit.anim .gwash{position:absolute;inset:0;pointer-events:none;transform:translateX(-100%);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 22%,transparent),transparent 62%)}
+.wtw-play .setup.lit.anim .grow > :not(.gwash){position:relative;z-index:1}
+/* Playable run, genre screen only: the page itself scrolls (not a box inside a pinned frame). Inside the artifact
+   viewer on a phone, an inner scroll box ignored the first swipes until something was tapped (Eran, 2026-11-12). */
+html.docscroll,html.docscroll body,html.docscroll .font-sans{height:auto!important;min-height:100%;overflow:visible!important}
+html.docscroll .WTWApp-module__gS1tAq__page{position:relative!important;height:auto!important;min-height:100vh;overflow:visible!important}
+html.docscroll .WTWApp-module__gS1tAq__app,html.docscroll .WTWApp-module__gS1tAq__appInner{height:auto!important;overflow:visible!important}
+html.docscroll .phone{height:auto!important;overflow:visible!important}
+html.docscroll .screen{position:relative!important;height:auto!important;min-height:100vh;overflow:visible!important}
+/* A failed save (2026-11-12): the season's .save-note, pinned in the 30px under the last button so nothing moves */
+.wtw-play .screen > .save-note.obs{position:absolute;left:0;right:0;bottom:8px;padding:0 16px;white-space:nowrap;margin:0;font-size:13px;line-height:16px;color:var(--muted);text-align:center}
+/* Genre screen: the top bar (logo, menu) stays put while the list scrolls under it (Eran, 2026-11-12) */
+html.docscroll .apptop{position:sticky;top:0;z-index:6;background:#000}

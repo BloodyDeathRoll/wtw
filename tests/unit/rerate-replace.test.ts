@@ -27,7 +27,9 @@ describe('re-rate replace', () => {
     const got = dna.strand_a_creative_affinity.directors['77']
     const want = ref.strand_a_creative_affinity.directors['77']
     expect(got.score).toBeCloseTo(want.score, 10)
-    expect(got.sample_size).toBe(2)
+    // A dislike leaves people alone (2026-11-07): only the liked title counts.
+    expect(got.sample_size).toBe(want.sample_size)
+    expect(got.sample_size).toBe(1)
     expect(got.lineage_boost).toBe(want.lineage_boost)
   })
 

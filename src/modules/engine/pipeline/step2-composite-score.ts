@@ -14,6 +14,13 @@
  *
  * DB queries: 1 pgvector RPC + up to 2 lineage fetches (only when
  * strand_a has crew with lineage_boost set — rare for new users).
+ *
+ * Formula v2 (FORMULA_V2, docs/plan/PLAN.md P1-E3) replaces the sum above:
+ *   s = 0.30·z(creators) + 0.20·z(crowd) + 0.50·z(taste model),
+ *   composite = Φ(s / sd(s))   — see ../scoring/formula-v2.ts.
+ * Under v2 the narrative RPC is skipped (weight 0) and the taste model is
+ * trained per call from the user's ratings and picks; visceral and content
+ * are still computed, for dimension_matches only, until P1-E5.
  */
 
 import { computeCrewAffinity } from '../scoring/crew-affinity'
@@ -26,6 +33,11 @@ import {
   computeBoostFromCaches,
   type LineageCache,
 } from '../scoring/lineage-boost'
+import { scoreFormulaV2 } from '../scoring/formula-v2'
+import { fetchTasteVectors, vecKey } from '../scoring/taste-vectors'
+import { formulaV2Enabled } from '@/lib/flags'
+import { predict, contributions } from '@/modules/dna/taste-model'
+import { userTasteWeights } from '../scoring/taste-weights'
 import type { DNASchema } from '@/types/dna'
 import type { TitleRow, ScoredTitle } from '../types'
 
@@ -68,14 +80,18 @@ export function toPercentiles(scores: Map<string, number>): Map<string, number> 
   return out
 }
 
-function externalRatingScore(title: TitleRow): number {
-  const tmdb = title.tmdb_rating != null ? (title.tmdb_rating / 10) * 0.6 : null
-  const omdb = title.omdb_rating != null ? title.omdb_rating * 0.4 : null
+/**
+ * Crowd score, 0–1. `tmdb_rating` is stored 0–10, `omdb_rating` 0–1
+ * (src/lib/omdb.ts). With only one of the two, that one is the whole score:
+ * until P1-E1 it was halved, which sank 48 of the 923 tested titles.
+ */
+export function externalRatingScore(title: Pick<TitleRow, 'tmdb_rating' | 'omdb_rating'>): number {
+  const { tmdb_rating: tmdb, omdb_rating: omdb } = title
 
-  if (tmdb === null && omdb === null) return 0.5   // no data → neutral
-  if (tmdb === null) return (omdb! / 0.4) * 0.5   // re-normalize to full range
-  if (omdb === null) return (tmdb / 0.6) * 0.5
-  return tmdb + omdb
+  if (tmdb == null && omdb == null) return 0.5   // no data → neutral
+  if (omdb == null) return tmdb! / 10
+  if (tmdb == null) return omdb
+  return 0.6 * (tmdb / 10) + 0.4 * omdb
 }
 
 function recencyScore(releaseYear: number | null): number {
@@ -86,22 +102,48 @@ function recencyScore(releaseYear: number | null): number {
   return 0.0
 }
 
+/**
+ * The user's taste model and the candidates' vectors, for formula v2.
+ * Never throws: if either read fails, v2 scores on creators and crowd alone
+ * (every model z is 0) and says so in the log, so a missing column or a
+ * slow query can't take the feed down.
+ */
+async function loadTasteModel(
+  candidates: TitleRow[],
+  dna: DNASchema,
+): Promise<{ w: number[]; vecs: Map<string, number[]> } | null> {
+  try {
+    // w is shared with step 1's taste pool (taste-weights.ts): one training per generation.
+    const [w, vecs] = await Promise.all([userTasteWeights(dna), fetchTasteVectors(candidates)])
+    return { w, vecs }
+  } catch (err) {
+    console.warn('[step2] taste model unavailable — v2 without it:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
 export async function scoreCandidates(
   candidates: TitleRow[],
   dna: DNASchema
 ): Promise<ScoredTitle[]> {
   if (candidates.length === 0) return []
 
+  const v2 = formulaV2Enabled()
   const candidateIds = candidates.map(t => t.tmdb_id)
 
-  // ── Batch narrative match (1 pgvector RPC) ────────────────
-  const narrativeScores = await computeNarrativeMatchScores(
-    dna.strand_b_narrative_dimensions,
-    dna.strand_c_visceral_specs,
-    dna.metadata.user_id,
-    dna.metadata.taste_version,
-    candidateIds
-  )
+  // v2: training and the candidates' vectors load while lineage is fetched.
+  const tasteModel = v2 ? loadTasteModel(candidates, dna) : null
+
+  // ── Batch narrative match (1 pgvector RPC) — weight 0 under v2 ──
+  const narrativeScores = v2
+    ? new Map<string, number>()
+    : await computeNarrativeMatchScores(
+        dna.strand_b_narrative_dimensions,
+        dna.strand_c_visceral_specs,
+        dna.metadata.user_id,
+        dna.metadata.taste_version,
+        candidateIds
+      )
 
   // Rank within the pool, not raw cosine. Mistral embeddings put every
   // enriched title at 0.94–0.99 against the fingerprint (measured 2026-08-28:
@@ -183,6 +225,25 @@ export async function scoreCandidates(
       dimensions_stretched: [],
     }
   })
+
+  if (v2) {
+    const model = await tasteModel
+    const v2Scores = scoreFormulaV2(scored.map(s => {
+      const vec = model?.vecs.get(vecKey(s.title))
+      return {
+        creators: s.crew_affinity_score,
+        crowd:    s.external_rating_score,
+        model:    model && vec ? predict(model.w, vec) : null,
+      }
+    }))
+    scored.forEach((s, i) => {
+      const vec = model?.vecs.get(vecKey(s.title))
+      s.composite_score = v2Scores[i].composite
+      s.formula_v2      = model && vec
+        ? { ...v2Scores[i], vec, contributions: contributions(model.w, vec) }
+        : v2Scores[i]
+    })
+  }
 
   return scored.sort((a, b) => b.composite_score - a.composite_score)
 }

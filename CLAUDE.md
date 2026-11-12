@@ -9,6 +9,7 @@ WTW is an AI-powered film and TV recommendation engine that builds a continuousl
 | Working on | Read first |
 |---|---|
 | **Anything — start here.** What's done, what's next, who drives it | `docs/INTEGRATION.md` |
+| **v2 work (new formula, first run, chat as consultant)** — work packages, lanes, gates; status in GitHub Issues | `docs/plan/PLAN.md` · numbers: `docs/plan/EVIDENCE.md` |
 | `src/types/dna.ts`, `src/modules/dna/`, any cross-module seam | `docs/DNA-CONTRACT.md` |
 | Full DNA field reference | `docs/master_dna_schema.json` |
 | Git workflow, branching, PRs, merge conflicts | `GITGUIDE.md` |
@@ -89,6 +90,7 @@ SUPABASE_SERVICE_ROLE_KEY=         MISTRAL_API_KEY=         CRON_SECRET=
 UPSTASH_REDIS_REST_URL=            UPSTASH_REDIS_REST_TOKEN=
 MISTRAL_BATCH_API_KEY=   # optional — nightly enrichment only; falls back to MISTRAL_API_KEY
 TYPESAFE_API_KEY=        # Jev — engine step 4 filter; when it fails the batch is served in score order and the devs are told
+JEV_ENABLED=false        # skips step 4 (Jev) entirely; set in Vercel since P1-E7. Unset = on
 ```
 
 ## Commands

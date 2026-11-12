@@ -122,6 +122,17 @@ export function freshState(): PlayState {
   }
 }
 
+/**
+ * A saved state from before a genre was added (Family & kids, 2026-11-06)
+ * has no chip for it; every `gen` read does arithmetic, so a missing one
+ * would turn into NaN on the first pick. Fill it in as meh (0). Mutates and
+ * returns the same object.
+ */
+export function withAllGenres<S extends { gen: Record<string, number> }>(S: S): S {
+  for (const g of GAME_GENRES) if (typeof S.gen[g.id] !== 'number') S.gen[g.id] = 0
+  return S
+}
+
 const LOG_CAP = 60
 export function note(S: PlayState, line: string) {
   S.log.unshift(line)

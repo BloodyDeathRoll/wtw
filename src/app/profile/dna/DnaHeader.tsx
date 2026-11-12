@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
 import styles from "./dna.module.css";
 
 /** Same key WTWApp persists the Gemini Live voice under. */
@@ -60,6 +61,26 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
     return () => clearTimeout(t);
   }, [leaving]);
 
+  const menu = (
+    <AppMenu
+      onRecommend={go("recommendations")}
+      onWatchlist={go("watchlist")}
+      onFastLearning={() => leave("/play?tab=games")}
+      onRatings={go("ratings")}
+      // Already on this page. AppMenu closes the drawer itself, so there is
+      // nothing to do — a router.refresh() here would refetch the whole
+      // server component for no change.
+      onProfile={() => {}}
+      user={user}
+      onSignOut={async () => {
+        await createClient().auth.signOut();
+        router.replace("/login");
+        router.refresh();
+      }}
+      voice={voice}
+      setVoice={chooseVoice}
+    />
+  );
   return (
     <header className={styles.header}>
       <button
@@ -79,24 +100,10 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
         <p className={styles.subtitle}>{subtitle}</p>
       </div>
 
-      <AppMenu
-        onRecommend={go("recommendations")}
-        onWatchlist={go("watchlist")}
-        onFastLearning={() => leave("/play?tab=games")}
-        onRatings={go("ratings")}
-        // Already on this page. AppMenu closes the drawer itself, so there is
-        // nothing to do — a router.refresh() here would refetch the whole
-        // server component for no change.
-        onProfile={() => {}}
-        user={user}
-        onSignOut={async () => {
-          await createClient().auth.signOut();
-          router.replace("/login");
-          router.refresh();
-        }}
-        voice={voice}
-        setVoice={chooseVoice}
-      />
+      <div className={styles.headerRight}>
+        <HeaderSearch btnClass={styles.headerIconBtn} user={user} menu={menu} from="/profile/dna" />
+        {menu}
+      </div>
       {leaving && <RouteLoading label="Loading" overlay />}
     </header>
   );

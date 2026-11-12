@@ -8,7 +8,7 @@
  * version on top. So the feedback route kicks this off after each rating:
  *
  *   precomputeNextBatch  → run the pipeline against the current DNA, park the
- *                          batch under rec_pending:{user} with a hash of the
+ *                          batch under rec_pending3:{user} with a hash of the
  *                          inputs it was built from (no LLM explanations yet).
  *   adoptPendingBatch    → session/end: if the parked batch's hash still
  *                          matches the DNA being bumped, store it as the
@@ -30,7 +30,8 @@ import type { ContentType } from '@/lib/content-type'
 import { generateRecommendations } from './generate'
 import { cacheRecommendations } from './step8-cache'
 
-const pendingKey = (userId: string, contentType: ContentType) => `rec_pending:${userId}:${contentType}`
+// `rec_pending2:` (2026-11-06): batches parked before the kids' cap and the new card lines aren't adopted.
+const pendingKey = (userId: string, contentType: ContentType) => `rec_pending3:${userId}:${contentType}`
 const lockKey    = (userId: string) => `rec_precompute_lock:${userId}`
 const dirtyKey   = (userId: string) => `rec_precompute_dirty:${userId}`
 

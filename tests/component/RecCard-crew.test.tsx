@@ -91,3 +91,38 @@ describe('<WhyPanel /> bars and story lines', () => {
     expect(story.textContent).toBe('What it’s likePacing:slow burnTone:warm, hopefulLanguage:Korean')
   })
 })
+
+// Eran, 2026-11-12 (#272): one line per person, every role they had.
+describe('<WhyPanel /> crew — one line per person', () => {
+  it('joins a person\'s roles instead of listing them again', () => {
+    render(<WhyPanel result={result([
+      { name: 'Christopher Nolan', role: 'director', affinity_score: 0.3 },
+      { name: 'Jonathan Nolan', role: 'writer', affinity_score: 0.2 },
+      { name: 'Christopher Nolan', role: 'writer', affinity_score: 0.3 },
+      { name: 'Christopher Nolan', role: 'writer', affinity_score: 0.3 },
+    ])} />)
+    const crew = section('Crew')
+    expect(crew.querySelectorAll('[class*="crewInfo"]')).toHaveLength(2)
+    expect(crew).toHaveTextContent('Christopher Nolandirector, writer')
+    expect(crew).toHaveTextContent('Jonathan Nolanwriter')
+  })
+})
+
+// P1-E5: under formula v2 the sheet shows three bars and the v2 "What it's like".
+describe('<WhyPanel /> under formula v2', () => {
+  it('shows Your taste, Crowd and Creators, Creators last, and the title\'s feel', () => {
+    render(<WhyPanel result={result([], {
+      taste: { bars: { taste: 0.9, crowd: 0.6, creators: 0.3 }, like: [{ dimension: 'feel', value: 'dark, twisty' }, { dimension: 'language', value: 'ko' }] },
+    } as never)} />)
+    const bars = section('Score breakdown')
+    expect([...bars.querySelectorAll('[class*="scoreLabel"]')].map(e => e.textContent)).toEqual(['Your taste', 'Crowd', 'Creators'])
+    const like = section('What it’s like')
+    expect(like).toHaveTextContent('Feels:dark, twisty')
+    expect(like).toHaveTextContent('Language:Korean')
+  })
+
+  it('shows no bars when the pool was too small to compare', () => {
+    render(<WhyPanel result={result([], { taste: { like: [] } } as never)} />)
+    expect(screen.queryByText('Score breakdown')).toBeNull()
+  })
+})

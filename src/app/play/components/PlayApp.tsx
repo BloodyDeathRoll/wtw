@@ -20,7 +20,7 @@ import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from '@/modules/session/vo
 import type { GameTitle } from '../lib/scales'
 import type { GameGenre } from '../lib/genres'
 import {
-  freshState, prepareTitles, isBlocked, nextPair, choose, replaceSide, loveBoth, neither as neitherAns,
+  freshState, withAllGenres, prepareTitles, isBlocked, nextPair, choose, replaceSide, loveBoth, neither as neitherAns,
   hunchCandidate, answerHunch as answerHunchBrain, countBlockPick, reactToPick as reactToPickBrain, resolveHuh, knowledge, isUnlocked, unlockAfter, unlockOf,
   setScale as setScaleBrain, predict, settleBet, note, pairKey, showdownPair, learnFromRating, tallyPick, blockLean,
   type Pair, type PairFilter, type PlayState, type Title,
@@ -94,7 +94,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
   const firstName = (user.name ?? '').trim().split(' ')[0] || null
   const router = useRouter()
   const T = useMemo(() => prepareTitles(titles), [titles])
-  const SRef = useRef<PlayState>(saved.state ?? freshState())
+  const SRef = useRef<PlayState>(saved.state ? withAllGenres(saved.state) : freshState())
   const [ready, setReady] = useState(saved.mode === 'server')
   const [ui, setUI] = useState<UI>(INITIAL_UI)
   // Shown once per visit, before the genres, only to a player who hasn't rated them yet.
@@ -252,7 +252,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
         SRef.current = demoStateAt(T, jumpTo)
         save(SRef.current, [])
         window.history.replaceState(null, '', '/play?demo=1')   // a reload keeps the jumped player
-      } else if (local?.v === 3) SRef.current = local
+      } else if (local?.v === 3) SRef.current = withAllGenres(local)
       setReady(true)
     }
     const S = SRef.current

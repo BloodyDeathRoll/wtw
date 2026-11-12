@@ -38,11 +38,13 @@ import { getCandidates }            from './step1-candidate-gen'
 import { scoreCandidates }          from './step2-composite-score'
 import { applySoftModifiers }       from './step3-soft-modifiers'
 import { composeBatch }             from './step3b-compose-batch'
+import { capKidsShare, spreadKids } from './kids-share'
 import { llmRerank }                from './step4-llm-rerank'
 import { injectStretchPick }        from './step5-stretch-pick'
 import { buildReasonPayloads }      from './step6-reason-payload'
 import { sheetTexts, toResults } from './step7-explanation'
 import { loadRatedByPerson } from './step7-card-reason'
+import { cardPlots } from './card-plot'
 import {
   getCachedRecommendations,
   cacheRecommendations,
@@ -148,17 +150,22 @@ async function runPipeline(
   t.mark('step2 scoring')
 
   // ── Step 3: soft modifiers ────────────────────────────────
-  const modified = applySoftModifiers(scored, dna, sessionContext)
+  const modified = applySoftModifiers(scored, dna)
 
   // ── Step 3b: 80% fresh / 20% previously-served, by score ─
-  const batch = composeBatch(modified)
+  // Kids' titles first get the share this viewer has earned for them
+  // (kids-share.ts): without it a warm, hopeful taste fills half the batch
+  // with kids' films nobody asked for.
+  const batch = capKidsShare(composeBatch(modified), modified, dna, sessionContext)
 
   // ── Step 4: LLM re-ranking of the batch ──────────────────
   const reranked = await llmRerank(batch, dna)
   t.mark('step4 rerank')
 
   // ── Step 5: stretch pick injection ───────────────────────
-  const withStretch = injectStretchPick(reranked, scored, dna)
+  // Kids' titles spread out first (kids-share.ts): in strict match order
+  // they all opened the feed.
+  const withStretch = injectStretchPick(spreadKids(reranked), scored, dna)
 
   // ── Step 6: reason payload assembly ──────────────────────
   const withPayloads = buildReasonPayloads(withStretch)
@@ -169,8 +176,12 @@ async function runPipeline(
   await cacheWhyTexts(userId, sheetTexts(withPayloads, rated)).catch(err => {
     console.warn('[generate] sheet texts not cached (sheet shows the card line):', err instanceof Error ? err.message : err)
   })
+  // Plots too long for a card get a checked one-sentence summary, once per
+  // title and cached (card-plot.ts); a few seconds at most, else skipped.
+  const plots = await cardPlots(withPayloads)
+  t.mark(`card plots (${plots.size})`)
   const version = dna.metadata.taste_version
-  return toResults(withPayloads, rated).map(r => ({
+  return toResults(withPayloads, rated, plots).map(r => ({
     ...r,
     fingerprint_version: version,
   }))

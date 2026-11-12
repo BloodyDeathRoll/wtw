@@ -15,6 +15,10 @@ export { enrichTitleWithNarrative }            from './enrichment/enrich-title-n
 export { buildLineageGraph }                   from './enrichment/build-lineage-graph'
 export { runNightlyEnrichment }                from './enrichment/nightly-enrichment'
 
+// ── "Why it's a match", written from facts ─────────────
+export { whyForTitle, cardLinesForTitles } from './why'
+export type { WhyText } from './why'
+
 // ── Cache utilities (used by feedback route to invalidate) ────
 export {
   recCacheKey,

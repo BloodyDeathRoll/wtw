@@ -51,6 +51,18 @@ export function addToRegretQueue(tmdb_id: string, title: string, type: "movie" |
   writeQueue([...queue, { tmdb_id, title, type, watched_at: Date.now(), reacted: false }])
 }
 
+/**
+ * Take a queued check-in back out — the user cleared the rating that queued it
+ * (tapped the lit chip again). Removed outright, not marked reacted, so rating
+ * the title again queues a fresh one.
+ */
+export function removeFromRegretQueue(tmdb_id: string, type: "movie" | "tv") {
+  const queue = readQueue()
+  const entry = queue.find(e => sameTitle(e, tmdb_id, type))
+  if (!entry || entry.reacted) return
+  writeQueue(queue.filter(e => e !== entry))
+}
+
 /** Returns entries that are 48hr+ old and haven't had a regret response yet. */
 export function getPendingRegretChecks(): RegretEntry[] {
   return readQueue().filter(e => !e.reacted && Date.now() - e.watched_at >= FORTY_EIGHT_HOURS)

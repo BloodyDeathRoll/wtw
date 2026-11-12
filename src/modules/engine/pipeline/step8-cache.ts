@@ -2,7 +2,7 @@
  * Step 8 — Redis Cache
  *
  * Caches the final RecommendationResult[] in Upstash Redis.
- * Key: rec2:{user_id}:{taste_version}:{type}  TTL: 6 hours
+ * Key: rec4:{user_id}:{taste_version}:{type}  TTL: 6 hours
  *
  * The taste_version in the key means cache entries are automatically
  * superseded when Assignment 3 increments taste_version after a DNA update.
@@ -32,7 +32,11 @@ export function recCacheKey(
   // `rec2:` since 2026-11-06: batches cached before then could carry an AI
   // paragraph with invented facts in `explanation`. The new prefix leaves
   // them unread (they expire within 6h); each user rebuilds once.
-  return `rec2:${userId}:${tasteVersion}:${contentType}`
+  // `rec3:` since 2026-11-06 (later): card lines became the plot or a person
+  // link, and the kids' share is capped — old batches have neither.
+  // `rec4:` (2026-11-06, later still): kids' titles spread through the feed —
+  // batches saved before it opened on all of them, and a refresh showed that.
+  return `rec4:${userId}:${tasteVersion}:${contentType}`
 }
 
 /**

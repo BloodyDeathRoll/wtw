@@ -14,11 +14,10 @@
  * - Dimension notes rewriting (LLM)
  * - Versioned snapshots (keep-last-5, rollback)
  * - Profile UI: /profile/dna
- * - Standing instructions (exclusion rules + soft preferences), merged from
- *   what the user says in session (lib/apply-directives.ts)
+ * - Standing instructions (exclusion rules + soft preferences), set on the
+ *   Taste DNA page (lib/apply-directives.ts). Never from chat (DEC-5).
  *
  * API routes owned by this module:
- * - POST /api/dna/update-from-session
  * - POST /api/dna/bootstrap
  * - GET  /api/dna/summary
  * - DELETE /api/dna/rules  (remove one standing rule — the Taste DNA page)
@@ -55,3 +54,8 @@ export { regenerateEmbedding } from './lib/regenerate-embedding'
 
 // ── Snapshots & rollback ──────────────────────────────────────────────────────
 export { storeSnapshot, getSnapshots, rollbackToSnapshot } from './lib/snapshot'
+
+// Taste model (v2 plan, P1-D4) — formula v2 (P1-E3) and "Why this?" (P1-E5) use these.
+// The loader is server-only: import it from '@/modules/dna/load-taste-training' directly.
+export { trainTasteModel, predict, contributions, buildTraining } from './taste-model'
+export type { TasteRow, TastePair, DuelPick } from './taste-model'

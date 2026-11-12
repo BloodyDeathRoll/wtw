@@ -61,3 +61,8 @@ docs/code-review-*
 # local backups of env files (e.g. .env.local.sydney.bak) and dumps
 .env*.bak
 scripts/dump/
+.env.local.backup-*
+
+# v2 plan: testers' eval answers and the local taste-test scripts (repo is public)
+.eval-data/
+docs/prototypes/rate-run/taste-test/

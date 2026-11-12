@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { ChevronDown, ChevronLeft, ChevronUp, RotateCcw, X } from "lucide-react";
 import type { Reaction } from "@/types/dna";
 import type { ContentType } from "@/lib/content-type";
+import type { AppUser } from "@/modules/session/types";
 import type {
   RatingsSummary,
   RatingItem,
@@ -29,6 +30,7 @@ import type {
 } from "@/app/api/recommendations/ratings/route";
 import { setWatchlistRating } from "@/lib/watchlist";
 import { FingerprintLoader } from "../components/FingerprintLoader";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
 import styles from "./RatingsView.module.css";
 
 type Tab = Reaction | "removed";
@@ -74,12 +76,15 @@ export default function RatingsView({
   onBack,
   contentType,
   headerRight,
+  user,
 }: {
   onBack: () => void;
   /** The Movies/Series list the user is on — the batch a re-rate rebuilds. */
   contentType: ContentType;
   /** App menu — same slot on every screen (2026-08-29). */
   headerRight?: ReactNode;
+  /** For the header's search; without it (the component tests) there is none. */
+  user?: AppUser;
 }) {
   const [data, setData] = useState<RatingsSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -247,6 +252,10 @@ export default function RatingsView({
         </button>
         <span className={styles.headerTitle}>Ratings</span>
         <div className={styles.headerRight}>
+          {/* Search travels with the app menu (both are the app's, not the
+              view's): from here it lists the rated titles first, and its
+              Back returns here (2026-11-07). */}
+          {user && <HeaderSearch btnClass={styles.headerBtn} user={user} menu={headerRight} scope="ratings" from="ratings" />}
           {headerRight}
         </div>
       </div>
