@@ -92,6 +92,10 @@ export async function getCandidates(
 ): Promise<TitleRow[]> {
   const supabase = createServiceClient()
   const userId = dna.metadata.user_id
+  // v2's taste pool needs w (three reads in a row); start it now so it overlaps the reads below (P1-G latency, #240).
+  // No unhandled rejection if step 1 throws first: userTasteWeights already catches its own promise.
+  const v2 = formulaV2Enabled()
+  const weights = v2 ? userTasteWeights(dna) : null
 
   // ── Hard exclusions ───────────────────────────────────────
   const excluded = new Set<string>()
@@ -169,7 +173,7 @@ export async function getCandidates(
   // pool alone rather than fail the whole generation.
   const tastePool = async (): Promise<{ data: TitleRow[]; error: null }> => {
     try {
-      const w = await userTasteWeights(dna)
+      const w = await weights!
       if (w.every(x => x === 0)) return { data: [], error: null }
       const res = await supabase.rpc('get_candidate_titles_by_taste', {
         user_w:          w,
@@ -189,7 +193,7 @@ export async function getCandidates(
       return { data: [], error: null }
     }
   }
-  const byNarrative = formulaV2Enabled()
+  const byNarrative = v2
     ? tastePool()
     : getUserEmbedding(
       userId,
@@ -254,7 +258,7 @@ export async function getCandidates(
   // scorer a pool that is 40% one genre (genre-cap.ts).
   const narrativePool = capGenreShare(
     (narrativeRes.data ?? []) as TitleRow[],
-    formulaV2Enabled() ? FRESH_BY_TASTE_LIMIT : FRESH_BY_NARRATIVE_LIMIT,
+    v2 ? FRESH_BY_TASTE_LIMIT : FRESH_BY_NARRATIVE_LIMIT,
   )
   for (const t of narrativePool) {
     fresh.set(titleKey(t.type, t.tmdb_id), t)
