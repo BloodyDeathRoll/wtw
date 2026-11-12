@@ -14,6 +14,7 @@
 import { Fragment, useEffect, useState } from "react"
 import { TriangleAlert } from "lucide-react"
 import type { RecommendationResult, Reaction } from "@/types/dna"
+import type { ReasonPayloadWithTaste } from "@/modules/engine/types"
 import { addToRegretQueue } from "@/lib/regret-queue"
 import DeepSurvey from "./DeepSurvey"
 import { Emphasis } from "./Emphasis"
@@ -211,6 +212,21 @@ const SCORE_SEGMENTS = [
   { key: "recency",   label: "Recency" },
 ]
 
+// Formula v2 (P1-E5): three real bars, each the title's standing in the pool
+// on that part (Φ of its z). Creators last (backlog: "what the Crew bar means").
+const SCORE_SEGMENTS_V2 = [
+  { key: "taste",    label: "Your taste" },
+  { key: "crowd",    label: "Crowd" },
+  { key: "creators", label: "Creators" },
+]
+
+// "What it's like" under v2: the title's clear scale ends, genres, language.
+const LIKE_LABELS: Record<string, string> = {
+  feel:     "Feels",
+  genre:    "Genre",
+  language: "Language",
+}
+
 // The story lines, in this order. Format is left out on purpose: movie or
 // series is obvious from the title.
 const STORY_LABELS: Record<string, string> = {
@@ -267,7 +283,9 @@ export function WhyTextOnly({ text }: { text: string }) {
 }
 
 export function WhyPanel({ result, why }: { result: RecommendationResult; why?: string | null | "pending" | "failed" }) {
-  const p = result.reason_payload
+  const p = result.reason_payload as ReasonPayloadWithTaste
+  // Present when the batch was scored by formula v2; an older batch or v1 has none.
+  const taste = p.taste
 
   // Bars grow from 0 → value once mounted. Start collapsed, then flip on the
   // next frame so the CSS width transition has a 0-width state to animate from.
@@ -281,6 +299,13 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
   // ones you like are the Crew list; a rated-down one is a reason against.
   const likedCrew = p.crew_matches.filter(m => m.affinity_score > 0)
   const dislikedCrew = p.crew_matches.filter(m => m.affinity_score < 0)
+  // One line per person, every role they had (Eran, 2026-11-12: Nolan was
+  // listed once as director and twice as writer). First appearance keeps its place.
+  const crewLines = [...likedCrew.reduce((byName, m) => {
+    const roles = byName.get(m.name) ?? []
+    if (!roles.includes(m.role)) roles.push(m.role)
+    return byName.set(m.name, roles)
+  }, new Map<string, string[]>())].map(([name, roles]) => ({ name, role: roles.join(", ") }))
   // No one you follow → an empty Crew bar, so it agrees with the line below it.
   const crewScore = likedCrew.length > 0
     ? Math.max(0, p.crew_matches.reduce((s, m) => s + m.affinity_score, 0) / p.crew_matches.length)
@@ -290,13 +315,15 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
     ? p.external_ratings.reduce((s, r) => s + r.score, 0) / p.external_ratings.length
     : result.composite_score
 
-  const scores: Record<string, number> = {
+  const scores: Record<string, number> = taste?.bars ? { ...taste.bars } : {
     crew:      crewScore,
     narrative: result.composite_score,
     visceral:  result.composite_score * 0.88,
     ratings:   ratingsScore,
     recency:   0.88,
   }
+  // v2 without bars (scored in too small a pool to compare) shows none rather than guessing.
+  const segments = taste ? (taste.bars ? SCORE_SEGMENTS_V2 : []) : SCORE_SEGMENTS
 
   // composite_score 0 is "no match claim": a cold-start pick (popular titles
   // served under 15 ratings). A breakdown of a score that doesn't exist would
@@ -305,9 +332,13 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
 
   // One line per dimension, the title's own value, first one wins.
   const story: { label: string; value: string }[] = []
-  for (const dim of Object.keys(STORY_LABELS)) {
-    const d = p.dimension_matches.find(m => m.dimension === dim)
-    if (d?.title_value) story.push({ label: STORY_LABELS[dim], value: storyValue(dim, d.title_value) })
+  if (taste) {
+    for (const l of taste.like) story.push({ label: LIKE_LABELS[l.dimension], value: storyValue(l.dimension, l.value) })
+  } else {
+    for (const dim of Object.keys(STORY_LABELS)) {
+      const d = p.dimension_matches.find(m => m.dimension === dim)
+      if (d?.title_value) story.push({ label: STORY_LABELS[dim], value: storyValue(dim, d.title_value) })
+    }
   }
 
   const against = [
@@ -330,10 +361,10 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
         )}
       </div>
 
-      {!noClaim && (
+      {!noClaim && segments.length > 0 && (
         <div className={styles.whySection}>
           <div className={styles.whySectionLabel}>Score breakdown</div>
-          {SCORE_SEGMENTS.map(seg => (
+          {segments.map(seg => (
             <div key={seg.key} className={styles.scoreRow}>
               <div className={styles.scoreLabel}>{seg.label}</div>
               <div className={styles.scoreTrack}>
@@ -360,8 +391,8 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
 
       <div className={styles.whySection}>
         <div className={styles.whySectionLabel}>Crew</div>
-        {likedCrew.length > 0 ? (
-          likedCrew.map((m, i) => (
+        {crewLines.length > 0 ? (
+          crewLines.map((m, i) => (
             <div key={i} className={styles.crewInfo}>
               <span className={styles.crewName}>{m.name}</span>
               <span className={styles.crewRole}>{m.role}</span>

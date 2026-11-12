@@ -131,3 +131,20 @@ export interface NarrativeExtractionResult {
   tone_tags: string[]
   narrative_metadata: TitleNarrativeMetadata
 }
+
+/**
+ * Formula v2's part of the "Why this?" sheet (P1-E5), carried on the reason
+ * payload as an extra, optional field. `ReasonPayload` itself
+ * (src/types/dna.ts, the shared contract) is not changed (DEC-9): a payload
+ * without `taste` (v1, an older cached batch) shows the sheet as before.
+ */
+export interface TasteWhy {
+  /** Φ(z) of each part within the pool: Your taste, Crowd, Creators. Absent when the pool was too small to compare. */
+  bars?: { taste: number; crowd: number; creators: number }
+  /** "What it's like": the title's clear scale ends, its genres, its language (an ISO 639-1 code). */
+  like: { dimension: 'feel' | 'genre' | 'language'; value: string }[]
+  /** True when more than half the batch has this title's catch, so the Why text leaves it out (taste-facts.ts `sharedCatchKeys`). */
+  catch_shared?: boolean
+}
+
+export type ReasonPayloadWithTaste = import('@/types/dna').ReasonPayload & { taste?: TasteWhy }

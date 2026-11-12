@@ -6,6 +6,8 @@
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { isColdStart } from '../pipeline/cold-start'
+import { getCachedRecommendations } from '../pipeline/step8-cache'
+import type { ReasonPayloadWithTaste } from '../types'
 import type { DNASchema } from '@/types/dna'
 import { loadRatedForComparison, scoreTitlesForUser, type TitleKey } from './score-titles'
 import { cacheWhy, getCachedWhy, writeWhyFromFacts, type WhyText } from './write-why'
@@ -25,19 +27,36 @@ export async function whyForTitle(userId: string, key: TitleKey): Promise<WhyTex
     .single<{ dna: DNASchema | null }>()
   if (!data?.dna) return null
 
-  const [{ items, rated }, ratedTitles] = await Promise.all([
+  const [{ items, rated }, ratedTitles, skipTasteCatch] = await Promise.all([
     scoreTitlesForUser(data.dna, [key]),
     loadRatedForComparison(data.dna),
+    catchSharedInBatch(userId, data.dna.metadata.taste_version, key),
   ])
   const item = items[0]
   if (!item) return null
 
-  const why = await writeWhyFromFacts(item, rated, isColdStart(data.dna), { dna: data.dna, ratedTitles })
+  const why = await writeWhyFromFacts(item, rated, isColdStart(data.dna), { dna: data.dna, ratedTitles, skipTasteCatch })
   if (why.rejected?.length) {
     console.warn(`[why] ${key.type}:${key.tmdb_id} ${why.source}: ${why.rejected.join(' | ').slice(0, 400)}`)
   }
   await cacheWhy(userId, key.type, key.tmdb_id, why).catch(() => {})
   return why
+}
+
+/**
+ * Whether the title's batch marked its taste catch as one most of the batch
+ * shares (step 6). The text scores the title alone, so it can't tell; the
+ * batch it was served in can. Not in a cached batch (an old Watchlist entry):
+ * false, and the catch is said.
+ */
+async function catchSharedInBatch(userId: string, tasteVersion: number, key: TitleKey): Promise<boolean> {
+  const types = ['all', key.type === 'tv' ? 'series' : 'movies'] as const
+  for (const contentType of types) {
+    const batch = await getCachedRecommendations(userId, tasteVersion, contentType).catch(() => null)
+    const hit = batch?.find(r => r.type === key.type && r.tmdb_id === key.tmdb_id)
+    if (hit) return (hit.reason_payload as ReasonPayloadWithTaste).taste?.catch_shared === true
+  }
+  return false
 }
 
 /**
