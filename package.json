@@ -26,6 +26,7 @@
     "build-play-titles": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-play-titles.mts",
     "derive-scale-norms": "node --import tsx scripts/derive-scale-norms.mts",
     "eval": "node --env-file=.env.local --conditions=react-server --import tsx scripts/eval/harness.mts",
+    "live-score": "node --env-file=.env.local --conditions=react-server --import tsx scripts/live-score.mts",
     "reset-account": "node --env-file=.env.local --conditions=react-server --import tsx scripts/reset-account.mts",
     "strip-chat-from-dna": "node --env-file=.env.local --conditions=react-server --import tsx scripts/strip-chat-from-dna.mts",
     "build-six-chains": "node --env-file=.env.local --import tsx scripts/build-six-chains.mts",

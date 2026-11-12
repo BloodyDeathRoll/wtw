@@ -24,6 +24,7 @@ import {
 import { titleKey, recordKey, matchesKeySet, isSavedMarker } from "@/lib/title-key";
 import { isContentType, titleTypeFor, type ContentType } from "@/lib/content-type";
 import { displayMatch } from "@/modules/engine/match-display";
+import { servedFormula } from "@/modules/engine/live-score";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 import type { Recommendation, MotifKind } from "@/types/recommendation";
 
@@ -338,14 +339,20 @@ export async function GET(req: Request) {
     const uiRecs = await toUIRecommendations(items);
     // Remember what this user was actually shown (served_titles, migration
     // 0019): the next batch keeps these out of its "fresh" 80% and draws its
-    // "seen" 20% from them until they're rated. After the response — a
+    // "seen" 20% from them until they're rated. With the score each card was
+    // served with and the formula behind it (migration 0032), for the live
+    // score (src/modules/engine/live-score.ts). After the response — a
     // bookkeeping write must never delay a page.
     if (items.length > 0) {
       const keys = items.map((r) => titleKey(r.type, r.tmdb_id));
+      const scores = items.map((r) => r.composite_score);
+      const formulas = items.map((r) => servedFormula(r));
       after(async () => {
         const { error } = await createServiceClient().rpc("record_served_titles", {
           p_user_id: userId,
           p_keys: keys,
+          p_scores: scores,
+          p_formulas: formulas,
         });
         if (error) console.warn("[recommendations/generate] record_served_titles failed (non-fatal):", error.message);
       });
