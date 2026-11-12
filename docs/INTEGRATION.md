@@ -11,7 +11,7 @@ The team approved the v2 plan: the new formula, the scales on every title, the n
 ### v2 plan
 
 - (nothing landed yet)
-- **In progress · P2-U0 (#241), the onboarding design** (Eran + Claude, branch `feat/p2-u0-onboarding-design`, 2026-11-11). Signed off: the rating card, the cards' messages and milestones, the screen before the picks, the quick-pick rules (12 picks or 18 pairs, one "Can't decide", two swaps per side, no plot pair, titles max 3 lines) and the motion (Flow, incl. the pick's stack-and-exit). Spec: PLAN.md → P2-U0. Mocks, GIFs and a playable run: `docs/prototypes/first-run/` (`build.py` → JPEGs, `play.py` → `play.html`, `pack.py` → the phone link). Next: the closing screen, skip, then the genre screen. Found on the way: 16 game plots cut at "Dr." or an initial (Raiders was just "When Dr."), fixed in PR #268.
+- **In progress · P2-U0 (#241), the onboarding design** (Eran + Claude, branch `feat/p2-u0-onboarding-design`, 2026-11-11). Signed off: the rating card, the cards' messages and milestones, the screen before the picks, the quick-pick rules (12 picks or 18 pairs, one "Can't decide", two swaps per side, no plot pair, titles max 3 lines), the motion (Flow, incl. the pick's stack-and-exit), the closing screen ("It's Showtime": rays, their picks fanned, holds itself at least 3 s) and Skip (one part at a time; a sheet only on the picks). Spec: PLAN.md → P2-U0. Mocks, GIFs and a playable run: `docs/prototypes/first-run/` (`build.py` → JPEGs, `play.py` → `play.html`, `pack.py` → the phone link). Next: the genre screen and the final genre list. Found on the way: 16 game plots cut at "Dr." or an initial (Raiders was just "When Dr."), fixed in PR #268.
 
 ## Earlier: Integration Phase
 

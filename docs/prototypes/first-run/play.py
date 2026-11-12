@@ -5,7 +5,7 @@ Shortened on purpose: the cards stop after 5 shown (not 30 rated / 90 shown), th
 Swaps are close to, not the same as, the season's replaceSide: same type, a shared genre, well known, similar scales.
 Out: play.html (open it through the prototypes server, e.g. http://localhost:4173/docs/prototypes/first-run/play.html)."""
 import json
-from build import (HERE, TITLES, T, app, card, between, qp, qside, poster, EMO, LONG_TITLE)
+from build import (HERE, TITLES, T, app, card, between, qp, qside, poster, EMO, LONG_TITLE, showtime, fan_of, SKIP, SKIP_SHEET)
 
 CARDS = [T('Interstellar'), T('Titanic'), T('Game of Thrones', 'tv'), T('The Hangover'), T('Spirited Away')]
 PAIRS = [(T('Pulp Fiction'), T('Se7en')), (T('The Notebook'), T('Pride & Prejudice')), (T('Toy Story'), T('Shrek')),
@@ -35,6 +35,11 @@ def meta(t): return f'{t["year"]} · {", ".join(t["creators"])}' if t.get('creat
 frag = {}
 for i, t in enumerate(CARDS):
     for n in range(i + 1): frag[f'card-{i}-{n}'] = inner(card(t, n, meta(t)))
+# the closing screen (signed off 2026-11-12): loader animating and rays turning (the JPEGs hold both still);
+# the fan is filled in by the page from what they actually picked
+_P3 = (CARDS[0], CARDS[1], CARDS[2])
+frag['done'] = inner(showtime(_P3)).replace('dfp still"', 'dfp"').replace('class="rays"', 'class="rays spin"').replace(fan_of(_P3), '@@FAN@@')
+DONE_MS = 3000   # Eran 2026-11-12: "It's Showtime" stays at least 3 s, even when the feed is ready sooner
 frag['between-none'] = inner(between('On to the picks.', 'No ratings yet, and that&apos;s fine: the picks work even with titles you haven&apos;t seen.', []))
 some = inner(between('@@H@@', 'The picks will do the rest.', [(CARDS[0], 'loved')] * 4, badges=True, label='What you rated'))
 i, j = some.index('<div class="brow more">'), some.index('</div><script>', some.index('<div class="brow more">'))
@@ -44,13 +49,18 @@ for d in range(MAX_PICKS):
     h = inner(qp(CARDS[0], CARDS[1], d))
     a0, b0 = qside(CARDS[0]), qside(CARDS[1])
     frag[f'pair-{d}'] = h.replace(a0 + b0, '@@DUEL@@').replace('<p>Tap a poster.</p>', '@@SUB@@')
-tiles, sides, names = {}, {}, {}
+# Skip (signed off 2026-11-12) in the top-left of every card and pair
+for k in frag:
+    if k.startswith('card-') or k.startswith('pair-'): frag[k] = frag[k].replace('<div class="tb-l"></div>', f'<div class="tb-l">{SKIP}</div>', 1)
+frag['sheet'] = SKIP_SHEET
+tiles, sides, names, fanp = {}, {}, {}, {}
 for t in CARDS:
     for r in EMO: tiles[f'{t["id"]}|{r}'] = f'<div class="bw-p">{poster(t, "w185")}<span class="bw-e">{EMO[r]}</span></div>'
 for ch in CHAINS:
-    for t in ch[0] + ch[1]: sides[t['id']] = qside(t); sides[t['id'] + '|off'] = qside(t, off=True); names[t['id']] = t['title']
+    for t in ch[0] + ch[1]: sides[t['id']] = qside(t); sides[t['id'] + '|off'] = qside(t, off=True); names[t['id']] = t['title']; fanp[t['id']] = f'<div class="lfan-p">{poster(t, "w185")}</div>'
+for t in CARDS: fanp[t['id']] = f'<div class="lfan-p">{poster(t, "w185")}</div>'
 data = {'frag': frag, 'tiles': tiles, 'sides': sides, 'names': names, 'cards': [t['id'] for t in CARDS],
-        'chains': [[[t['id'] for t in s] for s in ch] for ch in CHAINS], 'maxPicks': MAX_PICKS, 'maxPairs': MAX_PAIRS}
+        'chains': [[[t['id'] for t in s] for s in ch] for ch in CHAINS], 'maxPicks': MAX_PICKS, 'maxPairs': MAX_PAIRS, 'doneMs': DONE_MS, 'fanp': fanp}
 
 JS = """<script>(function(){
 var D=__DATA__, ph=document.querySelector('.phone'), S;
@@ -135,13 +145,37 @@ function showPair(){S.phase='pair';var c=chain(),off=[S.lv[0]>=2,S.lv[1]>=2];
   put(D.frag['pair-'+S.picks.length].replace('@@DUEL@@',duel).replace('@@SUB@@',sub))}
 function pairsOver(){return S.picks.length>=D.maxPicks||S.pairs+1>=D.maxPairs}
 function nextPair(){S.pairs++;S.pi++;S.lv=[0,0];S.note='';
-  if(S.picks.length>=D.maxPicks||S.pairs>=D.maxPairs)showEnd();else showPair()}
+  if(S.picks.length>=D.maxPicks||S.pairs>=D.maxPairs)showDone();else showPair()}
+// After the last pick: the closing screen, then (here, after DONE_MS) the feed would open; the demo ends instead.
+// The fan: picks, newest first; then cards rated Loved, newest first; up to three. Newest in the middle (two: on the right).
+function fanHtml(){var ids=[],add=function(id){if(ids.indexOf(id)<0&&ids.length<3)ids.push(id)};
+  S.picks.slice().reverse().forEach(add);S.rated.slice().reverse().forEach(function(r){if(r[1]==='loved')add(r[0])});
+  if(!ids.length)return '';var order={1:[0],2:[1,0],3:[1,0,2]}[ids.length];
+  return '<div class="lfan dpicks">'+order.map(function(i){return D.fanp[ids[i]]}).join('')+'</div>'}
+function showDone(){S.phase='done';put(D.frag['done'].replace('@@FAN@@',fanHtml()));setTimeout(function(){go(showEnd,true)},D.doneMs)}
 function showEnd(){S.phase='end';var list=S.picks.map(function(id){return D.names[id]}).join(', ');
   put('<div class="screen game-screen"><div class="learn va2 between"><div class="bmid"><h2>End of the demo</h2>'+
-  '<p>'+S.picks.length+' picks in '+S.pairs+' pairs'+(list?': '+list+'.':'.')+'</p><p>The closing screen is the next thing we design.</p>'+
+  '<p>Here your first feed would open.</p><p>'+S.picks.length+' picks in '+S.pairs+' pairs'+(list?': '+list+'.':'.')+'</p>'+
   '<p>Motion: '+(MODE==='flow'?'Flow':'Depth')+'. '+(ASK?'Your phone asks for less motion (Remove animations is on); this demo plays it anyway.':'Your phone doesn&apos;t ask for less motion.')+'</p></div>'+
   '<button class="cta">Play again</button></div></div>')}
-ph.addEventListener('click',function(e){var b=e.target.closest('button');if(!b||b.disabled||busy)return;
+// Skip: on a card, straight to the screen before the picks; on a pair, the "Skip the picks?" sheet first.
+// The sheet slides up (320 ms) while the dark layer fades in (240 ms); closing reverses it, a little quicker.
+function openSheet(){if(getComputedStyle(ph).position==='static')ph.style.position='relative';
+  var t=document.createElement('div');t.innerHTML=D.frag.sheet;[].slice.call(t.childNodes).forEach(function(n){ph.appendChild(n)});S.sheet=true;
+  ph.querySelector('.sheet-bg').animate([{opacity:0},{opacity:1}],{duration:240,easing:'ease-out'});
+  ph.querySelector('.sheet').animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:320,easing:EIN})}
+function closeSheet(then){var bg=ph.querySelector('.sheet-bg'),sh=ph.querySelector('.sheet');S.sheet=false;busy=true;
+  bg.animate([{opacity:1},{opacity:0}],{duration:200,easing:'ease-in',fill:'forwards'});
+  sh.animate([{transform:'translateY(0)'},{transform:'translateY(100%)'}],{duration:220,easing:EOUT,fill:'forwards'});
+  setTimeout(function(){bg.remove();sh.remove();busy=false;if(then)then()},230)}
+ph.addEventListener('click',function(e){
+  if(S.sheet){if(busy)return;if(e.target.closest('.sheet-bg'))closeSheet();var sb=e.target.closest('.sheet button');
+    if(sb)closeSheet(sb.classList.contains('opt')?function(){go(showDone,true)}:null);return}
+  var b=e.target.closest('button');if(!b||b.disabled||busy)return;
+  if(b.classList.contains('tb-skip')){
+    if(S.phase==='card')go(function(){S.ci=D.cards.length;showBetween()},true);
+    else if(S.phase==='pair')openSheet();
+    return}
   if(S.phase==='card'){var id=D.cards[S.ci],last=S.ci+1>=D.cards.length;
     if(b.classList.contains('ltile')){S.rated.push([id,b.lastElementChild.textContent.trim().toLowerCase()]);go(nextCard,last)}
     else if(b.classList.contains('unseen'))go(nextCard,last)}

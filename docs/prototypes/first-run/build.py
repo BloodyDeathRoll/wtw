@@ -358,6 +358,73 @@ S['4-pair-5-long-title'] = (qp(T('Eternal Sunshine of the Spotless Mind'), T('He
 S['4-pair-6-longest'] = (qp(T('Birds of Prey (and the Fantabulous Emancipation of One Harley Quinn)'), T('Pirates of the Caribbean: The Curse of the Black Pearl'), 4),
     '<b>The longest titles in the pool.</b> Titles stop at 3 lines, then "…" (6 of 980). If it\'s still too tall, both posters shrink a little until "Can\'t decide" fits.')
 
+
+# ── Part 6 · the closing screen — signed off by Eran 2026-11-12 ──
+# After the last pick the pair leaves (Flow) and this comes in: the season finale's slow gold rays, the last three
+# titles they picked fanned (the middle one, the newest pick, with the pick's gold ring), "It's Showtime" in the poster
+# type, "Finding your first matches." and the feed's own fingerprint loader. No progress bar: onboarding is over.
+# Fan: picks, newest first; then cards they rated Loved, newest first; never Liked/Disliked/Haven't seen. Fewer than
+# three: what there is. None: no fan.
+import re as _re
+_FP = (ROOT / 'src/modules/session/components/FingerprintLoader.tsx').read_text()
+_RIDGES = _re.findall(r'const RIDGE_\w+ =\s*"([^"]+)"', _FP)
+FP = ('<div class="FingerprintLoader-module__MAfjZW__loader dfp" role="status" aria-label="Loading" style="--fp-size:66px;--fp-color:#ffffff">'
+      '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+      '<g class="FingerprintLoader-module__MAfjZW__track">' + ''.join(f'<path d="{d}"></path>' for d in _RIDGES) + '</g>'
+      '<g class="FingerprintLoader-module__MAfjZW__live">' + ''.join(f'<path pathLength="1" d="{d}"></path>' for d in _RIDGES) + '</g></svg></div>')
+
+
+def fan_of(picks):
+    """picks: newest first. Laid out older-left, newest in the middle, next-newest right (two: older, newest)."""
+    order = {0: [], 1: [0], 2: [1, 0], 3: [1, 0, 2]}[len(picks)]
+    return ('<div class="lfan dpicks">' + ''.join(f'<div class="lfan-p">{poster(picks[i], "w185")}</div>' for i in order) + '</div>') if picks else ''
+
+
+def showtime(picks, note=None, failed=False):
+    # JPEGs: the loader is held fully drawn ("still"); play.py takes that out so it animates
+    mid = (('' if failed else '<div class="rays"></div>') + fan_of(picks)
+           + f'<h2 class="dbig">{"Almost showtime" if failed else "It&apos;s Showtime"}</h2>'
+           + f'<p>{"We couldn&apos;t load your matches." if failed else "Finding your first matches."}</p>'
+           + ('' if failed else FP.replace('dfp"', 'dfp still"'))
+           + (f'<p class="dnote">{note}</p>' if note else ''))
+    return app(apptop() + f'<div class="learn va2 between done d-mix"><div class="bmid">{mid}</div>'
+               + ('<button class="cta">Try again</button>' if failed else '') + '</div>', cls='screen game-screen')
+
+
+PICKS3 = (T('Pulp Fiction'), T('Toy Story'), T('Breaking Bad', 'tv'))   # newest first
+S['6-done-1'] = (showtime(PICKS3),
+    '<b>Closing screen.</b> Rays, their last three picks (the newest in the middle, gold ring), "It\'s Showtime". At least 1.2 s; the feed comes in when ready (target under 3 s).')
+S['6-done-2-slow'] = (showtime(PICKS3, note='Still working. The first time takes a little longer.'),
+    '<b>Still waiting after 8 s.</b> One quiet line appears under the loader. Nothing else changes.')
+S['6-done-3-failed'] = (showtime(PICKS3, failed=True),
+    '<b>It failed</b> (an error, or 30 s without a feed). The rays and the loader stop; "Try again" asks for the feed again. Answers are already saved.')
+S['6-done-4-two'] = (showtime(PICKS3[:2]),
+    '<b>Only two to show</b> (few picks and no Loved cards). Both, side by side; the newest wears the ring.')
+S['6-done-5-none'] = (showtime(()),
+    '<b>Nothing to show</b> (no picks, nothing Loved). No fan: rays, "It\'s Showtime" and the loader.')
+
+
+# ── Part 7 · Skip, proposal 2026-11-12 ──
+# The season's own Skip (top-left, `.tb-skip`) with its confirmation sheet (`.sheet.confirm`), reused.
+# On the cards it skips the rest of the cards: straight to the screen before the picks (no sheet; that screen
+# already says "{n} rated. That's fine."). On the quick picks it ends onboarding, so it asks first.
+SKIP = '<button class="tb-skip">Skip</button>'
+def with_skip(html):
+    return html.replace('<div class="tb-l"></div>', f'<div class="tb-l">{SKIP}</div>', 1)
+
+
+SKIP_SHEET = ('<div class="sheet-bg"></div><div class="sheet confirm" role="alertdialog"><h3>Skip the picks?</h3>'
+              '<p>Your first matches will be less sharp without them. You can keep rating titles in the feed anytime.</p>'
+              '<button class="cta">Keep picking</button><button class="opt">Skip</button></div>')
+
+
+S['7-skip-1-card'] = (with_skip(card(DK, 12, '2008 · Christopher Nolan')),
+    '<b>Skip on a card.</b> Top-left, the season\'s own Skip. Tap: the rest of the cards are skipped, straight to the screen before the picks. No "are you sure".')
+S['7-skip-2-pair'] = (with_skip(qp(T('Pulp Fiction'), T('Se7en'), 4)),
+    '<b>Skip on the quick picks.</b> Same button, same place. It ends onboarding, so it asks first.')
+S['7-skip-3-sheet'] = (with_skip(qp(T('Pulp Fiction'), T('Se7en'), 4)).replace('</div></div></div></div></div></body>', SKIP_SHEET + '</div></div></div></div></div></body>', 1),
+    '<b>Skip on the quick picks · the sheet.</b> The season\'s "Skip for now?" sheet with new words. "Keep picking" closes it; "Skip" goes to "It\'s Showtime".')
+
 if __name__ == '__main__':   # play.py imports the pieces without rewriting the mocks
     for k, (html, cap) in S.items():
         (HERE / f'{k}.html').write_text(html)

@@ -479,8 +479,8 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
   5. **This-or-that rules** *(signed off 2026-11-11, see below)*: how many picks; what a pair may contain; "Haven't seen" (how many times per pair, and on the second title); Love both / Neither / Skip; the pool (the 980 titles minus "never" genres).
      - Starting point: the season's picker (`nextPair` in `src/app/play/lib/brain.ts`), which produced the measured gain (+12 picks = +3 / +7 / +3, EVIDENCE §5).
      - **Any change to how pairs are chosen is checked with the harness (P1-D5, mode b)** before it is built. The +7 for Shahar came from these rules. Changes to buttons and wording don't need it.
-  6. **The closing screen after the last pick.** It also covers the wait for the first feed (P2-U5: at most 3 s, or a loading state).
-  7. **Skipping:** can people skip the whole onboarding, or a part of it, and where? Decide yes or no; if yes, design it, and P2-U6 routes it. If it's added, it goes in the top-left corner of the screen (Eran, 2026-11-10), so the card layout doesn't change for it.
+  6. **The closing screen after the last pick** *(signed off 2026-11-12, see below)*. It also covers the wait for the first feed (P2-U5: at most 3 s, or a loading state).
+  7. **Skipping** *(signed off 2026-11-12, see below)*: can people skip the whole onboarding, or a part of it, and where? Decide yes or no; if yes, design it, and P2-U6 routes it. If it's added, it goes in the top-left corner of the screen (Eran, 2026-11-10), so the card layout doesn't change for it.
 - **Output:** one approved JPEG per screen and state, at 375×812, plus a small-Android check (360×680). The JPEGs are rendered by `docs/prototypes/first-run/build.py` + `render.sh` (`W=360 H=680 SUF=-360 ./render.sh …`). The rules go into P2-U2 / U3 / U4 / U6 here.
 - **Decided so far:**
   - **Rating card = version A, revised** (2026-11-10). JPEGs `2-card-1-first` … `2-card-4-long`.
@@ -528,6 +528,18 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
     - The two "Haven't seen" buttons stay on one line, whatever the title lengths.
     - **No hover movement on the posters** (Eran, 2026-11-11). The season lifts a poster 3px with a ring and a shadow on hover; the quick picks don't. The tap feedback stays: the picked poster gets the gold ring, the other one fades.
     - **Playable run:** `docs/prototypes/first-run/play.html` (built by `play.py` from the same mocks): 5 cards → the screen before the picks → 5 quick picks, shortened on purpose. Its swaps are close to, not the same as, `replaceSide`.
+  - **The closing screen after the last pick (part 6) — signed off** (Eran, 2026-11-12). JPEGs `6-done-1` … `6-done-5-none`; on the Flow phone link after the last pick.
+    - **What's on it:** top bar only (no progress bar: onboarding is over). Behind everything, the season finale's slow gold rays (one turn every 40 s). Then their last picks fanned (the "Haven't seen" fan from the cards, at full brightness), the newest in the middle with the pick's 4px gold ring; 36px under the fan, **"It's Showtime"** in the poster type (Bebas, 52px); "Finding your first matches."; the feed's own fingerprint loader (`FingerprintLoader`, 66px). No button.
+    - **The fan:** picks, newest first; then cards rated Loved, newest first; up to three. Never Liked, Disliked or "Haven't seen". Two: side by side, the newest on the right with the ring. One: straight, with the ring. None: no fan.
+    - **Timing:** it comes in with the Flow motion once the last pair has left. It stays **at least 3 s** (Eran, 2026-11-12: even when the feed is ready sooner), then the feed opens as soon as it's ready (target under 3 s, P2-U5). After 8 s, one quiet line under the loader (14px): "Still working. The first time takes a little longer." On an error, or 30 s without a feed: the rays and the loader go, the heading becomes "Almost showtime", the line "We couldn't load your matches.", and an orange **Try again** sits 30px from the bottom. Answers are saved as people go, so nothing is lost.
+    - **Reduce motion:** the rays stay still.
+  - **Skip (part 7) — signed off** (Eran, 2026-11-12). JPEGs `7-skip-1-card`, `7-skip-2-pair`, `7-skip-3-sheet`.
+    - **Yes, one part at a time.** No "skip everything" button: skipping the cards still lands people in front of the picks, the cheapest and strongest signal (they work even with nothing seen). Anyone can be through in two taps.
+    - **The button:** the season's Skip (`.tb-skip`) in the top-left, made quieter for onboarding: grey (`--muted`), 15px, weight 500, no fill, a 44px-tall tap area, the word on the content edge. On the cards (and their two "slow start" messages) and on the quick picks. Not on the screen before the picks (it has its own button) or on "It's Showtime". The genre screen is decided with its own design (part 2).
+    - **On the cards:** the rest of the cards are skipped, straight to the screen before the picks; no "are you sure?". That screen already covers it ("{n} rated. That's fine." / "On to the picks.") and nothing is lost for good.
+    - **On the quick picks:** it ends onboarding, so it asks first, in the season's confirmation sheet (`.sheet.confirm`): **"Skip the picks?"** / "Your first matches will be less sharp without them. You can keep rating titles in the feed anytime." / orange **Keep picking** (closes the sheet) / dark **Skip** (to "It's Showtime", then the feed). The sheet slides up (320 ms) while the layer behind it fades in to 80% black (the season's is 60%); closing reverses it (220 ms). Tapping the dark layer closes it too.
+    - **Why one asks and one doesn't:** ask only when the tap ends something you can't get back to. The card Skip moves one step forward; the pair Skip ends onboarding.
+    - **For the build:** record each skip (where, and how many rated/picked), so drop-off can be read. Skipping both with nothing rated or picked gives "It's Showtime" without the fan, then today's new-user feed (`cold-start.ts`). P2-U6 routes it.
   - **Motion: Flow, the same on the cards and the pairs — signed off** (Eran, 2026-11-11). Feel it on the Flow link (`play-artifact-flow.html`, built by `pack.py`); GIFs `4-pair-pick-left.gif`, `4-pair-pick-right.gif`.
     - **Only the title moves:** the poster with its + and share buttons, the name, the year. The top bar, the counter, the question and every button stay still; the progress bar slides to its new length (480 ms).
     - **Next card, a swap, "Can't decide":** the old title drifts 48px left and fades (320 ms, `cubic-bezier(.4,0,.2,1)`); the new one drifts in from 48px right (480 ms, `cubic-bezier(.16,1,.3,1)`), starting 90 ms in. They overlap, so there's never an empty (black) frame. On the card the name and year follow the poster by 50 ms. A swap moves only its own side; the gold line fades in with it.
@@ -582,6 +594,8 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
 - **Mock and rules:** P2-U0's approved JPEGs (`4-this-or-that`, `4-pair-*`, the closing screen) and its quick-pick rules (part 5, signed off 2026-11-11): 12 picks or 18 pairs, one "Can't decide" button, two swaps per side, no plot pair, titles at most 3 lines.
   - Onboarding keeps its own swap count per side; `replaceSide`'s switch to plot mode (`unseenCount >= 2`) must not fire here.
   - The motion is part of the mock: P2-U0's "Motion: Flow" (timings, the pick's stack-and-exit, the last pick waiting).
+  - **The closing screen ("It's Showtime") is built here, and it holds itself for 3 s** (Eran, 2026-11-12). When it appears it starts its own 3-second timer and asks for the feed; it moves on only when **both** are done (the timer and the feed). A fast feed waits for the timer; a slow one keeps the screen up (the 8 s note, then the failed state at 30 s). Nothing in the feed or the engine has to know about the 3 seconds.
+  - **Test (unit, fake timers):** with the feed ready at once, the closing screen is still showing at 2.9 s and the feed shows at 3.0 s; with the feed ready at 5 s, the feed shows at 5 s.
 - **Pairs:** use `nextPair` in `src/app/play/lib/brain.ts`. It is the picker that produced the measured picks.
   - Run it on a fresh `PlayState` seeded with the user's genres.
   - The pool is the 980 game titles minus the "never" genres.
@@ -593,7 +607,7 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
 
 - **After the last card:** start a precompute (`generateRecommendations` with `precompute: true`, the existing lock in `precompute.ts`).
 - **After the last pick:** bump `taste_version` and generate the final batch. The picks change `w`.
-- **Target:** at most 3 s from the last pick to a visible feed (see `docs/speed-plan.md`). Otherwise the wait is covered by P2-U0's closing screen.
+- **Target:** at most 3 s from the last pick to a visible feed (see `docs/speed-plan.md`). The wait is covered by P2-U0's closing screen ("It's Showtime", built in P2-U4, holds itself at least 3 s, so the feed only has to be ready by then; a note after 8 s; "Try again" after an error or 30 s).
 - After the cards, a user with 10+ signals runs the normal pipeline. Below 10, `cold-start.ts` runs, as it does today.
 
 **P2-U6 · Routing; the season moves to Games** — shared `src/app` · U · S–M · deps: U2–U4 · flag `ONBOARDING_V2`
@@ -604,7 +618,7 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
   - Redirect to `/onboarding` until `play_state.state.onboarding.done_at` is set. This adds no DNA field (DEC-9).
   - The season is reachable only from Games and the menu.
   - **Existing accounts** (DEC-8): any user with 10 or more signals when the flag goes on is marked done and skips onboarding. Everyone else goes through it.
-- **Skipping:** if P2-U0 decides people may skip onboarding (or part of it), route it here.
+- **Skipping** (P2-U0 part 7, signed off): Skip on the cards → the screen before the picks; Skip on the quick picks → "Skip the picks?" sheet → "It's Showtime" → feed. Mark onboarding done either way; log each skip.
 - **Flag off** = today's behaviour.
 
 **P2-U7 · Account reset tool** — A3 · D · S · deps: none

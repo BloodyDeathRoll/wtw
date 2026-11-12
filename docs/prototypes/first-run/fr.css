@@ -150,3 +150,47 @@ html,body{margin:0;width:100vw;height:100vh;overflow:hidden;background:#000}
 .wtw-play .ob-pair .pick:hover .poster{transform:none;box-shadow:none}
 /* Eran 2026-11-11: the picked poster's gold ring is 1px thicker in the quick picks (4px; the season's is 3px). */
 .wtw-play .ob-pair .pick.chosen .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow)}
+/* Part 6 · the closing screen (proposal 2026-11-12): the feed's own loader under the heading; one quiet note when it's slow */
+.wtw-play .between.done .bmid{padding-bottom:56px}
+.wtw-play .between.done .dfp{margin-top:32px}
+.wtw-play .between.done .bmid > p.dnote{margin:20px 0 0;font-size:14px;line-height:1.45;color:var(--muted);max-width:280px}
+/* The mocks switch every CSS animation off (line 3). JPEGs: the loader drawn in full, its fully drawn moment.
+   Playable run (no "still"): the feed loader's own animation back on, same timing as FingerprintLoader.module.css. */
+.wtw-play .dfp.still .FingerprintLoader-module__MAfjZW__live path{stroke-dashoffset:0!important;opacity:1!important}
+.wtw-play .dfp:not(.still) .FingerprintLoader-module__MAfjZW__live path{animation:2.4s cubic-bezier(.45,0,.25,1) infinite FingerprintLoader-module__MAfjZW__fp-draw!important}
+.wtw-play .dfp:not(.still) .FingerprintLoader-module__MAfjZW__live path:nth-child(2){animation-delay:.12s!important}
+.wtw-play .dfp:not(.still) .FingerprintLoader-module__MAfjZW__live path:nth-child(3){animation-delay:.2s!important}
+/* Part 6 · festive takes (2026-11-12) */
+.wtw-play .between.done.d-gold h2 .lmile{font:inherit}
+.wtw-play .dglow .sb-bar i{box-shadow:0 0 12px 2px rgba(212,155,58,.55)}
+.wtw-play .between.done.d-rays .bmid{position:relative;overflow:visible}
+.wtw-play .between.done.d-rays .rays{position:absolute;left:50%;top:42%;width:900px;height:900px;margin:-450px 0 0 -450px;pointer-events:none;opacity:.5;
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--gold) 30%,transparent) 0deg 8deg,transparent 8deg 22deg);
+  mask:radial-gradient(circle,#000 0,transparent 60%);-webkit-mask:radial-gradient(circle,#000 0,transparent 60%)}
+.wtw-play .between.done.d-rays h2.dbig{position:relative;font-family:var(--poster);font-size:52px;font-weight:400;letter-spacing:.03em;line-height:.95}
+.wtw-play .between.done.d-rays .bmid > p,.wtw-play .between.done.d-rays .dfp{position:relative}
+.wtw-play .between.done.d-picks .dpicks{margin-bottom:28px}
+.wtw-play .between.done.d-picks .dpicks .lfan-p:nth-child(2) .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-picks .dpicks .poster img{filter:none}   /* their own picks: full brightness (the "Haven't seen" fan dims) */
+/* rays + picks (2026-11-12): the rays centre on the fan; the fan and heading sit above them */
+.wtw-play .between.done.d-mix .bmid{position:relative;overflow:visible}
+.wtw-play .between.done.d-mix .rays{position:absolute;left:50%;top:38%;width:900px;height:900px;margin:-450px 0 0 -450px;pointer-events:none;opacity:.5;
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--gold) 30%,transparent) 0deg 8deg,transparent 8deg 22deg);
+  mask:radial-gradient(circle,#000 0,transparent 60%);-webkit-mask:radial-gradient(circle,#000 0,transparent 60%)}
+.wtw-play .between.done.d-mix .dpicks{position:relative;margin-bottom:36px}   /* Eran: a little more room under the fan (was 26) */
+.wtw-play .between.done.d-mix .dpicks .poster img{filter:none}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:nth-child(2) .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-mix h2.dbig{position:relative;font-family:var(--poster);font-size:52px;font-weight:400;letter-spacing:.03em;line-height:.95}
+.wtw-play .between.done.d-mix .bmid > p,.wtw-play .between.done.d-mix .dfp{position:relative}
+/* signed off 2026-11-12: two posters sit straight-ish and centred; the rays turn (40 s a turn) in the playable run */
+.wtw-play .between.done.d-mix .dpicks .lfan-p:nth-child(2):last-child .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:first-child:nth-last-child(2){transform:rotate(-6deg) translateY(6px)}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:last-child:nth-child(2){transform:rotate(6deg) translateY(6px)}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:only-child{transform:none}
+.wtw-play .between.done.d-mix .dpicks .lfan-p:only-child .poster{box-shadow:0 0 0 4px var(--gold),0 0 30px var(--gold-glow),0 10px 24px rgba(0,0,0,.6)}
+.wtw-play .between.done.d-mix .rays.spin{animation:40s linear infinite wp-spin!important}
+/* Part 7 · Skip (2026-11-12): Eran wants it less noticeable than the season's dark pill: a quiet grey text button,
+   15px, no fill. The padding keeps a 44px-tall tap area; the negative margin keeps the word on the content edge. */
+.wtw-play .screen .tb-skip{background:none;border:0;border-radius:16px;padding:13px 12px;margin-left:-12px;font-size:15px;font-weight:500;line-height:18px;color:var(--muted)}
+/* Skip sheet (Eran 2026-11-12): the dark layer behind it a bit stronger, 80% (the season's is 60%) */
+.wtw-play .sheet-bg{background:rgba(0,0,0,.8)}
