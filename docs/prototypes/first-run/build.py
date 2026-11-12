@@ -108,13 +108,7 @@ def grow(g):
 nevers = [l for _, l, _, _, s in GENRES if s == 'never']
 rated = sum(1 for g in GENRES if g[4])
 S = {}
-S['1-genres'] = (app(
-    apptop() +
-    '<div class="setup"><div><h2>How do you feel about…</h2><p class="sub">Tap the ones you have an opinion on. Skip the rest.</p></div>'
-    '<div class="grows"><div class="grow ghead"><span></span><span class="gh gh-love">Love</span><span class="gh gh-like">Like</span><span class="gh gh-never">Never</span></div>'
-    + ''.join(grow(g) for g in GENRES) + '</div></div>'
-    f'<div class="cta-wrap sticky"><button class="cta">Start ({rated} rated)</button><div class="fine">I\'ll never show you {", ".join(nevers)}.</div></div>'),
-    '<b>1 · Genres.</b> Today\'s screen plus an icon and two well-known examples per genre. "Never" is the guardrail: never in the cards or the feed.')
+# (1-genres, today's screen with tiles and examples, was the starting point; see the signed-off states below.)
 
 
 # ── 2 · The learner: three versions of the answer buttons ────────
@@ -424,6 +418,100 @@ S['7-skip-2-pair'] = (with_skip(qp(T('Pulp Fiction'), T('Se7en'), 4)),
     '<b>Skip on the quick picks.</b> Same button, same place. It ends onboarding, so it asks first.')
 S['7-skip-3-sheet'] = (with_skip(qp(T('Pulp Fiction'), T('Se7en'), 4)).replace('</div></div></div></div></div></body>', SKIP_SHEET + '</div></div></div></div></div></body>', 1),
     '<b>Skip on the quick picks · the sheet.</b> The season\'s "Skip for now?" sheet with new words. "Keep picking" closes it; "Skip" goes to "It\'s Showtime".')
+
+
+# ── Part 2 · the genre screen, proposal 2026-11-12 ──
+# The live /play genre step (Screens.tsx), unchanged in behaviour: Love / Like / Never per genre, no Skip, and the
+# button stays off until at least one Love or Like ("Love or like at least one"). New: the 16-genre list from the plan
+# (Sci-fi, Fantasy and Superheroes split; animation split into adult and kids; Family & kids = live-action only),
+# an icon and two well-known examples per genre (real catalogue titles).
+COL.update({'fantasy': ('#6a5acd', '#4b3fa8'), 'hero': ('#d63a55', '#2d4fb8'), 'adultanim': ('#f2c94c', '#d39a12')})
+COL['crime'] = ('#8aa0bd', '#5b6a7d')   # lit icons: the old slate read as grey
+GENRES16 = [
+    ('comedy', 'Comedy', 'laugh', [('The Office', 'tv'), ('Barbie', 'movie')]),
+    ('drama', 'Drama', 'drama', [('Titanic', 'movie'), ('The Crown', 'tv')]),
+    ('action', 'Action', 'flame', [('John Wick', 'movie'), ('Gladiator', 'movie')]),
+    ('crime', 'Crime', 'siren', [('Heat', 'movie'), ('Breaking Bad', 'tv')]),
+    ('thriller', 'Thriller & mystery', 'search', [('Gone Girl', 'movie'), ('Sherlock', 'tv')]),
+    ('scifi', 'Sci-fi', 'rocket', [('Interstellar', 'movie'), ('Star Wars', 'movie')]),
+    ('fantasy', 'Fantasy', 'wand-sparkles', [('The Witcher', 'tv'), ('Maleficent', 'movie')]),
+    ('hero', 'Superheroes', 'zap', [('Iron Man', 'movie'), ('Deadpool', 'movie')]),
+    ('horror', 'Horror', 'ghost', [('Get Out', 'movie'), ('The Shining', 'movie')]),
+    ('romance', 'Romance', 'flower-2', [('About Time', 'movie'), ('Amélie', 'movie')]),
+    ('adultanim', 'Adult animation', 'tv', [('South Park', 'tv'), ('Arcane', 'tv')]),
+    ('anim', 'Kids’ animation', 'rabbit', [('Toy Story', 'movie'), ('Frozen', 'movie')]),
+    ('family', 'Family &amp; kids', 'toy-brick', [('Jumanji', 'movie'), ('Aladdin', 'movie')]),
+    ('anime', 'Anime', 'origami', [('Naruto', 'tv'), ('Spirited Away', 'movie')]),
+    ('doc', 'Documentary', 'video', [('Free Solo', 'movie'), ('Tiger King', 'tv')]),
+    ('war', 'War &amp; history', 'swords', [('1917', 'movie'), ('Oppenheimer', 'movie')]),
+]
+for _, _, _, ex in GENRES16:      # every example must be a real catalogue title
+    for n, ty in ex:
+        assert (n, ty) in TITLES, n
+SCROLL_END = """<script>(function(){var e=document.scrollingElement;e.scrollTop=e.scrollHeight;
+[].forEach.call(document.querySelectorAll('*'),function(x){if(x.scrollHeight>x.clientHeight+4&&/(auto|scroll)/.test(getComputedStyle(x).overflowY))x.scrollTop=x.scrollHeight})})()</script>"""
+
+
+def genres(states, end=False):
+    rows = ''.join(grow((gid, label, ic, ex, states.get(gid, ''))) for gid, label, ic, ex in GENRES16)
+    pos = sum(1 for v in states.values() if v in ('love', 'like'))
+    rated = sum(1 for v in states.values() if v)
+    nev = [label for gid, label, _, _ in GENRES16 if states.get(gid) == 'never']
+    btn = f'<button class="cta">Start ({rated} rated)</button>' if pos else '<button class="cta" disabled>Love or like at least one</button>'
+    fine = f'I&apos;ll never show you {", ".join(nev)}.' if nev else 'Anything you skip counts as meh. Love counts double.'
+    return app(apptop() +
+        '<div class="setup"><div><h2>How do you feel about…</h2><p class="sub">Tap the ones you have an opinion on. Skip the rest.</p></div>'
+        '<div class="grows"><div class="grow ghead"><span></span><span class="gh gh-love">Love</span><span class="gh gh-like">Like</span><span class="gh gh-never">Never</span></div>'
+        + rows + '</div></div>'
+        f'<div class="cta-wrap sticky">{btn}<div class="fine">{fine}</div></div>' + (SCROLL_END if end else ''))
+
+
+
+# ── Part 2 · round 2 (Eran 2026-11-12): a welcome title on one line, up to three lines on what this is, no "Anything
+# you skip" line, and three takes on the genre marks: none, the icon alone in the genre's colour, and the two example
+# posters fanned (the surprise).
+WELCOME_H = 'Lights, camera, genres!'
+WELCOME_P = ('Three steps to your first matches. First, tap “Love” or “Like” on every genre you enjoy and “Never” '
+             'on any you don’t. Blank is neutral.')
+
+
+def grow2(g, st, mark):
+    gid, label, ic, ex = g
+    a, b = COL[gid]
+    eg = ' · '.join(n for n, _ in ex)
+    btns = ''.join(f'<button class="gbtn gb-{k}" aria-pressed="{"true" if st == k else "false"}">{GB[k]}</button>' for k in ('love', 'like', 'never'))
+    m = {'none': '',
+         'line': f'<i class="gline" style="color:{a}">{icon(ic, 24, 1.75)}</i>',
+         'outline': f'<i class="gline">{icon(ic, 24, 1.75)}</i>',   # colour from --gc in CSS, so the tap animation can run
+         'posters': '<i class="gpost">' + ''.join(poster(T(n, ty), 'w92') for n, ty in ex) + '</i>'}[mark]
+    return (f'<div class="grow{" rated" if st else ""}" data-g="{gid}" style="--gc:{a}"><span class="gname m-{mark}">{m}'
+            f'<span class="gtext"><span class="glabel">{label}</span>' + ('' if mark == 'outline' else f'<span class="geg">{eg}</span>')
+            + f'</span></span>{btns}</div>')
+
+
+def genres2(states, mark, end=False, lit=False):
+    rows = ''.join(grow2(g, states.get(g[0], ''), mark) for g in GENRES16)
+    pos = sum(1 for v in states.values() if v in ('love', 'like'))
+    rated = sum(1 for v in states.values() if v)
+    nev = [label for gid, label, _, _ in GENRES16 if states.get(gid) == 'never']
+    btn = f'<button class="cta">Start ({rated} rated)</button>' if pos else '<button class="cta" disabled>Love or like a few</button>'
+    fine = f'<div class="fine">We’ll never show you {", ".join(nev)}.</div>' if nev else ''
+    return app(apptop() +
+        f'<div class="setup welcome{" lit" if lit else ""}"><div><h2>{WELCOME_H}</h2><p class="sub">{WELCOME_P}</p></div>'
+        '<div class="grows"><div class="grow ghead"><span></span><span class="gh gh-love">Love</span><span class="gh gh-like">Like</span><span class="gh gh-never">Never</span></div>'
+        + rows + '</div></div>'
+        f'<div class="cta-wrap sticky">{btn}{fine}</div>' + (SCROLL_END if end else ''))
+
+
+RATED = {'comedy': 'love', 'crime': 'love', 'thriller': 'like', 'scifi': 'like', 'hero': 'never', 'horror': 'never', 'adultanim': 'like', 'anim': 'never'}
+# Genre screen — signed off by Eran 2026-11-12: "Lights, camera, genres!", outlined icons (no examples), grey until
+# answered, an answer lights the row. (Explored and dropped: tiles, example posters, no marks, icons always in colour.)
+S['1-genres-1-empty'] = (genres2({}, 'outline', lit=True),
+    '<b>Genres · nothing yet.</b> Every icon grey, every name a touch dimmer: nothing answered.')
+S['1-genres-2-rated'] = (genres2(RATED, 'outline', lit=True),
+    '<b>Genres · a few taps.</b> An answer (Love, Like or Never) lights its row: the icon takes the genre\'s colour and a soft glow, the name turns white, a faint wash of the colour from the left.')
+S['1-genres-3-end'] = (genres2(RATED, 'outline', end=True, lit=True),
+    '<b>Genres · a few taps, scrolled to the end.</b> Never lights its row too: it\'s an answer.')
 
 if __name__ == '__main__':   # play.py imports the pieces without rewriting the mocks
     for k, (html, cap) in S.items():

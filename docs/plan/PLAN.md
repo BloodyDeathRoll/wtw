@@ -80,6 +80,7 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
 | DEC-10 | **Match % = `composite_score × 100`**, i.e. better than X% of the titles considered. It is **capped at 97%**: never show 100%. |
 | DEC-11 | **Learner cards:** stop at 30 seen or **90 shown**, whichever comes first. The 90 is under review: report the shown-to-seen ratios. |
 | DEC-12 | **Onboarding card answers appear in My ratings**, like feed ratings. |
+| DEC-13 | **The genre screen's Love and Like count in the feed** (Eran, 2026-11-12). A user who's asked what they like expects the feed to show it heard them, not only the onboarding. So Love / Like set a **starting lean in the taste model** toward those genres (Love twice as strong as Like), and the user's real ratings and picks take over as they come in. It stays inside the 30/20/50 formula (DEC-1): no new weight. Never stays a rule (hidden everywhere). No answer = no lean. The test tool (P1-D5) sets how strong the lean is, not whether there is one. Work: P1-D4b (#278). |
 
 ---
 
@@ -268,7 +269,7 @@ The format of each entry: **ID · title** — owner · lane · size · deps · f
   - **Target:** `y_i = level_i − (weighted mean of levels)`.
   - **Pairs:** `x = x_chosen − x_other`, `y = +1.0`, weight 1.
   - **Solve** `(XᵀWX + Λ) w = XᵀWy` with `Λ = diag(0.5, 4.0 × 24)`, no intercept, by Cholesky or Gaussian elimination on 25×25.
-  - Zero rows and zero pairs → `w = 0`.
+  - Zero rows and zero pairs → `w = 0`. (With genre answers: P1-D4b.)
 - **`predict(w, x) = w·x`.**
 - **`contributions(w, x) = w_k·x_k` per input,** for the Why lines (E5).
 - **Loader `loadTasteTraining(dna, userId)`:**
@@ -279,6 +280,16 @@ The format of each entry: **ID · title** — owner · lane · size · deps · f
 - **Done when:**
   - A unit test on a fixture of about 40 titles matches the reference recipe (EVIDENCE §R) to 1e-6. Write the expected values with a tiny numpy snippet kept as a comment in the test.
   - With labels shuffled, the harness lands at about 50.
+
+**P1-D4b · Genre lean: the genre screen's Love / Like count in the feed** — A3 (Shahar) · D · S · deps: D4 (done, #262) · issue #278
+> **In plain words:** A screen that asks what you like has to visibly change what you're shown (DEC-13). Love and Like give the taste model a starting lean towards those genres, which the user's real ratings and picks take over.
+
+- Solve `(XᵀWX + Λ) w = XᵀWy + Λ w0` instead: ridge *towards* `w0` rather than towards 0. `w0` is 0 everywhere except the genre inputs `[1..13]`: Love → `+g`, Like → `+g/2`; no answer and Never → 0 (Never is a rule, not a lean).
+- The 16 chips map onto the 13 genre inputs: Sci-fi, Fantasy and Superheroes → `scifi`; Adult animation and Kids' animation → `anim`; the rest one to one. Where two chips share an input, the stronger answer wins.
+- It fades by itself: the more ratings and picks there are, the more `XᵀWX` outweighs `Λ`, so real behaviour takes over from what was said.
+- Read the answers from `play_state.state.gen` (2 love · 1 like · ≤ −5 never), as `playGenresOf` in `cold-start.ts` does.
+- **`g` is set with P1-D5:** the largest `g` that costs no more than 1 concordance point against `w0 = 0` on the test sheets (taste model trained on My ratings only). Report the numbers.
+- **Done when:** a user with only genre answers + 30 cards + 12 picks, who Loved a genre, gets more titles from it in the feed's top 20 than with `w0 = 0` (unit test on a fixture), and none from a Never genre. With no genre answers, `w` is exactly today's (the reference test still passes to 1e-6).
 
 **P1-E3 · Formula v2 in step 2** — A2 · E · M · deps: D1, D4 · flag `FORMULA_V2`
 > **In plain words:** Switch the score to the new recipe (creators 30%, crowd 20%, taste model 50%) and drop the three parts that tested no better than a coin flip. It sits behind an on/off switch and stays off until it passes the tests.
@@ -472,8 +483,8 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
 > **In plain words:** Eran and Claude design the whole first run, screen by screen, down to the pixel, and set every rule behind it. The builders build exactly what comes out of this. (Widened from "the cards and the this-or-that rules" by Eran on 2026-11-10.)
 
 - **What it covers, in this order** (Eran, 2026-11-10):
-  1. **The cards** (the rating card, and the this-or-that pair): pixel-perfect design. *In progress, first.*
-  2. **The genre screen:** pixel-perfect design, plus the final genre list (proposal in T2, 16 chips).
+  1. **The cards** (the rating card, and the this-or-that pair): pixel-perfect design. *(Signed off.)*
+  2. **The genre screen** *(signed off 2026-11-12, see below)*: pixel-perfect design, plus the final genre list (16). No Skip. Love / Like count in the feed too (DEC-13).
   3. **The cards' other screens:** what we say when it isn't going well, to keep people going (e.g. 10 cards shown and only 2 seen, or worse), and the 90-card cap.
   4. **A screen between the cards and this-or-that.**
   5. **This-or-that rules** *(signed off 2026-11-11, see below)*: how many picks; what a pair may contain; "Haven't seen" (how many times per pair, and on the second title); Love both / Neither / Skip; the pool (the 980 titles minus "never" genres).
@@ -483,6 +494,21 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
   7. **Skipping** *(signed off 2026-11-12, see below)*: can people skip the whole onboarding, or a part of it, and where? Decide yes or no; if yes, design it, and P2-U6 routes it. If it's added, it goes in the top-left corner of the screen (Eran, 2026-11-10), so the card layout doesn't change for it.
 - **Output:** one approved JPEG per screen and state, at 375×812, plus a small-Android check (360×680). The JPEGs are rendered by `docs/prototypes/first-run/build.py` + `render.sh` (`W=360 H=680 SUF=-360 ./render.sh …`). The rules go into P2-U2 / U3 / U4 / U6 here.
 - **Decided so far:**
+  - **Rules for the whole onboarding — signed off** (Eran, 2026-11-12).
+    - **Leaving halfway:** every answer is kept as it's given, even if it's sent in batches. Coming back opens the same step: the next card (count intact), the next pair, or "It's Showtime" again. Nothing restarts.
+    - **Back button / back gesture:** leaves onboarding like any app (to the phone's home screen); progress is saved and the next visit resumes. It never steps back through onboarding screens ("no going back").
+    - **The menu (☰):** only **Sign out** for the whole onboarding, as the season does before genres. *Parked:* Eran is unsure; it's in `docs/BACKLOG.md` → "The menu", to revisit.
+    - **A save that fails / no connection:** never block. Keep the answer on the phone and retry on the next one; show a quiet grey line, **"Couldn’t save just now. We’ll retry on your next answer."**, which goes away once a save works (the season's own behaviour, in our voice). Its place on the card and pair screens still needs one JPEG. If it's still failing at the end, "It's Showtime" falls back to "Almost showtime" + Try again.
+    - **Genres → first card:** the Flow motion: the genre list drifts out left, the first card drifts in from the right, and the progress bar fades in with it; the top bar stays still.
+  - **The genre screen (part 2) — signed off** (Eran, 2026-11-12). JPEGs `1-genres-1-empty`, `1-genres-2-rated`, `1-genres-3-end`. The first screen after sign-up; it's also the welcome (no separate intro screen).
+    - **Title, one line:** **"Lights, camera, genres!"** (live `.setup h2`, 30px; `min(30px, 8vw)` so it stays on one line on narrow phones).
+    - **Under it (up to four lines):** "Three steps to your first matches. First, tap “Love” or “Like” on every genre you enjoy and “Never” on any you don’t. Blank is neutral." Button names in quotes; curly apostrophes throughout.
+    - **The final list of 16** (the table in §9, now final): Comedy, Drama, Action, Crime, Thriller & mystery, Sci-fi, Fantasy, Superheroes, Horror, Romance, Adult animation, Kids’ animation, Family & kids (live-action), Anime, Documentary, War & history.
+    - **Rows:** an outlined lucide icon (no tile, no examples), then the name; Love / Like / Never buttons as live (Never keeps the ⊘). **Grey until answered** (icon `#5c5c61`, name at 72% white). **An answer lights the row** (Love, Like or Never alike): the icon takes the genre's colour with a soft glow, the name turns white, and a faint wash of the colour from the left (22% → transparent at 62%; Eran: 5–7% stronger than the first 16%).
+    - **The tap animation** (Eran, 2026-11-12): tapping Love, Like or Never on an unanswered row sends the colour wash in **from the left edge**, about 0.4 s, easing out, until it rests at its width; the icon **lights as the wash reaches it** (grey → the genre's colour and glow), and the name brightens with it. Tapping a **different** reaction on a lit row only swaps which button is on: the row stays lit, no wash. Tapping the **same** reaction again turns it off: the wash **runs back** to the left (about 0.36 s) and the icon and name dim as it passes. Reduce motion: the row just fades lit / unlit.
+    - **No Skip.** **Start stays off until at least one Love or Like** (a Never alone doesn't count); off, it reads **"Love or like a few"**; on, "Start ({n} rated)", counting every answer.
+    - **Above the button:** "We’ll never show you {Never genres}." when there are Nevers; nothing otherwise (the old "Anything you skip counts as meh…" is gone). The area behind it is solid (the live fade started too low and the list showed through).
+    - **What the answers do:** Never hides the genre everywhere; Love / Like steer the quick picks and lean the feed (DEC-13); blank is neutral.
   - **Rating card = version A, revised** (2026-11-10). JPEGs `2-card-1-first` … `2-card-4-long`.
     - Three tiles: ❤️ Loved / 👍 Liked / 👎 Disliked, 96px tall, 8px apart, radius 16, game pill colour, emoji 27px over a 16px semibold label.
     - **"Haven't seen":** the this-or-that's own button (`.unseen`: 47px, 16px, `#c8c8cc`), full width, 16px under the tiles (Eran doubled it from 8, 2026-11-10). Outline only, with no fill: a 1px inset outline, white at 28%. Radius 16, like the tiles. It has the struck-out eye (lucide `eye-off`, 18px), 8px from the words.
@@ -571,13 +597,15 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
 **P2-U2 · Genre step** — A3 · U · S · deps: C2, U0 (final genre list; proposal in T2)
 > **In plain words:** The first screen: pick the genres you never want to see. It reuses the games' genre screen.
 
-- Reuse the `/play` genre step (`GAME_GENRES`), following P2-U0's approved genre-screen JPEGs and final genre list (no Movies / Series / Both).
+- Reuse the `/play` genre step (`GAME_GENRES`), following P2-U0's approved genre-screen JPEGs (`1-genres-*`) and the final list of 16 (§9; no Movies / Series / Both): the welcome title and lines, outlined icons that light up when answered, "Love or like a few", "We’ll never show you…", no Skip.
+- Love / Like are stored as today (`play_state.state.gen`: 2 / 1); P1-D4b (#278) reads them for the feed.
 - Its "Never" writes `exclusion_rules` through `src/modules/dna/update-from-play.ts`, with game-owned rule ids.
 
 **P2-U3 · Learner cards UI** — A3 (UI), A1 reviews (the ratings path) · U · M · deps: U0, U1
 > **In plain words:** The rating cards screen: loved / liked / disliked / haven't seen, until 30 are seen or 90 are shown. The answers appear in My ratings.
 
 - **Mock:** P2-U0's approved JPEGs: the card (`2-card-*`, version A revised) and the cards' other screens (messages that keep people going, the 90 cap, the screen before this-or-that), plus P2-U0's "Motion: Flow" for the move from card to card.
+- **Keep every answer as it's given** (P2-U0 rules): batches are fine for sending, but an answer must survive the app being closed right after it (keep the unsent ones on the device and send them on the next visit).
 - **New route `POST /api/onboarding/cards`** (shared `src/app/api`), taking batches of up to 10 answers:
   - **Seen answers** go through **the same write path as a feed rating** (`POST /api/recommendations/feedback`, action `watched` + reaction: factor out its core rather than calling over HTTP).
     - That writes `recommendation_feedback`, which is what My ratings reads (`src/app/api/recommendations/ratings/route.ts`), so the answer appears there (DEC-12).
@@ -619,6 +647,7 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
   - The season is reachable only from Games and the menu.
   - **Existing accounts** (DEC-8): any user with 10 or more signals when the flag goes on is marked done and skips onboarding. Everyone else goes through it.
 - **Skipping** (P2-U0 part 7, signed off): Skip on the cards → the screen before the picks; Skip on the quick picks → "Skip the picks?" sheet → "It's Showtime" → feed. Mark onboarding done either way; log each skip.
+- **Resume and back** (P2-U0 rules): the redirect lands on the step they left (genres, cards, the screen before the picks, the picks, or "It's Showtime"); the back gesture leaves the app rather than stepping back. **Menu:** Sign out only until onboarding is done (parked, see BACKLOG).
 - **Flag off** = today's behaviour.
 
 **P2-U7 · Account reset tool** — A3 · D · S · deps: none
@@ -858,7 +887,7 @@ The genre-screen split is a product decision; the harness can't measure it.
 2. **Don't put the tags into the model yet.** They're free and can be added at any time without re-scoring. Re-test them when there are more testers (R4).
 3. **Do use the tags for the genre screen and the rules** (a product decision for Eran): Kids' animation / Adult animation / Anime / Sci-fi / Fantasy / Superheroes, about 16 chips. A "Never" there then hides exactly what it names (DEC-6).
 
-**Proposed genre list. PROPOSED, NOT FINAL:** Eran and Claude settle it in the P2-U0 design pass. Until then, `GAME_GENRES` (13) stays as it is in code.
+**The genre list — FINAL** (signed off by Eran in P2-U0, 2026-11-12). Until P2-U2 lands, `GAME_GENRES` (13) stays as it is in code. The "Examples" column is for the mapping only: the screen shows no examples.
 
 | # | Today (13) | Proposed (16) | Built from (TMDB) | Examples |
 |---|---|---|---|---|

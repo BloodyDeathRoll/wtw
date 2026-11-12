@@ -194,3 +194,38 @@ html,body{margin:0;width:100vw;height:100vh;overflow:hidden;background:#000}
 .wtw-play .screen .tb-skip{background:none;border:0;border-radius:16px;padding:13px 12px;margin-left:-12px;font-size:15px;font-weight:500;line-height:18px;color:var(--muted)}
 /* Skip sheet (Eran 2026-11-12): the dark layer behind it a bit stronger, 80% (the season's is 60%) */
 .wtw-play .sheet-bg{background:rgba(0,0,0,.8)}
+/* Part 2 · genres (2026-11-12): the live fade starts too low, so the line over the button sat on top of the list (rows showed through it).
+   Here the wrap fades in over its 40px top padding and is solid black from there, so the line reads cleanly. */
+.wtw-play .setup + .cta-wrap.sticky{padding-top:40px;background:linear-gradient(rgba(0,0,0,0),#000 36px)}
+/* Part 2 · round 2 (2026-11-12) */
+.wtw-play .setup.welcome h2{white-space:nowrap}
+.wtw-play .gname.m-none{gap:0}
+.wtw-play .gname i.gline{width:26px;height:26px;border-radius:0;background:none;display:grid;place-items:center}
+.wtw-play .gname i.gpost{position:relative;width:44px;height:44px;border-radius:0;background:none;flex-shrink:0}
+.wtw-play .gname i.gpost .poster{position:absolute;top:2px;width:26px;aspect-ratio:2/3;border-radius:4px;padding:0;box-shadow:0 3px 8px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08)}
+.wtw-play .gname i.gpost .poster img{width:100%;height:100%;object-fit:cover}
+.wtw-play .gname i.gpost .poster .tvb{display:none}
+.wtw-play .gname i.gpost .poster:first-child{left:0;transform:rotate(-7deg)}
+.wtw-play .gname i.gpost .poster:last-child{left:16px;transform:rotate(6deg);z-index:1}
+/* "Lights, camera… genres." stays on one line: 30px (the live size), a touch smaller on phones narrower than 375 */
+.wtw-play .setup.welcome h2{font-size:min(30px,8vw)}
+/* Genres · lit rows (Eran 2026-11-12): grey until answered; an answer lights the icon and the row */
+.wtw-play .gname.m-outline i.gline{color:var(--gc)}
+.wtw-play .setup.lit .grow:not(.ghead) .gname i.gline{color:#5c5c61}
+.wtw-play .setup.lit .grow:not(.ghead) .glabel{color:rgba(255,255,255,.72)}
+.wtw-play .setup.lit .grow.rated .gname i.gline{color:var(--gc);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--gc) 70%,transparent))}   /* no !important: the tap animation must be able to run */
+.wtw-play .setup.lit .grow.rated .glabel{color:#fff}
+.wtw-play .setup.lit .grow.rated{background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 22%,transparent),transparent 62%)}
+/* Genres · the tap animation (playable run, "anim"): the wash is its own layer the page slides in from the left */
+.wtw-play .setup.lit.anim .grow:not(.ghead){position:relative;overflow:hidden}
+.wtw-play .setup.lit.anim .grow.rated{background:none}
+.wtw-play .setup.lit.anim .gwash{position:absolute;inset:0;pointer-events:none;transform:translateX(-100%);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 22%,transparent),transparent 62%)}
+.wtw-play .setup.lit.anim .grow > :not(.gwash){position:relative;z-index:1}
+/* Playable run, genre screen only: the page itself scrolls (not a box inside a pinned frame). Inside the artifact
+   viewer on a phone, an inner scroll box ignored the first swipes until something was tapped (Eran, 2026-11-12). */
+html.docscroll,html.docscroll body,html.docscroll .font-sans{height:auto!important;min-height:100%;overflow:visible!important}
+html.docscroll .WTWApp-module__gS1tAq__page{position:relative!important;height:auto!important;min-height:100vh;overflow:visible!important}
+html.docscroll .WTWApp-module__gS1tAq__app,html.docscroll .WTWApp-module__gS1tAq__appInner{height:auto!important;overflow:visible!important}
+html.docscroll .phone{height:auto!important;overflow:visible!important}
+html.docscroll .screen{position:relative!important;height:auto!important;min-height:100vh;overflow:visible!important}

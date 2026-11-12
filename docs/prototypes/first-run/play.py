@@ -1,13 +1,18 @@
-"""A playable run of the first-run design (Eran, 2026-11-11): 5 cards → the screen before the picks → 5 quick picks.
+"""A playable run of the first-run design (Eran, 2026-11-11): genres → 5 cards → the screen before the picks → 5 quick picks
+→ "It's Showtime". Never on a genre takes its titles out of the cards and the picks (Fantasy, Superheroes and Adult
+animation can't be told apart in the demo's 13 genres, so those three hide nothing here).
 Every screen is the signed-off mock from build.py, so it looks exactly like the JPEGs; this file only wires the taps.
 Shortened on purpose: the cards stop after 5 shown (not 30 rated / 90 shown), the picks after 5 picks or 8 pairs
 (not 12 / 18). The counters still read "of 30" / "of 12", as on the real screens.
 Swaps are close to, not the same as, the season's replaceSide: same type, a shared genre, well known, similar scales.
 Out: play.html (open it through the prototypes server, e.g. http://localhost:4173/docs/prototypes/first-run/play.html)."""
 import json
-from build import (HERE, TITLES, T, app, card, between, qp, qside, poster, EMO, LONG_TITLE, showtime, fan_of, SKIP, SKIP_SHEET)
+from build import (HERE, TITLES, T, app, card, between, qp, qside, poster, EMO, LONG_TITLE, showtime, fan_of, SKIP, SKIP_SHEET, genres2)
 
-CARDS = [T('Interstellar'), T('Titanic'), T('Game of Thrones', 'tv'), T('The Hangover'), T('Spirited Away')]
+# ten candidates; the run shows the first five that no Never rules out
+CARDS = [T('Interstellar'), T('Titanic'), T('Game of Thrones', 'tv'), T('The Hangover'), T('Spirited Away'),
+         T('Forrest Gump'), T('The Matrix'), T('Gladiator'), T('Inception'), T('The Lion King')]
+SHOW_CARDS = 5
 PAIRS = [(T('Pulp Fiction'), T('Se7en')), (T('The Notebook'), T('Pride & Prejudice')), (T('Toy Story'), T('Shrek')),
          (T('Mad Max: Fury Road'), T('John Wick')), (T('Breaking Bad', 'tv'), T('Stranger Things', 'tv')),
          (T('Get Out'), T('A Quiet Place')), (T('La La Land'), T('The Greatest Showman')), (T('The Office', 'tv'), T('Friends', 'tv'))]
@@ -33,8 +38,10 @@ def inner(html):   # the screen inside the live page frame
 def meta(t): return f'{t["year"]} · {", ".join(t["creators"])}' if t.get('creators') else str(t['year'])
 
 frag = {}
-for i, t in enumerate(CARDS):
-    for n in range(i + 1): frag[f'card-{i}-{n}'] = inner(card(t, n, meta(t)))
+for t in CARDS:
+    for n in range(SHOW_CARDS): frag[f'card-{t["id"]}-{n}'] = inner(card(t, n, meta(t)))
+# the genre screen (signed off 2026-11-12), with the tap animation ("anim": the wash is an element the page moves)
+frag['genres'] = inner(genres2({}, 'outline', lit=True)).replace('class="setup welcome lit"', 'class="setup welcome lit anim"')
 # the closing screen (signed off 2026-11-12): loader animating and rays turning (the JPEGs hold both still);
 # the fan is filled in by the page from what they actually picked
 _P3 = (CARDS[0], CARDS[1], CARDS[2])
@@ -59,7 +66,8 @@ for t in CARDS:
 for ch in CHAINS:
     for t in ch[0] + ch[1]: sides[t['id']] = qside(t); sides[t['id'] + '|off'] = qside(t, off=True); names[t['id']] = t['title']; fanp[t['id']] = f'<div class="lfan-p">{poster(t, "w185")}</div>'
 for t in CARDS: fanp[t['id']] = f'<div class="lfan-p">{poster(t, "w185")}</div>'
-data = {'frag': frag, 'tiles': tiles, 'sides': sides, 'names': names, 'cards': [t['id'] for t in CARDS],
+tg = {t['id']: t['genres'] for t in CARDS + [x for ch in CHAINS for s_ in ch for x in s_]}
+data = {'frag': frag, 'tiles': tiles, 'sides': sides, 'names': names, 'cards': [t['id'] for t in CARDS], 'tg': tg, 'showCards': SHOW_CARDS,
         'chains': [[[t['id'] for t in s] for s in ch] for ch in CHAINS], 'maxPicks': MAX_PICKS, 'maxPairs': MAX_PAIRS, 'doneMs': DONE_MS, 'fanp': fanp}
 
 JS = """<script>(function(){
@@ -128,18 +136,53 @@ function go(render,cross,k,hold,pk){if(busy)return;busy=true;setTimeout(function
     if(cross){op.wait=STACK-120;np.lag=np.els.map(function(){return STACK-90})}else np.lag=np.els.map(function(){return NEXT_AT-90});
     outs=[stackOut(old,pk),play(op,true)]}else outs=[play(op,true)];
   Promise.all(outs.concat([play(np,false)])).then(function(){old.remove();busy=false})},hold||0)}
-function reset(){S={ci:0,rated:[],pi:0,picks:[],pairs:0,lv:[0,0],note:''};showCard()}
+function reset(){S={ci:0,rated:[],pi:0,picks:[],pairs:0,lv:[0,0],note:'',gen:{}};showGenres()}
+// ── The genre screen (signed off 2026-11-12) ──
+// An answer lights the row: the colour wash comes in from the left (0.42 s) and the icon and name light as it reaches
+// them. Another answer on a lit row only swaps the button. The same answer again turns it off: the wash runs back.
+var CHIP2G={comedy:'comedy',drama:'drama',action:'action',crime:'crime',thriller:'thriller',scifi:'scifi',horror:'horror',
+  romance:'romance',anim:'anim',family:'family',anime:'anime',doc:'doc',war:'war'};   // fantasy, hero, adultanim: no match in the demo
+function showGenres(){S.phase='genres';document.documentElement.classList.add('docscroll');put(D.frag.genres);window.scrollTo(0,0)}
+// leaving the genre screen: back to the pinned app frame the other screens are built for
+function leaveGenres(){document.documentElement.classList.remove('docscroll');window.scrollTo(0,0)}
+function wash(row){var w=row.querySelector('.gwash');if(!w){w=document.createElement('i');w.className='gwash';row.insertBefore(w,row.firstChild)}return w}
+function lightRow(row,on){var w=wash(row),ic=row.querySelector('.gline'),lb=row.querySelector('.glabel'),gc=getComputedStyle(row).getPropertyValue('--gc').trim();
+  var grey='#5c5c61',dim='rgba(255,255,255,.72)',glow='drop-shadow(0 0 6px '+gc+'b3)';
+  if(on){row.classList.add('rated');
+    w.animate([{transform:'translateX(-100%)'},{transform:'translateX(0)'}],{duration:420,easing:EIN,fill:'forwards'});
+    ic.animate([{color:grey,filter:'none'},{color:gc,filter:glow}],{duration:220,delay:200,easing:'ease-out',fill:'backwards'});
+    lb.animate([{color:dim},{color:'#fff'}],{duration:220,delay:200,easing:'ease-out',fill:'backwards'})}
+  else{row.classList.remove('rated');
+    w.animate([{transform:'translateX(0)'},{transform:'translateX(-100%)'}],{duration:360,easing:'cubic-bezier(.45,0,.6,1)',fill:'forwards'});
+    ic.animate([{color:gc,filter:glow},{color:grey,filter:'none'}],{duration:200,easing:'ease-in'});
+    lb.animate([{color:'#fff'},{color:dim}],{duration:200,easing:'ease-in'})}}
+function genreTap(b){var row=b.closest('.grow'),g=row.getAttribute('data-g'),k=['love','like','never'].filter(function(c){return b.classList.contains('gb-'+c)})[0],prev=S.gen[g];
+  if(prev===k)delete S.gen[g];else S.gen[g]=k;
+  [].forEach.call(row.querySelectorAll('.gbtn'),function(x){x.setAttribute('aria-pressed',S.gen[g]&&x.classList.contains('gb-'+S.gen[g])?'true':'false')});
+  if(!prev)lightRow(row,true);else if(prev===k)lightRow(row,false);
+  var vals=Object.keys(S.gen).map(function(x){return S.gen[x]}),pos=vals.filter(function(v){return v!=='never'}).length,cta=ph.querySelector('.cta-wrap .cta');
+  cta.disabled=!pos;cta.textContent=pos?'Start ('+vals.length+' rated)':'Love or like a few';
+  var nev=[].filter.call(ph.querySelectorAll('.grows .grow[data-g]'),function(r){return S.gen[r.getAttribute('data-g')]==='never'}).map(function(r){return r.querySelector('.glabel').textContent}),
+      fine=ph.querySelector('.cta-wrap .fine');
+  if(nev.length){if(!fine){fine=document.createElement('div');fine.className='fine';cta.parentNode.appendChild(fine)}fine.textContent='We\u2019ll never show you '+nev.join(', ')+'.'}
+  else if(fine)fine.remove()}
+// Start: Never takes its titles out of the cards and the picks
+function startCards(){var blocked={};Object.keys(S.gen).forEach(function(g){if(S.gen[g]==='never'&&CHIP2G[g])blocked[CHIP2G[g]]=1});
+  var ok=function(id){return !(D.tg[id]||[]).some(function(g){return blocked[g]})};
+  S.cards=D.cards.filter(ok).slice(0,D.showCards);
+  S.chains=D.chains.map(function(c){return [c[0].filter(ok),c[1].filter(ok)]}).filter(function(c){return c[0].length&&c[1].length});
+  S.ci=0;if(S.cards.length)showCard();else showBetween()}
 function put(h){if(window.__IMG)h=h.replace(/@@IMG(\\d+)@@/g,function(m,i){return window.__IMG[i]});
   if(!KEEP)ph.innerHTML='';var t=document.createElement('div');t.innerHTML=h;
   [].slice.call(t.childNodes).forEach(function(n){ph.appendChild(n);if(n.querySelectorAll)n.querySelectorAll('script').forEach(function(o){var x=document.createElement('script');x.textContent=o.textContent;o.replaceWith(x)})})}
-function showCard(){S.phase='card';put(D.frag['card-'+S.ci+'-'+S.rated.length])}
-function nextCard(){S.ci++;if(S.ci<D.cards.length)showCard();else showBetween()}
+function showCard(){S.phase='card';put(D.frag['card-'+S.cards[S.ci]+'-'+S.rated.length])}
+function nextCard(){S.ci++;if(S.ci<S.cards.length)showCard();else showBetween()}
 function showBetween(){S.phase='between';var n=S.rated.length;
   if(!n){put(D.frag['between-none']);return}
   var row=S.rated.map(function(r){return D.tiles[r[0]+'|'+r[1]]}).join('');
   put(D.frag['between-some'].replace('@@H@@',n+' rated. That&apos;s fine.').replace('@@ROW@@',row).replace('<div class="brow">','<div class="brow'+(n>3?' more':'')+'">'))}
-function chain(){return D.chains[S.pi%D.chains.length]}
-function showPair(){S.phase='pair';var c=chain(),off=[S.lv[0]>=2,S.lv[1]>=2];
+function chain(){return S.chains[S.pi%S.chains.length]}
+function showPair(){S.phase='pair';var c=chain(),off=[S.lv[0]>=Math.min(2,c[0].length-1),S.lv[1]>=Math.min(2,c[1].length-1)];   // a side runs out of swaps early if a Never took its similar titles
   var duel=[0,1].map(function(k){var id=c[k][S.lv[k]];return D.sides[id+(off[k]?'|off':'')]}).join('');
   var sub=S.note?'<p class="learned">'+S.note+'</p>':(off[0]&&off[1]?'<p>No more swaps. Go with your gut.</p>':'<p>Tap a poster.</p>');
   put(D.frag['pair-'+S.picks.length].replace('@@DUEL@@',duel).replace('@@SUB@@',sub))}
@@ -173,10 +216,11 @@ ph.addEventListener('click',function(e){
     if(sb)closeSheet(sb.classList.contains('opt')?function(){go(showDone,true)}:null);return}
   var b=e.target.closest('button');if(!b||b.disabled||busy)return;
   if(b.classList.contains('tb-skip')){
-    if(S.phase==='card')go(function(){S.ci=D.cards.length;showBetween()},true);
+    if(S.phase==='card')go(function(){S.ci=S.cards.length;showBetween()},true);
     else if(S.phase==='pair')openSheet();
     return}
-  if(S.phase==='card'){var id=D.cards[S.ci],last=S.ci+1>=D.cards.length;
+  if(S.phase==='genres'){if(b.classList.contains('gbtn'))genreTap(b);else if(b.classList.contains('cta')){leaveGenres();setTimeout(function(){go(startCards,true)},0)}return}
+  if(S.phase==='card'){var id=S.cards[S.ci],last=S.ci+1>=S.cards.length;
     if(b.classList.contains('ltile')){S.rated.push([id,b.lastElementChild.textContent.trim().toLowerCase()]);go(nextCard,last)}
     else if(b.classList.contains('unseen'))go(nextCard,last)}
   else if(S.phase==='between'){if(b.classList.contains('cta'))go(showPair,true)}
@@ -185,13 +229,13 @@ ph.addEventListener('click',function(e){
       b.classList.add('chosen');go(nextPair,pairsOver(),null,0,k)}
     else if(b.classList.contains('unseen')){var k=sides.indexOf(b.closest('.side'));
       go(function(){S.lv[k]++;S.note=S.lv[k]===1?'Swapped in something similar.':'Swapped again: the last swap on this side.';
-        if(S.lv[0]>=2&&S.lv[1]>=2)S.note='';showPair()},false,k)}
+        var c=chain();if(S.lv[0]>=Math.min(2,c[0].length-1)&&S.lv[1]>=Math.min(2,c[1].length-1))S.note='';showPair()},false,k)}
     else if(b.classList.contains('ghost'))go(nextPair,pairsOver())}
   else if(S.phase==='end'){if(b.classList.contains('cta'))go(reset,true)}});
 reset()})()</script>"""
 
-# start from the first card's full page, then let the script take over the .phone
-html = card(CARDS[0], 0, meta(CARDS[0]))
+# start from the genre screen's full page, then let the script take over the .phone
+html = genres2({}, 'outline', lit=True).replace('<html>', '<html class="docscroll">', 1)
 html = html.replace('</body>', JS.replace('__DATA__', json.dumps(data).replace('</', '<\\/')) + '</body>')
 (HERE / 'play.html').write_text(html)
-print('play.html', len(html) // 1024, 'KB ·', ' / '.join(f'{c[0][0]["title"]} → {c[0][1]["title"]} → {c[0][2]["title"]}' for c in CHAINS[:2]))
+print('play.html', len(html) // 1024, 'KB')
