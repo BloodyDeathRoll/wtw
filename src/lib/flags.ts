@@ -21,3 +21,10 @@ const isOn = (v: string | undefined) => v === 'true' || v === '1' || v === 'on'
 export function formulaV2Enabled(): boolean {
   return isOn(process.env.FORMULA_V2)
 }
+
+/** Step 4, the Jev dislike filter. On unless `JEV_ENABLED=false` (P1-E7 switched it off: on formula v2 it lost more loved titles than it caught dislikes). Server-only.
+ * Unlike `isOn`, case- and space-tolerant: this flag defaults on, so a typo must not silently keep Jev running. */
+export function jevEnabled(): boolean {
+  const v = process.env.JEV_ENABLED?.trim().toLowerCase()
+  return !(v === 'false' || v === '0' || v === 'off')
+}
