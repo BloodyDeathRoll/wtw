@@ -23,6 +23,43 @@
 
 import type { ExclusionRule, ExclusionType, SoftPreference } from '@/types/dna'
 import { GAME_GENRES, tmdbGenresOf } from '@/app/play/lib/genres'
+import { GENRES_16, GENRE_13_OF, SUPERHERO_KEYWORDS, ADULT_ANIMATION_KEYWORDS, genres16Of, type Genre16 } from '@/app/play/lib/genres16'
+
+// ─────────────────────────────────────────────
+// Rules from the 16-genre screen (docs/plan/genres-16.md, option A)
+// ─────────────────────────────────────────────
+
+/**
+ * A "Never" picked on the onboarding genre screen is one of the 16 genres, and means exactly what the screen says:
+ * "Never: Superheroes" hides superhero titles and nothing else. Such a rule is marked by its id
+ * (`genre16:never:<id>`), never by its name, so a typed "sci-fi" or "fantasy" keeps its old meaning. The name stays
+ * the readable label, because the Taste DNA page shows it.
+ */
+const G16_ID = 'genre16:never:'
+export function genre16Rule(g: Genre16): ExclusionRule {
+  const label = GENRES_16.find(x => x.id === g)!.label
+  return { type: 'genre', id: G16_ID + g, name: label, raw: `Never: ${label}`, reason: 'Marked "Never" on the genre screen' }
+}
+export function genre16Of(rule: { id?: string }): Genre16 | null {
+  const g = rule.id?.startsWith(G16_ID) ? rule.id.slice(G16_ID.length) : null
+  return g && GENRES_16.some(x => x.id === g) ? (g as Genre16) : null
+}
+/**
+ * The database pass gets only the parts that can't hide too much: the unchanged genres' TMDB genres, the keywords
+ * for Superheroes and Adult animation. Sci-fi, Fantasy, Kids' animation and live-action Family need a "but not"
+ * (not superhero, not animated…) that the database pass can't say, so only the exact check in TypeScript applies them.
+ */
+const G16_SQL: Partial<Record<Genre16, () => RuleTargets>> = {
+  hero:      () => ({ genres: [], keywords: [...SUPERHERO_KEYWORDS], languages: [], conjunctions: [] }),
+  adultanim: () => ({ genres: [], keywords: [...ADULT_ANIMATION_KEYWORDS], languages: [], conjunctions: [] }),
+  anime:     () => ANIME,
+}
+const G16_TS_ONLY = new Set<Genre16>(['scifi', 'fantasy', 'anim', 'family'])
+function genre16Targets(g: Genre16): RuleTargets {
+  if (G16_SQL[g]) return G16_SQL[g]!()
+  if (G16_TS_ONLY.has(g)) return EMPTY
+  return { genres: tmdbGenresOf(GENRE_13_OF[g]), keywords: [], languages: [], conjunctions: [] }
+}
 
 // ─────────────────────────────────────────────
 // The shape any matchable thing reduces to
@@ -148,8 +185,10 @@ const norm = (s: string) => s.trim().toLowerCase()
  * that TMDB keyword; anime, by keyword or Animation + Japanese. Person rules
  * return nothing here — they are matched on crew, not content.
  */
-export function ruleTargets(rule: { type: string; name: string }): RuleTargets {
+export function ruleTargets(rule: { type: string; name: string; id?: string }): RuleTargets {
   if (rule.type === 'person') return EMPTY
+  const g16 = genre16Of(rule)
+  if (g16) return genre16Targets(g16)
   const name = norm(rule.name)
   if (!name) return EMPTY
   if (name === 'anime') return ANIME
@@ -161,7 +200,7 @@ export function ruleTargets(rule: { type: string; name: string }): RuleTargets {
 }
 
 /** Union of every rule's OR-able targets — the three SQL array params. */
-export function sqlExclusionParams(rules: { type: string; name: string }[]): {
+export function sqlExclusionParams(rules: { type: string; name: string; id?: string }[]): {
   exclude_genres: string[]
   exclude_keywords: string[]
   exclude_languages: string[]
@@ -206,6 +245,8 @@ function matchesPerson(t: MatchableTitle, rule: ExclusionRule): boolean {
 /** Does this title match this one rule? */
 export function matchesRule(title: MatchableTitle, rule: ExclusionRule): boolean {
   if (rule.type === 'person') return matchesPerson(title, rule)
+  const g16 = genre16Of(rule)
+  if (g16) return genres16Of({ type: 'movie', genres: title.genres ?? [], keywords: title.keywords ?? [], original_language: title.original_language ?? null }).includes(g16)
 
   const t = ruleTargets(rule)
   const genres = titleGenres(title)
