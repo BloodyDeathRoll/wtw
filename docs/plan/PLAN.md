@@ -143,7 +143,7 @@ The issues are assigned to match this. Shahar = `BloodyDeathRoll` (A1), Alon = `
 |---|---|---|---|
 | **Shahar** (~22 days) | #227 P1-D1 scales setup → #230 P1-D4 taste model → #235 P1-C1 chat cut-off → #228 P1-D2 catalogue scoring (runs at night) → #236 P1-C2 rules fix → #238 P1-D5 test tool → #239 P1-E7 Jev keep/fix/off | #248 P2-U7 reset tool; reviews #244 (the ratings path) | All of it: #251–#255, and the gate #256 |
 | **Alon** (~16 days) | #225 P1-E1 crowd fix → #226 P1-E2 Jev input bugs → #231 P1-E3 new formula → #232 P1-E4 downstream → #233 P1-E5 "Why this?" → #234 P1-E6 step 1 by taste → #229 P1-D3 nightly scales → **drives #240 P1-G** (switch the formula on) | #246 P2-U5 first feed | — |
-| **Eran** | #237 P1-C3 rules dropdown | #241 P2-U0 design of the whole onboarding → #242 P2-U1 card set → #243 P2-U2 genre screen → #244 P2-U3 cards → #245 P2-U4 this-or-that → #247 P2-U6 routing → #249 P2-U8 Taste DNA → **drives #250 P2-G** | — |
+| **Eran** | ~~#237 P1-C3 rules dropdown~~ (folded into #249) | #241 P2-U0 design of the whole onboarding → #242 P2-U1 card set → #243 P2-U2 genre screen → #244 P2-U3 cards → #245 P2-U4 this-or-that → #247 P2-U6 routing → #249 P2-U8 Taste DNA → **drives #250 P2-G** | — |
 
 **Why:**
 - **Each person gets their own module where possible:** the chat and session code is A1, Shahar's; the engine is A2, Alon's.
@@ -415,7 +415,7 @@ The format of each entry: **ID · title** — owner · lane · size · deps · f
   - A keyword rule matches TMDB keywords exactly, never genre names.
 - Update `tests/unit/exclusion-rules.test.ts`.
 
-**P1-C3 · Taste DNA: "Never" / "Less of" + a genre picked from a list** — A3 · U · S–M · deps: C2
+**P1-C3 · Taste DNA: "Never" / "Less of" + a genre picked from a list** — A3 · U · S–M · deps: C2 · **folded into P2-U8 (#249)** on 2026-11-12 (Eran: the page needs a bigger makeover, so the picker is designed once, inside it). Not built on its own; the spec below stands, with the final 16 genres. Until then the typing box stays: since C1 and C2 it's clumsy but harmless.
 > **In plain words:** On the Taste DNA page, adding a rule means picking "Never" or "Less of" and a genre from a list. No typing, and no two rules on one genre.
 
 - **Source:** `docs/BACKLOG.md`, the Taste DNA redesign entry, its "Add a rule" part. Mocks are in `docs/prototypes/taste-dna/`; Eran approves the state before it is built.
@@ -661,7 +661,7 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
 - **Alternative:** delete the user outright through Supabase admin.
 - Never put emails in the repo.
 
-**P2-U8 · Redesign the Taste DNA page** — **Eran** — A3 (page) · U · M · deps: D4 (taste model), C3 (rules)
+**P2-U8 · Redesign the Taste DNA page** — **Eran** — A3 (page) · U · M · deps: D4 (taste model) · **includes C3's rule picker** (folded in 2026-11-12)
 > **In plain words:** Rebuild the Taste DNA page so it shows only what really drives your recommendations.
 
 - **The full spec is in `docs/BACKLOG.md` → "Taste DNA — task details"**, rewritten for v2 on 2026-11-09. Read it first.
