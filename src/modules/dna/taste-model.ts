@@ -17,6 +17,7 @@
  * they said and their ratings and picks take over as they come in.
  */
 import type { DNASignal, Reaction } from '@/types/dna'
+// brain.ts is pure and must stay so: this file runs in the engine (update-from-play.ts and cold-start.ts import it too).
 import { nevers, type PlayState } from '@/app/play/lib/brain'
 import { FEATURE_GENRES, TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
 import { titleKey } from '@/lib/title-key'
@@ -46,6 +47,7 @@ export const GENRE_LEAN = 1
 export function genreLean(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | null | undefined, g = GENRE_LEAN): number[] {
   const w0 = new Array<number>(TASTE_FEATURE_COUNT).fill(0)
   if (!state) return w0
+  // A save with no `sel` (the genre step not done) has no Likes: no answer, no lean.
   const loved = new Set(state.loved ?? []), liked = new Set(state.sel ?? [])
   const never = new Set(state.gen ? nevers(state) : [])
   FEATURE_GENRES.forEach((id, k) => {

@@ -131,7 +131,7 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   // --shuffle is the control.
   const training = { ...(await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))), w0: await loadGenreLean(USER!, LEAN) }
   // The model's scores on the fair titles; a title without a vector gets the mean (z = 0).
-  const modelScores = (t: typeof training) => {
+  const modelScores = (t: Pick<typeof training, 'rows' | 'pairs'> & { w0?: number[] }) => {
     const w = trainTasteModel(t.rows, t.pairs, t.w0)
     const raw = scored.map(s => { const v = vecOf(s.title as Row); return v ? predict(w, v) : null })
     const known = raw.filter((x): x is number => x != null)
@@ -147,7 +147,7 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
     for (let i = 0; i < runs; i++) {
       const levels = shuffle(training.rows.map(r => r.level), rand)
       // No lean in the control: the genre answers are real information, and this must sit near 50.
-      const t = { rows: training.rows.map((r, j) => ({ ...r, level: levels[j] })), pairs: training.pairs.map(p => (rand() < 0.5 ? p : { chosen: p.other, other: p.chosen })), w0: [] }
+      const t = { rows: training.rows.map((r, j) => ({ ...r, level: levels[j] })), pairs: training.pairs.map(p => (rand() < 0.5 ? p : { chosen: p.other, other: p.chosen })) }
       const { model } = modelScores(t)
       got.push(concordance(scored.map((s, j) => ({ score: model[j], level: level.get(keyOf(s.title))! }))))
     }
@@ -232,8 +232,8 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
   const vecs = new Map([...titles].map(([k, r]) => [k, vecOf(r)]).filter((e): e is [string, number[]] => !!e[1]))
   const fairIn = fair.filter(([k]) => titles.has(k))
   // The tester's own genre answers, as a new user would have given them on the genre screen. Not in the control.
-  const w0 = args.includes('--control') ? [] : await loadGenreLean(USER!, LEAN)
-  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} fair titles in catalogue · ${allPicks.length} duel picks · genre lean g = ${LEAN} on ${w0.filter(Boolean).length} genres${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
+  const w0 = args.includes('--control') ? undefined : await loadGenreLean(USER!, LEAN)
+  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} fair titles in catalogue · ${allPicks.length} duel picks · genre lean g = ${LEAN} on ${(w0 ?? []).filter(Boolean).length} genres${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
   if (fairIn.length < 20) throw new Error('fewer than 20 fair titles in the catalogue')
 
   const res = { all: [] as number[], ld: [] as number[], loved: [] as number[], disliked: [] as number[] }
