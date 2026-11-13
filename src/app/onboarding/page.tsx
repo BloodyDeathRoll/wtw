@@ -2,7 +2,7 @@
  * /onboarding — the new first run (P2-U2 … U6, designed in #241: docs/prototypes/first-run/).
  *
  * Behind `ONBOARDING_V2` (src/lib/flags.ts): off, the page exists only in local development, for building and
- * checking it. Routing new users here is P2-U6. Progress lives in the same play_state row as the games
+ * checking it. On, `/` sends new users here until they're done (P2-U6, src/lib/onboarding-route.ts). Progress lives in the same play_state row as the games
  * (`state.onboarding`), saved through /api/play/state.
  */
 import { notFound, redirect } from 'next/navigation'
@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadHomeBootstrap } from '@/lib/home-bootstrap'
 import { onboardingV2Enabled } from '@/lib/flags'
+import { needsOnboarding } from '@/lib/onboarding-route'
 import type { AppUser } from '@/modules/session/types'
 import OnboardingApp from './components/OnboardingApp'
 import rawTitles from '@/app/play/data/titles.json'
@@ -40,6 +41,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     name: (user.user_metadata?.full_name as string | undefined) ?? (user.user_metadata?.name as string | undefined) ?? null,
     avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? (user.user_metadata?.picture as string | undefined) ?? null,
   }
-  const { play: saved } = await loadHomeBootstrap(supabase, user.id)
+  const { play: saved, signals } = await loadHomeBootstrap(supabase, user.id)
+  // Done, or an existing account that skips it: the feed (the same rule `/` uses, so they never bounce).
+  if (onboardingV2Enabled() && !needsOnboarding(saved.state, signals)) redirect('/')
   return <OnboardingApp user={appUser} saved={saved} titles={titles} />
 }
