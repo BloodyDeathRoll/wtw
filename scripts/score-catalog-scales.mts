@@ -231,7 +231,7 @@ async function finalise() {
   }
   console.log(`[scales] finalising ${rows.length} titles (${rows.filter(r => games.has(`${r.type}:${r.tmdb_id}`)).length} game titles)`)
 
-  let done = 0, tmdbCalls = 0
+  let done = 0, tmdbCalls = 0, tmdbFailed = 0
   const work = async (r: Row) => {
     const key = `${r.type}:${r.tmdb_id}`
     const game = games.get(key)
@@ -240,7 +240,7 @@ async function finalise() {
     if (!game && r.type === 'tv' && r.taste_raw && !('episodes' in raw)) {
       const episodes = await episodeCount(r.tmdb_id)
       tmdbCalls++
-      if (episodes !== undefined) { raw.episodes = episodes; rawChanged = true }
+      if (episodes !== undefined) { raw.episodes = episodes; rawChanged = true } else tmdbFailed++
       await sleep(260)
     }
     let game_genres: GameGenre[]
@@ -268,7 +268,7 @@ async function finalise() {
   }
   // Ten writes in flight; series lookups pace themselves.
   for (let i = 0; i < rows.length; i += 10) await Promise.all(rows.slice(i, i + 10).map(work))
-  console.log(`[scales] finalised ${done} of ${rows.length}${DRY ? ' (dry run, nothing written)' : ''} · TMDB calls ${tmdbCalls}`)
+  console.log(`[scales] finalised ${done} of ${rows.length}${DRY ? ' (dry run, nothing written)' : ''} · TMDB calls ${tmdbCalls}, ${tmdbFailed} failed (asked again next --finalise)`)
 }
 
 const run = flag('--finalise') ? finalise : flag('--sync-game-audience') ? syncGameAudience : score
