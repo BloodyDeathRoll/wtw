@@ -22,25 +22,27 @@ const dna = (user: string, version: number) => {
 
 beforeEach(() => { io.loads = 0; io.fail = false; clearTasteWeights() })
 
-describe('userTasteWeights', () => {
-  it('trains once for the same user and taste_version', async () => {
-    const [a, b] = await Promise.all([userTasteWeights(dna('u1', 3)), userTasteWeights(dna('u1', 3))])
+describe('userTasteWeights — one training per generation', () => {
+  it('trains once for the DNA object a generation hands to both steps', async () => {
+    const d = dna('u1', 3)
+    const [a, b] = await Promise.all([userTasteWeights(d), userTasteWeights(d)])
     expect(a).toBe(b)
     expect(io.loads).toBe(1)
   })
 
-  it('trains again after a rating (taste_version moves) and per user', async () => {
+  it('a new generation trains afresh, even at the same taste_version (card ratings don\'t bump it)', async () => {
     await userTasteWeights(dna('u1', 3))
-    await userTasteWeights(dna('u1', 4))
+    await userTasteWeights(dna('u1', 3))   // the next generation: a freshly loaded DNA
     await userTasteWeights(dna('u2', 3))
     expect(io.loads).toBe(3)
   })
 
   it('does not remember a failure', async () => {
+    const d = dna('u1', 3)
     io.fail = true
-    await expect(userTasteWeights(dna('u1', 3))).rejects.toThrow('down')
+    await expect(userTasteWeights(d)).rejects.toThrow('down')
     io.fail = false
-    await expect(userTasteWeights(dna('u1', 3))).resolves.toHaveLength(25)
+    await expect(userTasteWeights(d)).resolves.toHaveLength(25)
     expect(io.loads).toBe(2)
   })
 })
