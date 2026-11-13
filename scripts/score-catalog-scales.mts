@@ -23,19 +23,14 @@
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { generateText, Output } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
-import type { z } from 'zod'
 
 import { createServiceClient } from '@/lib/supabase/service'
-import { MODELS } from '@/lib/ai-models'
+import { CATALOGUE_SCALE_GUIDE, batchPrompt } from '@/lib/taste-scales/prompt'
+import { isMistralRateLimit, mistralRetryAfterMs, mistralCallCount } from '@/lib/mistral-batch'
 import {
-  batchMistralApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, mistralRetryAfterMs, recordMistralCall, mistralCallCount,
-} from '@/lib/mistral-batch'
-import { CATALOGUE_SCALE_GUIDE, batchPrompt, catalogueBatchSchema, repairBatch, type PromptTitle } from '@/lib/taste-scales/prompt'
-import { normaliseScales, type CatalogueAIScale } from '@/lib/taste-scales/normalise'
-import { catalogueGameGenres, tasteFeatures, TASTE_FEATURE_VERSION } from '@/lib/taste-scales/features'
-import { candidateGenres, type GameGenre } from '@/app/play/lib/genres'
+  SCALE_BATCH, SCALE_COLS, finaliseScaleRow, scoreScaleBatch, toPrompt,
+  type ScaleCallInfo, type ScaleRow, type TasteRaw,
+} from '@/lib/taste-scales/catalogue'
 import type { GameTitle } from '@/app/play/lib/scales'
 
 const args = process.argv.slice(2)
@@ -46,7 +41,7 @@ const PROBE = flag('--probe')
 const LIMIT = num('--limit', Infinity)
 const BUDGET = num('--budget', 300)
 const SPACING_MS = Number(process.env.SPACING_MS ?? 4000)
-const BATCH = 10
+const BATCH = SCALE_BATCH
 const VOTE_TIER = 300
 
 const db = createServiceClient()
@@ -54,24 +49,10 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 const DATA = resolve(process.cwd(), 'src/app/play/data')
 const readJSON = async <T,>(p: string) => JSON.parse(await readFile(p, 'utf8')) as T
 
-/** What taste_raw holds. */
-type TasteRaw = Partial<Record<CatalogueAIScale, number | null>> & { confirmed: GameGenre[]; episodes?: number | null }
-
-interface Row {
-  id: number
-  tmdb_id: string
-  title: string
-  type: 'movie' | 'tv'
-  release_year: number | null
-  tmdb_rating: number | null
-  tmdb_vote_count: number | null
-  genres: { name: string }[] | null
-  keywords: string[] | null
-  synopsis: string | null
-  original_language: string | null
-  taste_raw: TasteRaw | null
-}
-const COLS = 'id, tmdb_id, title, type, release_year, tmdb_rating, tmdb_vote_count, genres, keywords, synopsis, original_language, taste_raw'
+// The row shape, the raw-score shape and the columns now live in src/lib/taste-scales/catalogue.ts,
+// shared with the nightly job (P1-D3).
+type Row = ScaleRow
+const COLS = SCALE_COLS
 
 type Page = PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>
 async function pageAll(page: (from: number, to: number) => Page): Promise<Row[]> {
@@ -95,50 +76,18 @@ async function unscored(): Promise<Row[]> {
   return [...top, ...rest]
 }
 
-const toPrompt = (r: Row): PromptTitle & { row: Row } => ({ ...r, ...candidateGenres(r), row: r })
-
 function rateHeaders(h: Record<string, string> | undefined): string {
   return Object.entries(h ?? {}).filter(([k]) => /ratelimit|retry-after/i.test(k)).map(([k, v]) => `${k}=${v}`).join(' ') || '(no rate-limit headers)'
 }
 
-async function scoreBatch(batch: ReturnType<typeof toPrompt>[]): Promise<number> {
-  const mistral = createMistral({ apiKey: batchMistralApiKey() })
-  recordMistralCall()
-  const t0 = Date.now()
-  let output: z.infer<typeof catalogueBatchSchema>
-  try {
-    const res = await generateText({
-      model: mistral(MODELS.enrichment),
-      output: Output.object({ schema: catalogueBatchSchema }),
-      prompt: batchPrompt(CATALOGUE_SCALE_GUIDE, batch),
-      maxRetries: BATCH_MAX_RETRIES,
-    })
-    output = res.output
-    if (PROBE) console.log(`  [probe] ${Date.now() - t0} ms · tokens in ${res.usage.inputTokens} out ${res.usage.outputTokens} · ${rateHeaders(res.response.headers)}`)
-  } catch (err) {
-    if (PROBE) console.log(`  [probe] ${Date.now() - t0} ms · FAILED ${(err as Error).message.slice(0, 80)} · ${rateHeaders((err as { responseHeaders?: Record<string, string> }).responseHeaders)}`)
-    const repaired = isMistralRateLimit(err) ? null : repairBatch(err, catalogueBatchSchema)
-    if (!repaired) throw err
-    output = repaired
-  }
-  let written = 0
-  const seen = new Set<number>()
-  for (const t of output.titles) {
-    const c = batch[t.n - 1]
-    // A repeated `n` would overwrite the first answer; keep the first (the other title is retried next run).
-    if (!c || seen.has(t.n)) continue
-    seen.add(t.n)
-    const raw: TasteRaw = {
-      tone: t.tone, energy: t.energy, pace: t.pace, dark: t.dark, complex: t.complex, fantastic: t.fantastic,
-      humor: c.firm.includes('comedy') ? t.humor : null,
-      audience: t.audience,
-      confirmed: t.confirmed_genres.filter(g => c.hinted.includes(g)),
-    }
-    const { error } = await db.from('titles').update({ taste_raw: raw }).eq('id', c.row.id)
-    if (error) console.warn(`  write failed for ${c.row.type}:${c.row.tmdb_id}: ${error.message}`)
-    else written++
-  }
-  return written
+/** One AI call for up to SCALE_BATCH titles (src/lib/taste-scales/catalogue.ts); --probe logs each call. */
+async function scoreBatch(batch: Row[]): Promise<number> {
+  const probe = PROBE
+    ? (i: ScaleCallInfo) => console.log(i.error
+      ? `  [probe] ${i.ms} ms · FAILED ${i.error.slice(0, 80)} · ${rateHeaders(i.headers)}`
+      : `  [probe] ${i.ms} ms · tokens in ${i.usage?.inputTokens} out ${i.usage?.outputTokens} · ${rateHeaders(i.headers)}`)
+    : undefined
+  return scoreScaleBatch(batch, probe)
 }
 
 async function score() {
@@ -156,7 +105,7 @@ async function score() {
   for (let b = 0; b < batches.length; ) {
     if (mistralCallCount() >= BUDGET) { console.log(`[scales] call budget ${BUDGET} reached`); break }
     try {
-      const n = await scoreBatch(batches[b].map(toPrompt))
+      const n = await scoreBatch(batches[b])
       scored += n
       streak = 0
       if (n < batches[b].length) console.warn(`  batch ${b + 1}: ${batches[b].length - n} not scored (picked up next run)`)
@@ -201,19 +150,6 @@ async function syncGameAudience() {
 
 // ── Finalise ────────────────────────────────────────────────────
 
-/** null: TMDB has no count (kept, never asked again). undefined: the lookup failed (asked again next --finalise). */
-async function episodeCount(tmdb_id: string): Promise<number | null | undefined> {
-  try {
-    const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}`)
-    if (res.status === 404) return null
-    if (!res.ok) return undefined
-    const j = await res.json() as { number_of_episodes?: number }
-    return j.number_of_episodes || null
-  } catch {
-    return undefined
-  }
-}
-
 async function finalise() {
   const games = new Map((await readJSON<GameTitle[]>(resolve(DATA, 'titles.json'))).map(g => [g.id, g]))
   const rows = await pageAll((a, b) => db.from('titles').select(COLS).not('taste_raw', 'is', null).order('id').range(a, b))
@@ -234,34 +170,14 @@ async function finalise() {
   let done = 0, seen = 0, tmdbCalls = 0, tmdbFailed = 0
   const work = async (r: Row) => {
     const key = `${r.type}:${r.tmdb_id}`
-    const game = games.get(key)
-    const raw: TasteRaw = r.taste_raw ?? { confirmed: [] }
-    let rawChanged = false
-    if (!game && r.type === 'tv' && r.taste_raw && !('episodes' in raw)) {
-      const episodes = await episodeCount(r.tmdb_id)
+    const f = await finaliseScaleRow(r, games.get(key))
+    if (f.episodeLookup) {
       tmdbCalls++
-      if (episodes !== undefined) { raw.episodes = episodes; rawChanged = true } else tmdbFailed++
+      if (f.episodeLookupFailed) tmdbFailed++
       await sleep(260)
     }
-    let game_genres: GameGenre[]
-    let taste_scales: Record<string, number>
-    if (game) {
-      game_genres = game.genres
-      const audience = normaliseScales({ type: r.type, release_year: null, tmdb_vote_count: null, episodes: null, game_genres, raw: { audience: raw.audience ?? null } }).audience
-      taste_scales = { ...game.scales, ...(audience !== undefined ? { audience } : {}) }
-    } else {
-      game_genres = catalogueGameGenres(r, raw.confirmed ?? [])
-      taste_scales = normaliseScales({
-        type: r.type, release_year: r.release_year, tmdb_vote_count: r.tmdb_vote_count,
-        episodes: raw.episodes ?? null, game_genres, raw,
-      }) as Record<string, number>
-    }
-    const vec = tasteFeatures({ tmdb_rating: r.tmdb_rating, game_genres, taste_scales })
     if (DRY) { done++; return }
-    const { error } = await db.from('titles').update({
-      ...(rawChanged ? { taste_raw: raw } : {}),
-      taste_scales, game_genres, taste_vec: JSON.stringify(vec), taste_version: TASTE_FEATURE_VERSION,
-    }).eq('id', r.id)
+    const { error } = await db.from('titles').update(f.update).eq('id', r.id)
     if (error) console.warn(`  write failed for ${key}: ${error.message}`)
     else done++
     // Progress by rows processed, so a failed write can't skip or repeat a line.

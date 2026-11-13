@@ -12,12 +12,20 @@
  *
  * Also runs buildLineageGraph for any crew members without lineage data,
  * capped at CREW_BATCH_SIZE per run to keep the job short.
+ *
+ * With `scales: true` (grow-catalog only), a third phase puts new titles on
+ * the 11 taste scales (P1-D3): up to SCALE_TITLE_LIMIT a run, SCALE_BATCH per
+ * call, inside the same call budget and 429 handling, then finalises them
+ * (taste_vec). The batch key allows ~2 calls a minute (measured on #228), so
+ * the calls are spaced SCALE_SPACING_MS — too slow for a 300 s serverless
+ * route, which is why it's opt-in.
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { enrichTitleWithNarrative } from './enrich-title-narrative'
 import { buildLineageGraph } from './build-lineage-graph'
 import { isMistralRateLimit, mistralCallCount, mistralRetryAfterMs } from '@/lib/mistral-batch'
+import { SCALE_BATCH, SCALE_COLS, finaliseScaleRow, scoreScaleBatch, type ScaleRow } from '@/lib/taste-scales/catalogue'
 
 const TITLE_BATCH_SIZE = 1    // STRICTLY serial — one enrichment call at a time
 const TITLE_LIMIT = 15        // titles enriched per run
@@ -33,6 +41,13 @@ const CREW_BATCH_SIZE = 8     // crew lineage rows per run
 // count alone, and the burst probe hit 0 failures on 45 rapid calls. ~15
 // titles/min, run ~120s (under the cron's 300s cap), 3x the old pace.
 const BATCH_DELAY_MS = 1500
+/** New titles put on the taste scales per run (P1-D3; ~60 arrive a day). */
+const SCALE_TITLE_LIMIT = 60
+/** Scored-but-not-finalised rows finalised per run (this run's and any left over). */
+const SCALE_FINALISE_LIMIT = 200
+/** The batch key allows ~2 requests a minute (#228 probe): just over 30 s between scale calls. */
+const SCALE_SPACING_MS = 31_000
+const SCALE_COST = 1
 
 export interface EnrichmentReport {
   titles_processed: number
@@ -56,6 +71,14 @@ export interface EnrichmentReport {
    * (A failed pending-titles select throws instead — nothing was spent.)
    */
   crew_queue_failed: boolean
+  /** Titles put on the taste scales this run (P1-D3; `scales: true` only). */
+  scales_scored: number
+  /** Titles whose taste vector was written this run. */
+  scales_finalised: number
+  /** Titles in a scale call that failed (picked up next run). */
+  scales_failed: number
+  /** The scale queue select failed after its retries; scales were skipped this run. */
+  scales_queue_failed: boolean
 }
 
 export interface EnrichmentOptions {
@@ -77,6 +100,10 @@ export interface EnrichmentOptions {
    * grow-catalog, which has 180 minutes, not a serverless route with 300s.
    */
   maxCooldownMs?: number
+  /** Run the taste-scales phase (P1-D3). Off by default: at ~2 calls a minute it suits grow-catalog, not a serverless route. */
+  scales?: boolean
+  /** Wait between scale calls; tests set it to 0. */
+  scaleSpacingMs?: number
 }
 
 // A 429 is not, on its own, proof that the key is spent. Both shapes are real:
@@ -299,6 +326,74 @@ export async function runNightlyEnrichment(
     }
   }
 
+  // ── Phase 3: taste scales for new titles (P1-D3, opt-in) ─
+  // Same key, same wall, same budget as the phases above: skipped when either
+  // already stopped. Scoring writes taste_raw; finalising writes taste_vec
+  // (and, through the 0033 trigger, title_taste), so a new title reaches the
+  // taste pool the night it is scored.
+  let scales_scored = 0
+  let scales_finalised = 0
+  let scales_failed = 0
+  let scales_queue_failed = false
+  if (options.scales && !rate_limited && !budget_exhausted) {
+    const spacing = options.scaleSpacingMs ?? SCALE_SPACING_MS
+    let scaleQueue: ScaleRow[] = []
+    try {
+      scaleQueue = await selectQueue('scales', () => supabase
+        .from('titles')
+        .select(SCALE_COLS)
+        .is('taste_raw', null)
+        .not('synopsis', 'is', null)   // the prompt needs one
+        .order('created_at', { ascending: true })
+        .limit(SCALE_TITLE_LIMIT)) as ScaleRow[]
+    } catch (err) {
+      scales_queue_failed = true
+      console.error('[scales] skipping scales this run:', err instanceof Error ? err.message : err)
+    }
+
+    for (let i = 0; i < scaleQueue.length; i += SCALE_BATCH) {
+      if (callsLeft() < SCALE_COST) { budget_exhausted = true; break }
+      const batch = scaleQueue.slice(i, i + SCALE_BATCH)
+      const outcome = await attempt(
+        'scales',
+        `${batch.length} titles`,
+        SCALE_COST,
+        async () => { scales_scored += await scoreScaleBatch(batch) },
+        () => { scales_failed += batch.length },
+      )
+      if (outcome === 'wall') rate_limited = true
+      if (outcome === 'budget') budget_exhausted = true
+      if (rate_limited || budget_exhausted) break
+      if (i + SCALE_BATCH < scaleQueue.length) await sleep(spacing)
+    }
+
+    // Finalise whatever is scored but has no vector yet — this run's, and any
+    // a past run scored but didn't get to. No AI calls; a series may need one
+    // TMDB lookup for its episode count. New titles are never game titles (all
+    // 980 are finalised), so they go through the catalogue normalisation.
+    if (!scales_queue_failed) {
+      const { data: pending, error } = await supabase
+        .from('titles').select(SCALE_COLS)
+        .not('taste_raw', 'is', null).is('taste_vec', null)
+        .order('id').limit(SCALE_FINALISE_LIMIT)
+      if (error) {
+        console.error('[scales] finalise select failed:', error.message)
+      } else {
+        for (const r of (pending ?? []) as ScaleRow[]) {
+          try {
+            const f = await finaliseScaleRow(r)
+            const { error: e } = await supabase.from('titles').update(f.update).eq('id', r.id)
+            if (e) console.warn(`[scales] finalise write failed for ${r.type}:${r.tmdb_id}: ${e.message}`)
+            else scales_finalised++
+            if (f.episodeLookup) await sleep(260)
+          } catch (err) {
+            console.warn(`[scales] finalise failed for ${r.type}:${r.tmdb_id}:`, err instanceof Error ? err.message : err)
+          }
+        }
+      }
+    }
+  }
+
   return {
     titles_processed,
     titles_failed,
@@ -309,5 +404,9 @@ export async function runNightlyEnrichment(
     rate_limited,
     budget_exhausted,
     crew_queue_failed,
+    scales_scored,
+    scales_finalised,
+    scales_failed,
+    scales_queue_failed,
   }
 }
