@@ -76,6 +76,17 @@ describe('precomputeNextBatch onParked', () => {
     expect(calls).toBe(2)
   })
 
+  it('a hook that took the parked batch (refresh) gets one more build, so "Find more" still has one', async () => {
+    let calls = 0
+    await precomputeNextBatch('u1', 'movies', async () => {
+      calls++
+      if (calls === 1) { redis.store.delete(PENDING); return 191 }
+      return null
+    })
+    expect(generateRecommendations).toHaveBeenCalledTimes(2)
+    expect(redis.store.has(PENDING)).toBe(true)
+  })
+
   it('a failing hook does not stop the park or release the lock early', async () => {
     await precomputeNextBatch('u1', 'movies', async () => { throw new Error('promotion failed') })
     expect(redis.store.has(PENDING)).toBe(true)
