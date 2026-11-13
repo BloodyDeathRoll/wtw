@@ -26,7 +26,8 @@ vi.mock('@/lib/conversations', () => ({ endConversation: async () => {} }))
 vi.mock('@/modules/dna/lib/load-save', () => ({ invalidateDNACache: async () => {} }))
 const analyzeSession = vi.fn()
 vi.mock('@/modules/session/analyze-session', () => ({ analyzeSession }))
-vi.mock('@/modules/session/feedback-signals', () => ({ foldRatedHistoryIntoSummary: async () => 0 }))
+const foldRatedHistoryIntoSummary = vi.fn(async (_dna: unknown, _summary: { new_signals: unknown[] }) => 0)
+vi.mock('@/modules/session/feedback-signals', () => ({ foldRatedHistoryIntoSummary }))
 const updateSchemaFromSession = vi.fn()
 vi.mock('@/modules/dna/update-from-session', () => ({ updateSchemaFromSession }))
 const generateRecommendations = vi.fn(async () => [{ tmdb_id: 9, type: 'movie' }, { tmdb_id: 10, type: 'movie' }])
@@ -128,6 +129,15 @@ describe('session/end `more` after a rating', () => {
     const body = await (await post({ more: true })).json()
     expect(body).toMatchObject({ ok: true, rec_count: 2 })
     expect(body.page).toBeUndefined()
+  })
+
+  it('a rating the light merge missed: full update, and the page is built from the updated fingerprint', async () => {
+    foldRatedHistoryIntoSummary.mockImplementationOnce(async (_dna, summary) => { summary.new_signals.push({}); return 1 })
+    const updated = { metadata: { taste_version: 8 } }
+    updateSchemaFromSession.mockResolvedValueOnce(updated)
+    const body = await (await post({ more: true })).json()
+    expect(body).toMatchObject({ ok: true, taste_version: 8, page: firstPage })
+    expect(buildRecPage).toHaveBeenCalledWith(expect.objectContaining({ dna: updated, start: 0 }))
   })
 
   it('no page without `more`', async () => {
