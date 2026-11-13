@@ -34,7 +34,7 @@ beforeEach(() => {
   process.env.TYPESAFE_API_KEY = 'test-key'
   vi.clearAllMocks()
 })
-afterEach(() => { vi.unstubAllGlobals() })
+afterEach(() => { vi.unstubAllGlobals(); delete process.env.JEV_ENABLED })
 
 describe('jevNoul', () => {
   it('sends one noul question per entry and returns name → probability', async () => {
@@ -129,6 +129,26 @@ describe('llmRerank (step 4)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new DOMException('timed out', 'TimeoutError') }))
     expect((await llmRerank(batch, dna)).length).toBe(4)
     expect(redis.lpush).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['false', '0', 'off', ' FALSE '])('JEV_ENABLED=%j skips Jev: the batch as scored, no request', async v => {
+    process.env.JEV_ENABLED = v
+    const fetchMock = vi.fn(async () => jevResponse({ 'movie:2': 0.95 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const out = await llmRerank(batch, dna)
+
+    expect(out.map(s => s.composite_score)).toEqual([0.95, 0.94, 0.93, 0.92])
+    expect(out.every(s => s.groq_rationale === '')).toBe(true)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'true', ''])('JEV_ENABLED=%j still asks Jev', async v => {
+    if (v !== undefined) process.env.JEV_ENABLED = v
+    const fetchMock = vi.fn(async () => jevResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+    await llmRerank(batch, dna)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('a Redis outage while logging never reaches the caller', async () => {

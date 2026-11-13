@@ -30,10 +30,11 @@
 import type { DNASchema, StrandB, StrandC, ContentAffinityEntry, CrewAffinityEntry, ExclusionRule } from '@/types/dna'
 import { isObj, readMarker, type Applied, type PlayDnaMarker } from './lib/play-marker'
 export { readMarker, type Applied, type PlayDnaMarker } from './lib/play-marker'
-import { ruleKey } from '@/lib/exclusion-rules'
+import { genre16Rule, ruleKey } from '@/lib/exclusion-rules'
 import { conf, est, nevers, trustedCreators, type PlayState } from '@/app/play/lib/brain'
 import { seasonDone } from '@/app/play/lib/blocks'
 import type { GameGenre } from '@/app/play/lib/genres'
+import type { Genre16 } from '@/app/play/lib/genres16'
 import type { GameTitle } from '@/app/play/lib/scales'
 import { withDNAUpdate, fetchTitleCrew, bumpVersion } from './lib/load-save'
 import { recenterWeights } from './lib/update-strand-c'
@@ -111,6 +112,8 @@ export interface Influence {
   genres: Record<string, number>        // genre_affinity key → delta
   languages: Record<string, number>
   never: GameGenre[]
+  /** Nevers from the new onboarding's genre screen, on the 16 genres (written as exact genre16 rules). */
+  never16?: Genre16[]
   pacing: Partial<Record<keyof StrandC['pacing_weights'], number>>
   tone: Partial<Record<keyof StrandC['tone_weights'], number>>
   strandB: Partial<Record<keyof StrandB, { value: StrandB[keyof StrandB]['value']; confidence: number }>>
@@ -192,7 +195,7 @@ export function playInfluence(S: PlayState): Influence {
     strandB.originality_weight = { value: r2(0.5 + indie.e / 2), confidence: r2(STRAND_B_GAIN * indie.c) }
   }
 
-  return { genres, languages, never: nevers(S), pacing, tone, strandB, creators: trustedCreators(S) }
+  return { genres, languages, never: nevers(S), never16: never16Of(S), pacing, tone, strandB, creators: trustedCreators(S) }
 }
 
 const r2 = (x: number) => Math.round(x * 1000) / 1000
@@ -308,6 +311,12 @@ export function applyPlayInfluence(
       next.rules.push(id)
     }
   }
+  for (const g of inf.never16 ?? []) {
+    const rule = genre16Rule(g)
+    if (logic.exclusion_rules.some(r => r.id === rule.id || ruleKey(r) === ruleKey(rule))) continue
+    logic.exclusion_rules.push(rule)
+    next.rules.push(rule.id)
+  }
 
   for (const [k, d] of Object.entries(inf.pacing) as [keyof StrandC['pacing_weights'], number][]) {
     c.pacing_weights[k] = clamp(c.pacing_weights[k] + d, 0, 1)
@@ -344,11 +353,19 @@ export function applyPlayInfluence(
 /** Picks between syncs once the season is over (the games phase has no blocks). */
 const ROUNDS_BETWEEN_SYNCS = 6
 
+/** The onboarding genre screen's Nevers, on the 16 (empty for anyone who didn't use it). */
+export function never16Of(S: Pick<PlayState, 'onboarding'>): Genre16[] {
+  const a = S.onboarding?.genres16 ?? {}
+  return (Object.keys(a) as Genre16[]).filter(g => a[g] === 'never').sort()
+}
+const never16Ids = (S: PlayState) => never16Of(S).map(g => genre16Rule(g).id).sort().join()
+
 export function needsSync(S: PlayState, prev: PlayDnaMarker | null): boolean {
   if (!S.sel) return false
   if (!prev) return true
   const done = seasonDone(S)
   return (
+    never16Ids(S) !== prev.rules.filter(id => id.startsWith('genre16:never:')).sort().join() ||
     prev.sel?.join() !== S.sel.join() ||
     prev.block !== S.block ||
     prev.done !== done ||

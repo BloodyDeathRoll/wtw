@@ -16,7 +16,12 @@ const PAGE = 1000
 /** Ids per `in (...)` filter, to keep the request URL short. */
 const ID_CHUNK = 300
 
-export async function loadTasteTraining(dna: DNASchema, userId: string): Promise<{ rows: TasteRow[]; pairs: TastePair[] }> {
+/**
+ * `holdOut` (title keys) is for evaluation only (scripts/eval): picks that
+ * touch a held-out title are dropped, so a model is never scored on a title
+ * its own training already ranked.
+ */
+export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?: Set<string>): Promise<{ rows: TasteRow[]; pairs: TastePair[] }> {
   const db = createServiceClient()
 
   const picks: DuelPick[] = []
@@ -38,10 +43,13 @@ export async function loadTasteTraining(dna: DNASchema, userId: string): Promise
   const ids = [...new Set([...keys].map(parseTitleKey).filter(k => k.type).map(k => k.tmdb_id))]
 
   const vecs = new Map<string, number[]>()
-  for (let i = 0; i < ids.length; i += ID_CHUNK) {
-    const { data, error } = await db.from('titles').select('tmdb_id, type, taste_vec')
-      .in('tmdb_id', ids.slice(i, i + ID_CHUNK))
-      .eq('taste_version', TASTE_FEATURE_VERSION).not('taste_vec', 'is', null)
+  const chunks: string[][] = []
+  for (let i = 0; i < ids.length; i += ID_CHUNK) chunks.push(ids.slice(i, i + ID_CHUNK))
+  // All chunks at once: one after another cost ~100 ms a chunk in v2's step 1 (P1-G latency, #240).
+  const results = await Promise.all(chunks.map(chunk => db.from('titles').select('tmdb_id, type, taste_vec')
+    .in('tmdb_id', chunk)
+    .eq('taste_version', TASTE_FEATURE_VERSION).not('taste_vec', 'is', null)))
+  for (const { data, error } of results) {
     if (error) throw new Error(`Taste training failed (titles): ${error.message}`)
     for (const r of data ?? []) {
       const key = titleKey(r.type as MediaType, r.tmdb_id as string)
@@ -52,5 +60,5 @@ export async function loadTasteTraining(dna: DNASchema, userId: string): Promise
     }
   }
 
-  return buildTraining(dna.signals, picks, vecs)
+  return buildTraining(dna.signals, picks, vecs, Date.now(), holdOut)
 }

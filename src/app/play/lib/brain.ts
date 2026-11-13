@@ -10,6 +10,7 @@
  * without a browser. Functions that change the state mutate the object they
  * are given; the caller owns copying it for React.
  */
+import type { Genre16 } from './genres16'
 import type { CastHistory } from './cast'
 import { GAME_GENRES, type GameGenre } from './genres'
 import { CORE_SCALES, EXTRA_SCALES, SCALE_LABELS, SCALE_WORDS, type CoreScale, type GameTitle, type Scale } from './scales'
@@ -107,6 +108,15 @@ export interface PlayState {
   games: Record<string, { level: number; plays: number }>
   /** Newest first, capped. Shown in the side panel as the signal log. */
   log: string[]
+  /**
+   * The new onboarding (P2-U2 … U6), kept in the same play_state row. `genres16` is what the genre screen said, on
+   * the 16 genres people see (genres16.ts); `gen` above carries the same answers on the 13 the picker reads.
+   */
+  onboarding?: {
+    genres16?: Partial<Record<Genre16, 'love' | 'like' | 'never'>>
+    step?: 'genres' | 'cards' | 'between' | 'picks' | 'showtime'
+    done_at?: string
+  }
 }
 
 export function freshState(): PlayState {

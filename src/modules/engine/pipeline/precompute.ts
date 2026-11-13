@@ -28,6 +28,7 @@ import { isSavedMarker, recordKey, titleKey } from '@/lib/title-key'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
 import { generateRecommendations } from './generate'
+import { formulaV2Enabled } from '@/lib/flags'
 import { cacheRecommendations } from './step8-cache'
 
 // `rec_pending2:` (2026-11-06): batches parked before the kids' cap and the new card lines aren't adopted.
@@ -53,7 +54,7 @@ interface PendingBatch {
  * removed_titles is deliberately NOT included — a removed title in an
  * adopted batch is filtered at read time (GET) and only costs a slot.
  */
-export function generationInputsHash(dna: DNASchema): string {
+export function generationInputsHash(dna: DNASchema, outsideInputs = ''): string {
   const h = createHash('sha256')
   const signals = dna.signals.map(s => `${titleKey(s.type, s.tmdb_id)}=${s.reaction}`).sort()
   const saved = dna.learning_loop.recommendation_history.filter(isSavedMarker).map(recordKey).sort()
@@ -65,7 +66,49 @@ export function generationInputsHash(dna: DNASchema): string {
   h.update(JSON.stringify(dna.strand_b_narrative_dimensions))
   h.update(JSON.stringify(dna.strand_c_visceral_specs))
   h.update(JSON.stringify(dna.contextual_logic))
+  if (outsideInputs) h.update(`#${outsideInputs}`)
   return h.digest('hex')
+}
+
+/**
+ * What a generation reads beyond the DNA, so a parked batch built before it
+ * moved is never adopted as current (P2-U5). Under formula v2 the taste model
+ * trains on this-or-that picks (play_events `duel`) and, with DEC-13, leans on
+ * the genre screen's answers (play_state) — neither is in the DNA, and a
+ * new user's last picks land after their batch was precomputed. Under v1
+ * neither moves the batch, so this is '' and the hash is exactly as before.
+ *
+ * A failed read returns a value that matches nothing: the parked batch is
+ * regenerated rather than trusted.
+ */
+export async function outsideInputsMark(userId: string): Promise<string> {
+  if (!formulaV2Enabled()) return ''
+  try {
+    const db = createServiceClient()
+    const [picks, play] = await Promise.all([
+      db.from('play_events').select('id', { count: 'exact' })
+        .eq('user_id', userId).eq('kind', 'duel').not('payload->>chosen', 'is', null)
+        .order('id', { ascending: false }).limit(1),
+      db.from('play_state').select('state').eq('user_id', userId).maybeSingle<{ state: Record<string, unknown> | null }>(),
+    ])
+    if (picks.error) throw new Error(picks.error.message)
+    if (play.error && !/does not exist|schema cache/i.test(play.error.message)) throw new Error(play.error.message)
+    const st = (play.data?.state ?? {}) as { gen?: unknown; sel?: unknown; loved?: unknown; onboarding?: { genres16?: unknown } }
+    const answers = JSON.stringify([st.gen ?? null, st.sel ?? null, st.loved ?? null, st.onboarding?.genres16 ?? null])
+    return `picks:${picks.count ?? 0}:${(picks.data?.[0] as { id?: unknown } | undefined)?.id ?? 0}|answers:${answers}`
+  } catch (err) {
+    console.warn('[precompute] outside inputs unavailable (no adoption):', err instanceof Error ? err.message : err)
+    return `unavailable:${Date.now()}:${Math.random()}`
+  }
+}
+
+/** True while a precompute for this user holds the lock (P2-U5 waits for it rather than building twice). */
+export async function precomputeRunning(userId: string): Promise<boolean> {
+  try {
+    return (await getRedis().get(lockKey(userId))) !== null
+  } catch {
+    return false
+  }
 }
 
 async function loadDNA(userId: string): Promise<DNASchema | null> {
@@ -114,7 +157,9 @@ export async function precomputeNextBatch(
       await redis.del(dirtyKey(userId))
       const dna = await loadDNA(userId)
       if (!dna) return
-      const hash = generationInputsHash(dna)
+      // Read before generating: anything that lands during the build makes the
+      // batch older than its hash says, so it is re-checked at adoption.
+      const hash = generationInputsHash(dna, await outsideInputsMark(userId))
       const results = await generateRecommendations(userId, undefined, { dna, precompute: true, contentType })
       const batch: PendingBatch = { hash, results }
       await redis.set(pendingKey(userId, contentType), batch, { ex: PENDING_TTL_SECONDS })
@@ -155,7 +200,7 @@ export async function adoptPendingBatch(
     return null
   }
   if (!batch?.results?.length || !batch.hash) return null
-  if (batch.hash !== generationInputsHash(dna)) {
+  if (batch.hash !== generationInputsHash(dna, await outsideInputsMark(userId))) {
     console.log('[precompute] pending batch stale — regenerating')
     return null
   }

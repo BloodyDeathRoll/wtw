@@ -67,20 +67,25 @@ export interface DuelPick { a: string; b: string; chosen: string }
  * Rows and pairs from the person's signals and picks, given the vectors that
  * exist (by title key). Titles named in chat (`session_*` sources) are left
  * out (DEC-5); titles without a vector are skipped. A missing `watched_at`
- * counts as recent.
+ * counts as recent. `holdOut` (title keys, evaluation only) drops the picks
+ * that touch those titles.
  */
-export function buildTraining(signals: DNASignal[], picks: DuelPick[], vecs: Map<string, number[]>, now = Date.now()) {
+export function buildTraining(signals: DNASignal[], picks: DuelPick[], vecs: Map<string, number[]>, now = Date.now(), holdOut?: Set<string>) {
   const rows: TasteRow[] = []
   for (const s of signals) {
     if (s.source.startsWith('session_')) continue
+    // 'mixed' was dropped in migration 0013 but old signals may still carry it; its level would be NaN.
+    const level = LEVEL[s.reaction]
+    if (!level) continue
     const vec = vecs.get(titleKey(s.type, s.tmdb_id))
     if (!vec) continue
     const old = s.watched_at != null && now - new Date(s.watched_at).getTime() > DECAY_AFTER_MS
-    rows.push({ vec, level: LEVEL[s.reaction], weight: old ? 0.5 : 1 })
+    rows.push({ vec, level, weight: old ? 0.5 : 1 })
   }
   const pairs: TastePair[] = []
   for (const p of picks) {
     if (p.a === p.b) continue
+    if (holdOut?.has(p.a) || holdOut?.has(p.b)) continue
     const other = p.chosen === p.a ? p.b : p.chosen === p.b ? p.a : null
     const chosen = vecs.get(p.chosen)
     const otherVec = other ? vecs.get(other) : undefined

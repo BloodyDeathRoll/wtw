@@ -23,6 +23,8 @@ import {
 } from "@/lib/tmdb";
 import { titleKey, recordKey, matchesKeySet, isSavedMarker } from "@/lib/title-key";
 import { isContentType, titleTypeFor, type ContentType } from "@/lib/content-type";
+import { displayMatch } from "@/modules/engine/match-display";
+import { servedFormula } from "@/modules/engine/live-score";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
 import type { Recommendation, MotifKind } from "@/types/recommendation";
 
@@ -30,12 +32,6 @@ export const runtime = "nodejs";
 
 const DEFAULT_PAGE_SIZE = 6;
 
-// Divisor for turning composite_score into the displayed match %. Empirical,
-// not derived from the formula: crew/external/recency components CAN each hit
-// 1.0, but narrative cosine sim and visceral match cluster well below it, so
-// observed composites top out around 0.8. Recalibrate if scoring weights or
-// scorers change. Clamped to 1 at use, so an over-0.8 score just shows 100%.
-const MATCH_DISPLAY_CEILING = 0.8;
 
 // Which region's streaming availability the card's service line reports.
 // Deliberately a constant, not an env var (decided 2026-08-26): the nightly
@@ -155,9 +151,9 @@ async function toUIRecommendations(
       trailer_url: youtubeTrailerUrl(t?.trailer_key as string | null | undefined),
       meta,
       rating: (t?.tmdb_rating as number | null) ?? 0,
-      // Rescale for display so a best-possible fit reads as ~100%, not ~78%.
-      // Display-only — feedback and the engine never read this field back.
-      match: Math.max(0, Math.min(1, r.composite_score / MATCH_DISPLAY_CEILING)),
+      // v1: rescaled so a best fit reads ~100%. v2: the pool percentile,
+      // capped at 97% (DEC-10). Display-only (src/modules/engine/match-display.ts).
+      match: displayMatch(r.composite_score),
       reason: r.explanation || "Matched to your fingerprint",
       // Flatrate streaming availability for the deployment's region
       // (migration 0017, filled nightly by grow-catalog.mts §3c). Null when
@@ -343,14 +339,20 @@ export async function GET(req: Request) {
     const uiRecs = await toUIRecommendations(items);
     // Remember what this user was actually shown (served_titles, migration
     // 0019): the next batch keeps these out of its "fresh" 80% and draws its
-    // "seen" 20% from them until they're rated. After the response — a
+    // "seen" 20% from them until they're rated. With the score each card was
+    // served with and the formula behind it (migration 0032), for the live
+    // score (src/modules/engine/live-score.ts). After the response — a
     // bookkeeping write must never delay a page.
     if (items.length > 0) {
       const keys = items.map((r) => titleKey(r.type, r.tmdb_id));
+      const scores = items.map((r) => r.composite_score);
+      const formulas = items.map((r) => servedFormula(r));
       after(async () => {
         const { error } = await createServiceClient().rpc("record_served_titles", {
           p_user_id: userId,
           p_keys: keys,
+          p_scores: scores,
+          p_formulas: formulas,
         });
         if (error) console.warn("[recommendations/generate] record_served_titles failed (non-fatal):", error.message);
       });

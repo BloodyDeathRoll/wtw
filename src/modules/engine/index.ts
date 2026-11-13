@@ -7,6 +7,7 @@
 
 // ── Core pipeline ─────────────────────────────────────────
 export { generateRecommendations }          from './pipeline/generate'
+export { kickFirstFeed, finishFirstFeed, type FirstFeedResult } from './first-feed'
 export { generateCowatchRecommendations }   from './cowatch/intersection'
 
 // ── Enrichment utilities (also used by cron and seed scripts) ──

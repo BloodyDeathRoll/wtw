@@ -12,13 +12,54 @@
  *   3. There was nothing to match "anime" against. It is not a TMDB genre,
  *      and titles had neither original_language nor keywords (migration 0021).
  *
- * A rule's `name` is free text the user said. Matching it means widening it
- * into the three things the catalog can actually be filtered on — genre
- * names, TMDB keywords, ISO language codes — plus, for the cases where no
- * single field is enough, a conjunction checked in TypeScript.
+ * A rule hides exactly what it names (P1-C2, docs/plan/PLAN.md): rules now
+ * come only from a "Never" or "Less of" + a genre picked from a list. A genre
+ * rule matches that genre's TMDB genres and nothing else — no widening from a
+ * word ("no musicals" used to hide Whiplash, "no rom-coms" all romance). A
+ * keyword rule matches that TMDB keyword exactly, never a genre name. The one
+ * category kept is anime (the keyword, or Animation + Japanese), because the
+ * genre step offers it and TMDB has no anime genre.
  */
 
 import type { ExclusionRule, ExclusionType, SoftPreference } from '@/types/dna'
+import { GAME_GENRES, tmdbGenresOf } from '@/app/play/lib/genres'
+import { GENRES_16, GENRE_13_OF, SUPERHERO_KEYWORDS, ADULT_ANIMATION_KEYWORDS, genres16Of, type Genre16 } from '@/app/play/lib/genres16'
+
+// ─────────────────────────────────────────────
+// Rules from the 16-genre screen (docs/plan/genres-16.md, option A)
+// ─────────────────────────────────────────────
+
+/**
+ * A "Never" picked on the onboarding genre screen is one of the 16 genres, and means exactly what the screen says:
+ * "Never: Superheroes" hides superhero titles and nothing else. Such a rule is marked by its id
+ * (`genre16:never:<id>`), never by its name, so a typed "sci-fi" or "fantasy" keeps its old meaning. The name stays
+ * the readable label, because the Taste DNA page shows it.
+ */
+const G16_ID = 'genre16:never:'
+export function genre16Rule(g: Genre16): ExclusionRule {
+  const label = GENRES_16.find(x => x.id === g)!.label
+  return { type: 'genre', id: G16_ID + g, name: label, raw: `Never: ${label}`, reason: 'Marked "Never" on the genre screen' }
+}
+export function genre16Of(rule: { id?: string }): Genre16 | null {
+  const g = rule.id?.startsWith(G16_ID) ? rule.id.slice(G16_ID.length) : null
+  return g && GENRES_16.some(x => x.id === g) ? (g as Genre16) : null
+}
+/**
+ * The database pass gets only the parts that can't hide too much: the unchanged genres' TMDB genres, the keywords
+ * for Superheroes and Adult animation. Sci-fi, Fantasy, Kids' animation and live-action Family need a "but not"
+ * (not superhero, not animated…) that the database pass can't say, so only the exact check in TypeScript applies them.
+ */
+const G16_SQL: Partial<Record<Genre16, () => RuleTargets>> = {
+  hero:      () => ({ genres: [], keywords: [...SUPERHERO_KEYWORDS], languages: [], conjunctions: [] }),
+  adultanim: () => ({ genres: [], keywords: [...ADULT_ANIMATION_KEYWORDS], languages: [], conjunctions: [] }),
+  anime:     () => ANIME,
+}
+const G16_TS_ONLY = new Set<Genre16>(['scifi', 'fantasy', 'anim', 'family'])
+function genre16Targets(g: Genre16): RuleTargets {
+  if (G16_SQL[g]) return G16_SQL[g]!()
+  if (G16_TS_ONLY.has(g)) return EMPTY
+  return { genres: tmdbGenresOf(GENRE_13_OF[g]), keywords: [], languages: [], conjunctions: [] }
+}
 
 // ─────────────────────────────────────────────
 // The shape any matchable thing reduces to
@@ -53,47 +94,16 @@ export interface RuleTargets {
 const EMPTY: RuleTargets = { genres: [], keywords: [], languages: [], conjunctions: [] }
 
 /**
- * Category aliases — the handful of things people name that the catalog does
- * not store under that name. Anime is the motivating case: TMDB tags most of
- * it with the keyword "anime", but coverage is not total, so the conjunction
- * (Animation + Japanese) backstops it. Excluding language `ja` alone would
- * take Kurosawa with it, which is why it is never an OR term on its own.
+ * Anime: TMDB tags most of it with the keyword "anime", but coverage is not
+ * total, so the conjunction (Animation + Japanese) backstops it. Excluding
+ * language `ja` alone would take Kurosawa with it, which is why it is never
+ * an OR term on its own.
  */
-const ALIASES: Record<string, RuleTargets> = {
-  anime: {
-    genres: [],
-    keywords: ['anime'],
-    languages: [],
-    conjunctions: [{ genres: ['animation'], languages: ['ja'] }],
-  },
-  manga: {
-    genres: [],
-    keywords: ['anime', 'based on manga'],
-    languages: [],
-    conjunctions: [{ genres: ['animation'], languages: ['ja'] }],
-  },
-  bollywood: { genres: [], keywords: ['bollywood'], languages: ['hi'], conjunctions: [] },
-  'k-drama': { genres: [], keywords: ['k-drama'], languages: [], conjunctions: [{ genres: ['drama'], languages: ['ko'] }] },
-  kdrama:    { genres: [], keywords: ['k-drama'], languages: [], conjunctions: [{ genres: ['drama'], languages: ['ko'] }] },
-  'korean drama': { genres: [], keywords: ['k-drama'], languages: [], conjunctions: [{ genres: ['drama'], languages: ['ko'] }] },
-  telenovela: { genres: [], keywords: ['telenovela'], languages: [], conjunctions: [] },
-  'reality tv': { genres: ['reality'], keywords: ['reality tv', 'reality show'], languages: [], conjunctions: [] },
-  // Sub-genres filter on their TMDB keyword, never the parent genre: "no
-  // superhero movies" must not take Die Hard with it. Catalog counts measured
-  // 2026-10-01 (of 31,856): superhero 641, mcu 87, dceu 17, slasher 394,
-  // gore 400, splatter 5, biography 391, biographical 15.
-  superhero: {
-    genres: [],
-    keywords: ['superhero', 'marvel cinematic universe (mcu)', 'dc extended universe (dceu)'],
-    languages: [],
-    conjunctions: [],
-  },
-  slasher: { genres: [], keywords: ['slasher'], languages: [], conjunctions: [] },
-  gore: { genres: [], keywords: ['gore', 'splatter'], languages: [], conjunctions: [] },
-  biography: { genres: [], keywords: ['biography', 'biographical'], languages: [], conjunctions: [] },
-  cartoons: { genres: ['animation'], keywords: [], languages: [], conjunctions: [] },
-  cartoon:  { genres: ['animation'], keywords: [], languages: [], conjunctions: [] },
-  subtitles: { genres: [], keywords: [], languages: [], conjunctions: [] }, // "no subtitles" is not an exclusion we can honour
+const ANIME: RuleTargets = {
+  genres: [],
+  keywords: ['anime'],
+  languages: [],
+  conjunctions: [{ genres: ['animation'], languages: ['ja'] }],
 }
 
 /** TMDB genre names, movie and TV, lowercased. */
@@ -101,35 +111,49 @@ const TMDB_GENRES = new Set([
   'action', 'adventure', 'animation', 'comedy', 'crime', 'documentary', 'drama',
   'family', 'fantasy', 'history', 'horror', 'music', 'mystery', 'romance',
   'science fiction', 'thriller', 'war', 'western', 'kids', 'news', 'reality',
-  'soap', 'talk',
+  'soap', 'talk', 'action & adventure', 'sci-fi & fantasy', 'war & politics',
 ])
+
+/** A game genre by id ("scifi") or label ("Sci-fi & fantasy") → its TMDB genres, built once (step 3 asks per candidate × rule). */
+const GAME_GENRE_SETS = new Map(GAME_GENRES.flatMap(g => {
+  const set = tmdbGenresOf(g.id)
+  return [[g.id, set], [g.label.toLowerCase(), set]] as const
+}))
+
+/**
+ * The TMDB genres a genre rule hides: its game genre's set, or the one TMDB
+ * genre it names; [] when it names neither. A game genre wins when the name is
+ * both — rules come from a game genre picked from a list, so "war" hides War,
+ * History and War & Politics, the set the list item stands for.
+ */
+function genreSet(name: string): string[] {
+  const game = GAME_GENRE_SETS.get(name)
+  if (game) return game
+  const tmdb = canonicalGenre(name)
+  return TMDB_GENRES.has(tmdb) ? [tmdb] : []
+}
 
 /**
  * What kind of thing a rule name is, for a rule the user typed rather than
- * said. Only the two answers that can be told apart without guessing: a real
- * TMDB genre, or a keyword — which `ruleTargets` widens to match genre names
- * AND keywords AND the category aliases above, so it is never inert.
+ * picked. Only the two answers that can be told apart without guessing: a
+ * genre (a game genre, anime included, or a TMDB genre), or a keyword.
  *
  * `person` is deliberately never inferred. A name needs a TMDB lookup to be
  * matchable, and a wrong guess produces a rule that matches nothing while
  * looking like it works — the exact silent failure this file exists to end.
  */
 export function classifyRuleTarget(name: string): ExclusionType {
-  return TMDB_GENRES.has(canonicalGenre(norm(name))) ? 'genre' : 'keyword'
+  return genreSet(norm(name)).length > 0 || norm(name) === 'anime' ? 'genre' : 'keyword'
 }
 
 /**
- * What people type, mapped to the genre TMDB files it under. Without this a
- * hand-typed `sci-fi` became a keyword rule matching the literal string
- * "sci-fi", which the catalog stores nowhere — an inert rule presented as a
- * working one, the failure this file exists to prevent.
+ * Other spellings of a TMDB genre's own name — never a narrower thing mapped
+ * onto a broader genre (rom-com → romance, musical → music, cartoon →
+ * animation are gone: they hid far more than was named).
  */
 const GENRE_SPELLINGS: Record<string, string> = {
-  'sci-fi': 'science fiction', scifi: 'science fiction', 'sci fi': 'science fiction',
-  'science-fiction': 'science fiction',
-  'rom-com': 'romance', romcom: 'romance', 'rom com': 'romance', romantic: 'romance',
-  musical: 'music', musicals: 'music', animated: 'animation', docs: 'documentary',
-  doco: 'documentary', 'true crime': 'crime',
+  'sci-fi': 'science fiction', 'sci fi': 'science fiction', 'science-fiction': 'science fiction',
+  docs: 'documentary', doco: 'documentary',
 }
 
 /** The TMDB genre a typed name means, or the name unchanged. */
@@ -146,70 +170,37 @@ export function canonicalGenre(name: string): string {
 }
 
 /**
- * Is this one of the category words above, AND does it widen into something
- * the catalog can actually be filtered on?
- *
- * The second half matters: `subtitles` is in the table with every target list
- * empty, precisely because "no subtitles" is not an exclusion we can honour.
- * A caller that treats bare membership as "recognised" would write that as a
- * rule, bump the version for it, and tell the user it is now applied — while
- * `matchesRule` can never match it. That is the same inert-rule-reported-as-
- * working failure the rest of this file exists to prevent.
+ * Is this a category word beyond plain genres and keywords? Only anime now.
+ * Its one caller, the chat's directive-patterns.ts, is unused since P1-C1 and
+ * goes in P3-5.
  */
 export function isKnownCategory(name: string): boolean {
-  const t = ALIASES[norm(name)]
-  return !!t && (t.genres.length > 0 || t.keywords.length > 0 || t.languages.length > 0 || t.conjunctions.length > 0)
-}
-
-/**
- * Language names people actually say, mapped to what TMDB stores. Only used
- * when a rule reads as a language/nationality rule ("no French films"), never
- * inferred from a bare genre word.
- */
-const LANGUAGE_NAMES: Record<string, string> = {
-  japanese: 'ja', french: 'fr', korean: 'ko', spanish: 'es', german: 'de',
-  italian: 'it', hindi: 'hi', mandarin: 'zh', chinese: 'zh', cantonese: 'cn',
-  russian: 'ru', portuguese: 'pt', swedish: 'sv', danish: 'da', norwegian: 'no',
-  turkish: 'tr', arabic: 'ar', hebrew: 'he', thai: 'th', polish: 'pl',
-  dutch: 'nl', finnish: 'fi', english: 'en',
+  return norm(name) === 'anime'
 }
 
 const norm = (s: string) => s.trim().toLowerCase()
 
 /**
- * Widen one rule's free-text name into catalog-matchable targets.
- * Person rules return nothing here — they are matched on crew, not content.
+ * What one rule hides: a genre rule, its genre's TMDB genres; a keyword rule,
+ * that TMDB keyword; anime, by keyword or Animation + Japanese. Person rules
+ * return nothing here — they are matched on crew, not content.
  */
-export function ruleTargets(rule: { type: string; name: string }): RuleTargets {
+export function ruleTargets(rule: { type: string; name: string; id?: string }): RuleTargets {
   if (rule.type === 'person') return EMPTY
+  const g16 = genre16Of(rule)
+  if (g16) return genre16Targets(g16)
   const name = norm(rule.name)
   if (!name) return EMPTY
-
-  const alias = ALIASES[name]
-  if (alias) return alias
-
-  // "french" / "french films" / "french cinema" → language rule
-  const bare = name.replace(/\b(films?|movies?|cinema|shows?|series|tv)\b/g, '').trim()
-  const lang = LANGUAGE_NAMES[bare]
-  if (lang) return { genres: [], keywords: [], languages: [lang], conjunctions: [] }
-
-  // Everything else matches by the literal word, as a genre name and as a
-  // keyword — plus the TMDB genre that word means, if it means one, so
-  // "sci-fi" reaches Science Fiction instead of matching nothing. A name that
-  // is none of these simply matches nothing, which is the honest outcome for
-  // an unrecognisable rule.
-  const word = bare || name
-  const genre = canonicalGenre(word)
-  return {
-    genres: genre === word ? [word] : [word, genre],
-    keywords: [word],
-    languages: [],
-    conjunctions: [],
+  if (name === 'anime') return ANIME
+  if (rule.type === 'genre') {
+    const genres = genreSet(name)
+    return genres.length ? { genres, keywords: [], languages: [], conjunctions: [] } : EMPTY
   }
+  return { genres: [], keywords: [name], languages: [], conjunctions: [] }
 }
 
 /** Union of every rule's OR-able targets — the three SQL array params. */
-export function sqlExclusionParams(rules: { type: string; name: string }[]): {
+export function sqlExclusionParams(rules: { type: string; name: string; id?: string }[]): {
   exclude_genres: string[]
   exclude_keywords: string[]
   exclude_languages: string[]
@@ -230,14 +221,6 @@ export function sqlExclusionParams(rules: { type: string; name: string }[]): {
 
 function titleGenres(t: MatchableTitle): string[] {
   return (t.genres ?? []).map(g => norm(g.name))
-}
-
-function titleTerms(t: MatchableTitle): string[] {
-  return [
-    ...titleGenres(t),
-    ...(t.keywords ?? []).map(norm),
-    ...(t.tone_tags ?? []).map(norm),
-  ]
 }
 
 /** Does this person rule name anyone in the title's crew? */
@@ -262,14 +245,16 @@ function matchesPerson(t: MatchableTitle, rule: ExclusionRule): boolean {
 /** Does this title match this one rule? */
 export function matchesRule(title: MatchableTitle, rule: ExclusionRule): boolean {
   if (rule.type === 'person') return matchesPerson(title, rule)
+  const g16 = genre16Of(rule)
+  if (g16) return genres16Of({ type: 'movie', genres: title.genres ?? [], keywords: title.keywords ?? [], original_language: title.original_language ?? null }).includes(g16)
 
   const t = ruleTargets(rule)
   const genres = titleGenres(title)
-  const terms = titleTerms(title)
+  const keywords = (title.keywords ?? []).map(norm)
   const lang = norm(title.original_language ?? '')
 
   if (t.genres.some(x => genres.includes(x))) return true
-  if (t.keywords.some(x => terms.includes(x))) return true
+  if (t.keywords.some(x => keywords.includes(x))) return true
   if (t.languages.length > 0 && lang && t.languages.includes(lang)) return true
 
   for (const c of t.conjunctions) {
@@ -290,73 +275,26 @@ export function isExcluded(title: MatchableTitle, rules: ExclusionRule[]): boole
 // ─────────────────────────────────────────────
 
 /**
- * A soft preference ("less romance") is the same kind of statement as a hard
- * rule, said less absolutely — step3-soft-modifiers.ts applies it as a score
- * multiplier rather than a cut. It used to match on a loose substring test
- * over genre names and tone tags only, which is why a preference phrased in
- * catalog terms the title didn't literally carry never fired.
- *
- * This widens it the same way a keyword rule is widened (aliases, TMDB
- * keywords, language), and keeps the old substring test as a fallback so no
- * preference that used to match stops matching.
- *
- * `pref` carries what the signal names when the extractor knew. Without it a
- * person is treated as a keyword and compared against genres and keywords,
- * where a person's name never appears — so "less Adam Sandler" quietly did
- * nothing, exactly like the hard person rules this file was written to fix.
+ * A soft preference ("Less of: romance") is the same statement as a rule,
+ * said less absolutely — step3-soft-modifiers.ts applies it as a score
+ * multiplier rather than a cut — and it matches exactly like one (P1-C2): a
+ * genre its TMDB genres, a keyword that keyword, a person their crew credits.
+ * `pref.target_type` says which; without it the signal is classified the way
+ * a typed rule is.
  */
 export function matchesSoftSignal(
   title: MatchableTitle,
   signal: string,
   pref?: Pick<SoftPreference, 'target_type' | 'person_id'>,
 ): boolean {
-  const s = norm(signal)
-  if (!s) return false
-
+  if (!norm(signal)) return false
   if (pref?.target_type === 'person') {
     return matchesPerson(title, {
       type: 'person', id: pref.person_id ?? '', name: signal, raw: signal, reason: '',
     })
   }
-
-  const asRule: ExclusionRule = { type: 'keyword', id: '', name: signal, raw: signal, reason: '' }
-  if (matchesRule(title, asRule)) return true
-
-  // Legacy substring behaviour, both directions ("noir" vs "neo-noir") — on
-  // word boundaries. A bare `includes` let a three-letter genre match inside
-  // an unrelated word: "fewer Star Wars" (the extractor prompt's own franchise
-  // example), "less warm stuff" and "awards-bait dramas" all marked every
-  // War-genre title down. A trailing plural is still allowed on either side
-  // ("slashers" finds the keyword "slasher", "cop" finds "cops", "wars" finds
-  // the War genre) when the side being searched is a single word: inside a
-  // phrase, "wars" is part of a name ("star wars"), not a plural of the genre.
-  const terms = titleTerms(title)
-  const signalRe = wordRe(s)
-  const signalPluralRe = wordRe(s, true)
-  return terms.some(term =>
-    (oneWord(term) ? signalPluralRe : signalRe).test(term) || wordRe(term, oneWord(s)).test(s),
-  )
-}
-
-const oneWord = (x: string) => !/\s/.test(x)
-const escapeRegExp = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-/**
- * "Is `needle` a whole word (or hyphenated part) of the string?" as a RegExp;
- * `plural` also accepts -s / -es. Memoised: step 3 asks this per candidate ×
- * preference × term, for a handful of distinct needles.
- */
-const WORD_RE = new Map<string, RegExp>()
-function wordRe(needle: string, plural = false): RegExp {
-  const key = plural ? `${needle}\u0000s` : needle
-  let re = WORD_RE.get(key)
-  if (!re) {
-    if (WORD_RE.size > 4096) WORD_RE.clear()
-    const tail = plural ? '(?:e?s)?' : ''
-    re = new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(needle)}${tail}(?:$|[^a-z0-9])`)
-    WORD_RE.set(key, re)
-  }
-  return re
+  const type = pref?.target_type ?? classifyRuleTarget(signal)
+  return matchesRule(title, { type, id: '', name: signal, raw: signal, reason: '' })
 }
 
 /**
