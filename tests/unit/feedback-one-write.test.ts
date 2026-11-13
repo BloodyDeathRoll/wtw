@@ -7,7 +7,7 @@ import type { DNASchema } from '@/types/dna'
 // DNA. The feed sends ratings one at a time and "Find more" waits for the last
 // one, so six ratings held it back ~20 s. Both now land in one write.
 
-let db: { dna: DNASchema; reads: number; updates: { dna: DNASchema }[]; titlesFail: boolean }
+let db: { dna: DNASchema; reads: number; updates: { dna: DNASchema }[]; titlesFail: boolean; noCrew?: boolean }
 
 vi.mock('next/server', async (orig) => ({ ...(await orig<typeof import('next/server')>()), after: () => {} }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({}) }))
@@ -33,7 +33,7 @@ vi.mock('@/lib/supabase/service', () => ({
             return resolve(db.titlesFail ? { data: null, error: { message: 'titles down' } } : {
               data: [{
                 tmdb_id: '603', title: 'The Matrix', type: 'movie',
-                crew: { directors: [{ tmdb_person_id: '9', name: 'Lana Wachowski' }], writers: [], cinematographers: [], cast: [] },
+                crew: db.noCrew ? null : { directors: [{ tmdb_person_id: '9', name: 'Lana Wachowski' }], writers: [], cinematographers: [], cast: [] },
                 pacing_tag: 'high_octane', tone_tags: ['dark'], narrative_metadata: {}, genres: [], original_language: 'en',
               }],
               error: null,
@@ -79,6 +79,19 @@ describe('POST /api/recommendations/feedback — one write per rating', () => {
     expect(db.updates[0].dna.learning_loop.recommendation_history).toMatchObject([{ recommended: 'movie:603', rating: 'loved' }])
     expect(db.updates[0].dna.signals).toHaveLength(0)
     expect(warn).toHaveBeenCalledWith('[feedback] light merge failed (non-fatal):', expect.stringContaining('titles down'))
+    warn.mockRestore()
+  })
+
+  it('a merge that throws part-way leaves no half-merged signal in the save', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    db.noCrew = true // the merge pushes the signal, then throws on the missing crew
+    expect((await rate()).status).toBe(200)
+
+    expect(warn).toHaveBeenCalledWith('[feedback] light merge failed (non-fatal):', expect.any(String))
+    expect(db.updates).toHaveLength(1)
+    expect(db.updates[0].dna.learning_loop.recommendation_history).toMatchObject([{ recommended: 'movie:603', rating: 'loved' }])
+    expect(db.updates[0].dna.signals).toHaveLength(0)
     warn.mockRestore()
   })
 })

@@ -206,7 +206,9 @@ export async function POST(req: NextRequest) {
   if (folded > 0) console.log(`[session/end] folded ${folded} card ratings into signals`)
 
   // "Find more" builds (or adopts) the next batch below: the background build
-  // still waiting on the last rating must not run alongside it.
+  // still waiting on the last rating must not run alongside it. Here, not at
+  // the build: that waiting build wakes within QUIET_MS of the rating, and the
+  // fingerprint update on the way to step 5 can take longer than that.
   if (wantMore) await supersedeQuietPrecompute(user.id, contentType)
 
   // ── 3c. No-op fast path (the "Find more" slowness fix) ───────

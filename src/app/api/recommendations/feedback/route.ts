@@ -147,8 +147,13 @@ export async function POST(req: NextRequest) {
     async dna => {
       const changed = applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick })
       if (!reaction) return changed
+      // A merge that throws part-way (a catalog row with no crew, say) must
+      // not leave a half-merged signal in what is saved: put back the DNA as
+      // it was with only the history row.
+      const withHistoryOnly = structuredClone(dna)
       const merged = await mergeRatedHistoryInto(dna).catch(err => {
         console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
+        Object.assign(dna, withHistoryOnly)
         return 0
       })
       return changed || merged > 0

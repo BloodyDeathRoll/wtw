@@ -59,8 +59,8 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
  *
  * Exported for the feedback route, which runs it inside the same
  * read-modify-write as the rating's history row (one round trip of the DNA
- * instead of two). It only changes `dna` after its catalog reads, so a throw
- * leaves the object as it was given.
+ * instead of two). A throw can leave `dna` part-merged, so that caller keeps
+ * a copy to put back; `mergeFeedbackSignalsLight` simply does not save.
  */
 export async function mergeRatedHistoryInto(dna: DNASchema): Promise<number> {
   const reRated = await applyReRates(dna)

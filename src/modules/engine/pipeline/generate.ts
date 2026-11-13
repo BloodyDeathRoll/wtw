@@ -235,6 +235,7 @@ export async function generateRecommendations(
   const coldStart = isColdStart(dna)
   const versioned = coldStart
     ? await runColdStart(dna, opts.contentType, t)
+    // A precompute runs in the background and keeps card-plot's own wait; any other build has a user waiting.
     : await runPipeline(userId, dna, sessionContext, opts.contentType, t, opts.precompute ? undefined : INLINE_PLOT_WAIT_MS)
   if (versioned.length === 0) return []
 
