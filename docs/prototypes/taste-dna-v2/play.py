@@ -125,7 +125,7 @@ for key, label, u in ACCOUNTS:
 def meter(k):
     # a level meter: four rising bars, k of them lit (more bars = more of it in your feed)
     bars = ''.join(f'<rect x="{2.5 + i * 5.25}" y="{20 - (5 + i * 4)}" width="3.5" height="{5 + i * 4}" rx="1" fill="currentColor"'
-                   + ('' if i < k else f' fill-opacity="{.5 if k == 0 else .22}"') + '/>' for i in range(4))
+                   + ('' if i < k else ' fill-opacity=".22"') + '/>' for i in range(4))
     return f'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">{bars}</svg>'
 CALLS = {'never': {'name': 'Never', 'icon': meter(0), 'col': '#ff5a4f'},
          'less': {'name': 'Less', 'icon': meter(1), 'col': '#f0a35e'},
