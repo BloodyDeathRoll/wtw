@@ -100,6 +100,11 @@ describe('genreLean', () => {
     expect(genreLean(S, 1).every(v => v === 0)).toBe(true)
   })
 
+  it('a save with no `gen` has no Nevers to skip: Love and Like still lean', () => {
+    const w0 = genreLean({ loved: ['comedy'], sel: ['comedy', 'drama'] } as unknown as Parameters<typeof genreLean>[0], 1)
+    expect([w0[at('comedy')], w0[at('drama')]]).toEqual([1, 0.5])
+  })
+
   it('no saved answers: no lean', () => {
     expect(genreLean(null).every(v => v === 0)).toBe(true)
     expect(genreLean(applyGenreStep(null, {})).every(v => v === 0)).toBe(true)
