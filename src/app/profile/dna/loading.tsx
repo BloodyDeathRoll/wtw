@@ -1,5 +1,5 @@
 import { RouteLoading } from "@/app/components/RouteLoading";
 
 export default function Loading() {
-  return <RouteLoading label="Reading your Taste DNA" />;
+  return <RouteLoading label="Reading your taste" />;
 }

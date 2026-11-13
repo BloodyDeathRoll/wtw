@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import AppShell from '@/modules/session/components/AppShell'
 import { DnaHeader } from './DnaHeader'
+import { DnaFrame } from './DnaFrame'
 import { TastePage } from './TastePage'
 import { loadTastePage, type TastePageData } from './lib/taste-page'
 import styles from './dna.module.css'
@@ -42,10 +43,11 @@ export default async function TastePageRoute() {
   return (
     <AppShell>
       <main className={styles.page}>
-        <DnaHeader user={appUser} subtitle={subtitle} title="My taste" />
-        <div className={styles.container}>
-          {data ? <TastePage data={data} /> : <p className={styles.note}>Couldn’t load your taste right now. Try again in a moment.</p>}
-        </div>
+        <DnaFrame header={<DnaHeader user={appUser} subtitle={subtitle} title="My taste" />}>
+          <div className={styles.container}>
+            {data ? <TastePage data={data} /> : <p className={styles.note}>Couldn’t load your taste right now. Try again in a moment.</p>}
+          </div>
+        </DnaFrame>
       </main>
     </AppShell>
   )
