@@ -231,7 +231,7 @@ async function finalise() {
   }
   console.log(`[scales] finalising ${rows.length} titles (${rows.filter(r => games.has(`${r.type}:${r.tmdb_id}`)).length} game titles)`)
 
-  let done = 0, tmdbCalls = 0, tmdbFailed = 0
+  let done = 0, seen = 0, tmdbCalls = 0, tmdbFailed = 0
   const work = async (r: Row) => {
     const key = `${r.type}:${r.tmdb_id}`
     const game = games.get(key)
@@ -264,7 +264,8 @@ async function finalise() {
     }).eq('id', r.id)
     if (error) console.warn(`  write failed for ${key}: ${error.message}`)
     else done++
-    if (done % 1000 === 0) console.log(`[scales] finalised ${done}/${rows.length} · TMDB ${tmdbCalls}`)
+    // Progress by rows processed, so a failed write can't skip or repeat a line.
+    if (++seen % 1000 === 0) console.log(`[scales] finalised ${done}/${rows.length} (${seen} processed) · TMDB ${tmdbCalls}`)
   }
   // Ten writes in flight; series lookups pace themselves.
   for (let i = 0; i < rows.length; i += 10) await Promise.all(rows.slice(i, i + 10).map(work))
