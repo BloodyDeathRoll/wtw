@@ -168,7 +168,7 @@ export function reservationFor(item: ScoredTitleWithPayload, dna: DNASchema | un
   if (v2) {
     const t = item.title
     if (hasTasteFacts(v2) && !skipTasteCatch) {
-      const c = tasteCatch(v2.contributions, v2.vec)
+      const c = tasteCatch(v2.contributions, v2.vec, v2.rated_down_genres)
       if (c) return c
     }
     const a = item.content_avoided

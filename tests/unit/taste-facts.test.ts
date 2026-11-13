@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  tasteLikes, tasteCatch, tasteBars, whatItsLike, tasteNegatives, BARS_MIN_POOL, sharedCatchKeys, tasteCatchKey,
+  tasteLikes, tasteCatch, tasteBars, whatItsLike, tasteNegatives, BARS_MIN_POOL, sharedCatchKeys, tasteCatchKey, ratedDownGenres,
 } from '@/modules/engine/why/taste-facts'
 import { normalCdf, type V2Score } from '@/modules/engine/scoring/formula-v2'
 import { FEATURE_GENRES, FEATURE_SCALES } from '@/lib/taste-scales/features'
@@ -53,11 +53,29 @@ describe('tasteCatch — the strongest pull away', () => {
     expect(tasteCatch(at([[S('energy'), -0.1]]), at([[S('energy'), -0.6]]))).toBe("It's talkier than this viewer usually goes for.")
   })
 
-  it('a genre, "partly" when the title has others too', () => {
-    expect(tasteCatch(at([[G('horror'), -0.3]]), at([[G('horror'), 0.5], [G('drama'), 0.5]])))
+  it('a genre the viewer rated down, "partly" when the title has others too', () => {
+    expect(tasteCatch(at([[G('horror'), -0.3]]), at([[G('horror'), 0.5], [G('drama'), 0.5]]), ['horror']))
       .toBe("It's partly horror, and horror isn't a genre this viewer usually goes for.")
-    expect(tasteCatch(at([[G('horror'), -0.3]]), at([[G('horror'), 1]])))
+    expect(tasteCatch(at([[G('horror'), -0.3]]), at([[G('horror'), 1]]), ['horror']))
       .toBe("It's horror, and horror isn't a genre this viewer usually goes for.")
+  })
+
+  // Eran, 2026-11-13, option (c) on #279: the model's crime weight alone told
+  // a Tarantino fan "crime isn't your thing". A genre catch needs the viewer's
+  // own ratings behind it.
+  it('a genre the viewer has NOT rated down is no catch; the next pull (a scale) is', () => {
+    const c = at([[G('crime'), -0.4], [S('dark'), -0.1]])
+    const v = at([[G('crime'), 1], [S('dark'), 0.8]])
+    expect(tasteCatch(c, v, [])).toBe("It's darker than this viewer usually goes for.")
+    expect(tasteCatch(c, v, ['crime'])).toBe("It's crime, and crime isn't a genre this viewer usually goes for.")
+    expect(tasteCatch(at([[G('crime'), -0.4]]), at([[G('crime'), 1]]))).toBeNull()
+  })
+
+  it('the catch key follows the same rule, so the shared-catch count agrees', () => {
+    const c = at([[G('crime'), -0.4], [S('dark'), -0.1]])
+    const v = at([[G('crime'), 1], [S('dark'), 0.8]])
+    expect(tasteCatchKey(c, v, [])).toBe(`${S('dark')}:1`)
+    expect(tasteCatchKey(c, v, ['crime'])).toBe(`${G('crime')}:1`)
   })
 
   it('takes the most negative one', () => {
@@ -154,5 +172,19 @@ describe('tasteNegatives — a shared catch is left out', () => {
   it('drops the model line, keeps the crowd line', () => {
     const facts = { vec: at([[S('dark'), 0.8]]), contributions: at([[S('dark'), -0.3]]) }
     expect(tasteNegatives(v2({ z_model: -0.6, model_score: -1, z_crowd: -1.5, ...facts }), true)).toEqual(['Rated lower than what you usually pick.'])
+  })
+})
+
+describe('ratedDownGenres — the same bar as Jev\'s "rated down" (#260)', () => {
+  const e = (score: number, sample_size: number) => ({ score, confidence: 0.5, sample_size })
+  it('3+ ratings averaging ≤ −0.10 on a TMDB genre behind the game genre', () => {
+    expect(ratedDownGenres({ horror: e(-0.15, 4) })).toEqual(['horror'])
+    expect(ratedDownGenres({ 'science fiction': e(-0.2, 3) })).toEqual(['scifi'])
+  })
+  it('not when it\'s a mixed bag, too few ratings, or liked', () => {
+    expect(ratedDownGenres({ crime: e(-0.004, 12) })).toEqual([])
+    expect(ratedDownGenres({ horror: e(-0.2, 2) })).toEqual([])
+    expect(ratedDownGenres({ crime: e(0.2, 20) })).toEqual([])
+    expect(ratedDownGenres(undefined)).toEqual([])
   })
 })

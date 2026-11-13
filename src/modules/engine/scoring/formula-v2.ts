@@ -75,6 +75,8 @@ export interface V2Score {
   vec?: number[]
   /** w_k·x_k per input, when it has a vector (the Why facts, P1-E5). Set by step 2. */
   contributions?: number[]
+  /** Game genres the viewer has rated down themselves; only these may be a genre catch (#279 (c)). Set by step 2. */
+  rated_down_genres?: import('@/app/play/lib/genres').GameGenre[]
 }
 
 /** Scores a whole pool at once: every z is relative to the others. */

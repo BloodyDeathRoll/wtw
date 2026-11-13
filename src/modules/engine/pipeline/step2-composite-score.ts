@@ -34,6 +34,7 @@ import {
   type LineageCache,
 } from '../scoring/lineage-boost'
 import { scoreFormulaV2 } from '../scoring/formula-v2'
+import { ratedDownGenres } from '../why/taste-facts'
 import { fetchTasteVectors, vecKey } from '../scoring/taste-vectors'
 import { formulaV2Enabled } from '@/lib/flags'
 import { predict, contributions } from '@/modules/dna/taste-model'
@@ -236,12 +237,14 @@ export async function scoreCandidates(
         model:    model && vec ? predict(model.w, vec) : null,
       }
     }))
+    // Once per pool: the genres this viewer rated down, which alone may be a genre catch (taste-facts.ts).
+    const rated_down_genres = ratedDownGenres(dna.strand_c_visceral_specs.genre_affinity)
     scored.forEach((s, i) => {
       const vec = model?.vecs.get(vecKey(s.title))
       s.composite_score = v2Scores[i].composite
       s.formula_v2      = model && vec
-        ? { ...v2Scores[i], vec, contributions: contributions(model.w, vec) }
-        : v2Scores[i]
+        ? { ...v2Scores[i], vec, contributions: contributions(model.w, vec), rated_down_genres }
+        : { ...v2Scores[i], rated_down_genres }
     })
   }
 

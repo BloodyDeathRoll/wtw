@@ -12,7 +12,9 @@
  */
 import { FEATURE_GENRES, FEATURE_SCALES } from '@/lib/taste-scales/features'
 import { SCALE_WORDS, type TasteScale } from '@/app/play/lib/scales'
-import type { GameGenre } from '@/app/play/lib/genres'
+import { tmdbGenresOf, type GameGenre } from '@/app/play/lib/genres'
+import type { ContentAffinityEntry } from '@/types/dna'
+import { RATED_DOWN_MAX_SCORE, RATED_DOWN_MIN_SAMPLES } from '../scoring/rated-down'
 import { normalCdf, type V2Score } from '../scoring/formula-v2'
 
 /** A scale end is "clear" (said as what the title is) at |value| ≥ this. */
@@ -97,15 +99,35 @@ export function tasteLikes(contributions: number[], vec: number[]): string[] {
  * The catch: the most negative contribution, if it is below CATCH_BELOW.
  * Said plainly (Eran, 2026-11-09: "we shouldn't be afraid of saying that").
  */
-function worstPull(contributions: number[]) {
+/**
+ * The game genres this viewer has rated down themselves: a TMDB genre behind
+ * it with RATED_DOWN_MIN_SAMPLES+ ratings averaging ≤ RATED_DOWN_MAX_SCORE in
+ * strand C's genre affinity — the same bar as Jev's "rated down" (#260).
+ * Anime is no TMDB genre, so it never qualifies (it has no catch of its own).
+ */
+export function ratedDownGenres(genreAffinity: Record<string, ContentAffinityEntry> | undefined): GameGenre[] {
+  if (!genreAffinity) return []
+  return FEATURE_GENRES.filter(g => tmdbGenresOf(g).some(name => {
+    const e = genreAffinity[name.toLowerCase()]
+    return e != null && e.sample_size >= RATED_DOWN_MIN_SAMPLES && e.score <= RATED_DOWN_MAX_SCORE
+  }))
+}
+
+/**
+ * The strongest pull away. A genre counts only when the viewer has rated it
+ * down themselves (Eran, 2026-11-13, option (c) on #279): the model's genre
+ * weight alone told a Tarantino fan "crime isn't your thing", because creators
+ * and the crowd carry his crime picks. Scales always count.
+ */
+function worstPull(contributions: number[], ratedDown: readonly GameGenre[] = []) {
   return contributions
     .map((c, i) => ({ c, i, input: INPUTS[i] }))
-    .filter(({ c, input }) => input && c < CATCH_BELOW)
+    .filter(({ c, input }) => input && c < CATCH_BELOW && (input.kind === 'scale' || ratedDown.includes(input.key)))
     .sort((a, b) => a.c - b.c)[0]
 }
 
-export function tasteCatch(contributions: number[], vec: number[]): string | null {
-  const worst = worstPull(contributions)
+export function tasteCatch(contributions: number[], vec: number[], ratedDown: readonly GameGenre[] = []): string | null {
+  const worst = worstPull(contributions, ratedDown)
   if (!worst) return null
   const input = worst.input!
   if (input.kind === 'scale') return `It's ${COMPARATIVE[input.key][side(vec[worst.i])]} than this viewer usually goes for.`
@@ -114,8 +136,8 @@ export function tasteCatch(contributions: number[], vec: number[]): string | nul
 }
 
 /** Which catch a title gets, as a key ("16:1" = input 16, right end), so a batch can count them. Null: no catch. */
-export function tasteCatchKey(contributions: number[], vec: number[]): string | null {
-  const worst = worstPull(contributions)
+export function tasteCatchKey(contributions: number[], vec: number[], ratedDown: readonly GameGenre[] = []): string | null {
+  const worst = worstPull(contributions, ratedDown)
   return worst ? `${worst.i}:${side(vec[worst.i])}` : null
 }
 
@@ -176,7 +198,7 @@ export const toYou = (s: string) => s
 export function tasteNegatives(v2: V2Score, catchShared = false): string[] {
   const out: string[] = []
   if (!catchShared && hasTasteFacts(v2) && v2.model_score != null && v2.z_model < NEG_MODEL_Z) {
-    const c = tasteCatch(v2.contributions, v2.vec)
+    const c = tasteCatch(v2.contributions, v2.vec, v2.rated_down_genres)
     if (c) out.push(toYou(c))
   }
   if (v2.z_crowd < NEG_CROWD_Z) out.push('Rated lower than what you usually pick.')
