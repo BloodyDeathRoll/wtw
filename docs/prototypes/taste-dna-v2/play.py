@@ -125,9 +125,9 @@ for key, label, u in ACCOUNTS:
 def meter(k):
     # a level meter: four rising bars, k of them lit (more bars = more of it in your feed)
     bars = ''.join(f'<rect x="{2.5 + i * 5.25}" y="{20 - (5 + i * 4)}" width="3.5" height="{5 + i * 4}" rx="1" fill="currentColor"'
-                   + ('' if i < k else ' fill-opacity=".22"') + '/>' for i in range(4))
+                   + ('' if i < k else f' fill-opacity="{.5 if k == 0 else .22}"') + '/>' for i in range(4))
     return f'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">{bars}</svg>'
-CALLS = {'never': {'name': 'Never', 'icon': B.I_NEVER, 'col': '#ff5a4f'},
+CALLS = {'never': {'name': 'Never', 'icon': meter(0), 'col': '#ff5a4f'},
          'less': {'name': 'Less', 'icon': meter(1), 'col': '#f0a35e'},
          'neutral': {'name': 'Normal', 'icon': meter(2), 'col': '#b4b4ba'},
          'more': {'name': 'More', 'icon': meter(3), 'col': '#7fdcb0'},
@@ -235,23 +235,14 @@ function says(t, call) {
   const lv = t.loved||0, li = t.liked||0, di = t.disliked||0, n = lv+li+di;
   if (!n) return [call === 'never' ? 'Hidden from your feed' : 'Nothing rated yet', true];
   if (n < 3) return [`Only ${n} rated so far`, true];
-  if (lv === n) return [`Loved all ${n} titles you rated`, false];
-  if (!di) return [`Enjoyed all ${n} titles you rated`, false];
+  if (lv === n) return [`Loved all ${n}`, false];
+  if (!di) return [`Enjoyed all ${n}`, false];
   const s = di / n;
   if (s <= .25) return [`Mostly enjoyed · ${n} titles`, false];
   if (s >= .6) return [`Mostly disliked · ${n} titles`, false];
   return [`Mixed · ${n} titles`, false];
 }
-function psays(ts) {
-  const t = {}; ts.forEach(r => t[r.r] = (t[r.r] || 0) + 1);
-  const n = ts.length, lv = t.loved || 0, di = t.disliked || 0;
-  const en = n - di, of = x => `${x} of the ${n} titles you rated`;
-  if (n === 2) return lv === 2 ? 'Loved both titles you rated' : !di ? 'Enjoyed both titles you rated'
-                    : di === 2 ? 'Disliked both titles you rated' : 'Enjoyed 1 of the 2 titles you rated';
-  if (lv === n) return `Loved all ${n} titles you rated`;
-  if (!di) return `Enjoyed all ${n} titles you rated`;
-  return en >= di ? `Enjoyed ${of(en)}` : `Disliked ${of(di)}`;
-}
+const psays = ts => `from ${ts.length} titles`;
 const section = (title, body, id='') =>
   `<section class="${D('section')}"${id ? ` id="${id}"` : ''}><div class="${D('sectionHead')}"><h2 class="${D('sectionTitle')} ${D('sectionTitleAccent')}">${title}</h2></div>${body}</section>`;
 const tile = (k, pop) => k && k !== 'neutral' ? `<span class="call${pop ? ' pop' : ''}" style="--cc:${CALLS[k].col}" title="${CALLS[k].name}">${CALLS[k].icon}</span>` : '<span></span>';
@@ -277,7 +268,8 @@ function render() {
   });
   if (!ph) ph = '<p class="quiet">Rate a few titles you’ve seen and we’ll spot the cast, directors and writers you keep coming back to.</p>';
   h += section('People who pull you in', ph);
-  h += section('Genres', '<p class="quiet" style="margin:-4px 0 4px">Tap a genre to get more or less of it.</p>'
+  h += section('Genres', '<p class="quiet" style="margin:-4px 0 4px">Your ratings decide how often each genre shows up in your feed, and that keeps changing as you rate. '
+       + 'Want more or less of one? Tap it and pick. Your pick stays until you change it. Bars on a genre show your pick; no bars means your ratings decide.</p>'
        + `<div class="grows">${acc.genres.map(rowHtml).join('')}</div>`, 'genres');
   document.getElementById('content').innerHTML = h;
   document.querySelectorAll('.grow').forEach(el => {
