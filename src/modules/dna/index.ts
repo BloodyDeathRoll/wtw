@@ -57,5 +57,5 @@ export { storeSnapshot, getSnapshots, rollbackToSnapshot } from './lib/snapshot'
 
 // Taste model (v2 plan, P1-D4) — formula v2 (P1-E3) and "Why this?" (P1-E5) use these.
 // The loader is server-only: import it from '@/modules/dna/load-taste-training' directly.
-export { trainTasteModel, predict, contributions, buildTraining } from './taste-model'
+export { trainTasteModel, predict, contributions, buildTraining, genreLean, GENRE_LEAN } from './taste-model'
 export type { TasteRow, TastePair, DuelPick } from './taste-model'

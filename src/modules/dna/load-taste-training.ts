@@ -2,7 +2,8 @@
  * Loads what the taste model trains on: the person's rated signals, their
  * this-or-that picks (play_events `duel` with a `chosen`, from the season
  * and onboarding alike), and the taste vectors of every title involved, in
- * one titles query (chunked). PLAN P1-D4.
+ * one titles query (chunked). PLAN P1-D4. Plus the genre lean w0 from the
+ * genre screen's answers (P1-D4b).
  */
 import 'server-only'
 
@@ -10,19 +11,30 @@ import type { DNASchema } from '@/types/dna'
 import { createServiceClient } from '@/lib/supabase/service'
 import { TASTE_FEATURE_VERSION } from '@/lib/taste-scales/features'
 import { parseTitleKey, titleKey, type MediaType } from '@/lib/title-key'
-import { buildTraining, type DuelPick, type TastePair, type TasteRow } from './taste-model'
+import type { PlayState } from '@/app/play/lib/brain'
+import { buildTraining, genreLean, GENRE_LEAN, type DuelPick, type TastePair, type TasteRow } from './taste-model'
 
 const PAGE = 1000
 /** Ids per `in (...)` filter, to keep the request URL short. */
 const ID_CHUNK = 300
+
+/** The genre lean w0 from the person's saved genre answers (play_state); all zero when there are none. `g` is for scripts/eval. */
+export async function loadGenreLean(userId: string, g = GENRE_LEAN): Promise<number[]> {
+  // One row per user (user_id is the key).
+  const { data, error } = await createServiceClient().from('play_state').select('state').eq('user_id', userId)
+  if (error) throw new Error(`Taste training failed (play_state): ${error.message}`)
+  return genreLean((data?.[0] as { state: Pick<PlayState, 'sel' | 'loved' | 'gen'> } | undefined)?.state, g)
+}
 
 /**
  * `holdOut` (title keys) is for evaluation only (scripts/eval): picks that
  * touch a held-out title are dropped, so a model is never scored on a title
  * its own training already ranked.
  */
-export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?: Set<string>): Promise<{ rows: TasteRow[]; pairs: TastePair[] }> {
+export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?: Set<string>): Promise<{ rows: TasteRow[]; pairs: TastePair[]; w0: number[] }> {
   const db = createServiceClient()
+  const lean = loadGenreLean(userId)
+  lean.catch(() => {}) // awaited at the end; a failure before then must not go unhandled
 
   const picks: DuelPick[] = []
   for (let from = 0; ; from += PAGE) {
@@ -60,5 +72,5 @@ export async function loadTasteTraining(dna: DNASchema, userId: string, holdOut?
     }
   }
 
-  return buildTraining(dna.signals, picks, vecs, Date.now(), holdOut)
+  return { ...buildTraining(dna.signals, picks, vecs, Date.now(), holdOut), w0: await lean }
 }

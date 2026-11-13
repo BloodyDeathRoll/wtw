@@ -7,6 +7,7 @@
  *   npm run eval -- --user <uuid> --sheet … --dna-version 157           # score against a stored snapshot (dna_snapshots), e.g. the DNA a past measurement saw
  *   npm run eval -- --user <uuid> --sheet … --mode jev [--jev-calls 2]
  *   npm run eval -- --user <uuid> --sheet … --mode new [--cards 30] [--picks 12] [--draws 200] [--control] [--seed 1]
+ *   npm run eval -- --user <uuid> --sheet … [--mode new] --lean 0.5      # try a genre lean g (P1-D4b); 0 = none; default = the app's GENRE_LEAN
  *
  * The sheet is one tester's answers, `{ "movie:603": "loved" | "liked" |
  * "disliked" | "unseen", … }`. It lives in .eval-data/ (gitignored): the repo
@@ -42,8 +43,8 @@ import { computeCrewAffinity } from '@/modules/engine/scoring/crew-affinity'
 import type { TitleRow } from '@/modules/engine/types'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { applyCrewAffinityUpdate } from '@/modules/dna/lib/update-crew'
-import { buildTraining, predict, trainTasteModel, type DuelPick, type TastePair } from '@/modules/dna/taste-model'
-import { loadTasteTraining } from '@/modules/dna/load-taste-training'
+import { buildTraining, GENRE_LEAN, predict, trainTasteModel, type DuelPick, type TastePair } from '@/modules/dna/taste-model'
+import { loadGenreLean, loadTasteTraining } from '@/modules/dna/load-taste-training'
 import type { DNASchema, DNASignal } from '@/types/dna'
 import { concordance, formulaV2, LEVEL_RANK, rng, shuffle, topShare, type Level, type Scored } from './metrics'
 
@@ -66,6 +67,9 @@ const MODE = opt('--mode') ?? 'live'
 if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new|jev]')
 if (MODE !== 'live' && MODE !== 'new' && MODE !== 'jev') throw new Error(`--mode must be live, new or jev, not ${MODE}`)
 if (MODE === 'new' && args.includes('--shuffle')) throw new Error('--shuffle is the live-mode control; in --mode new use --control')
+/** The genre lean g to score with (P1-D4b). */
+const LEAN = Number(opt('--lean') ?? GENRE_LEAN)
+if (!Number.isFinite(LEAN) || LEAN < 0) throw new Error('--lean needs a number ≥ 0')
 
 const db = createServiceClient()
 const COLS = 'id, tmdb_id, title, type, synopsis, genres, release_year, runtime_minutes, tmdb_rating, tmdb_vote_count, omdb_rating, crew, pacing_tag, tone_tags, original_language, keywords, narrative_metadata, enriched_at, created_at, taste_vec, taste_version'
@@ -89,7 +93,8 @@ async function loadTitles(keys: string[]): Promise<Map<string, Row>> {
   return out
 }
 
-const fmt = (x: number) => (Number.isFinite(x) ? x.toFixed(0) : '—')
+// One decimal when a lean is being tried: its bar is 1 point.
+const fmt = (x: number) => (Number.isFinite(x) ? x.toFixed(args.includes('--lean') ? 1 : 0) : '—')
 const line = (label: string, items: Scored[]) => console.log(`  ${label.padEnd(22)} ${fmt(concordance(items)).padStart(3)} (${fmt(concordance(items, true))})`)
 
 async function main() {
@@ -124,10 +129,10 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   // v2: the model trained as the app would (My ratings minus chat, plus picks), except that
   // picks touching a fair title are held out — the model must not have ranked what it is scored on.
   // --shuffle is the control.
-  const training = await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))
+  const training = { ...(await loadTasteTraining(dna, USER!, new Set(fair.map(([k]) => k)))), w0: await loadGenreLean(USER!, LEAN) }
   // The model's scores on the fair titles; a title without a vector gets the mean (z = 0).
   const modelScores = (t: typeof training) => {
-    const w = trainTasteModel(t.rows, t.pairs)
+    const w = trainTasteModel(t.rows, t.pairs, t.w0)
     const raw = scored.map(s => { const v = vecOf(s.title as Row); return v ? predict(w, v) : null })
     const known = raw.filter((x): x is number => x != null)
     // No vector anywhere would make the model a constant (z = 0) and v2 silently creators + crowd.
@@ -141,7 +146,8 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
     const got: number[] = []
     for (let i = 0; i < runs; i++) {
       const levels = shuffle(training.rows.map(r => r.level), rand)
-      const t = { rows: training.rows.map((r, j) => ({ ...r, level: levels[j] })), pairs: training.pairs.map(p => (rand() < 0.5 ? p : { chosen: p.other, other: p.chosen })) }
+      // No lean in the control: the genre answers are real information, and this must sit near 50.
+      const t = { rows: training.rows.map((r, j) => ({ ...r, level: levels[j] })), pairs: training.pairs.map(p => (rand() < 0.5 ? p : { chosen: p.other, other: p.chosen })), w0: [] }
       const { model } = modelScores(t)
       got.push(concordance(scored.map((s, j) => ({ score: model[j], level: level.get(keyOf(s.title))! }))))
     }
@@ -154,7 +160,7 @@ async function live(dna: DNASchema, fair: [string, Level][]) {
   const known = raw.filter((x): x is number => x != null)
   const v2 = formulaV2(scored.map(s => s.crew_affinity_score), scored.map(s => s.external_rating_score), model)
 
-  console.log(`[eval] live · ${scored.length} fair titles scored (${missing} not in catalogue, ${raw.length - known.length} without a taste vector) · model trained on ${training.rows.length} ratings + ${training.pairs.length} picks (fair-title picks held out)`)
+  console.log(`[eval] live · ${scored.length} fair titles scored (${missing} not in catalogue, ${raw.length - known.length} without a taste vector) · model trained on ${training.rows.length} ratings + ${training.pairs.length} picks (fair-title picks held out) · genre lean g = ${LEAN} on ${training.w0.filter(Boolean).length} genres`)
   console.log('  part                   concordance (L/D)')
   line('creators', parts(s => s.crew_affinity_score))
   line('story match', parts(s => s.narrative_match_score))
@@ -225,7 +231,9 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
   const titles = await loadTitles([...new Set([...pool.keys(), ...allPicks.flatMap(p => [p.a, p.b])])])
   const vecs = new Map([...titles].map(([k, r]) => [k, vecOf(r)]).filter((e): e is [string, number[]] => !!e[1]))
   const fairIn = fair.filter(([k]) => titles.has(k))
-  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} fair titles in catalogue · ${allPicks.length} duel picks${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
+  // The tester's own genre answers, as a new user would have given them on the genre screen. Not in the control.
+  const w0 = args.includes('--control') ? [] : await loadGenreLean(USER!, LEAN)
+  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} fair titles in catalogue · ${allPicks.length} duel picks · genre lean g = ${LEAN} on ${w0.filter(Boolean).length} genres${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
   if (fairIn.length < 20) throw new Error('fewer than 20 fair titles in the catalogue')
 
   const res = { all: [] as number[], ld: [] as number[], loved: [] as number[], disliked: [] as number[] }
@@ -248,7 +256,7 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
     // date (a first run's answers are all fresh), so no 18-month decay here, unlike live training.
     const cardSignals = cards.map(([k, l]) => { const { type, tmdb_id } = parseTitleKey(k); return { type, tmdb_id, reaction: l, source: 'onboarding', watched_at: null } as unknown as DNASignal })
     const { rows, pairs } = buildTraining(cardSignals, picks, vecs)
-    const w = trainTasteModel(rows, pairs as TastePair[])
+    const w = trainTasteModel(rows, pairs as TastePair[], w0)
 
     const t = test.map(([k]) => titles.get(k)!)
     const raw = t.map(r => { const v = vecs.get(titleKey(r.type, r.tmdb_id)); return v ? predict(w, v) : null })
