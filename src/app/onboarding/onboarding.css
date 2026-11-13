@@ -166,3 +166,54 @@
 .wtw-play .phone.ob .between .bnext { margin-top: 20px; }
 .wtw-play .phone.ob .between .bnext h4 b { font-weight: 700; }
 .wtw-play .phone.ob .between > .cta { flex: none; }
+
+/* ── Quick picks (P2-U4; fr.css "Pair", "Part 5" and the pixel passes) ── */
+.wtw-play .phone.ob .ob-pair .ob-sp1 { flex: 1 1 0; }
+.wtw-play .phone.ob .ob-pair .ob-sp2 { flex: 2 1 0; }
+.wtw-play .phone.ob .ob-pair > .actions { margin-top: 0; padding-bottom: 30px; }
+.wtw-play .phone.ob .screen.game-screen.ob-pair .actions .ghost { flex: 1; border-radius: 16px; }
+.wtw-play .phone.ob .ob-pair .side > .unseen { margin-top: auto; }
+/* titles stop at 3 lines, then "…" */
+.wtw-play .phone.ob .ob-pair .pick .nm { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* no hover lift on the posters; the picked one's gold ring is 4px (the season's is 3px), and it isn't scaled */
+.wtw-play .phone.ob .ob-pair .pick:hover .poster { transform: none; box-shadow: none; }
+.wtw-play .phone.ob .ob-pair .pick.chosen .poster { box-shadow: 0 0 0 4px var(--gold), 0 0 30px var(--gold-glow); transform: none; }
+
+/* The Skip sheet: slides up (320 ms) while the layer behind fades in to 80% black; closing reverses it (220 ms). */
+.wtw-play .phone.ob .ob-sheet-bg { background: rgba(0, 0, 0, .8); animation: ob-fade-in .24s ease-out both; }
+.wtw-play .phone.ob .ob-sheet { animation: ob-sheet-up .32s cubic-bezier(.16, 1, .3, 1) both; }
+.wtw-play .phone.ob .ob-sheet-bg.closing { animation: ob-fade-out .2s ease-in both; }
+.wtw-play .phone.ob .ob-sheet.closing { animation: ob-sheet-down .22s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes ob-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ob-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ob-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes ob-sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .wtw-play .phone.ob .ob-sheet, .wtw-play .phone.ob .ob-sheet.closing { animation-name: ob-fade-in; }
+  .wtw-play .phone.ob .ob-sheet.closing { animation-name: ob-fade-out; }
+}
+
+/* ── "It's Showtime" (part 6, signed off 2026-11-12): rays, their picks fanned, the poster type, the feed's loader ── */
+.wtw-play .phone.ob .between.done .bmid { position: relative; overflow: visible; padding-bottom: 56px; }
+.wtw-play .phone.ob .between.done .rays {
+  position: absolute; left: 50%; top: 38%; width: 900px; height: 900px; margin: -450px 0 0 -450px; pointer-events: none; opacity: .5;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--gold) 30%, transparent) 0deg 8deg, transparent 8deg 22deg);
+  mask: radial-gradient(circle, #000 0, transparent 60%); -webkit-mask: radial-gradient(circle, #000 0, transparent 60%);
+}
+.wtw-play .phone.ob .between.done .rays.spin { animation: wp-spin 40s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .wtw-play .phone.ob .between.done .rays.spin { animation: none; } }
+.wtw-play .phone.ob .between.done .dpicks { position: relative; margin-bottom: 36px; }
+.wtw-play .phone.ob .between.done .dpicks .poster img { filter: none; }
+.wtw-play .phone.ob .between.done .dpicks .lfan-p:nth-child(2) .poster,
+.wtw-play .phone.ob .between.done .dpicks .lfan-p:only-child .poster {
+  box-shadow: 0 0 0 4px var(--gold), 0 0 30px var(--gold-glow), 0 10px 24px rgba(0, 0, 0, .6);
+}
+.wtw-play .phone.ob .between.done .dpicks .lfan-p:first-child:nth-last-child(2) { transform: rotate(-6deg) translateY(6px); }
+.wtw-play .phone.ob .between.done .dpicks .lfan-p:last-child:nth-child(2) { transform: rotate(6deg) translateY(6px); }
+.wtw-play .phone.ob .between.done .dpicks .lfan-p:only-child { transform: none; }
+.wtw-play .phone.ob .between.done h2.dbig {
+  position: relative; font-family: var(--poster); font-size: 52px; font-weight: 400; letter-spacing: .03em; line-height: .95;
+}
+.wtw-play .phone.ob .between.done .bmid > p, .wtw-play .phone.ob .between.done .dfp { position: relative; }
+.wtw-play .phone.ob .between.done .dfp { margin-top: 32px; }
+.wtw-play .phone.ob .between.done .bmid > p.dnote { margin: 20px 0 0; font-size: 14px; line-height: 1.45; color: var(--muted); max-width: 280px; }

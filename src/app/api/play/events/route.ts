@@ -5,12 +5,13 @@
  *
  * 503 { error: 'not_set_up' } until the migration is run.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { isMissingTable } from '@/app/play/lib/server'
 import { MAX_EVENTS_PER_REQUEST, type PlayEvent } from '@/app/play/lib/events'
+import { kickFirstFeed } from '@/modules/engine/first-feed'
 
 const MAX_BODY_BYTES = 64_000
 
@@ -46,5 +47,11 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.from('play_events').insert(rows)
   if (isMissingTable(error)) return NextResponse.json({ error: 'not_set_up' }, { status: 503 })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // A quick pick in the onboarding (P2-U4): build the first feed in the background while they keep picking
+  // (P2-U5, src/modules/engine/first-feed.ts).
+  if (rows.some(r => r.kind === 'duel' && (r.payload as { source?: unknown }).source === 'onboarding')) {
+    const userId = user.id
+    after(() => kickFirstFeed(userId))
+  }
   return NextResponse.json({ ok: true, saved: rows.length })
 }
