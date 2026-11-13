@@ -51,6 +51,9 @@ import { countRatingTowardRefresh, refreshIfDue } from '@/modules/dna/refresh-ba
 import { withDNAUpdate } from '@/modules/dna/lib/load-save'
 import type { DNASchema, Reaction } from '@/types/dna'
 
+// after() waits for a pause in rating (QUIET_MS) and then builds a batch: make the budget explicit.
+export const maxDuration = 60
+
 const VALID_ACTIONS = ['watched', 'skipped', 'regret', 'glad_watched'] as const
 type FeedbackAction = typeof VALID_ACTIONS[number]
 

@@ -39,7 +39,8 @@ import { cacheRecommendations } from './step8-cache'
 const pendingKey = (userId: string, contentType: ContentType) => `rec_pending3:${userId}:${contentType}`
 const lockKey    = (userId: string) => `rec_precompute_lock:${userId}`
 const dirtyKey   = (userId: string) => `rec_precompute_dirty:${userId}`
-const quietKey   = (userId: string) => `rec_precompute_quiet:${userId}`
+// Per list: a movie rating and a series rating in one burst each get their batch.
+const quietKey   = (userId: string, contentType: ContentType) => `rec_precompute_quiet:${userId}:${contentType}`
 
 // A generation takes ~6-8s; the lock outlives a stuck one by a wide margin.
 const LOCK_TTL_SECONDS  = 90
@@ -47,6 +48,8 @@ const DIRTY_TTL_SECONDS = 120
 const MAX_RUNS_PER_KICK = 2
 /** No rating for this long = the user paused; build then. */
 export const QUIET_MS = 8_000
+// The stamp must outlive the wait plus scheduling slop.
+const QUIET_TTL_SECONDS = 30
 // How long a parked batch waits to be adopted before it's discarded.
 const PENDING_TTL_SECONDS = 30 * 60
 
@@ -234,9 +237,12 @@ export async function precomputeWhenQuiet(
   const redis = getRedis()
   const stamp = `${Date.now()}:${Math.random()}`
   try {
-    await redis.set(quietKey(userId), stamp, { ex: Math.ceil(QUIET_MS / 1000) * 4 })
+    await redis.set(quietKey(userId, contentType), stamp, { ex: QUIET_TTL_SECONDS })
     await wait(QUIET_MS)
-    if ((await redis.get(quietKey(userId))) !== stamp) return
+    if ((await redis.get(quietKey(userId, contentType))) !== stamp) {
+      console.log('[precompute] superseded by a later rating, skipping')
+      return
+    }
   } catch (err) {
     // Redis down: build now rather than never.
     console.warn('[precompute] quiet check failed (building now):', err instanceof Error ? err.message : err)
