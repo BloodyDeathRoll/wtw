@@ -3,9 +3,12 @@
  * The rating cards' answers on their way to POST /api/onboarding/cards (P2-U3).
  *
  * "Keep every answer as it's given" (P2-U0 rules): each answer is written to this phone first (localStorage),
- * then sent in batches of up to 10, about a second after the last tap (never more than 4 s after the first
- * waiting one). An answer that didn't go stays on the phone and goes with the next one, or on the next visit.
- * Leaving the page sends what's waiting with keepalive.
+ * then sent in batches of 10 (or 20 s after the first waiting one, or when the cards end). An answer that didn't
+ * go stays on the phone and goes with the next batch, or on the next visit. Leaving the page sends what's waiting
+ * with keepalive.
+ *
+ * Why 10 and not "a second after the last tap": each batch bumps taste_version once and starts a first-feed build.
+ * The first real run (2026-11-13) sent 35 batches of one card each — 83 version bumps and an embedding per bump.
  *
  * The card progress itself travels with it, so a visit after the app was closed mid-batch still opens on the
  * next card (play_state is saved too, but on its own timer).
@@ -14,8 +17,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_CARD_ANSWERS, shownCount, type CardAnswer, type CardsState } from './cards'
 
 const key = (userId: string) => `wtw-ob-cards:${userId}`
-const DEBOUNCE_MS = 1200
-const MAX_WAIT_MS = 4000
+/** A batch goes when 10 are waiting, or this long after the first of them. */
+const MAX_WAIT_MS = 20_000
 
 export interface DeviceCards { cards: CardsState | null; pending: CardAnswer[] }
 
@@ -46,7 +49,6 @@ export function useCardQueue(userId: string, send: boolean) {
   const pending = useRef<CardAnswer[]>([])
   const cards = useRef<CardsState | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const firstWaiting = useRef<number | null>(null)
   const sending = useRef<Promise<void> | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -54,7 +56,6 @@ export function useCardQueue(userId: string, send: boolean) {
 
   const flush = useCallback(async () => {
     timer.current = null
-    firstWaiting.current = null
     if (!send) { pending.current = []; persist(); return }
     while (pending.current.length) {
       const batch = pending.current.slice(0, MAX_CARD_ANSWERS)
@@ -86,11 +87,14 @@ export function useCardQueue(userId: string, send: boolean) {
     cards.current = c
     pending.current = [...pending.current, a]
     persist()
-    if (timer.current) clearTimeout(timer.current)
-    const now = Date.now()
-    firstWaiting.current ??= now
-    const wait = pending.current.length >= MAX_CARD_ANSWERS ? 0 : Math.max(0, Math.min(DEBOUNCE_MS, firstWaiting.current + MAX_WAIT_MS - now))
-    timer.current = setTimeout(() => { void run() }, wait)
+    if (pending.current.length >= MAX_CARD_ANSWERS) {
+      if (timer.current) { clearTimeout(timer.current); timer.current = null }
+      void run()
+      return
+    }
+    if (!timer.current) {
+      timer.current = setTimeout(() => { void run() }, MAX_WAIT_MS)
+    }
   }, [persist, run])
 
   /** Progress without an answer (Skip, "Go to quick picks"): kept on the phone with the rest. */
