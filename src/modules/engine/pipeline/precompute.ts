@@ -45,9 +45,12 @@ const quietKey   = (userId: string, contentType: ContentType) => `rec_precompute
 // A generation takes ~6-8s; the lock outlives a stuck one by a wide margin.
 const LOCK_TTL_SECONDS  = 90
 const DIRTY_TTL_SECONDS = 120
-const MAX_RUNS_PER_KICK = 2
-/** No rating for this long = the user paused; build then. */
-export const QUIET_MS = 8_000
+// One build, plus one for a rating that landed mid-build, plus one when the
+// refresh hook took the parked batch for the live feed (it left nothing for
+// "Find more" to adopt; seen 2026-11-13, #240).
+const MAX_RUNS_PER_KICK = 3
+/** No rating for this long = the user paused; build then. 8 s left "Find more" tapped soon after a rating with a one-rating-old batch (2026-11-13). */
+export const QUIET_MS = 4_000
 // The stamp must outlive the wait plus scheduling slop.
 const QUIET_TTL_SECONDS = 30
 // How long a parked batch waits to be adopted before it's discarded.
@@ -144,6 +147,8 @@ export async function precomputeNextBatch(
    * from. refresh-batch.ts promotes it here when a refresh is due. A call
    * that found the lock taken never parks, so its hook never runs: the
    * holder's does, after the extra run this call's dirty flag forces.
+   * A hook that returns non-null took the parked batch: one more build parks
+   * a fresh one for "Find more".
    */
   onParked?: () => Promise<unknown>,
 ): Promise<void> {
@@ -173,14 +178,16 @@ export async function precomputeNextBatch(
       const results = await generateRecommendations(userId, undefined, { dna, precompute: true, contentType })
       const batch: PendingBatch = { hash, results }
       await redis.set(pendingKey(userId, contentType), batch, { ex: PENDING_TTL_SECONDS })
+      let consumed = false
       if (onParked) {
-        await onParked().catch(err =>
-          console.warn('[precompute] parked hook failed (non-fatal):', err instanceof Error ? err.message : err),
-        )
+        consumed = (await onParked().catch(err => {
+          console.warn('[precompute] parked hook failed (non-fatal):', err instanceof Error ? err.message : err)
+          return null
+        })) != null
       }
 
       const dirty = await redis.get(dirtyKey(userId))
-      if (!dirty) break
+      if (!dirty && !consumed) break
     }
   } catch (err) {
     console.warn('[precompute] failed (non-fatal):', err instanceof Error ? err.message : err)
