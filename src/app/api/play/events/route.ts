@@ -12,6 +12,7 @@ import { getAuthUser } from '@/lib/supabase/auth-user'
 import { isMissingTable } from '@/app/play/lib/server'
 import { MAX_EVENTS_PER_REQUEST, type PlayEvent } from '@/app/play/lib/events'
 import { kickFirstFeed } from '@/modules/engine/first-feed'
+import { FEED_START_TYPE } from '@/lib/content-type'
 
 const MAX_BODY_BYTES = 64_000
 
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   // (P2-U5, src/modules/engine/first-feed.ts).
   if (rows.some(r => r.kind === 'duel' && (r.payload as { source?: unknown }).source === 'onboarding')) {
     const userId = user.id
-    after(() => kickFirstFeed(userId))
+    after(() => kickFirstFeed(userId, FEED_START_TYPE))
   }
   return NextResponse.json({ ok: true, saved: rows.length })
 }

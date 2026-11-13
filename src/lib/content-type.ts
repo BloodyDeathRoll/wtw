@@ -12,6 +12,12 @@ export function titleTypeFor(contentType: ContentType | null | undefined): 'movi
   return null
 }
 
+/**
+ * The list the feed opens on until the person picks one (Eran, 2026-11-13: "Both"). WTWApp starts there, and the
+ * onboarding has its first feed built for it, so the batch made while they answer is the one they see.
+ */
+export const FEED_START_TYPE: ContentType = 'all'
+
 export function isContentType(v: unknown): v is ContentType {
   return v === 'movies' || v === 'series' || v === 'all'
 }

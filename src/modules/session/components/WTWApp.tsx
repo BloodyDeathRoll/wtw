@@ -48,7 +48,7 @@ import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import type { RecPage } from "@/types/recommendation";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
-import { isContentType, type ContentType } from "@/lib/content-type";
+import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { chatMode } from "@/lib/flags";
@@ -542,7 +542,7 @@ export default function WTWApp({
   const [voicePrimer, setVoicePrimer] = useState<string | null>(null);
   // "Both" until the person picks (then this device remembers the choice, below). The first feed after the
   // onboarding is built for both (src/modules/engine/first-feed.ts), so opening on Movies cost a second build.
-  const [contentType, setContentType] = useState<ContentType>("all");
+  const [contentType, setContentType] = useState<ContentType>(FEED_START_TYPE);
   const [voice, setVoice] = useState<Voice>(DEFAULT_VOICE);
   // Whether the user has done anything this page-load. Once they have,
   // the greeting yields to "continue: <last AI question>" so we don't
@@ -626,7 +626,7 @@ export default function WTWApp({
           body: JSON.stringify({
             content_type: (() => {
               const c = window.localStorage.getItem("wtw:contentType");
-              return isContentType(c) ? c : "all";   // the same starting point as `contentType`
+              return isContentType(c) ? c : FEED_START_TYPE;   // the same starting point as `contentType`
             })(),
           }),
         });
