@@ -5,6 +5,8 @@ import { getAuthUser } from "@/lib/supabase/auth-user";
 import { loadHomeBootstrap, openConversation } from "@/lib/home-bootstrap";
 import { welcomeForSignals } from "@/lib/welcome";
 import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
+import { onboardingV2Enabled } from "@/lib/flags";
+import { needsOnboarding } from "@/lib/onboarding-route";
 import { progressOf } from "./play/lib/server";
 import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
@@ -27,14 +29,18 @@ export default async function Home({
     return <LoginScreen />;
   }
 
-  // The taste games are the way in (src/lib/play-rollout.ts): genres before
+  // Flag off: the taste games are the way in (src/lib/play-rollout.ts): genres before
   // anything, then the season until it's finished or skipped. A link back out
   // of the games (?from=play, ?stage=…) is never bounced back to them.
   // One round trip for everything the screen reads (conversation, messages,
   // signal counts, play state): migration 0027, docs/speed-plan.md part D.
   const boot = await loadHomeBootstrap(supabase, user.id);
   const play = progressOf(boot.play.state);
-  if (PLAY_ONBOARDING_LIVE) {
+  if (onboardingV2Enabled()) {
+    // The new onboarding (P2-U6): until it's done; existing accounts with 10+ signals skip it
+    // (src/lib/onboarding-route.ts). The season lives in Games now.
+    if (needsOnboarding(boot.play.state, boot.signals)) redirect("/onboarding");
+  } else if (PLAY_ONBOARDING_LIVE) {
     const params = await searchParams;
     const fromApp = params.from === "play" || !!params.stage;
     if (!play.genresDone || (!play.done && !play.skipped && !fromApp)) redirect("/play");
