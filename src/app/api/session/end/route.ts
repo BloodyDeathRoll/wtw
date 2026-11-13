@@ -26,7 +26,7 @@ import { getAuthUser } from '@/lib/supabase/auth-user'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { createServiceClient } from '@/lib/supabase/service'
 import { endConversation } from '@/lib/conversations'
-import { startTimer } from '@/lib/timing'
+import { startTimer, type StepTimer } from '@/lib/timing'
 import { buildRecPage, getRemovedKeys } from '@/lib/rec-page'
 import { isContentType, type ContentType } from '@/lib/content-type'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
@@ -56,12 +56,14 @@ async function firstPage(
   dna: DNASchema,
   recs: RecommendationResult[],
   contentType: ContentType,
+  t: StepTimer,
 ): Promise<RecPage | undefined> {
   if (recs.length === 0) return undefined
   try {
     return await buildRecPage({ userId, dna, recs, removed: getRemovedKeys(userId), start: 0, contentType, source: 'find-more' })
   } catch (err) {
     console.warn('[session/end] first page failed (the client fetches it):', err instanceof Error ? err.message : err)
+    t.mark('first page failed')
     return undefined
   }
 }
@@ -280,7 +282,7 @@ export async function POST(req: NextRequest) {
         rec_count = recs.length
         if (rec_count === 0) warning = 'Next batch came back empty'
         t.mark(adopted ? 'batch adopted' : 'batch built')
-        page = await firstPage(user.id, dna, recs, contentType)
+        page = await firstPage(user.id, dna, recs, contentType, t)
         t.done(adopted ? 'total (next batch, adopted precomputed)' : 'total (next batch)')
       } catch (err) {
         console.error('[session/end] next batch failed:', err)
@@ -331,7 +333,7 @@ export async function POST(req: NextRequest) {
     const adopted = await adoptPendingBatch(user.id, updated, contentType)
     const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna: updated, skipCacheRead: true, contentType })
     rec_count = recs.length
-    if (wantMore) page = await firstPage(user.id, updated, recs, contentType)
+    if (wantMore) page = await firstPage(user.id, updated, recs, contentType, t)
     t.done(adopted ? 'total (adopted precomputed batch)' : 'total (regenerated)')
   } catch (err) {
     // Fingerprint is saved; recs can be regenerated on next visit.

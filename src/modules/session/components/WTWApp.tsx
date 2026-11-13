@@ -758,7 +758,8 @@ export default function WTWApp({
         } else {
           console.error("[session/end] watchlist intent not confirmed; will retry next session end");
         }
-        return (body?.page as RecPage | undefined) ?? null;
+        // Anything but a page of cards → null, and the feed fetches the page itself.
+        return Array.isArray(body?.page?.recommendations) ? (body.page as RecPage) : null;
       }
     } catch (e) {
       console.error("[session/end] failed", e);
