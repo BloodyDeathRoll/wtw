@@ -5,16 +5,17 @@ its wash and the "We'll never show you" line update live), tap a person to see t
 between three accounts with the prototype bar at the bottom. Real data (the dump build.py reads, plus TMDB
 credits for the people's titles); the output file carries ratings, so it's gitignored.
 
-    python3 play.py <dna-dump.json> <credits.json> <new-user id> <alon id>   →  play-taste-dna.html
+    python3 play.py <dna-dump.json> <credits.json> <new-user id> <alon id> <profiles.json>   →  play-taste-dna.html
 """
 import base64, concurrent.futures as cf, html, json, os, re, sys, urllib.request
 
-dump, credits_path, NEW_ID, ALON_ID = sys.argv[1:5]
+dump, credits_path, NEW_ID, ALON_ID, profiles_path = sys.argv[1:6]
 sys.argv = ['build.py', dump, NEW_ID, ALON_ID]
 import build as B   # noqa: E402  (reuses the mocks' data, CSS and markup helpers)
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 CREDITS = json.load(open(credits_path))
+PROFILES = json.load(open(profiles_path))
 REACT = ('loved', 'liked', 'disliked')
 WORDS = {'tone': ('serious', 'funny'), 'energy': ('talky', 'action-packed'), 'pace': ('slow-burning', 'fast'), 'dark': ('light', 'dark'),
          'complex': ('easy-to-follow', 'twisty'), 'fantastic': ('down-to-earth', 'otherworldly'), 'modern': ('classic', 'recent'),
@@ -38,12 +39,12 @@ def clear_leans(u):
 def people_of(u):
     groups = []
     seen_roles = {}
-    for role, label, one in (('directors', 'Directors', 'Director'), ('writers', 'Writers', 'Writer'), ('actors', 'Actors', 'Actor')):
+    for role, label, one in (('actors', 'Cast', 'Cast'), ('directors', 'Directors', 'Director'), ('writers', 'Writers', 'Writer')):
         lst = []
         for p in u['people'][role]:
             ts = [r for r in rated(u) if p['name'] in (CREDITS.get(r['key']) or {}).get(role, [])]
             if len(ts) < 2: continue
-            seen_roles.setdefault(p['name'], []).append(one.lower())
+            seen_roles.setdefault(p['name'], []).append(one if one == 'Cast' else one.lower())
             lst.append({'name': p['name'], 'score': p['score'], 'titles': ts})
         lst.sort(key=lambda p: (-p['score'], -len(p['titles'])))
         if lst: groups.append({'role': label, 'list': lst[:5]})
@@ -66,7 +67,7 @@ def summary(u, groups):
     w0 = u['w'][0]
     crowd = ('You tend to love what everybody loves' if w0 >= .30 else 'You’re sometimes with the crowd, sometimes not' if w0 >= .10
              else 'You don’t go by popularity')
-    top = max((p for g in groups for p in g['list'] if g['role'] != 'Actors'), key=lambda p: (round(p['score'], 2), len(p['titles'])), default=None)
+    top = max((p for g in groups for p in g['list'] if g['role'] != 'Cast'), key=lambda p: (round(p['score'], 2), len(p['titles'])), default=None)
     s = f'You go for {leans[0]}, {leans[1]} stories' + (f', with {best[1]} above all' if best else '') + '. ' + crowd
     s += f', and anything {top["name"]} makes.' if top else '.'
     return s
@@ -85,10 +86,20 @@ paths = {r['poster'] for _, _, u in ACCOUNTS for r in rated(u) if r['poster']}
 with cf.ThreadPoolExecutor(8) as ex: POSTERS = dict(ex.map(fetch, sorted(paths)))
 
 
+def fetch_face(name):
+    path = PROFILES.get(name)
+    if not path: return name, ''
+    try:
+        return name, 'data:image/jpeg;base64,' + base64.b64encode(urllib.request.urlopen(f'https://image.tmdb.org/t/p/w185{path}', timeout=20).read()).decode()
+    except Exception:
+        return name, ''
+
+
 def t(r): return {'t': r['title'], 'y': r['year'], 'p': r['poster'], 'r': r['reaction']}
 
 
 data = []
+FACES = {}
 for key, label, u in ACCOUNTS:
     groups = [] if u.get('little') else people_of(u)
     genres = []
@@ -96,6 +107,7 @@ for key, label, u in ACCOUNTS:
         ts = sorted((r for r in rated(u) if gid in r['g16']), key=lambda r: -(r['year'] or 0))
         genres.append({'id': gid, 'label': html.unescape(glabel), 'icon': B.icon(ic), 'big': B.icon(ic, 26), 'col': col,
                        'tally': dict(B.tally(u, gid)), 'titles': [t(r) for r in ts]})
+    with cf.ThreadPoolExecutor(8) as ex: FACES.update(ex.map(fetch_face, [p['name'] for g in groups for p in g['list']]))
     w0 = u['w'][0]
     data.append({
         'key': key, 'label': label,
@@ -105,12 +117,16 @@ for key, label, u in ACCOUNTS:
         'crowd': None if u.get('little') else ('You tend to love what everybody loves.' if w0 >= .30 else
                                                'Sometimes you’re with the crowd, sometimes not.' if w0 >= .10 else
                                                'You don’t go by popularity: plenty of crowd favourites leave you cold.'),
-        'people': [{'role': g['role'], 'list': [{'name': p['name'], 'roles': p['roles'], 'score': p['score'],
+        'people': [{'role': g['role'], 'list': [{'name': p['name'], 'roles': p['roles'], 'score': p['score'], 'face': FACES.get(p['name'], ''),
                                                   'titles': [t(r) for r in sorted(p['titles'], key=lambda r: -(r['year'] or 0))]} for p in g['list']]}
                    for g in groups],
     })
 
-CALLS = {k: {'name': v[0], 'icon': v[1], 'col': v[2]} for k, v in B.CALLS.items()}
+I_MORE = B.svg('<path d="M7 18l5-5 5 5M7 11l5-5 5 5"/>')
+CALLS = {'never': {'name': 'Never', 'icon': B.I_NEVER, 'col': '#ff5a4f'}, 'less': {'name': 'Less of', 'icon': B.I_LESS, 'col': '#e0a3a0'},
+         'neutral': {'name': 'Neutral', 'icon': B.I_NEUTRAL, 'col': '#8c8c91'}, 'more': {'name': 'More of', 'icon': I_MORE, 'col': '#3ddc97'}}
+for d in data:
+    d['calls'] = {g: c for g, c in d['calls'].items() if c == 'never'}
 
 # ── the app's CSS, fonts inlined ──
 css = ''
@@ -161,6 +177,17 @@ body{background:#000;color:#fff}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
 .pbar button[aria-pressed="true"]{background:#1b1b1b;color:#fff;border-color:#1b1b1b}
 .pad-bottom{height:calc(var(--bar-h) + 24px)}
+
+/* sheets rise to fit their content, never past 72% of the screen; the list scrolls inside */
+.sheet{top:auto!important;max-height:72%;height:auto}
+.sbody{flex:1;min-height:0}
+.more{align-self:flex-start;height:36px;padding:0 14px;border-radius:999px;border:0;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:14px;cursor:pointer}
+/* a person's face, as tall as name + line */
+.stitle.face{flex-direction:row;align-items:center;gap:14px}
+.stitle.face img{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none;background:#2a2a2d}
+.stitle.face .who{display:flex;flex-direction:column;gap:4px;min-width:0}
+.prow{grid-template-columns:minmax(0,1fr) 16px}
+.seg{grid-template-columns:repeat(4,1fr)}
 """
 
 page_shell = (f'<div class="inter_3d9c7ff2-module__6cOLqa__variable font-sans"><div class="{B.A("page")}"><div class="{B.A("app")}">'
@@ -177,12 +204,12 @@ JS = r"""
 const D = c => c.split(' ').map(x => 'dna-module__DPj9xq__' + x).join(' ');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MARK = {loved:['❤️','Loved'], liked:['👍','Liked'], disliked:['👎','Disliked']};
-const ORDER = ['never','less','neutral','like','love'];
+const ORDER = ['never','less','neutral','more'];
+const SHOW = 20;   // titles shown in a sheet before "Show all"
 const DOES = {
-  love: g => `Your feed leans towards ${g} from the start. As you rate more, your ratings take over.`,
-  like: g => `Your feed leans a little towards ${g}. As you rate more, your ratings take over.`,
-  neutral: g => 'No lean either way: your ratings alone decide.',
-  less: g => `You’ll still see ${g}, just lower down your feed. Stays until you change it.`,
+  more: g => `${g} moves up your feed, so you see more of it. Stays until you change it.`,
+  neutral: g => `Your ratings alone decide how much ${g} you see.`,
+  less: g => `${g} moves down your feed, so you see less of it. Stays until you change it.`,
   never: g => `We’ll never show you ${g}.`};
 let acc = DATA[0], calls = {};
 
@@ -196,6 +223,12 @@ function says(t, call) {
   if (s <= .25) return [`Mostly enjoyed · ${n} titles`, false];
   if (s >= .6) return [`Mostly disliked · ${n} titles`, false];
   return [`Mixed · ${n} titles`, false];
+}
+function psays(ts) {
+  const t = {}; ts.forEach(r => t[r.r] = (t[r.r] || 0) + 1);
+  const n = ts.length, lv = t.loved || 0, di = t.disliked || 0;
+  if (n === 2) return lv === 2 ? 'Loved both' : !di ? 'Enjoyed both' : di === 2 ? 'Disliked both' : 'Mixed · 2 titles';
+  return says(t, null)[0];
 }
 const section = (title, body, id='') =>
   `<section class="${D('section')}"${id ? ` id="${id}"` : ''}><div class="${D('sectionHead')}"><h2 class="${D('sectionTitle')} ${D('sectionTitleAccent')}">${title}</h2></div>${body}</section>`;
@@ -218,18 +251,16 @@ function render() {
   let h = section('In short', acc.summary ? `<p class="summary">${esc(acc.summary)}</p>`
                   : '<p class="quiet" style="font-size:16px">Still getting to know you. Every title you rate sharpens this page.</p>');
   h += section('How you like it', acc.scales);
-  h += section('Genres', '<p class="quiet" style="margin:-4px 0 4px">Tap a genre to get more or less of it.</p>'
-       + `<p class="never-line" id="never">${neverLine()}</p><div class="grows">${acc.genres.map(rowHtml).join('')}</div>`, 'genres');
-  if (acc.crowd) h += section('You and the crowd', `<p class="crowd">${acc.crowd}</p>`);
   let ph = '';
   acc.people.forEach((g, gi) => {
     ph += `<div class="${D('group')}"><div class="${D('groupHead')}"><span class="${D('groupName')}">${g.role}</span></div>` +
       g.list.map((p, pi) => `<div class="prow" role="button" tabindex="0" data-g="${gi}" data-p="${pi}"><div><div class="pname">${esc(p.name)}</div>
-        <div class="pfrom">from ${p.titles.length} titles</div></div><div class="mtrack"><div class="mfill" style="width:${Math.round(Math.min(Math.max(p.score/.3,0),1)*100)}%"></div></div>
-        <span class="chev">${CHEV}</span></div>`).join('') + '</div>';
+        <div class="pfrom">${psays(p.titles)}</div></div><span class="chev">${CHEV}</span></div>`).join('') + '</div>';
   });
-  if (!ph) ph = '<p class="quiet">Rate a few titles you’ve seen and we’ll spot the directors and actors you keep coming back to.</p>';
+  if (!ph) ph = '<p class="quiet">Rate a few titles you’ve seen and we’ll spot the cast, directors and writers you keep coming back to.</p>';
   h += section('People who pull you in', ph);
+  h += section('Genres', '<p class="quiet" style="margin:-4px 0 4px">Tap a genre to get more or less of it.</p>'
+       + `<p class="never-line" id="never">${neverLine()}</p><div class="grows">${acc.genres.map(rowHtml).join('')}</div>`, 'genres');
   document.getElementById('content').innerHTML = h;
   document.getElementById('never').hidden = !neverLine();
   document.querySelectorAll('.grow').forEach(el => {
@@ -253,8 +284,16 @@ function updateRow(g) {
   const nv = document.getElementById('never'); nv.textContent = neverLine(); nv.hidden = !nv.textContent;
 }
 
-const titleRows = ts => ts.map(r => `<div class="trow"><img src="${POSTERS[r.p] || ''}" alt=""><div class="tinfo"><div class="tname">${esc(r.t)}</div>
+const titleRow = r => [r].map(r => `<div class="trow"><img src="${POSTERS[r.p] || ''}" alt=""><div class="tinfo"><div class="tname">${esc(r.t)}</div>
   <div class="tyear">${r.y || ''}</div></div><span class="mark"><span class="e">${MARK[r.r][0]}</span>${MARK[r.r][1]}</span></div>`).join('');
+function titleRows(ts) {
+  if (ts.length <= SHOW + 5) return ts.map(titleRow).join('');
+  return ts.slice(0, SHOW).map(titleRow).join('') + `<button type="button" class="more" data-rest="1">Show all ${ts.length}</button>`;
+}
+function wireMore(ts) {
+  const b = document.querySelector('#sheet .more');
+  if (b) b.addEventListener('click', () => { b.insertAdjacentHTML('beforebegin', ts.slice(SHOW).map(titleRow).join('')); b.remove(); });
+}
 
 let lastFocus = null;
 function openSheet(inner, col) {
@@ -293,11 +332,13 @@ function openGenre(id) {
     document.getElementById('smeta').textContent = says(g.tally, calls[id])[0];
     updateRow(g);
   }));
+  wireMore(g.titles);
 }
 function openPerson(p) {
-  const bar = `<div class="mtrack sbar"><div class="mfill" style="width:${Math.round(Math.min(Math.max(p.score/.3,0),1)*100)}%"></div></div>`;
-  openSheet(`<div class="shead"><div class="stitle"><h2>${esc(p.name)}</h2><div class="smeta">${p.roles} · from ${p.titles.length} titles</div></div>
-    <button class="sclose" aria-label="Close">${X}</button></div><div class="sbody">${bar}${titleRows(p.titles)}</div>`);
+  const face = p.face ? `<img src="${p.face}" alt="">` : '';
+  openSheet(`<div class="shead"><div class="stitle${face ? ' face' : ''}">${face}<div class="who"><h2>${esc(p.name)}</h2><div class="smeta">${p.roles} · ${psays(p.titles)}</div></div></div>
+    <button class="sclose" aria-label="Close">${X}</button></div><div class="sbody">${titleRows(p.titles)}</div>`);
+  wireMore(p.titles);
 }
 
 document.getElementById('accts').innerHTML = DATA.map(a => `<button type="button" data-k="${a.key}">${esc(a.label)}</button>`).join('');
