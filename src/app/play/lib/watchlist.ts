@@ -11,7 +11,7 @@ import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFr
 import type { Recommendation } from '@/types/recommendation'
 import type { GameTitle } from './scales'
 
-export type SaveSource = 'training' | 'knockout' | 'final' | 'blind' | 'other' | 'hilo' | 'six' | 'bet' | 'mind' | 'picks'
+export type SaveSource = 'training' | 'knockout' | 'final' | 'blind' | 'other' | 'hilo' | 'six' | 'bet' | 'mind' | 'picks' | 'onboarding'
 
 /** The label the watchlist shows under each title. */
 export const SAVED_FROM: Record<SaveSource, string> = {
@@ -25,6 +25,7 @@ export const SAVED_FROM: Record<SaveSource, string> = {
   bet: 'From The Bet',
   mind: 'From Mind Reader',
   picks: 'From my picks',
+  onboarding: 'Saved while getting started',
 }
 
 const meta = (t: GameTitle) =>

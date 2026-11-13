@@ -51,3 +51,118 @@
 
 /* Behind "We'll never show you…" the area is solid (the live fade started too low and the list showed through). */
 .wtw-play .ob-genres .setup + .cta-wrap.sticky { padding-top: 40px; background: linear-gradient(rgba(0, 0, 0, 0), #000 36px); }
+
+/* ── Motion (P2-U0 "Flow"): the screens don't fade in on their own; lib/flow.ts moves only what changes ── */
+.wtw-play .phone.ob > .screen { animation: none; }
+.wtw-play .phone.ob > .screen.ob-ghost { pointer-events: none; z-index: 2; background: transparent; }
+.wtw-play .phone.ob .seasonbar.quiet .sb-bar i { transition: width .48s cubic-bezier(.16, 1, .3, 1); }
+
+/* ── Skip (part 7): quieter than the season's dark pill: grey text, 15px, no fill, a 44px-tall tap area ── */
+.wtw-play .phone.ob .screen .tb-skip {
+  background: none; border: 0; border-radius: 16px; padding: 13px 12px; margin-left: -12px;
+  font-size: 15px; font-weight: 500; line-height: 18px; color: var(--muted);
+}
+
+/* ── A failed save: one quiet line in the 30px under the last button, so nothing moves ── */
+.wtw-play .phone.ob .screen > .save-note.obs {
+  position: absolute; left: 0; right: 0; bottom: 8px; padding: 0 16px; white-space: nowrap; margin: 0;
+  font-size: 13px; line-height: 16px; color: var(--muted); text-align: center;
+}
+
+/* ── The rating card (P2-U3; version A revised, fr.css "The learner" + pixel passes 1 and 2) ── */
+.wtw-play .phone.ob .blockbar .lcount { font-variant-numeric: tabular-nums; }
+.wtw-play .phone.ob .blockbar .lcount b { color: var(--fg); font-weight: 600; }
+.wtw-play .phone.ob .learn { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 14px 22px 30px; min-height: 0; }
+.wtw-play .phone.ob .learn .learn-poster { flex: 3 1 375px; max-height: 450px; min-height: 210px; width: auto; aspect-ratio: 2 / 3; margin: 0; }
+.wtw-play .phone.ob .learn .learn-poster .poster { width: 100%; height: 100%; box-shadow: 0 18px 40px rgba(0, 0, 0, .6); }
+.wtw-play .phone.ob .learn .learn-poster .poster img { width: 100%; height: 100%; object-fit: cover; }
+.wtw-play .phone.ob .learn h2 { margin: 14px 0 0; font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.wtw-play .phone.ob .learn h2.long { font-size: 22px; }
+.wtw-play .phone.ob .learn .lmeta { margin-top: 4px; color: var(--muted); font-size: 14px; }
+.wtw-play .phone.ob .learn .lfill { flex: 1 20 72px; min-height: 12px; }
+.wtw-play .phone.ob .learn .ltiles { display: grid; gap: 8px; width: 100%; }
+.wtw-play .phone.ob .learn .ltiles.three { grid-template-columns: repeat(3, 1fr); }
+.wtw-play .phone.ob .learn .ltile {
+  height: 96px; border: 0; border-radius: 16px; background: var(--pill-dark); color: #fff; font-weight: 600; font-size: 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0;
+}
+.wtw-play .phone.ob .learn .ltile .seen-emoji { font-size: 27px; line-height: 1; }
+
+/* "Haven't seen": the duel's .unseen, outline only, struck-out eye; inset outline so the size doesn't change */
+.wtw-play .phone.ob .unseen.ol {
+  background: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28); border-radius: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.wtw-play .phone.ob .unseen.ol svg { flex: none; }
+.wtw-play .phone.ob .unseen.ol[disabled] { opacity: .35; cursor: default; }
+.wtw-play .phone.ob .learn > .unseen { width: 100%; margin-top: 16px; }
+
+/* ── The cards' messages (part 3): one card's slot, the buttons where the tiles were ── */
+.wtw-play .phone.ob .lmsg { flex: 1 1 auto; min-height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-bottom: 24px; }
+.wtw-play .phone.ob .lmsg-screen .lfill { display: none; }
+.wtw-play .phone.ob .lmsg h2 { margin: 22px 0 0; }
+.wtw-play .phone.ob .lmsg p { margin: 8px 0 0; max-width: 300px; font-size: 16px; line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+.wtw-play .phone.ob .lfan { display: flex; justify-content: center; }
+.wtw-play .phone.ob .lfan-p { position: relative; width: 92px; margin: 0 -10px; }
+.wtw-play .phone.ob .lfan-p:nth-child(1) { transform: rotate(-8deg) translateY(10px); }
+.wtw-play .phone.ob .lfan-p:nth-child(3) { transform: rotate(8deg) translateY(10px); }
+.wtw-play .phone.ob .lfan-p:nth-child(2) { z-index: 1; }
+.wtw-play .phone.ob .lfan-p .poster { width: 100%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+.wtw-play .phone.ob .lfan-p .poster img { filter: brightness(.45) saturate(.6); }
+.wtw-play .phone.ob .lfan-p i { position: absolute; inset: 0; display: grid; place-items: center; color: #c8c8cc; z-index: 3; }
+.wtw-play .phone.ob .lmsg-btns { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+.wtw-play .phone.ob .screen.game-screen .lmsg-btns :is(.cta, .opt) { border-radius: 999px; }
+
+/* ── Milestones (part 3): the gold step name rises and fades in (320 ms), one lighter band sweeps across it
+   (700 ms), the bar's fill glows once (900 ms). Nothing loops. Reduce motion: the words just turn gold. ── */
+.wtw-play .phone.ob .lmile {
+  display: inline-block; color: transparent;
+  background: linear-gradient(100deg, var(--gold) 0 38%, #ffe2a6 50%, var(--gold) 62% 100%);
+  background-size: 300% 100%; background-position: 0 0; -webkit-background-clip: text; background-clip: text;
+  animation: lmile-in .32s cubic-bezier(.2, .8, .2, 1) both, lmile-shine .7s ease-in-out .3s both;
+}
+.wtw-play .phone.ob .lmile-bar .sb-bar { overflow: visible; }
+.wtw-play .phone.ob .lmile-bar .sb-bar i { animation: lmile-glow .9s ease-out .1s both; }
+@keyframes lmile-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes lmile-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes lmile-glow {
+  0% { box-shadow: 0 0 0 0 rgba(212, 155, 58, 0); }
+  35% { box-shadow: 0 0 12px 2px rgba(212, 155, 58, .75); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 155, 58, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wtw-play .phone.ob .lmile, .wtw-play .phone.ob .lmile-bar .sb-bar i { animation: none; }
+  .wtw-play .phone.ob .lmile { color: var(--gold); background: none; }
+}
+
+/* ── The screen before the picks (part 4): the block in the middle of the free space, the button where the
+   tiles were; no progress bar ── */
+.wtw-play .phone.ob .between .bmid { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding-bottom: 24px; }
+.wtw-play .phone.ob .between .bmid h2 { margin: 0; }
+.wtw-play .phone.ob .between .bmid > p { margin: 8px 0 0; max-width: 310px; font-size: 16px; line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+.wtw-play .phone.ob .between .blabel {
+  align-self: stretch; margin: 20px 0 0; font-size: 13px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--gold); text-align: left; font-weight: 400;
+}
+.wtw-play .phone.ob .between .brow {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-self: stretch;
+  margin: 10px -22px 0 0; padding-right: 22px; scroll-snap-type: x mandatory;
+}
+.wtw-play .phone.ob .between .brow::-webkit-scrollbar { display: none; }
+.wtw-play .phone.ob .between .brow .bw-p { position: relative; flex: none; width: 96px; scroll-snap-align: start; }
+.wtw-play .phone.ob .between .bw-p .poster { width: 100%; }
+.wtw-play .phone.ob .between .bw-p .tvb { display: none; }
+.wtw-play .phone.ob .between .bw-e {
+  position: absolute; left: 5px; bottom: 5px; z-index: 3; width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(0, 0, 0, .6); display: grid; place-items: center; font-size: 14px; line-height: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .3);
+}
+.wtw-play .phone.ob .between .brow.fr { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 70px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 70px), transparent); }
+.wtw-play .phone.ob .between .brow.fl { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px); mask-image: linear-gradient(90deg, transparent, #000 40px); }
+.wtw-play .phone.ob .between .brow.fl.fr {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 70px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 70px), transparent);
+}
+.wtw-play .phone.ob .between .bnext { margin-top: 20px; }
+.wtw-play .phone.ob .between .bnext h4 b { font-weight: 700; }
+.wtw-play .phone.ob .between > .cta { flex: none; }
