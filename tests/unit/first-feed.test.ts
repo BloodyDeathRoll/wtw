@@ -15,7 +15,9 @@ const io = vi.hoisted(() => ({
 }))
 
 vi.mock('@/modules/engine/pipeline/precompute', () => ({
-  precomputeNextBatch: async (userId: string, contentType: string) => { io.kicked.push(`${userId}:${contentType}`) },
+  precomputeNextBatch: async (userId: string, contentType: string, _onParked: unknown, build?: { plotWaitMs?: number }) => {
+    io.kicked.push(`${userId}:${contentType}:${build?.plotWaitMs ?? 'default'}`)
+  },
   precomputeRunning: async () => io.runningPolls-- > 0,
 }))
 vi.mock('@/modules/dna/refresh-batch', () => ({ refreshLiveBatch: async () => io.promoted }))
@@ -28,6 +30,7 @@ vi.mock('@/modules/dna/lib/load-save', () => ({
   },
 }))
 vi.mock('@/modules/engine/pipeline/generate', () => ({
+  INLINE_PLOT_WAIT_MS: 400,
   generateRecommendations: async (_u: string, _s: unknown, opts: { dna: DNASchema; contentType: string }) => {
     io.generated.push({ dna: opts.dna, contentType: opts.contentType })
     return []
@@ -46,9 +49,15 @@ beforeEach(() => {
 })
 
 describe('kickFirstFeed', () => {
-  it('starts a background build of the mixed feed', async () => {
+  // Eran's first run (#246, 2026-11-13): the batch was built for 'all' while the
+  // feed opens on "movies", and each build waited 2.5 s for new plot summaries.
+  it('builds the list the feed opens on ("movies"), without waiting for new plot summaries', async () => {
     await kickFirstFeed('u1')
-    expect(io.kicked).toEqual(['u1:all'])
+    expect(io.kicked).toEqual(['u1:movies:400'])
+  })
+  it('a caller can ask for another list', async () => {
+    await kickFirstFeed('u1', 'series')
+    expect(io.kicked).toEqual(['u1:series:400'])
   })
 })
 
@@ -69,12 +78,12 @@ describe('finishFirstFeed', () => {
     expect(r.ms).toBeGreaterThanOrEqual(3 * 150 - 20)
   })
 
-  it('with nothing current parked: bumps the version and generates the mixed feed at it', async () => {
+  it('with nothing current parked: bumps the version and generates the "movies" feed at it', async () => {
     const r = await finishFirstFeed('u1')
     expect(r).toMatchObject({ taste_version: 8, adopted: false })
     expect(io.generated).toHaveLength(1)
     expect(io.generated[0].dna.metadata.taste_version).toBe(8)
-    expect(io.generated[0].contentType).toBe('all')
+    expect(io.generated[0].contentType).toBe('movies')
   })
 
   it('throws when the fingerprint can\'t be bumped, so the screen shows "Try again"', async () => {
