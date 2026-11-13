@@ -1,10 +1,10 @@
 /**
  * score-catalog-scales — puts every catalogue title on the 11 taste scales
- * (docs/plan/PLAN.md, P1-D2). Three modes:
+ * (docs/plan/PLAN.md, P1-D2). Modes:
  *
  *   npm run score-catalog-scales -- --dry-run            # what would be scored, the first prompt; no calls
  *   npm run score-catalog-scales -- --budget 300         # score: AI calls, writes titles.taste_raw
- *   npm run score-catalog-scales -- --limit 200 --probe  # a trial; logs latency and rate-limit headers per call
+ *   npm run score-catalog-scales -- --probe --limit 200  # a trial; logs latency and rate-limit headers per call
  *   npm run score-catalog-scales -- --sync-game-audience # copy the 980 game titles' `audience` into ai-scores.json
  *   npm run score-catalog-scales -- --finalise           # taste_scales, game_genres, taste_vec, taste_version
  *
@@ -87,6 +87,7 @@ async function pageAll(page: (from: number, to: number) => Page): Promise<Row[]>
 
 // ── Score ───────────────────────────────────────────────────────
 
+// A title without a synopsis is never scored (the prompt needs one); --finalise skips it, as it has no taste_raw.
 async function unscored(): Promise<Row[]> {
   const base = () => db.from('titles').select(COLS).is('taste_raw', null).not('synopsis', 'is', null)
   const top = await pageAll((a, b) => base().gte('tmdb_vote_count', VOTE_TIER).order('tmdb_vote_count', { ascending: false }).order('id').range(a, b))
@@ -121,9 +122,12 @@ async function scoreBatch(batch: ReturnType<typeof toPrompt>[]): Promise<number>
     output = repaired
   }
   let written = 0
+  const seen = new Set<number>()
   for (const t of output.titles) {
     const c = batch[t.n - 1]
-    if (!c) continue
+    // A repeated `n` would overwrite the first answer; keep the first (the other title is retried next run).
+    if (!c || seen.has(t.n)) continue
+    seen.add(t.n)
     const raw: TasteRaw = {
       tone: t.tone, energy: t.energy, pace: t.pace, dark: t.dark, complex: t.complex, fantastic: t.fantastic,
       humor: c.firm.includes('comedy') ? t.humor : null,
@@ -197,11 +201,17 @@ async function syncGameAudience() {
 
 // ── Finalise ────────────────────────────────────────────────────
 
-async function episodeCount(tmdb_id: string): Promise<number | null> {
-  const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}`)
-  if (!res.ok) return null
-  const j = await res.json() as { number_of_episodes?: number }
-  return j.number_of_episodes || null
+/** null: TMDB has no count (kept, never asked again). undefined: the lookup failed (asked again next --finalise). */
+async function episodeCount(tmdb_id: string): Promise<number | null | undefined> {
+  try {
+    const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}`)
+    if (res.status === 404) return null
+    if (!res.ok) return undefined
+    const j = await res.json() as { number_of_episodes?: number }
+    return j.number_of_episodes || null
+  } catch {
+    return undefined
+  }
 }
 
 async function finalise() {
@@ -228,9 +238,9 @@ async function finalise() {
     const raw: TasteRaw = r.taste_raw ?? { confirmed: [] }
     let rawChanged = false
     if (!game && r.type === 'tv' && r.taste_raw && !('episodes' in raw)) {
-      raw.episodes = await episodeCount(r.tmdb_id)
+      const episodes = await episodeCount(r.tmdb_id)
       tmdbCalls++
-      rawChanged = true
+      if (episodes !== undefined) { raw.episodes = episodes; rawChanged = true }
       await sleep(260)
     }
     let game_genres: GameGenre[]

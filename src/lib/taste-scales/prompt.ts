@@ -108,13 +108,15 @@ export function repairBatch<S extends typeof batchSchema | typeof catalogueBatch
   // One title with a missing score shouldn't cost the other nine: drop it (it is retried next run).
   const item = schema.shape.titles.element
   const kept = raw.titles.filter(t => item.safeParse(t).success)
-  if (kept.length < raw.titles.length) console.warn(`[play-titles] dropped ${raw.titles.length - kept.length} incomplete title(s) from a batch`)
+  if (kept.length < raw.titles.length) console.warn(`[repairBatch] dropped ${raw.titles.length - kept.length} incomplete title(s) from a batch`)
+  // Nothing left is a failed batch, not an empty success.
+  if (kept.length === 0) return null
   raw.titles = kept
   const parsed = schema.safeParse(raw)
   if (parsed.success) {
-    console.warn('[play-titles] repaired an off-schema batch')
+    console.warn('[repairBatch] repaired an off-schema batch')
     return parsed.data as z.infer<S>
   }
-  console.warn(`[play-titles] unrepairable: ${JSON.stringify(parsed.error.issues[0]).slice(0, 200)}`)
+  console.warn(`[repairBatch] unrepairable: ${JSON.stringify(parsed.error.issues[0]).slice(0, 200)}`)
   return null
 }

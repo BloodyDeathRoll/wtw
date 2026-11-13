@@ -93,6 +93,11 @@ describe('repairBatch drops only the broken title', () => {
     const text = JSON.stringify({ titles: [{ n: 1, ...ok }, { n: 2, ...ok, fantastic: undefined }, { n: 3, ...ok }] })
     expect(repairBatch({ text }, catalogueBatchSchema)?.titles.map(t => t.n)).toEqual([1, 3])
   })
+
+  it('fails the batch when no title is complete', () => {
+    const text = JSON.stringify({ titles: [{ n: 1, tone: 1 }, { n: 2, energy: 0 }] })
+    expect(repairBatch({ text }, catalogueBatchSchema)).toBeNull()
+  })
 })
 
 describe('norms.json', () => {
