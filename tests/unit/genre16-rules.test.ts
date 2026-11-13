@@ -52,3 +52,18 @@ describe('Nevers from the 16-genre screen', () => {
     expect(isExcluded(interstellar, [typed])).toBe(true)
   })
 })
+
+// Review on #285 (2026-11-13): 105 of the 348 "adult animation" titles are anime. Sending that keyword to the
+// database pass dropped them from the pool of someone who said Never to Adult animation and Love to Anime.
+describe('Never: Adult animation leaves adult anime alone', () => {
+  const adultAnime = t(['Animation', 'Action & Adventure', 'Drama'], ['adult animation', 'anime'], 'ja')
+  it('sends nothing to the database pass, so the pool keeps the anime', () => {
+    expect(ruleTargets(genre16Rule('adultanim'))).toMatchObject({ genres: [], keywords: [], languages: [] })
+    expect(sqlExclusionParams([genre16Rule('adultanim')]).exclude_keywords).toEqual([])
+  })
+  it('the exact check still hides adult animation, and not adult anime', () => {
+    expect(matchesRule(bojack, genre16Rule('adultanim'))).toBe(true)
+    expect(matchesRule(adultAnime, genre16Rule('adultanim'))).toBe(false)
+    expect(matchesRule(adultAnime, genre16Rule('anime'))).toBe(true)
+  })
+})

@@ -23,7 +23,7 @@
 
 import type { ExclusionRule, ExclusionType, SoftPreference } from '@/types/dna'
 import { GAME_GENRES, tmdbGenresOf } from '@/app/play/lib/genres'
-import { GENRES_16, GENRE_13_OF, SUPERHERO_KEYWORDS, ADULT_ANIMATION_KEYWORDS, genres16Of, type Genre16 } from '@/app/play/lib/genres16'
+import { GENRES_16, GENRE_13_OF, SUPERHERO_KEYWORDS, genres16Of, type Genre16 } from '@/app/play/lib/genres16'
 
 // ─────────────────────────────────────────────
 // Rules from the 16-genre screen (docs/plan/genres-16.md, option A)
@@ -51,10 +51,13 @@ export function genre16Of(rule: { id?: string }): Genre16 | null {
  */
 const G16_SQL: Partial<Record<Genre16, () => RuleTargets>> = {
   hero:      () => ({ genres: [], keywords: [...SUPERHERO_KEYWORDS], languages: [], conjunctions: [] }),
-  adultanim: () => ({ genres: [], keywords: [...ADULT_ANIMATION_KEYWORDS], languages: [], conjunctions: [] }),
   anime:     () => ANIME,
 }
-const G16_TS_ONLY = new Set<Genre16>(['scifi', 'fantasy', 'anim', 'family'])
+// Adult animation is TypeScript-only too: 105 of the 348 titles with the
+// "adult animation" keyword are anime, which genres16Of files under Anime, so
+// the keyword in SQL would quietly drop them from the pool of someone who said
+// Never to Adult animation but Love to Anime (review on #285, 2026-11-13).
+const G16_TS_ONLY = new Set<Genre16>(['scifi', 'fantasy', 'anim', 'family', 'adultanim'])
 function genre16Targets(g: Genre16): RuleTargets {
   if (G16_SQL[g]) return G16_SQL[g]!()
   if (G16_TS_ONLY.has(g)) return EMPTY
