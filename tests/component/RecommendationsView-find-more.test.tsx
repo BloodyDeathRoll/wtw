@@ -19,6 +19,8 @@ let fetchMock: ReturnType<typeof vi.fn>
 beforeEach(() => {
   localStorage.clear()
   vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} unobserve() {} })
+  // jsdom has no element scrollTo; the feed scrolls to the loader on "Find more".
+  Element.prototype.scrollTo = () => {}
   fetchMock = vi.fn(async () => new Response(JSON.stringify(pageOf([1, 2]))))
   vi.stubGlobal('fetch', fetchMock)
 })
