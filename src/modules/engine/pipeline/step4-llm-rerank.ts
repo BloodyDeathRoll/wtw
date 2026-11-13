@@ -31,6 +31,7 @@ import { jevEnabled } from '@/lib/flags'
 import { strongestContentAffinities } from '@/modules/dna/lib/update-content-affinity'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
+import { RATED_DOWN_MAX_SCORE, RATED_DOWN_MIN_SAMPLES } from '../scoring/rated-down'
 
 // ─────────────────────────────────────────────
 // Profile → natural language (for the prompt)
@@ -138,14 +139,8 @@ export function avoidSummary(dna: DNASchema): string {
   return parts.join(' ')
 }
 
-/**
- * "Rated down" thresholds. Scores are running averages of reaction levels
- * (loved +0.30, liked +0.15, disliked −0.20), so −0.10 needs at least ~71%
- * dislikes against likes, or 80% against loves. A genre the viewer rates
- * half up, half down averages around 0 and is not "rated down".
- */
-export const RATED_DOWN_MAX_SCORE = -0.10
-export const RATED_DOWN_MIN_SAMPLES = 3
+/** "Rated down" thresholds, shared with the Why sheet's genre catch (../scoring/rated-down.ts). */
+export { RATED_DOWN_MAX_SCORE, RATED_DOWN_MIN_SAMPLES }
 
 /** The viewer text Jev is given: the profile, then what they avoid. */
 export function jevState(dna: DNASchema): string {

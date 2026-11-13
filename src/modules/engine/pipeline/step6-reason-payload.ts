@@ -89,7 +89,7 @@ export function buildReasonPayloads(
   // the batch shares says nothing, so it is left out (taste-facts.ts).
   const catchKeyOf = (item: ScoredTitle) => {
     const v2 = item.formula_v2
-    return hasTasteFacts(v2) ? tasteCatchKey(v2.contributions, v2.vec) : null
+    return hasTasteFacts(v2) ? tasteCatchKey(v2.contributions, v2.vec, v2.rated_down_genres) : null
   }
   const shared = sharedCatchKeys(items.map(catchKeyOf))
 

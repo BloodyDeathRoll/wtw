@@ -140,3 +140,17 @@ describe('step 2 shares step 1\'s training', () => {
     warn.mockRestore()
   })
 })
+
+describe('step 2 hands on the genres the viewer rated down (#279 (c))', () => {
+  beforeEach(() => { process.env.FORMULA_V2 = 'true' })
+  it('every title gets the same list, from strand C', async () => {
+    const dna = createBlankDNA('u1')
+    dna.strand_c_visceral_specs.genre_affinity = {
+      horror: { score: -0.18, confidence: 0.6, sample_size: 5 },
+      crime: { score: 0.2, confidence: 0.8, sample_size: 30 },
+    }
+    io.vecs = new Map([['movie:a', vec(1)]])
+    const out = await scoreCandidates([title('a', 7), title('b', 8)], dna)
+    expect(out.map(s => s.formula_v2?.rated_down_genres)).toEqual([['horror'], ['horror']])
+  })
+})

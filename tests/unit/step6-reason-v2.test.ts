@@ -81,3 +81,19 @@ describe('step 6 — stretch picks under v2 say it plainly', () => {
     expect(p.reason_payload.negative_signals.join(' ')).not.toMatch(/narrative complexity/)
   })
 })
+
+describe('step 6 — a genre catch only when the viewer rated that genre down (#279 (c))', () => {
+  // crime is input 5, dark 16
+  const vecC = new Array(25).fill(0); vecC[5] = 1; vecC[16] = 0.8
+  const conC = new Array(25).fill(0); conC[5] = -0.4; conC[16] = -0.1
+  const v2 = (rated_down_genres: string[]) => ({ z_creators: 0, z_crowd: 0, z_model: -0.9, model_score: -0.5, s: -0.5, composite: 0.3, pool_size: 300, vec: vecC, contributions: conC, rated_down_genres })
+  it('says the scale instead when crime is the model\'s pull but not the viewer\'s ratings', () => {
+    const [p] = buildReasonPayloads([base({ formula_v2: v2([]) as never })])
+    expect(p.reason_payload.negative_signals).toContain("It's darker than you usually go for.")
+    expect(p.reason_payload.negative_signals.join(' ')).not.toMatch(/crime/)
+  })
+  it('says the genre when the viewer did rate it down', () => {
+    const [p] = buildReasonPayloads([base({ formula_v2: v2(['crime']) as never })])
+    expect(p.reason_payload.negative_signals).toContain("It's crime, and crime isn't a genre you usually go for.")
+  })
+})
