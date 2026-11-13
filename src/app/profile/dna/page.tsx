@@ -2,299 +2,49 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadDNA } from '@/modules/dna/lib/load-save'
-import type { DNASchema, StrandA } from '@/types/dna'
 import AppShell from '@/modules/session/components/AppShell'
 import { DnaHeader } from './DnaHeader'
-import { RulesSection } from './RulesSection'
+import { TastePage } from './TastePage'
+import { loadTastePage, type TastePageData } from './lib/taste-page'
 import styles from './dna.module.css'
 
-export const metadata = { title: 'Your Taste DNA — WTW' }
-
-// ── Helpers ──────────────────────────────────────────────────
-
-function pct(n: number) { return `${Math.round(n * 100)}%` }
+export const metadata = { title: 'My taste — WTW' }
 
 /**
- * The people the fingerprint is surest the user likes. Not by score: score is
- * a reaction average that tops out at one loved title, so ranking by it put
- * a one-film director above one with thirteen. Disliked crew (score ≤ 0) are
- * not affinities and stay out.
+ * My taste (P2-U8, rebuilt for the v2 formula; signed off on the playable prototype, Eran 2026-11-13). What the app
+ * thinks you like, in the terms that move the feed: the taste model's leans, the people you keep coming back to, and
+ * your ratings on the 16 genres with your call on each. Story traits and mood & pace weigh nothing in v2 and left the
+ * page; so did the rules list (a rule is now a genre's call) and stretch-pick results.
  */
-function topCrew(bucket: StrandA[keyof StrandA], limit = 5) {
-  return Object.values(bucket)
-    .filter(p => p.score > 0)
-    .sort((a, b) => b.confidence - a.confidence || b.score - a.score)
-    .slice(0, limit)
-}
-
-const STRAND_B_LABELS: Record<string, string> = {
-  moral_ambiguity:      'Moral Ambiguity',
-  narrative_complexity: 'Narrative Complexity',
-  emotional_demand:     'Emotional Demand',
-  originality_weight:   'Originality',
-  humor_style:          'Humor Style',
-  protagonist_type:     'Protagonist Type',
-  ensemble_vs_solo:     'Ensemble vs Solo',
-}
-
-/**
- * Below this, a dimension is still sitting on the blank-DNA default rather
- * than anything the fingerprint has learned — say so instead of stating a
- * preference the user never expressed.
- */
-const UNSURE_BELOW = 0.1
-
-/** A numeric dimension (originality) as a 0–100 readout, not 0.5787002162. */
-function dimensionValue(value: unknown): string {
-  if (typeof value === 'number') return `${Math.round(value * 100)} / 100`
-  return String(value).replace(/_/g, ' ')
-}
-
-// ── Sub-components (server) ───────────────────────────────────
-
-function Meter({
-  value,
-  color = 'var(--brand-yellow)',
-  /**
-   * Draw a tick at the midpoint. Only for the visceral WEIGHTS, where 50 is
-   * neutral and the interesting thing is which side of it a value sits on —
-   * a confidence meter runs 0→100 with no neutral point, so a tick there
-   * would imply a meaning it doesn't have.
-   */
-  neutral = false,
-}: {
-  value: number
-  color?: string
-  neutral?: boolean
-}) {
-  return (
-    <div className={`${styles.track} ${neutral ? styles.trackNeutral : ''}`}>
-      <div className={styles.fill} style={{ width: pct(value), background: color }} />
-    </div>
-  )
-}
-
-function SpecRow({ label, value, color }: { label: string; value: number; color?: string }) {
-  return (
-    <div className={styles.specRow}>
-      <span className={styles.specLabel}>{label.replace(/_/g, ' ')}</span>
-      <Meter value={value} color={color} neutral />
-      <span className={styles.specValue}>{Math.round(value * 100)}</span>
-    </div>
-  )
-}
-
-function Section({
-  title,
-  legend,
-  accent = false,
-  children,
-}: {
-  title: string
-  /** Names the unit of the numbers in this section, once, across from the title. */
-  legend?: string
-  /**
-   * Brand-yellow title. The design alternates: a section whose own sub-labels
-   * are yellow (affinity groups, dimension names) keeps a white-70 title; one
-   * whose sub-labels are white-70 gets the yellow title instead.
-   */
-  accent?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <section className={styles.section}>
-      <div className={styles.sectionHead}>
-        <h2 className={`${styles.sectionTitle} ${accent ? styles.sectionTitleAccent : ''}`}>{title}</h2>
-        {legend && <span className={styles.groupLegend}>{legend}</span>}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-// ── Page ─────────────────────────────────────────────────────
-
-export default async function DNAProfilePage() {
+export default async function TastePageRoute() {
   const supabase = await createClient()
   const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
-  let dna: DNASchema
-  try {
-    dna = await loadDNA(user.id)
-  } catch {
-    return (
-      <AppShell>
-        <main className={styles.page}>
-          <div className={styles.container}>
-            <p className={styles.note}>Could not load your DNA profile.</p>
-          </div>
-        </main>
-      </AppShell>
-    )
-  }
-
-  const { metadata, strand_a_creative_affinity: sa, strand_b_narrative_dimensions: sb,
-          strand_c_visceral_specs: sc, contextual_logic: cl, signals, learning_loop: ll } = dna
-  const crewGroups = (['directors', 'writers', 'actors'] as const)
-    .map(bucket => ({ bucket, crew: topCrew(sa[bucket]) }))
-
-  const hasData = signals.length >= 3
   const appUser = {
     id: user.id,
     email: user.email ?? null,
     name: (user.user_metadata?.full_name as string | undefined) ?? null,
     avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
   }
-  const subtitle =
-    `${signals.length} signal${signals.length !== 1 ? 's' : ''} · ` +
-    `v${metadata.taste_version} · ${new Date(metadata.last_updated).toLocaleDateString()}`
+
+  let data: TastePageData | null = null
+  try {
+    data = await loadTastePage(await loadDNA(user.id), user.id)
+  } catch (err) {
+    console.error('[profile/dna] taste page failed:', err instanceof Error ? err.message : err)
+  }
+
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
+  // "updated 13 Nov" doesn't fit beside the search and menu buttons on a phone, and the page is always current.
+  const subtitle = data ? `${plural(data.ratings, 'rating')} · ${plural(data.picks, 'pick')}` : ''
 
   return (
     <AppShell>
       <main className={styles.page}>
-        <DnaHeader user={appUser} subtitle={subtitle} />
-
+        <DnaHeader user={appUser} subtitle={subtitle} title="My taste" />
         <div className={styles.container}>
-          {!hasData && (
-            <section className={styles.section}>
-              <p className={styles.note}>
-                Your fingerprint is just getting started. Rate a few more films and have a
-                conversation to see your DNA take shape.
-              </p>
-            </section>
-          )}
-
-          {/* Strand A — Creative Affinities.
-              One number per person: how confident the fingerprint is. The raw
-              ±score it used to show is an internal reaction-average, and the
-              unit is named once per group instead of on every row. */}
-          <Section title="Creative Affinities">
-            {crewGroups.map(({ bucket, crew }) => {
-              if (crew.length === 0) return null
-              return (
-                <div key={bucket} className={styles.group}>
-                  <div className={styles.groupHead}>
-                    <span className={styles.groupName}>{bucket}</span>
-                    <span className={styles.groupLegend}>Confidence</span>
-                  </div>
-                  {crew.map(person => (
-                    <div key={person.name} className={styles.personRow}>
-                      <span className={styles.personName}>{person.name}</span>
-                      <Meter value={person.confidence} />
-                      <span className={styles.personPct}>{pct(person.confidence)}</span>
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
-            {crewGroups.every(g => g.crew.length === 0) && (
-              <p className={styles.note}>No crew affinities yet.</p>
-            )}
-          </Section>
-
-          {/* Strand B — Narrative Dimensions.
-              Each dimension is a block: quiet label, the reading as the
-              headline, the plain-English note, then a confidence meter. */}
-          <Section title="Narrative Dimensions">
-            {(Object.keys(sb) as (keyof typeof sb)[]).map(dim => {
-              const d = sb[dim]
-              const unsure = d.confidence < UNSURE_BELOW
-              return (
-                <div key={dim} className={styles.dim}>
-                  <div className={styles.dimLabel}>{STRAND_B_LABELS[dim] ?? dim}</div>
-                  <div className={`${styles.dimValue} ${unsure ? styles.dimUnknown : ''}`}>
-                    {unsure ? 'Not enough signal yet' : dimensionValue(d.value)}
-                  </div>
-                  {!unsure && d.notes && <p className={styles.dimNote}>{d.notes}</p>}
-                  {/* Named on every row: under a numeric headline ("61 / 100")
-                      an unlabelled bar reads as that number. */}
-                  <div className={styles.dimMeter}>
-                    <span className={styles.dimMeterLabel}>Confidence</span>
-                    <Meter value={d.confidence} />
-                    <span className={styles.dimConf}>{pct(d.confidence)}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </Section>
-
-          {/* Strand C — Visceral Specs */}
-          {/* The numbers here are WEIGHTS, not confidence: 50 is neutral, above
-              is favoured, below is not. Pacing and tone are learned from
-              ratings and re-centred so each group averages 50
-              (update-strand-c.ts); craft aspects come from the deep survey and
-              sit at 50 until one is filled in. Unlabelled, they read as
-              confidence — the section next door — so the head names them. */}
-          <Section title="Visceral Specs" legend="Weight · 50 = neutral" accent>
-            <div className={styles.specGroup}>
-              <p className={styles.subhead}>Pacing</p>
-              {Object.entries(sc.pacing_weights).map(([k, v]) => (
-                <SpecRow key={k} label={k} value={v} />
-              ))}
-            </div>
-            <div className={styles.specGroup}>
-              <p className={styles.subhead}>Tone</p>
-              {Object.entries(sc.tone_weights).map(([k, v]) => (
-                <SpecRow key={k} label={k} value={v} color="var(--brand-purple)" />
-              ))}
-            </div>
-            <div className={styles.specGroup}>
-              <p className={styles.subhead}>Craft aspects (from deep surveys)</p>
-              {Object.entries(sc.aspect_weights).map(([k, v]) => (
-                <SpecRow key={k} label={k} value={v} color="var(--brand-blue)" />
-              ))}
-            </div>
-          </Section>
-
-          {/* Contextual Logic — the user's own standing instructions, and the
-              only place to take one back (RulesSection is a client island). */}
-          <RulesSection
-            exclusions={cl.exclusion_rules}
-            softPreferences={cl.soft_preferences}
-          />
-
-          {/* Learning Loop */}
-          {ll.open_questions.length > 0 && (
-            <Section title="Open Questions" accent>
-              <div className={styles.questions}>
-                {ll.open_questions.map((q, i) => (
-                  <p key={i} className={styles.question}>
-                    <span className={styles.questionMark}>?</span>
-                    <span>{q}</span>
-                  </p>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {/* Stretch picks summary */}
-          {ll.stretch_pick_history.length > 0 && (
-            <Section title="Stretch Pick Results" accent>
-              <div className={styles.ruleList}>
-                {ll.stretch_pick_history.slice(-5).reverse().map((s, i) => (
-                  <div key={i} className={styles.ruleRow}>
-                    <span style={{ flex: 1 }}>{s.title}</span>
-                    <span
-                      className={styles.tag}
-                      style={
-                        s.accepted
-                          ? { background: 'var(--wtw-green-soft)', color: 'var(--wtw-green)' }
-                          : undefined
-                      }
-                    >
-                      {s.reaction ?? (s.accepted ? 'watched' : 'skipped')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          <p className={styles.footer}>
-            Schema v{metadata.schema_version} · {metadata.total_sessions} session
-            {metadata.total_sessions !== 1 ? 's' : ''}
-          </p>
+          {data ? <TastePage data={data} /> : <p className={styles.note}>Couldn’t load your taste right now. Try again in a moment.</p>}
         </div>
       </main>
     </AppShell>

@@ -129,7 +129,13 @@ export interface ExclusionRule {
 
 export interface SoftPreference {
   signal: string
-  weight_modifier: number   // 0.0 to 1.0
+  /**
+   * How much this pushes matching titles: it multiplies their odds of making
+   * the feed (step3-soft-modifiers.ts). Below 1 = less of it (0.1 almost
+   * never … 0.9 slightly less), above 1 = more of it (P2-U8, the Taste DNA
+   * page's More / Much more, src/lib/genre-calls.ts).
+   */
+  weight_modifier: number
   /**
    * What `signal` names. Optional and additive: without it a person named
    * softly ("less Adam Sandler") was stored as a bare string and matched
@@ -139,6 +145,13 @@ export interface SoftPreference {
   target_type?: ExclusionType
   /** Resolved TMDB person id when target_type is 'person'. */
   person_id?: string
+  /**
+   * Set when the call was made on one of the 16 genres (the Taste DNA page,
+   * P2-U8): the id from src/app/play/lib/genres16.ts. The preference then
+   * matches exactly what "Never" on that genre hides (genres16Of), so "More:
+   * Superheroes" and "Never: Superheroes" mean the same titles.
+   */
+  genre16?: string
 }
 
 export interface TemporalModifier {

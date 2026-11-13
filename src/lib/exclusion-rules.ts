@@ -288,8 +288,14 @@ export function isExcluded(title: MatchableTitle, rules: ExclusionRule[]): boole
 export function matchesSoftSignal(
   title: MatchableTitle,
   signal: string,
-  pref?: Pick<SoftPreference, 'target_type' | 'person_id'>,
+  pref?: Pick<SoftPreference, 'target_type' | 'person_id' | 'genre16'>,
 ): boolean {
+  if (pref?.genre16) {
+    const g = pref.genre16 as Genre16
+    return GENRES_16.some(x => x.id === g) && genres16Of({
+      type: 'movie', genres: title.genres ?? [], keywords: title.keywords ?? [], original_language: title.original_language ?? null,
+    }).includes(g)
+  }
   if (!norm(signal)) return false
   if (pref?.target_type === 'person') {
     return matchesPerson(title, {

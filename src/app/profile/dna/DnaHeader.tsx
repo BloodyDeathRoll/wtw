@@ -20,7 +20,7 @@ import styles from "./dna.module.css";
 /** Same key WTWApp persists the Gemini Live voice under. */
 const VOICE_KEY = "wtw:voice";
 
-export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string }) {
+export function DnaHeader({ user, subtitle, title = 'My taste' }: { user: AppUser; subtitle: string; title?: string }) {
   const router = useRouter();
   const [voice, setVoice] = useState<Voice>(VOICES[0].id);
 
@@ -96,7 +96,7 @@ export function DnaHeader({ user, subtitle }: { user: AppUser; subtitle: string 
       </button>
 
       <div className={styles.headerTitleBlock}>
-        <h1 className={styles.title}>Taste DNA</h1>
+        <h1 className={styles.title}>{title}</h1>
         <p className={styles.subtitle}>{subtitle}</p>
       </div>
 
