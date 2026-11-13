@@ -41,7 +41,7 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
   let merged = 0
 
   const outcome = await withDNAUpdate(user_id, async dna => {
-    merged = await mergeInto(dna)
+    merged = await mergeRatedHistoryInto(dna)
     return merged > 0
   })
   if (outcome === 'conflict') {
@@ -56,8 +56,13 @@ export async function mergeFeedbackSignalsLight(user_id: string): Promise<number
  * Re-runnable, so `withDNAUpdate` can replay it against a newer row when its
  * compare-and-set misses — a replay re-reads the catalog, which is the price
  * of never saving a snapshot that went stale.
+ *
+ * Exported for the feedback route, which runs it inside the same
+ * read-modify-write as the rating's history row (one round trip of the DNA
+ * instead of two). It only changes `dna` after its catalog reads, so a throw
+ * leaves the object as it was given.
  */
-async function mergeInto(dna: DNASchema): Promise<number> {
+export async function mergeRatedHistoryInto(dna: DNASchema): Promise<number> {
   const reRated = await applyReRates(dna)
 
   // Dedup on the composite title key across ALL sources (NOT key+source like

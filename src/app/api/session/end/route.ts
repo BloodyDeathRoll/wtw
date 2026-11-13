@@ -33,7 +33,7 @@ import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { generateRecommendations } from '@/modules/engine'
-import { adoptPendingBatch } from '@/modules/engine/pipeline/precompute'
+import { adoptPendingBatch, supersedeQuietPrecompute } from '@/modules/engine/pipeline/precompute'
 import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
@@ -204,6 +204,10 @@ export async function POST(req: NextRequest) {
     return 0
   })
   if (folded > 0) console.log(`[session/end] folded ${folded} card ratings into signals`)
+
+  // "Find more" builds (or adopts) the next batch below: the background build
+  // still waiting on the last rating must not run alongside it.
+  if (wantMore) await supersedeQuietPrecompute(user.id, contentType)
 
   // ── 3c. No-op fast path (the "Find more" slowness fix) ───────
   // "Find more" POSTs here with skip_transcript. When the user rated nothing

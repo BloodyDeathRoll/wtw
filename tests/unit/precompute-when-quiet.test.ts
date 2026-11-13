@@ -20,7 +20,7 @@ vi.mock('@/modules/engine/pipeline/generate', () => ({
   scheduleExplanationPatch: () => {},
 }))
 
-const { precomputeWhenQuiet, QUIET_MS } = await import('@/modules/engine/pipeline/precompute')
+const { precomputeWhenQuiet, supersedeQuietPrecompute, QUIET_MS } = await import('@/modules/engine/pipeline/precompute')
 
 beforeEach(() => {
   redis = createFakeRedis()
@@ -66,6 +66,19 @@ describe('precomputeWhenQuiet', () => {
     releaseSeries(); await series
     expect(redis.store.has('rec_pending3:u1:movies')).toBe(true)
     expect(redis.store.has('rec_pending3:u1:series')).toBe(true)
+  })
+
+  it('stands down when "Find more" builds the list itself during the wait', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    let release!: () => void
+    const gate = new Promise<void>(r => { release = r })
+    const waiting = precomputeWhenQuiet('u1', 'movies', undefined, () => gate)
+    await vi.waitFor(() => expect(redis.store.has('rec_precompute_quiet:u1:movies')).toBe(true))
+    await supersedeQuietPrecompute('u1', 'movies')
+    release()
+    await waiting
+    expect(generateRecommendations).not.toHaveBeenCalled()
+    log.mockRestore()
   })
 
   it('builds anyway when Redis fails', async () => {

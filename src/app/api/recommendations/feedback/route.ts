@@ -47,7 +47,7 @@ import { isContentType, type ContentType } from '@/lib/content-type'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
 import { updateSchemaFromStretch } from '@/modules/dna/update-from-stretch'
 import { unrateTitle } from '@/modules/dna/unrate'
-import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
+import { mergeRatedHistoryInto } from '@/modules/dna/merge-feedback-signal'
 import { countRatingTowardRefresh, refreshIfDue } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate } from '@/modules/dna/lib/load-save'
 import type { Reaction } from '@/types/dna'
@@ -131,14 +131,31 @@ export async function POST(req: NextRequest) {
   // THIS is what failed to land there is nothing left to recover from — and
   // the client only logs a failed POST, having already shown the card as
   // rated. Every other writer of this column can afford to give up.
-  // Step times for a rating save: "Find more" waits for it (2026-11-13, not yet measured).
+  //
+  // ── Incremental fingerprint update, in the same write (2026-11-13) ──
+  // Fold this rating into DNA signals + strand A/C NOW, so by the time the
+  // user hits "Find more" the fingerprint work is already done. No version
+  // bump here keeps the rec cache the user is scrolling valid.
+  // It used to be a second read-modify-write right after this one. Measured
+  // on a 633 KB DNA: 0.8-2.1 s for the history write, then 1.0-2.0 s for the
+  // merge, and the feed sends ratings one at a time, so six ratings held
+  // "Find more" back ~20 s. A failed merge still saves the history row; the
+  // session-end fold picks the rating up from there.
   const t = startTimer('feedback')
   const outcome = await withDNAUpdate(
     user.id,
-    dna => applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick }),
+    async dna => {
+      const changed = applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick })
+      if (!reaction) return changed
+      const merged = await mergeRatedHistoryInto(dna).catch(err => {
+        console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
+        return 0
+      })
+      return changed || merged > 0
+    },
     HISTORY_WRITE_ATTEMPTS,
   )
-  t.mark('history write')
+  t.mark('rating saved')
   if (outcome === 'missing') {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
   }
@@ -149,17 +166,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 409 })
   }
 
-  // ── Incremental fingerprint update (cheap, no version bump) ─
-  // Fold this rating into DNA signals + strand A/C NOW, so by the time the
-  // user hits "Find more" most of the fingerprint work is already done and
-  // session-end only bumps the version + regenerates. No bump here keeps the
-  // rec cache the user is scrolling valid. The UI serializes feedback clicks,
-  // so these read-modify-writes don't race.
   if (reaction) {
-    await mergeFeedbackSignalsLight(user.id).catch(err =>
-      console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
-    )
-    t.mark('light merge')
     // The fingerprint inputs are final for this rating — build the next batch
     // after the response, once the user pauses rating, so "Find more" only has
     // to adopt it (precompute.ts coalesces bursts; never throws).
