@@ -230,6 +230,20 @@ export async function adoptPendingBatch(
 }
 
 /**
+ * "Find more" is about to build this list itself. A build still waiting out
+ * QUIET_MS for the last rating would run the same pipeline alongside it (seen
+ * 2026-11-13: step 1 took 3.7 s instead of 1.3 s) and park a batch of the same
+ * titles. Re-stamping makes that waiting call stand down. Never throws.
+ */
+export async function supersedeQuietPrecompute(userId: string, contentType: ContentType = 'all'): Promise<void> {
+  try {
+    await getRedis().set(quietKey(userId, contentType), `find-more:${Date.now()}:${Math.random()}`, { ex: QUIET_TTL_SECONDS })
+  } catch (err) {
+    console.warn('[precompute] could not stand down the waiting build (non-fatal):', err instanceof Error ? err.message : err)
+  }
+}
+
+/**
  * precomputeNextBatch once the user stops rating: each call stamps the user,
  * waits QUIET_MS, and builds only if no later call re-stamped meanwhile. A run
  * of ratings costs one build after the last one instead of one per rating.
@@ -247,7 +261,7 @@ export async function precomputeWhenQuiet(
     await redis.set(quietKey(userId, contentType), stamp, { ex: QUIET_TTL_SECONDS })
     await wait(QUIET_MS)
     if ((await redis.get(quietKey(userId, contentType))) !== stamp) {
-      console.log('[precompute] superseded by a later rating, skipping')
+      console.log('[precompute] superseded by a later rating or a "Find more", skipping')
       return
     }
   } catch (err) {

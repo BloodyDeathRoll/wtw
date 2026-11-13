@@ -33,7 +33,8 @@ vi.mock('@/modules/dna/update-from-session', () => ({ updateSchemaFromSession })
 const generateRecommendations = vi.fn(async () => [{ tmdb_id: 9, type: 'movie' }, { tmdb_id: 10, type: 'movie' }])
 vi.mock('@/modules/engine', () => ({ generateRecommendations }))
 const adoptPendingBatch = vi.fn(async () => null)
-vi.mock('@/modules/engine/pipeline/precompute', () => ({ adoptPendingBatch }))
+const supersedeQuietPrecompute = vi.fn(async () => {})
+vi.mock('@/modules/engine/pipeline/precompute', () => ({ adoptPendingBatch, supersedeQuietPrecompute }))
 vi.mock('@/modules/engine/pipeline/step8-cache', () => ({
   getCachedRecommendations: async () => [{ tmdb_id: 1, type: 'movie' }, { tmdb_id: 2, type: 'tv' }],
 }))
@@ -138,6 +139,16 @@ describe('session/end `more` after a rating', () => {
     const body = await (await post({ more: true })).json()
     expect(body).toMatchObject({ ok: true, taste_version: 8, page: firstPage })
     expect(buildRecPage).toHaveBeenCalledWith(expect.objectContaining({ dna: updated, start: 0 }))
+  })
+
+  // The last rating's background build is still waiting out its pause: it must
+  // not run alongside the build this request does (step 1 3.7 s instead of 1.3 s).
+  it('stands down the waiting background build, only for `more`', async () => {
+    await post({ more: true })
+    expect(supersedeQuietPrecompute).toHaveBeenCalledWith('u1', expect.anything())
+    supersedeQuietPrecompute.mockClear()
+    await post({})
+    expect(supersedeQuietPrecompute).not.toHaveBeenCalled()
   })
 
   it('no page without `more`', async () => {

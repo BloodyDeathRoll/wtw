@@ -127,6 +127,15 @@ async function runColdStart(
   return batch
 }
 
+/**
+ * How long a build the user is waiting on waits for NEW plot summaries: long
+ * enough for the cached ones, not for the model (card-plot.ts waits 2.5 s by
+ * default, which a background precompute can afford; inline it was 2.7 s of a
+ * 6.8 s "Find more", 2026-11-13). The model still finishes in the background
+ * and caches them for the next batch.
+ */
+const INLINE_PLOT_WAIT_MS = 400
+
 /** Steps 1–6: the fingerprint-driven pipeline described at the top. */
 async function runPipeline(
   userId: string,
@@ -134,6 +143,7 @@ async function runPipeline(
   sessionContext: SessionContext | undefined,
   contentType: ContentType | undefined,
   t: StepTimer,
+  plotWaitMs?: number,
 ): Promise<RecommendationResult[]> {
   // ── Step 1: candidate generation ─────────────────────────
   // The card line's "who made X, which you loved" needs the crew of the
@@ -178,7 +188,7 @@ async function runPipeline(
   })
   // Plots too long for a card get a checked one-sentence summary, once per
   // title and cached (card-plot.ts); a few seconds at most, else skipped.
-  const plots = await cardPlots(withPayloads)
+  const plots = await cardPlots(withPayloads, plotWaitMs)
   t.mark(`card plots (${plots.size})`)
   const version = dna.metadata.taste_version
   return toResults(withPayloads, rated, plots).map(r => ({
@@ -225,7 +235,8 @@ export async function generateRecommendations(
   const coldStart = isColdStart(dna)
   const versioned = coldStart
     ? await runColdStart(dna, opts.contentType, t)
-    : await runPipeline(userId, dna, sessionContext, opts.contentType, t)
+    // A precompute runs in the background and keeps card-plot's own wait; any other build has a user waiting.
+    : await runPipeline(userId, dna, sessionContext, opts.contentType, t, opts.precompute ? undefined : INLINE_PLOT_WAIT_MS)
   if (versioned.length === 0) return []
 
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─
