@@ -22,7 +22,7 @@ let memo = new WeakMap<DNASchema, Promise<number[]>>()
 export function userTasteWeights(dna: DNASchema): Promise<number[]> {
   const hit = memo.get(dna)
   if (hit) return hit
-  const w = loadTasteTraining(dna, dna.metadata.user_id).then(t => trainTasteModel(t.rows, t.pairs))
+  const w = loadTasteTraining(dna, dna.metadata.user_id).then(t => trainTasteModel(t.rows, t.pairs, t.w0))
   memo.set(dna, w)
   // A failed load isn't remembered: the next caller tries again.
   w.catch(() => { if (memo.get(dna) === w) memo.delete(dna) })

@@ -11,9 +11,15 @@
  * No intercept: predict() is relative to the person's own average (0 = an
  * average title for them), not a 1–3 rating. Formula v2 z-scores it within
  * the candidates anyway.
+ *
+ * Genre lean (P1-D4b, DEC-13): the ridge pulls towards w0, not towards 0.
+ * w0 is the genre screen's Love / Like, so a new person's feed leans to what
+ * they said and their ratings and picks take over as they come in.
  */
 import type { DNASignal, Reaction } from '@/types/dna'
-import { TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
+// brain.ts is pure and must stay so: this file runs in the engine (update-from-play.ts and cold-start.ts import it too).
+import { nevers, type PlayState } from '@/app/play/lib/brain'
+import { FEATURE_GENRES, TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
 import { titleKey } from '@/lib/title-key'
 
 export interface TasteRow { vec: number[]; level: 1 | 2 | 3; weight: number }
@@ -24,10 +30,39 @@ const PENALTY = [0.5, ...new Array(TASTE_FEATURE_COUNT - 1).fill(4.0)]
 /** CLAUDE.md temporal decay: a rating older than 18 months counts half (same threshold as apply-temporal-decay.ts). */
 const DECAY_AFTER_MS = 18 * 30 * 24 * 60 * 60 * 1000
 
-export function trainTasteModel(rows: TasteRow[], pairs: TastePair[]): number[] {
+/**
+ * How far a Love pulls its genre input; a Like pulls half. Set with the eval
+ * harness (--lean): the largest value that costs no more than 1 concordance
+ * point against no lean on the three test sheets (numbers in PR for #278).
+ */
+export const GENRE_LEAN = 1
+
+/**
+ * w0 from the genre answers: Love → g, Like → g/2 on that genre's input, 0
+ * everywhere else. Never is a rule, not a lean, so it stays 0. Read as
+ * playGenresOf (cold-start.ts) reads them: `loved` and `sel` are what the
+ * person said; `gen` drifts with every pick and only tells the Nevers.
+ * The 16 chips are already folded onto the 13 there (to13, genre-step.ts).
+ */
+export function genreLean(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | null | undefined, g = GENRE_LEAN): number[] {
+  const w0 = new Array<number>(TASTE_FEATURE_COUNT).fill(0)
+  if (!state) return w0
+  // A save with no `sel` (the genre step not done) has no Likes: no answer, no lean.
+  const loved = new Set(state.loved ?? []), liked = new Set(state.sel ?? [])
+  const never = new Set(state.gen ? nevers(state) : [])
+  FEATURE_GENRES.forEach((id, k) => {
+    if (never.has(id)) return
+    if (loved.has(id)) w0[1 + k] = g
+    else if (liked.has(id)) w0[1 + k] = g / 2
+  })
+  return w0
+}
+
+/** Solves (XᵀWX + Λ) w = XᵀWy + Λ·w0. Without `w0` it is the plain ridge towards 0. */
+export function trainTasteModel(rows: TasteRow[], pairs: TastePair[], w0?: number[]): number[] {
   const d = TASTE_FEATURE_COUNT
   const A = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => (i === j ? PENALTY[i] : 0)))
-  const b = new Array<number>(d).fill(0)
+  const b = Array.from({ length: d }, (_, i) => PENALTY[i] * (w0?.[i] ?? 0))
   const add = (x: number[], y: number, w: number) => {
     for (let i = 0; i < d; i++) {
       if (x[i] === 0) continue // a zero input adds nothing to row i of A or to b[i]; genres are mostly zero
@@ -39,7 +74,7 @@ export function trainTasteModel(rows: TasteRow[], pairs: TastePair[]): number[] 
   const mean = totalW > 0 ? rows.reduce((s, r) => s + r.weight * r.level, 0) / totalW : 0
   for (const r of rows) add(r.vec, r.level - mean, r.weight)
   for (const p of pairs) add(p.chosen.map((v, k) => v - p.other[k]), 1, 1)
-  if (rows.length === 0 && pairs.length === 0) return new Array<number>(d).fill(0)
+  if (rows.length === 0 && pairs.length === 0) return Array.from({ length: d }, (_, i) => w0?.[i] ?? 0)
   return solveSPD(A, b)
 }
 
