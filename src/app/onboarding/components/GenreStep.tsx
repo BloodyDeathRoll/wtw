@@ -41,7 +41,9 @@ const ANSWERS: { k: GenreAnswer; label: string; icon: React.ReactNode }[] = [
   { k: 'never', label: 'Never', icon: Icon.never },
 ]
 
-export default function GenreStep({ top, onStart }: { top: React.ReactNode; onStart: (a: GenreAnswers) => void }) {
+export default function GenreStep({ top, onStart, screenRef }: {
+  top: React.ReactNode; onStart: (a: GenreAnswers) => void; screenRef?: React.Ref<HTMLDivElement>
+}) {
   const [answers, setAnswers] = useState<GenreAnswers>({})
   const tap = (g: Genre16, k: GenreAnswer) =>
     setAnswers(a => {
@@ -55,7 +57,7 @@ export default function GenreStep({ top, onStart }: { top: React.ReactNode; onSt
   const nevers = GENRES_16.filter(g => answers[g.id] === 'never').map(g => g.label)
 
   return (
-    <div className="screen ob-genres">
+    <div className="screen ob-genres" ref={screenRef}>
       {top}
       <div className="setup welcome lit">
         <div>

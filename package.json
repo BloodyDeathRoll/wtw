@@ -32,7 +32,8 @@
     "strip-chat-from-dna": "node --env-file=.env.local --conditions=react-server --import tsx scripts/strip-chat-from-dna.mts",
     "build-six-chains": "node --env-file=.env.local --import tsx scripts/build-six-chains.mts",
     "build-cast-call": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-cast-call.mts",
-    "build-line-up": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-line-up.mts"
+    "build-line-up": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-line-up.mts",
+    "build-genres16": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-genres16.mts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^4.0.77",

@@ -115,6 +115,8 @@ export interface PlayState {
   onboarding?: {
     genres16?: Partial<Record<Genre16, 'love' | 'like' | 'never'>>
     step?: 'genres' | 'cards' | 'between' | 'picks' | 'showtime'
+    /** The rating cards' progress (P2-U3, src/app/onboarding/lib/cards.ts). */
+    cards?: import('@/app/onboarding/lib/cards').CardsState
     done_at?: string
   }
 }
