@@ -1,7 +1,7 @@
 """Taste DNA v2 (#249): one playable page, every piece inlined, for Eran's phone (a private artifact link).
 
 Same markup and CSS as build.py's mocks, driven by a small script: tap a genre to set your call (the row,
-its wash and the "We'll never show you" line update live), tap a person to see their titles, and switch
+its wash and its tile update live), tap a person to see their titles, and switch
 between three accounts with the prototype bar at the bottom. Real data (the dump build.py reads, plus TMDB
 credits for the people's titles); the output file carries ratings, so it's gitignored.
 
@@ -122,14 +122,21 @@ for key, label, u in ACCOUNTS:
                    for g in groups],
     })
 
-I_MORE = B.svg('<path d="M7 18l5-5 5 5M7 11l5-5 5 5"/>')
-CALLS = {'never': {'name': 'Never', 'icon': B.I_NEVER, 'col': '#ff5a4f'}, 'less': {'name': 'Less of', 'icon': B.I_LESS, 'col': '#e0a3a0'},
-         'neutral': {'name': 'Neutral', 'icon': B.I_NEUTRAL, 'col': '#8c8c91'}, 'more': {'name': 'More of', 'icon': I_MORE, 'col': '#3ddc97'}}
+def meter(k):
+    # a level meter: four rising bars, k of them lit (more bars = more of it in your feed)
+    bars = ''.join(f'<rect x="{2.5 + i * 5.25}" y="{20 - (5 + i * 4)}" width="3.5" height="{5 + i * 4}" rx="1" fill="currentColor"'
+                   + ('' if i < k else ' fill-opacity=".22"') + '/>' for i in range(4))
+    return f'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">{bars}</svg>'
+CALLS = {'never': {'name': 'Never', 'icon': B.I_NEVER, 'col': '#ff5a4f'},
+         'less': {'name': 'Less', 'icon': meter(1), 'col': '#f0a35e'},
+         'neutral': {'name': 'Normal', 'icon': meter(2), 'col': '#b4b4ba'},
+         'more': {'name': 'More', 'icon': meter(3), 'col': '#7fdcb0'},
+         'much': {'name': 'Much more', 'icon': meter(4), 'col': '#3ddc97'}}
 for d in data:
     d['calls'] = {g: c for g, c in d['calls'].items() if c == 'never'}
 # Nobody has a More of / Less of yet (it doesn't exist in the app). Example calls on the new user, so the lit rows can be tried:
-# More of on two genres it said Love to on the genre screen, Less of on one its ratings mostly dislike.
-data[0]['calls'].update({'comedy': 'more', 'drama': 'more', 'doc': 'less'})
+# Much more and More on two genres it said Love to on the genre screen, Less on one its ratings mostly dislike.
+data[0]['calls'].update({'comedy': 'much', 'drama': 'more', 'doc': 'less'})
 
 # ── the app's CSS, fonts inlined ──
 css = ''
@@ -181,16 +188,21 @@ body{background:#000;color:#fff}
 .pbar button[aria-pressed="true"]{background:#1b1b1b;color:#fff;border-color:#1b1b1b}
 .pad-bottom{height:calc(var(--bar-h) + 24px)}
 
-/* every sheet is 75% of the screen tall, whatever it holds; the list scrolls inside */
-.sheet{top:auto!important;height:75%;max-height:none}
+/* every sheet is 88% of the screen tall (the deep survey drawer's height), whatever it holds; the list scrolls inside */
+.sheet{top:auto!important;height:88%;max-height:none}
 .sbody{flex:1;min-height:0}
+.sbody>*{flex-shrink:0}
 .more{align-self:flex-start;height:36px;padding:0 14px;border-radius:999px;border:0;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:14px;cursor:pointer}
 /* a person's face, as tall as name + line */
 .stitle.face{flex-direction:row;align-items:center;gap:14px}
 .stitle.face img{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none;background:#2a2a2d}
 .stitle.face .who{display:flex;flex-direction:column;gap:4px;min-width:0}
 .prow{grid-template-columns:minmax(0,1fr) 16px}
-.seg{grid-template-columns:repeat(4,1fr)}
+.seg{grid-template-columns:repeat(5,1fr);gap:5px}
+.opt{height:66px;padding:0 2px;text-align:center;line-height:1.15}
+.opt svg{width:24px;height:24px}
+.does{margin:-4px 0 0;font-size:15px;line-height:1.45;color:#fff;min-height:0}
+.stays{margin:-12px 0 0;font-size:13px;color:rgba(255,255,255,.55)}
 .pdiv{flex:none;height:6px;border-radius:3px;background:#ffa900;margin:4px 0 6px}
 """
 
@@ -208,21 +220,23 @@ JS = r"""
 const D = c => c.split(' ').map(x => 'dna-module__DPj9xq__' + x).join(' ');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MARK = {loved:['❤️','Loved'], liked:['👍','Liked'], disliked:['👎','Disliked']};
-const ORDER = ['never','less','neutral','more'];
+const ORDER = ['never','less','neutral','more','much'];
 const SHOW = 20;   // titles shown in a sheet before "Show all"
 const DOES = {
-  more: g => `${g} shows up higher in your feed than your ratings alone would put it. Stays until you change it.`,
-  neutral: g => `Your ratings alone decide where ${g} shows up in your feed.`,
-  less: g => `${g} still shows up, but lower than your ratings alone would put it. Stays until you change it.`,
-  never: g => `${g} never shows up in your feed. Stays until you change it.`};
+  never: g => `I never want to see ${g} in my feed.`,
+  less: g => `I want to see less ${g} in my feed.`,
+  neutral: g => `Let my ratings decide how much ${g} I see.`,
+  more: g => `I want to see more ${g} in my feed.`,
+  much: g => `I want to see a lot more ${g} in my feed.`};
+const STAYS = k => k === 'neutral' ? 'The more you rate, the better it gets.' : 'Stays until you change it.';
 let acc = DATA[0], calls = {};
 
 function says(t, call) {
   const lv = t.loved||0, li = t.liked||0, di = t.disliked||0, n = lv+li+di;
   if (!n) return [call === 'never' ? 'Hidden from your feed' : 'Nothing rated yet', true];
   if (n < 3) return [`Only ${n} rated so far`, true];
-  if (lv === n) return [`Loved all ${n}`, false];
-  if (!di) return [`Enjoyed all ${n}`, false];
+  if (lv === n) return [`Loved all ${n} titles you rated`, false];
+  if (!di) return [`Enjoyed all ${n} titles you rated`, false];
   const s = di / n;
   if (s <= .25) return [`Mostly enjoyed · ${n} titles`, false];
   if (s >= .6) return [`Mostly disliked · ${n} titles`, false];
@@ -231,8 +245,12 @@ function says(t, call) {
 function psays(ts) {
   const t = {}; ts.forEach(r => t[r.r] = (t[r.r] || 0) + 1);
   const n = ts.length, lv = t.loved || 0, di = t.disliked || 0;
-  if (n === 2) return lv === 2 ? 'Loved both' : !di ? 'Enjoyed both' : di === 2 ? 'Disliked both' : 'Mixed · 2 titles';
-  return says(t, null)[0];
+  const en = n - di, of = x => `${x} of the ${n} titles you rated`;
+  if (n === 2) return lv === 2 ? 'Loved both titles you rated' : !di ? 'Enjoyed both titles you rated'
+                    : di === 2 ? 'Disliked both titles you rated' : 'Enjoyed 1 of the 2 titles you rated';
+  if (lv === n) return `Loved all ${n} titles you rated`;
+  if (!di) return `Enjoyed all ${n} titles you rated`;
+  return en >= di ? `Enjoyed ${of(en)}` : `Disliked ${of(di)}`;
 }
 const section = (title, body, id='') =>
   `<section class="${D('section')}"${id ? ` id="${id}"` : ''}><div class="${D('sectionHead')}"><h2 class="${D('sectionTitle')} ${D('sectionTitleAccent')}">${title}</h2></div>${body}</section>`;
@@ -244,10 +262,6 @@ function rowHtml(g) {
     <i class="gwash"></i><i class="gline">${g.icon}</i>
     <div class="gtext"><div class="glabel">${esc(g.label)}</div><div class="gsays${thin ? ' thin' : ''}">${txt}</div></div>
     <span class="slot">${tile(call)}</span><span class="chev">${CHEV}</span></div>`;
-}
-function neverLine() {
-  const n = acc.genres.filter(g => calls[g.id] === 'never').map(g => g.label);
-  return n.length ? `We’ll never show you ${n.join(', ')}.` : '';
 }
 function render() {
   calls = Object.assign({}, acc.calls);
@@ -264,9 +278,8 @@ function render() {
   if (!ph) ph = '<p class="quiet">Rate a few titles you’ve seen and we’ll spot the cast, directors and writers you keep coming back to.</p>';
   h += section('People who pull you in', ph);
   h += section('Genres', '<p class="quiet" style="margin:-4px 0 4px">Tap a genre to get more or less of it.</p>'
-       + `<p class="never-line" id="never">${neverLine()}</p><div class="grows">${acc.genres.map(rowHtml).join('')}</div>`, 'genres');
+       + `<div class="grows">${acc.genres.map(rowHtml).join('')}</div>`, 'genres');
   document.getElementById('content').innerHTML = h;
-  document.getElementById('never').hidden = !neverLine();
   document.querySelectorAll('.grow').forEach(el => {
     const open = () => openGenre(el.id.slice(2));
     el.addEventListener('click', open);
@@ -285,7 +298,6 @@ function updateRow(g) {
   el.classList.toggle('rated', !!call && call !== 'neutral');
   el.querySelector('.slot').innerHTML = tile(call, true);
   const s = el.querySelector('.gsays'); s.textContent = txt; s.classList.toggle('thin', thin);
-  const nv = document.getElementById('never'); nv.textContent = neverLine(); nv.hidden = !nv.textContent;
 }
 
 const titleRow = r => [r].map(r => `<div class="trow"><img src="${POSTERS[r.p] || ''}" alt=""><div class="tinfo"><div class="tname">${esc(r.t)}</div>
@@ -326,13 +338,14 @@ function openGenre(id) {
   const ts = g.titles.length ? `<p class="sub2">What you rated</p>${titleRows(g.titles)}` : '<p class="sub2">What you rated</p><p class="quiet">Nothing yet. Rate a few and they’ll show up here.</p>';
   openSheet(`<div class="shead"><div class="stitle"><h2><i>${g.big}</i>${esc(g.label)}</h2><div class="smeta" id="smeta">${says(g.tally, cur)[0]}</div></div>
     <button class="sclose" aria-label="Close">${X}</button></div>
-    <div class="sbody"><p class="ask">How much of it do you want?</p><div class="seg">${seg}</div>
-    <p class="does" id="does">${DOES[cur](esc(g.label))}</p>${ts}</div>`, g.col);
+    <div class="sbody"><p class="ask">How much ${esc(g.label)} do you want?</p><div class="seg">${seg}</div>
+    <p class="does" id="does">${DOES[cur](esc(g.label))}</p><p class="stays" id="stays">${STAYS(cur)}</p>${ts}</div>`, g.col);
   document.querySelectorAll('#sheet .opt').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.k;
     if (k === 'neutral') delete calls[id]; else calls[id] = k;
     document.querySelectorAll('#sheet .opt').forEach(o => { o.classList.toggle('on', o === b); o.setAttribute('aria-pressed', o === b); });
     document.getElementById('does').textContent = DOES[k](g.label);
+    document.getElementById('stays').textContent = STAYS(k);
     document.getElementById('smeta').textContent = says(g.tally, calls[id])[0];
     updateRow(g);
   }));
