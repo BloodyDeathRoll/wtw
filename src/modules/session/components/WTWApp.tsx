@@ -540,7 +540,9 @@ export default function WTWApp({
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voicePrimer, setVoicePrimer] = useState<string | null>(null);
-  const [contentType, setContentType] = useState<ContentType>("movies");
+  // "Both" until the person picks (then this device remembers the choice, below). The first feed after the
+  // onboarding is built for both (src/modules/engine/first-feed.ts), so opening on Movies cost a second build.
+  const [contentType, setContentType] = useState<ContentType>("all");
   const [voice, setVoice] = useState<Voice>(DEFAULT_VOICE);
   // Whether the user has done anything this page-load. Once they have,
   // the greeting yields to "continue: <last AI question>" so we don't
@@ -624,7 +626,7 @@ export default function WTWApp({
           body: JSON.stringify({
             content_type: (() => {
               const c = window.localStorage.getItem("wtw:contentType");
-              return isContentType(c) ? c : "movies";
+              return isContentType(c) ? c : "all";   // the same starting point as `contentType`
             })(),
           }),
         });
