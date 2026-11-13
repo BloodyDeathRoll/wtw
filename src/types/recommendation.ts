@@ -46,6 +46,16 @@ export interface Recommendation {
   palette: [string, string];
 }
 
+/** One page of cards: what GET /api/recommendations/generate returns, and what
+ *  POST /api/session/end attaches as `page` for "Find more" (src/lib/rec-page.ts). */
+export interface RecPage {
+  recommendations: Recommendation[];
+  next_offset: number;
+  has_more: boolean;
+  source: string;
+  taste_version: number | null;
+}
+
 /** The three taste reactions the recommendation cards offer — identical to the
  *  DNA contract's Reaction enum. "Remove" is a separate suppression action,
  *  not a rating, so it is not part of this type. */

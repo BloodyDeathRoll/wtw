@@ -41,6 +41,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { precomputeWhenQuiet } from '@/modules/engine/pipeline/precompute'
 import { createServiceClient } from '@/lib/supabase/service'
+import { startTimer } from '@/lib/timing'
 import { isMediaType, titleKey, type MediaType } from '@/lib/title-key'
 import { isContentType, type ContentType } from '@/lib/content-type'
 import { updateSchemaFromRegret } from '@/modules/dna/update-from-regret'
@@ -130,11 +131,14 @@ export async function POST(req: NextRequest) {
   // THIS is what failed to land there is nothing left to recover from — and
   // the client only logs a failed POST, having already shown the card as
   // rated. Every other writer of this column can afford to give up.
+  // Step times for a rating save: "Find more" waits for it (2026-11-13, not yet measured).
+  const t = startTimer('feedback')
   const outcome = await withDNAUpdate(
     user.id,
     dna => applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick }),
     HISTORY_WRITE_ATTEMPTS,
   )
+  t.mark('history write')
   if (outcome === 'missing') {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
   }
@@ -155,6 +159,7 @@ export async function POST(req: NextRequest) {
     await mergeFeedbackSignalsLight(user.id).catch(err =>
       console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
     )
+    t.mark('light merge')
     // The fingerprint inputs are final for this rating — build the next batch
     // after the response, once the user pauses rating, so "Find more" only has
     // to adopt it (precompute.ts coalesces bursts; never throws).
@@ -205,6 +210,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  t.done()
   return NextResponse.json({ ok: true })
 }
 

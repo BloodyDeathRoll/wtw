@@ -16,6 +16,7 @@
  * Body: { conversation_id: string, skip_transcript?: boolean,
  *         watchlist_added?: string[] }   // "type:tmdb_id" — see step 2b
  * Response: { ok, taste_version, signal_count, rec_count, watchlist_recorded, watchlist_synced }
+ *           + `page` (the first page of cards) when `more` built a batch
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -25,7 +26,8 @@ import { getAuthUser } from '@/lib/supabase/auth-user'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { createServiceClient } from '@/lib/supabase/service'
 import { endConversation } from '@/lib/conversations'
-import { startTimer } from '@/lib/timing'
+import { startTimer, type StepTimer } from '@/lib/timing'
+import { buildRecPage, getRemovedKeys } from '@/lib/rec-page'
 import { isContentType, type ContentType } from '@/lib/content-type'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
@@ -36,12 +38,35 @@ import { getCachedRecommendations } from '@/modules/engine/pipeline/step8-cache'
 import { foldRatedHistoryIntoSummary } from '@/modules/session/feedback-signals'
 import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modules/session/session-change'
 import { markSavedInHistory, unmarkSavedInHistory } from '@/modules/session/watchlist-intent'
-import type { DNASchema, SessionSummary } from '@/types/dna'
+import type { DNASchema, RecommendationResult, SessionSummary } from '@/types/dna'
+import type { RecPage } from '@/types/recommendation'
 
 export const runtime = 'nodejs'
 
 // A call can run the recommendation pipeline; the window is generous for a real user.
 const RATE_LIMIT = { scope: 'session-end', perUser: 20, windowSec: 10 * 60 }
+
+/**
+ * "Find more": the first page of the new batch rides in this response, so the
+ * client needs no second request for it (~1.6 s, measured 2026-11-13).
+ * Undefined on failure or an empty batch: the client then fetches the page.
+ */
+async function firstPage(
+  userId: string,
+  dna: DNASchema,
+  recs: RecommendationResult[],
+  contentType: ContentType,
+  t: StepTimer,
+): Promise<RecPage | undefined> {
+  if (recs.length === 0) return undefined
+  try {
+    return await buildRecPage({ userId, dna, recs, removed: getRemovedKeys(userId), start: 0, contentType, source: 'find-more' })
+  } catch (err) {
+    console.warn('[session/end] first page failed (the client fetches it):', err instanceof Error ? err.message : err)
+    t.mark('first page failed')
+    return undefined
+  }
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -210,14 +235,17 @@ export async function POST(req: NextRequest) {
   if (!hasMaterialChange(summary)) {
     const ratedIds = ratedTmdbIds(dna.learning_loop.recommendation_history)
     let cacheWarmAndClean = false
-    try {
-      const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version, contentType)
-      cacheWarmAndClean = cacheServableUnchanged(ratedIds, cached)
-    } catch (err) {
-      // Cache read failed — fail safe: regenerate rather than risk serving a
-      // stale cache or dropping to mocks.
-      console.warn('[session/end] cache check failed, regenerating:', err instanceof Error ? err.message : err)
-      cacheWarmAndClean = false
+    // "Find more" builds the next batch whatever the cache holds: no read.
+    if (!wantMore) {
+      try {
+        const cached = await getCachedRecommendations(user.id, dna.metadata.taste_version, contentType)
+        cacheWarmAndClean = cacheServableUnchanged(ratedIds, cached)
+      } catch (err) {
+        // Cache read failed — fail safe: regenerate rather than risk serving a
+        // stale cache or dropping to mocks.
+        console.warn('[session/end] cache check failed, regenerating:', err instanceof Error ? err.message : err)
+        cacheWarmAndClean = false
+      }
     }
 
     if (cacheWarmAndClean && !wantMore) {
@@ -238,14 +266,23 @@ export async function POST(req: NextRequest) {
     // to 20%, and the client drops any still on screen) — without the
     // fingerprint update below, which bumps the version and busts the
     // embedding cache for no new signal.
-    if (cacheWarmAndClean && wantMore) {
+    //
+    // Also when the cache holds a rated title or is cold (2026-11-13): the new
+    // batch replaces it under the same version, built from signals that
+    // already include every rating (the light merge). The update below did
+    // nothing for this case but bump the version, and took 3.4 s (measured)
+    // before the build could start.
+    if (wantMore) {
       let rec_count = 0
       let warning: string | undefined
+      let page: RecPage | undefined
       try {
         const adopted = await adoptPendingBatch(user.id, dna, contentType)
         const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna, skipCacheRead: true, contentType })
         rec_count = recs.length
         if (rec_count === 0) warning = 'Next batch came back empty'
+        t.mark(adopted ? 'batch adopted' : 'batch built')
+        page = await firstPage(user.id, dna, recs, contentType, t)
         t.done(adopted ? 'total (next batch, adopted precomputed)' : 'total (next batch)')
       } catch (err) {
         console.error('[session/end] next batch failed:', err)
@@ -259,6 +296,7 @@ export async function POST(req: NextRequest) {
         watchlist_recorded: watchlistRecorded,
         watchlist_synced: watchlistSynced,
         ...(warning ? { warning } : {}),
+        ...(page ? { page } : {}),
       })
     }
     // else: cache is stale (holds a rated title) or cold — fall through to
@@ -286,6 +324,7 @@ export async function POST(req: NextRequest) {
 
   // ── 5. Generate + cache real recommendations ─────────────────
   let rec_count = 0
+  let page: RecPage | undefined
   try {
     // A batch precomputed after the last rating (precompute.ts) is adopted as
     // the cache for the new version when its inputs still match — the common
@@ -294,6 +333,7 @@ export async function POST(req: NextRequest) {
     const adopted = await adoptPendingBatch(user.id, updated, contentType)
     const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna: updated, skipCacheRead: true, contentType })
     rec_count = recs.length
+    if (wantMore) page = await firstPage(user.id, updated, recs, contentType, t)
     t.done(adopted ? 'total (adopted precomputed batch)' : 'total (regenerated)')
   } catch (err) {
     // Fingerprint is saved; recs can be regenerated on next visit.
@@ -335,5 +375,6 @@ export async function POST(req: NextRequest) {
     rec_count,
     watchlist_recorded: watchlistRecorded,
     watchlist_synced: watchlistSynced,
+    ...(page ? { page } : {}),
   })
 }

@@ -26,7 +26,8 @@ vi.mock('@/lib/conversations', () => ({ endConversation: async () => {} }))
 vi.mock('@/modules/dna/lib/load-save', () => ({ invalidateDNACache: async () => {} }))
 const analyzeSession = vi.fn()
 vi.mock('@/modules/session/analyze-session', () => ({ analyzeSession }))
-vi.mock('@/modules/session/feedback-signals', () => ({ foldRatedHistoryIntoSummary: async () => 0 }))
+const foldRatedHistoryIntoSummary = vi.fn(async (_dna: unknown, _summary: { new_signals: unknown[] }) => 0)
+vi.mock('@/modules/session/feedback-signals', () => ({ foldRatedHistoryIntoSummary }))
 const updateSchemaFromSession = vi.fn()
 vi.mock('@/modules/dna/update-from-session', () => ({ updateSchemaFromSession }))
 const generateRecommendations = vi.fn(async () => [{ tmdb_id: 9, type: 'movie' }, { tmdb_id: 10, type: 'movie' }])
@@ -36,6 +37,10 @@ vi.mock('@/modules/engine/pipeline/precompute', () => ({ adoptPendingBatch }))
 vi.mock('@/modules/engine/pipeline/step8-cache', () => ({
   getCachedRecommendations: async () => [{ tmdb_id: 1, type: 'movie' }, { tmdb_id: 2, type: 'tv' }],
 }))
+
+const firstPage = { recommendations: [{ id: 'movie:9' }], next_offset: 6, has_more: true, source: 'find-more', taste_version: 7 }
+const buildRecPage = vi.fn(async () => firstPage)
+vi.mock('@/lib/rec-page', () => ({ buildRecPage, getRemovedKeys: async () => new Set<string>() }))
 
 const { POST } = await import('@/app/api/session/end/route')
 const { NextRequest } = await import('next/server')
@@ -80,6 +85,64 @@ describe('session/end with nothing to merge', () => {
     const res = await post({ more: true })
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ ok: true, rec_count: 0, warning: 'Next batch could not be built' })
+  })
+})
+
+// 2026-11-13: "Find more" right after a rating took 15 s. The rating is already
+// in the signals (light merge), so the cache holding that title is no reason
+// for the fingerprint update (3.4 s measured, only a version bump). And the
+// first page of cards rides in the response instead of a second request.
+describe('session/end `more` after a rating', () => {
+  const rated = [{ recommended: 'movie:1', tmdb_id: '1', rating: 'liked' }]
+
+  it('the cache holds a rated title: next batch at the same version, no fingerprint update', async () => {
+    dnaRow.learning_loop.recommendation_history = rated as never
+    try {
+      const body = await (await post({ more: true })).json()
+      expect(body).toMatchObject({ ok: true, rec_count: 2, taste_version: 7 })
+      expect(generateRecommendations).toHaveBeenCalledWith('u1', undefined, expect.objectContaining({ dna: dnaRow, skipCacheRead: true }))
+      expect(updateSchemaFromSession).not.toHaveBeenCalled()
+    } finally {
+      dnaRow.learning_loop.recommendation_history = []
+    }
+  })
+
+  it('without `more`, the same cache still takes the full update', async () => {
+    dnaRow.learning_loop.recommendation_history = rated as never
+    updateSchemaFromSession.mockResolvedValueOnce({ metadata: { taste_version: 8 } })
+    try {
+      expect(await (await post({})).json()).toMatchObject({ ok: true, taste_version: 8 })
+      expect(updateSchemaFromSession).toHaveBeenCalled()
+    } finally {
+      dnaRow.learning_loop.recommendation_history = []
+    }
+  })
+
+  it('the first page of the new batch comes back in the response', async () => {
+    const body = await (await post({ more: true })).json()
+    expect(body.page).toEqual(firstPage)
+    expect(buildRecPage).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1', dna: dnaRow, start: 0 }))
+  })
+
+  it('a failed page is left out, the batch still counts', async () => {
+    buildRecPage.mockRejectedValueOnce(new Error('titles down'))
+    const body = await (await post({ more: true })).json()
+    expect(body).toMatchObject({ ok: true, rec_count: 2 })
+    expect(body.page).toBeUndefined()
+  })
+
+  it('a rating the light merge missed: full update, and the page is built from the updated fingerprint', async () => {
+    foldRatedHistoryIntoSummary.mockImplementationOnce(async (_dna, summary) => { summary.new_signals.push({}); return 1 })
+    const updated = { metadata: { taste_version: 8 } }
+    updateSchemaFromSession.mockResolvedValueOnce(updated)
+    const body = await (await post({ more: true })).json()
+    expect(body).toMatchObject({ ok: true, taste_version: 8, page: firstPage })
+    expect(buildRecPage).toHaveBeenCalledWith(expect.objectContaining({ dna: updated, start: 0 }))
+  })
+
+  it('no page without `more`', async () => {
+    expect((await (await post({})).json()).page).toBeUndefined()
+    expect(buildRecPage).not.toHaveBeenCalled()
   })
 })
 

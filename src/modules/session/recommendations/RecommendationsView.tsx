@@ -23,6 +23,7 @@ import type {
   FeedbackRating,
   MotifKind,
   Recommendation,
+  RecPage,
 } from "@/types/recommendation";
 import type { RecommendationResult } from "@/types/dna";
 import {
@@ -89,9 +90,10 @@ interface Props {
    * When provided, a "Find more" CTA renders at the end of the list. It runs
    * this callback (session-end: fingerprint rebuild + fresh rec generation —
    * every like/dislike feeds the fingerprint, so the new batch reflects them),
-   * then clears and refetches the list.
+   * then clears and refetches the list. A page it resolves with is the new
+   * batch's first page and is shown as is, with no fetch.
    */
-  onFindMore?: () => Promise<void>;
+  onFindMore?: () => Promise<RecPage | null | void>;
   /** Watchlist mode only — action on the empty state that opens the rec feed. */
   onBrowse?: () => void;
   /**
@@ -341,6 +343,30 @@ export default function RecommendationsView({
   // shift the cursor and make the pager skip the next entry.
   const watchlistRef = useRef<Recommendation[]>([]);
 
+  // Append a page of cards and move the pager on. Shared by loadMore and by
+  // "Find more", whose first page arrives with the session/end response.
+  const applyPage = useCallback((data: Omit<RecPage, "source">) => {
+    if (data.taste_version != null) versionRef.current = data.taste_version;
+    // Dedup by id — in case the same page slips through twice we don't
+    // create duplicate React keys. Also drop titles already on the watchlist:
+    // the server excludes them once the save has been reported (session/end),
+    // but a save made in this session hasn't reached it yet, and a saved
+    // title resurfacing as "new" reads as a repeat. Read storage directly —
+    // `saved` state would be a stale closure here.
+    const onWatchlist = new Set(getWatchlist().map((e) => e.rec.id));
+    setRecs((prev) => {
+      const seen = new Set(prev.map((r) => r.id));
+      const incoming = data.recommendations.filter(
+        (r) => !seen.has(r.id) && !onWatchlist.has(r.id),
+      );
+      return incoming.length ? [...prev, ...incoming] : prev;
+    });
+    offsetRef.current = data.next_offset;
+    const more = data.has_more && data.next_offset < PAGE_FETCH_LIMIT;
+    hasMoreRef.current = more;
+    setHasMore(more);
+  }, []);
+
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
     loadingRef.current = true;
@@ -372,31 +398,7 @@ export default function RecommendationsView({
         `/api/recommendations/generate?type=${contentType}&offset=${offsetRef.current}${v}`,
       );
       if (!res.ok) throw new Error(`${res.status}`);
-      const data = (await res.json()) as {
-        recommendations: Recommendation[];
-        next_offset: number;
-        has_more: boolean;
-        taste_version?: number | null;
-      };
-      if (data.taste_version != null) versionRef.current = data.taste_version;
-      // Dedup by id — in case the same page slips through twice we don't
-      // create duplicate React keys. Also drop titles already on the watchlist:
-      // the server excludes them once the save has been reported (session/end),
-      // but a save made in this session hasn't reached it yet, and a saved
-      // title resurfacing as "new" reads as a repeat. Read storage directly —
-      // `saved` state would be a stale closure here.
-      const onWatchlist = new Set(getWatchlist().map((e) => e.rec.id));
-      setRecs((prev) => {
-        const seen = new Set(prev.map((r) => r.id));
-        const incoming = data.recommendations.filter(
-          (r) => !seen.has(r.id) && !onWatchlist.has(r.id),
-        );
-        return incoming.length ? [...prev, ...incoming] : prev;
-      });
-      offsetRef.current = data.next_offset;
-      const more = data.has_more && data.next_offset < PAGE_FETCH_LIMIT;
-      hasMoreRef.current = more;
-      setHasMore(more);
+      applyPage((await res.json()) as Omit<RecPage, "source">);
     } catch (e) {
       console.error("[recs] load failed", e);
       // Stop paginating on failure: leaving hasMore true kept the sentinel
@@ -411,7 +413,7 @@ export default function RecommendationsView({
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [contentType, mode]);
+  }, [contentType, mode, applyPage]);
 
   // Initial load + reload when content type changes.
   useEffect(() => {
@@ -451,11 +453,13 @@ export default function RecommendationsView({
     try {
       // Let any in-flight rating merges land first so they're in the rebuild.
       await feedbackQueueRef.current;
-      await onFindMore();
+      const page = await onFindMore();
       offsetRef.current = 0; // re-page through the NEW cache from the top
       hasMoreRef.current = true;
       setHasMore(true);
-      await loadMore();
+      // The first page comes back with the rebuild; fetch it only if it didn't.
+      if (page) applyPage(page);
+      else await loadMore();
     } catch (e) {
       console.error("[recs] find-more failed", e);
       setError("Couldn't refresh right now");

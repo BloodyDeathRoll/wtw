@@ -46,6 +46,7 @@ import IntroVoice from "../voice/IntroVoice";
 import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from "../voice/intro-copy";
 import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
+import type { RecPage } from "@/types/recommendation";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -709,7 +710,8 @@ export default function WTWApp({
   // Runs the session-end pipeline: fingerprint rebuild + fresh rec generation
   // (cached server-side at the new taste_version). Shared by the initial
   // "Recommend" entry and the in-list "Find More" refresh.
-  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean; more?: boolean }) {
+  // Resolves with the new batch's first page when the server sent one ("Find more").
+  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean; more?: boolean }): Promise<RecPage | null> {
     // Watchlist saves ride along on this request rather than posting their own —
     // saving a card is supposed to cost zero extra calls.
     const savedIds = getUnsyncedIds();
@@ -756,10 +758,13 @@ export default function WTWApp({
         } else {
           console.error("[session/end] watchlist intent not confirmed; will retry next session end");
         }
+        // Anything but a page of cards → null, and the feed fetches the page itself.
+        return Array.isArray(body?.page?.recommendations) ? (body.page as RecPage) : null;
       }
     } catch (e) {
       console.error("[session/end] failed", e);
     }
+    return null;
   }
 
   async function handleRecommend() {
