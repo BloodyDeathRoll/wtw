@@ -300,7 +300,8 @@ export default function OnboardingApp({ user, saved, titles }: { user: AppUser; 
       if (!res.ok) throw new Error(`finish ${res.status}`)
     }
     return runShowtime(feed, {
-      ready: () => { if (!demo) router.replace('/') },
+      // Straight to the feed (P2-U0 part 6), not the home screen; the deep link the menu uses.
+      ready: () => { if (!demo) router.replace('/?stage=recommendations') },
       slow: () => setShowtime('slow'),
       failed: () => setShowtime('failed'),
     })
