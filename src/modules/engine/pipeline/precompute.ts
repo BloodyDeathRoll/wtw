@@ -19,6 +19,10 @@
  * while one is running sets a dirty flag; the runner loops once more so the
  * LAST state is what's parked. Cost: one rerank call per burst-ish, and the
  * explanation calls only for batches that are actually adopted.
+ *
+ * Ratings go through precomputeWhenQuiet: the build waits until the user has
+ * stopped rating for QUIET_MS. Building on every rating ran 27 full pipelines
+ * in 12 minutes of one person rating and stalled the DB (2026-11-13, #240).
  */
 
 import { createHash } from 'crypto'
@@ -35,11 +39,14 @@ import { cacheRecommendations } from './step8-cache'
 const pendingKey = (userId: string, contentType: ContentType) => `rec_pending3:${userId}:${contentType}`
 const lockKey    = (userId: string) => `rec_precompute_lock:${userId}`
 const dirtyKey   = (userId: string) => `rec_precompute_dirty:${userId}`
+const quietKey   = (userId: string) => `rec_precompute_quiet:${userId}`
 
 // A generation takes ~6-8s; the lock outlives a stuck one by a wide margin.
 const LOCK_TTL_SECONDS  = 90
 const DIRTY_TTL_SECONDS = 120
 const MAX_RUNS_PER_KICK = 2
+/** No rating for this long = the user paused; build then. */
+export const QUIET_MS = 8_000
 // How long a parked batch waits to be adopted before it's discarded.
 const PENDING_TTL_SECONDS = 30 * 60
 
@@ -210,4 +217,29 @@ export async function adoptPendingBatch(
   await cacheRecommendations(userId, version, versioned, contentType)
   console.log(`[precompute] adopted pending batch (${versioned.length}) as v${version}`)
   return versioned
+}
+
+/**
+ * precomputeNextBatch once the user stops rating: each call stamps the user,
+ * waits QUIET_MS, and builds only if no later call re-stamped meanwhile. A run
+ * of ratings costs one build after the last one instead of one per rating.
+ * Never throws.
+ */
+export async function precomputeWhenQuiet(
+  userId: string,
+  contentType: ContentType = 'all',
+  onParked?: () => Promise<unknown>,
+  wait: (ms: number) => Promise<void> = ms => new Promise(r => setTimeout(r, ms)),
+): Promise<void> {
+  const redis = getRedis()
+  const stamp = `${Date.now()}:${Math.random()}`
+  try {
+    await redis.set(quietKey(userId), stamp, { ex: Math.ceil(QUIET_MS / 1000) * 4 })
+    await wait(QUIET_MS)
+    if ((await redis.get(quietKey(userId))) !== stamp) return
+  } catch (err) {
+    // Redis down: build now rather than never.
+    console.warn('[precompute] quiet check failed (building now):', err instanceof Error ? err.message : err)
+  }
+  await precomputeNextBatch(userId, contentType, onParked)
 }

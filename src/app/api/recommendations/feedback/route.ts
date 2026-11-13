@@ -39,7 +39,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
-import { precomputeNextBatch } from '@/modules/engine/pipeline/precompute'
+import { precomputeWhenQuiet } from '@/modules/engine/pipeline/precompute'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isMediaType, recordMatches, titleKey, type MediaType } from '@/lib/title-key'
 import { isContentType, type ContentType } from '@/lib/content-type'
@@ -248,8 +248,8 @@ export async function POST(req: NextRequest) {
       console.warn('[feedback] light merge failed (non-fatal):', err instanceof Error ? err.message : err)
     )
     // The fingerprint inputs are final for this rating — build the next batch
-    // now, after the response, so "Find more" only has to adopt it
-    // (precompute.ts coalesces bursts; never throws).
+    // after the response, once the user pauses rating, so "Find more" only has
+    // to adopt it (precompute.ts coalesces bursts; never throws).
     //
     // Every Nth rating that parked batch is also promoted to the LIVE cache
     // under a bumped version, so a run of dislikes reaches the feed in the
@@ -263,7 +263,7 @@ export async function POST(req: NextRequest) {
     after(async () => {
       // Counted here, off the request path; it only has to land before the park.
       await countRatingTowardRefresh(userId)
-      await precomputeNextBatch(userId, contentType, () => refreshIfDue(userId, contentType))
+      await precomputeWhenQuiet(userId, contentType, () => refreshIfDue(userId, contentType))
     })
   }
 
@@ -364,7 +364,8 @@ export async function DELETE(req: NextRequest) {
   if (outcome === 'saved') {
     const userId = user.id
     after(async () => {
-      await precomputeNextBatch(userId, contentType)
+      // A save can be the last event of a rating burst, and only the last call builds: carry the refresh check.
+      await precomputeWhenQuiet(userId, contentType, () => refreshIfDue(userId, contentType))
     })
   }
 
