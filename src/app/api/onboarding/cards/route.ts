@@ -24,6 +24,7 @@ import { getAuthUser } from '@/lib/supabase/auth-user'
 import { createServiceClient } from '@/lib/supabase/service'
 import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
 import { kickFirstFeed } from '@/modules/engine/first-feed'
+import { FEED_START_TYPE } from '@/lib/content-type'
 import { withDNAUpdate, bumpVersion } from '@/modules/dna/lib/load-save'
 import { HISTORY_WRITE_ATTEMPTS, applyFeedbackToDNA } from '@/lib/rating-write'
 import type { Reaction } from '@/types/dna'
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     // P2-U5 (Alon, #246): start building the first feed while they keep answering.
     const userId = user.id
-    after(() => kickFirstFeed(userId))
+    after(() => kickFirstFeed(userId, FEED_START_TYPE))
   }
 
   // A repeat (a keepalive send that landed, then the phone's copy sent again) logs a title once.

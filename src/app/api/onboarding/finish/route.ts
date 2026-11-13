@@ -9,6 +9,7 @@ import { logAuthFailure } from '@/lib/auth-guard'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { finishFirstFeed } from '@/modules/engine/first-feed'
+import { FEED_START_TYPE } from '@/lib/content-type'
 
 export const maxDuration = 60
 
@@ -20,7 +21,8 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const result = await finishFirstFeed(user.id)
+    // The list the feed opens on (Both), so the batch built during the onboarding is the one shown.
+    const result = await finishFirstFeed(user.id, FEED_START_TYPE)
     return NextResponse.json({ ok: true, ...result })
   } catch (err) {
     console.error('[onboarding/finish] first feed failed:', err instanceof Error ? err.message : err)
