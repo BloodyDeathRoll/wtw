@@ -7,7 +7,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": -3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:16869": {
   "tone": -4,
@@ -17,7 +18,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:680": {
   "tone": 3,
@@ -27,7 +29,8 @@
   "complex": 5,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:278": {
   "tone": -5,
@@ -37,7 +40,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:19995": {
   "tone": -3,
@@ -47,7 +51,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:475557": {
   "tone": -3,
@@ -57,7 +62,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:11324": {
   "tone": -2,
@@ -67,7 +73,8 @@
   "complex": 5,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:299536": {
   "tone": -2,
@@ -77,7 +84,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:694": {
   "tone": -1,
@@ -87,7 +95,8 @@
   "complex": 4,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:597": {
   "tone": -2,
@@ -97,7 +106,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:293660": {
   "tone": 3,
@@ -107,7 +117,8 @@
   "complex": 2,
   "fantastic": 1,
   "humor": 5,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:157336": {
   "tone": -2,
@@ -117,7 +128,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:27205": {
   "tone": -2,
@@ -127,7 +139,8 @@
   "complex": 5,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:155": {
   "tone": -3,
@@ -137,7 +150,8 @@
   "complex": 1,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:550": {
   "tone": -1,
@@ -147,7 +161,8 @@
   "complex": 4,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:24428": {
   "tone": -1,
@@ -157,7 +172,8 @@
   "complex": 0,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:346364": {
   "tone": -2,
@@ -167,7 +183,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:13": {
   "tone": 2,
@@ -177,7 +194,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:150540": {
   "tone": 4,
@@ -187,7 +205,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:129": {
   "tone": 0,
@@ -197,7 +216,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:14160": {
   "tone": 3,
@@ -207,7 +227,8 @@
   "complex": -1,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:372058": {
   "tone": -1,
@@ -217,7 +238,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:515042": {
   "tone": -4,
@@ -229,7 +251,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:205596": {
   "tone": -3,
@@ -239,7 +262,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:106646": {
   "tone": 2,
@@ -249,7 +273,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:68718": {
   "tone": -2,
@@ -259,7 +284,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:118340": {
   "tone": 1,
@@ -269,7 +295,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:49026": {
   "tone": -3,
@@ -279,7 +306,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:807": {
   "tone": -5,
@@ -289,7 +317,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:671": {
   "tone": -2,
@@ -301,7 +330,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:419430": {
   "tone": -1,
@@ -311,7 +341,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:313369": {
   "tone": 0,
@@ -321,7 +352,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:354912": {
   "tone": 1,
@@ -333,7 +365,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:4935": {
   "tone": -2,
@@ -343,7 +376,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:16290": {
   "tone": 5,
@@ -353,7 +387,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": -4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:424": {
   "tone": -5,
@@ -363,7 +398,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:284053": {
   "tone": 2,
@@ -373,7 +409,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:238": {
   "tone": -3,
@@ -383,7 +420,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:603": {
   "tone": -2,
@@ -393,7 +431,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:272": {
   "tone": -3,
@@ -403,7 +442,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:70160": {
   "tone": -1,
@@ -413,7 +453,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1726": {
   "tone": -2,
@@ -423,7 +464,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:381288": {
   "tone": -4,
@@ -433,7 +475,8 @@
   "complex": 4,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:38": {
   "tone": -3,
@@ -443,7 +486,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:12": {
   "tone": 0,
@@ -455,7 +499,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -2
  },
  "movie:128": {
   "tone": -2,
@@ -467,7 +512,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:691179": {
   "tone": 5,
@@ -477,7 +523,8 @@
   "complex": -2,
   "fantastic": -4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:374720": {
   "tone": -4,
@@ -487,7 +534,8 @@
   "complex": 0,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:105": {
   "tone": 3,
@@ -499,7 +547,8 @@
   "humor": 4,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:286217": {
   "tone": -3,
@@ -511,7 +560,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 2
  },
  "movie:497": {
   "tone": -4,
@@ -521,7 +571,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:135397": {
   "tone": -1,
@@ -533,7 +584,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:299534": {
   "tone": -2,
@@ -543,7 +595,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:72190": {
   "tone": -3,
@@ -553,7 +606,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:321612": {
   "tone": 0,
@@ -563,7 +617,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -3
  },
  "movie:10681": {
   "tone": -1,
@@ -573,7 +628,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:8392": {
   "tone": -3,
@@ -583,7 +639,8 @@
   "complex": 0,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -3
  },
  "movie:12094": {
   "tone": 5,
@@ -593,7 +650,8 @@
   "complex": -2,
   "fantastic": -3,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:857": {
   "tone": -5,
@@ -603,7 +661,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:496243": {
   "tone": 3,
@@ -613,7 +672,8 @@
   "complex": 4,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:37165": {
   "tone": 0,
@@ -623,7 +683,8 @@
   "complex": 2,
   "fantastic": 2,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:274": {
   "tone": -4,
@@ -633,7 +694,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:210577": {
   "tone": -3,
@@ -643,7 +705,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:44214": {
   "tone": -4,
@@ -653,7 +716,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:8966": {
   "tone": -1,
@@ -663,7 +727,8 @@
   "complex": -1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:8587": {
   "tone": -3,
@@ -673,7 +738,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:12429": {
   "tone": 2,
@@ -683,7 +749,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:923632": {
   "tone": -2,
@@ -693,7 +760,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:1271": {
   "tone": -3,
@@ -703,7 +771,8 @@
   "complex": -2,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:585": {
   "tone": 3,
@@ -713,7 +782,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:207703": {
   "tone": 3,
@@ -723,7 +793,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:329865": {
   "tone": -3,
@@ -733,7 +804,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:447332": {
   "tone": -4,
@@ -743,7 +815,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:274870": {
   "tone": -2,
@@ -753,7 +826,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:9806": {
   "tone": 2,
@@ -763,7 +837,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:149": {
   "tone": -1,
@@ -773,7 +848,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:8885": {
   "tone": -4,
@@ -783,7 +859,8 @@
   "complex": 3,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:190859": {
   "tone": -4,
@@ -793,7 +870,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:383498": {
   "tone": 5,
@@ -803,7 +881,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:640": {
   "tone": -2,
@@ -813,7 +892,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:198663": {
   "tone": -2,
@@ -823,7 +903,8 @@
   "complex": 4,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:70981": {
   "tone": -3,
@@ -833,7 +914,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:162": {
   "tone": -4,
@@ -843,7 +925,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:808": {
   "tone": 5,
@@ -853,7 +936,8 @@
   "complex": -3,
   "fantastic": 4,
   "humor": -2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:10515": {
   "tone": 0,
@@ -863,7 +947,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:44639": {
   "tone": -4,
@@ -873,7 +958,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:530915": {
   "tone": -5,
@@ -883,7 +969,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:2062": {
   "tone": 3,
@@ -893,7 +980,8 @@
   "complex": 0,
   "fantastic": 3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:339403": {
   "tone": -2,
@@ -903,7 +991,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1124": {
   "tone": -1,
@@ -913,7 +1002,8 @@
   "complex": 5,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:19908": {
   "tone": 5,
@@ -923,7 +1013,8 @@
   "complex": -2,
   "fantastic": -1,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:4922": {
   "tone": -4,
@@ -933,7 +1024,8 @@
   "complex": 3,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:269149": {
   "tone": 4,
@@ -945,7 +1037,8 @@
   "humor": 2,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:16859": {
   "tone": -1,
@@ -955,7 +1048,8 @@
   "complex": 0,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:656663": {
   "tone": 5,
@@ -965,7 +1059,8 @@
   "complex": -3,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:228150": {
   "tone": -3,
@@ -975,7 +1070,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:77338": {
   "tone": 3,
@@ -985,7 +1081,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:75656": {
   "tone": -1,
@@ -995,7 +1092,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:6479": {
   "tone": -4,
@@ -1005,7 +1103,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:138843": {
   "tone": -2,
@@ -1015,7 +1114,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:102651": {
   "tone": -1,
@@ -1025,7 +1125,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:109445": {
   "tone": 1,
@@ -1035,7 +1136,8 @@
   "complex": -2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:635302": {
   "tone": -3,
@@ -1045,7 +1147,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:84287": {
   "tone": -2,
@@ -1055,7 +1158,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:490132": {
   "tone": 2,
@@ -1065,7 +1169,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:101": {
   "tone": -4,
@@ -1075,7 +1180,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:578": {
   "tone": -3,
@@ -1085,7 +1191,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:809": {
   "tone": 4,
@@ -1095,7 +1202,8 @@
   "complex": -1,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:324857": {
   "tone": -1,
@@ -1105,7 +1213,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:378064": {
   "tone": -3,
@@ -1115,7 +1224,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:743601": {
   "tone": -4,
@@ -1125,7 +1235,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:76203": {
   "tone": -5,
@@ -1135,7 +1246,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:1422": {
   "tone": -3,
@@ -1145,7 +1257,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:405774": {
   "tone": -2,
@@ -1155,7 +1268,8 @@
   "complex": 3,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:296096": {
   "tone": -3,
@@ -1165,7 +1279,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:177572": {
   "tone": 5,
@@ -1175,7 +1290,8 @@
   "complex": -2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:81": {
   "tone": -1,
@@ -1187,7 +1303,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:13007": {
   "tone": 4,
@@ -1197,7 +1314,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 5,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:872585": {
   "tone": -4,
@@ -1207,7 +1325,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:20352": {
   "tone": 4,
@@ -1217,7 +1336,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:176": {
   "tone": -4,
@@ -1227,7 +1347,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:64682": {
   "tone": -3,
@@ -1237,7 +1358,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:10193": {
   "tone": 4,
@@ -1247,7 +1369,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:9323": {
   "tone": -2,
@@ -1257,7 +1380,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:15584": {
   "tone": -4,
@@ -1267,7 +1391,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:600": {
   "tone": -5,
@@ -1277,7 +1402,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:474350": {
   "tone": -3,
@@ -1287,7 +1413,8 @@
   "complex": 2,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:399055": {
   "tone": -1,
@@ -1297,7 +1424,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:920": {
   "tone": 3,
@@ -1309,7 +1437,8 @@
   "humor": 2,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -2
  },
  "movie:11621": {
   "tone": -1,
@@ -1321,7 +1450,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:250658": {
   "tone": -4,
@@ -1331,7 +1461,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:1417": {
   "tone": -2,
@@ -1341,7 +1472,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:126889": {
   "tone": -3,
@@ -1351,7 +1483,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:398818": {
   "tone": -3,
@@ -1361,7 +1494,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:863": {
   "tone": 4,
@@ -1371,7 +1505,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:149870": {
   "tone": -3,
@@ -1381,7 +1516,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:11194": {
   "tone": -3,
@@ -1391,7 +1527,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:652": {
   "tone": -2,
@@ -1401,7 +1538,8 @@
   "complex": 2,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:300668": {
   "tone": -1,
@@ -1411,7 +1549,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:82693": {
   "tone": 3,
@@ -1421,7 +1560,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:10191": {
   "tone": 0,
@@ -1433,7 +1573,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:10494": {
   "tone": -1,
@@ -1443,7 +1584,8 @@
   "complex": 4,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:801058": {
   "tone": -4,
@@ -1453,7 +1595,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:197": {
   "tone": -5,
@@ -1463,7 +1606,8 @@
   "complex": 2,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:747": {
   "tone": 5,
@@ -1473,7 +1617,8 @@
   "complex": 0,
   "fantastic": -3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:11036": {
   "tone": -3,
@@ -1483,7 +1628,8 @@
   "complex": -2,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:425": {
   "tone": 4,
@@ -1493,7 +1639,8 @@
   "complex": -1,
   "fantastic": 4,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:503314": {
   "tone": -2,
@@ -1503,7 +1650,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:664280": {
   "tone": -3,
@@ -1513,7 +1661,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:515001": {
   "tone": 3,
@@ -1523,7 +1672,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:259693": {
   "tone": -2,
@@ -1533,7 +1683,8 @@
   "complex": -1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:194": {
   "tone": 3,
@@ -1543,7 +1694,8 @@
   "complex": 1,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:62177": {
   "tone": -1,
@@ -1555,7 +1707,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:51739": {
   "tone": -3,
@@ -1565,7 +1718,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -3
  },
  "movie:828853": {
   "tone": 5,
@@ -1575,7 +1729,8 @@
   "complex": -3,
   "fantastic": -4,
   "humor": -3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:381284": {
   "tone": -4,
@@ -1585,7 +1740,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:158015": {
   "tone": -3,
@@ -1595,7 +1751,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:216015": {
   "tone": -1,
@@ -1605,7 +1762,8 @@
   "complex": 0,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:277834": {
   "tone": 2,
@@ -1617,7 +1775,8 @@
   "humor": 3,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -2
  },
  "movie:610150": {
   "tone": -2,
@@ -1627,7 +1786,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:14285": {
   "tone": -4,
@@ -1637,7 +1797,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:423": {
   "tone": -5,
@@ -1647,7 +1808,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:333371": {
   "tone": -1,
@@ -1657,7 +1819,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:332562": {
   "tone": -1,
@@ -1667,7 +1830,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:260513": {
   "tone": 4,
@@ -1677,7 +1841,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:4977": {
   "tone": -2,
@@ -1687,7 +1852,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:680813": {
   "tone": -3,
@@ -1697,7 +1863,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:281338": {
   "tone": -3,
@@ -1707,7 +1874,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:9552": {
   "tone": -3,
@@ -1717,7 +1885,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:812": {
   "tone": 3,
@@ -1729,7 +1898,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:508883": {
   "tone": -3,
@@ -1739,7 +1909,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:13061": {
   "tone": 4,
@@ -1749,7 +1920,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:45269": {
   "tone": -4,
@@ -1759,7 +1931,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:493922": {
   "tone": -1,
@@ -1769,7 +1942,8 @@
   "complex": 4,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:222935": {
   "tone": -2,
@@ -1779,7 +1953,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:568160": {
   "tone": 0,
@@ -1789,7 +1964,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:2260": {
   "tone": -5,
@@ -1799,7 +1975,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:28": {
   "tone": -4,
@@ -1809,7 +1986,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:22970": {
   "tone": 2,
@@ -1819,7 +1997,8 @@
   "complex": 3,
   "fantastic": 1,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:110420": {
   "tone": -2,
@@ -1829,7 +2008,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:1400782": {
   "tone": -4,
@@ -1839,7 +2019,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:170": {
   "tone": -1,
@@ -1849,7 +2030,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:15370": {
   "tone": 0,
@@ -1859,7 +2041,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:1779": {
   "tone": 3,
@@ -1869,7 +2052,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": 5,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:396535": {
   "tone": -3,
@@ -1879,7 +2063,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:317442": {
   "tone": -2,
@@ -1889,7 +2074,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:988046": {
   "tone": -3,
@@ -1899,7 +2085,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:122": {
   "tone": -4,
@@ -1909,7 +2096,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:99861": {
   "tone": -1,
@@ -1919,7 +2107,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:76341": {
   "tone": -2,
@@ -1929,7 +2118,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:271110": {
   "tone": -1,
@@ -1939,7 +2129,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:121": {
   "tone": -3,
@@ -1949,7 +2140,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:672": {
   "tone": 1,
@@ -1959,7 +2151,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:284054": {
   "tone": 0,
@@ -1969,7 +2162,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:284052": {
   "tone": -2,
@@ -1979,7 +2173,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:68721": {
   "tone": -1,
@@ -1989,7 +2184,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:315635": {
   "tone": 0,
@@ -1999,7 +2195,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:673": {
   "tone": -2,
@@ -2009,7 +2206,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:283995": {
   "tone": 2,
@@ -2019,7 +2217,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:1771": {
   "tone": -4,
@@ -2029,7 +2228,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:10138": {
   "tone": 0,
@@ -2039,7 +2239,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:11": {
   "tone": -1,
@@ -2049,7 +2250,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:10195": {
   "tone": -2,
@@ -2059,7 +2261,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:22": {
   "tone": 1,
@@ -2069,7 +2272,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:674": {
   "tone": -3,
@@ -2079,7 +2283,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:297761": {
   "tone": -1,
@@ -2089,7 +2294,8 @@
   "complex": 2,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:634649": {
   "tone": -1,
@@ -2099,7 +2305,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:12445": {
   "tone": -4,
@@ -2111,7 +2318,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:297762": {
   "tone": -2,
@@ -2121,7 +2329,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:102899": {
   "tone": 0,
@@ -2131,7 +2340,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:675": {
   "tone": -2,
@@ -2141,7 +2351,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:767": {
   "tone": -3,
@@ -2151,7 +2362,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:557": {
   "tone": 0,
@@ -2161,7 +2373,8 @@
   "complex": 0,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:140607": {
   "tone": -1,
@@ -2171,7 +2384,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:12444": {
   "tone": -4,
@@ -2181,7 +2395,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:263115": {
   "tone": -4,
@@ -2191,7 +2406,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:100402": {
   "tone": -2,
@@ -2201,7 +2417,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:259316": {
   "tone": 0,
@@ -2211,7 +2428,8 @@
   "complex": 0,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:49051": {
   "tone": -1,
@@ -2221,7 +2439,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:281957": {
   "tone": -5,
@@ -2231,7 +2450,8 @@
   "complex": 4,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:209112": {
   "tone": -1,
@@ -2241,7 +2461,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:1930": {
   "tone": -2,
@@ -2251,7 +2472,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:1891": {
   "tone": -3,
@@ -2261,7 +2483,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:101299": {
   "tone": -2,
@@ -2271,7 +2494,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:76338": {
   "tone": -1,
@@ -2281,7 +2505,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:18785": {
   "tone": 5,
@@ -2291,7 +2516,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:329": {
   "tone": -2,
@@ -2303,7 +2529,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:424694": {
   "tone": -4,
@@ -2313,7 +2540,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:335983": {
   "tone": -2,
@@ -2323,7 +2551,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:58": {
   "tone": -1,
@@ -2333,7 +2562,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:240832": {
   "tone": -1,
@@ -2343,7 +2573,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:429617": {
   "tone": -2,
@@ -2353,7 +2584,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:333339": {
   "tone": 0,
@@ -2363,7 +2595,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1892": {
   "tone": -4,
@@ -2373,7 +2606,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:299537": {
   "tone": -3,
@@ -2383,7 +2617,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:131631": {
   "tone": -3,
@@ -2393,7 +2628,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:77": {
   "tone": -2,
@@ -2403,7 +2639,8 @@
   "complex": 5,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:244786": {
   "tone": -5,
@@ -2413,7 +2650,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:558": {
   "tone": -1,
@@ -2423,7 +2661,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:330459": {
   "tone": -4,
@@ -2433,7 +2672,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:181808": {
   "tone": -1,
@@ -2443,7 +2683,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:49047": {
   "tone": -3,
@@ -2453,7 +2694,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:127585": {
   "tone": -2,
@@ -2463,7 +2705,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:49521": {
   "tone": -3,
@@ -2473,7 +2716,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:120467": {
   "tone": 4,
@@ -2483,7 +2727,8 @@
   "complex": 4,
   "fantastic": 2,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:118": {
   "tone": 3,
@@ -2493,7 +2738,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:37724": {
   "tone": -4,
@@ -2503,7 +2749,8 @@
   "complex": 1,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1893": {
   "tone": -2,
@@ -2513,7 +2760,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:500": {
   "tone": -5,
@@ -2523,7 +2771,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:752": {
   "tone": -3,
@@ -2533,7 +2782,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:285": {
   "tone": -1,
@@ -2543,7 +2793,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:122917": {
   "tone": -2,
@@ -2553,7 +2804,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:78": {
   "tone": -4,
@@ -2563,7 +2815,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:559": {
   "tone": 0,
@@ -2573,7 +2826,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:273248": {
   "tone": -3,
@@ -2583,7 +2837,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:438631": {
   "tone": -3,
@@ -2595,7 +2850,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:335984": {
   "tone": -4,
@@ -2605,7 +2861,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:393": {
   "tone": -5,
@@ -2615,7 +2872,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:137113": {
   "tone": -2,
@@ -2625,7 +2883,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:607": {
   "tone": 3,
@@ -2635,7 +2894,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:1895": {
   "tone": -3,
@@ -2645,7 +2905,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1865": {
   "tone": -1,
@@ -2655,7 +2916,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:297802": {
   "tone": -2,
@@ -2665,7 +2927,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:466272": {
   "tone": 3,
@@ -2675,7 +2938,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:12155": {
   "tone": 0,
@@ -2685,7 +2949,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:10528": {
   "tone": -4,
@@ -2695,7 +2960,8 @@
   "complex": 2,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:218": {
   "tone": -4,
@@ -2705,7 +2971,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:769": {
   "tone": -5,
@@ -2715,7 +2982,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:280": {
   "tone": -4,
@@ -2725,7 +2993,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:353486": {
   "tone": 4,
@@ -2735,7 +3004,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:1894": {
   "tone": -2,
@@ -2745,7 +3015,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:324552": {
   "tone": -4,
@@ -2755,7 +3026,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:102382": {
   "tone": -1,
@@ -2765,7 +3037,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:264660": {
   "tone": -3,
@@ -2775,7 +3048,8 @@
   "complex": 4,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:57158": {
   "tone": -3,
@@ -2785,7 +3059,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:76600": {
   "tone": -4,
@@ -2795,7 +3070,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:363088": {
   "tone": -1,
@@ -2805,7 +3081,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:546554": {
   "tone": 5,
@@ -2815,7 +3092,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:637": {
   "tone": 3,
@@ -2825,7 +3103,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:489": {
   "tone": -5,
@@ -2835,7 +3114,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:240": {
   "tone": -4,
@@ -2845,7 +3125,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:165": {
   "tone": 0,
@@ -2857,7 +3138,8 @@
   "humor": 3,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:185": {
   "tone": -3,
@@ -2867,7 +3149,8 @@
   "complex": 4,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:103": {
   "tone": -5,
@@ -2877,7 +3160,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:350": {
   "tone": 1,
@@ -2887,7 +3171,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:87827": {
   "tone": -3,
@@ -2899,7 +3184,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:246655": {
   "tone": -2,
@@ -2909,7 +3195,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:141052": {
   "tone": -3,
@@ -2919,7 +3206,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:85": {
   "tone": -4,
@@ -2929,7 +3217,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:64690": {
   "tone": -3,
@@ -2939,7 +3228,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:194662": {
   "tone": 0,
@@ -2949,7 +3239,8 @@
   "complex": 2,
   "fantastic": -3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:37799": {
   "tone": -4,
@@ -2959,7 +3250,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:157350": {
   "tone": -3,
@@ -2969,7 +3261,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:68726": {
   "tone": -4,
@@ -2979,7 +3272,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:146233": {
   "tone": -5,
@@ -2989,7 +3283,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:141": {
   "tone": -2,
@@ -2999,7 +3294,8 @@
   "complex": 5,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:6977": {
   "tone": -5,
@@ -3009,7 +3305,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:131634": {
   "tone": -4,
@@ -3019,7 +3316,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:72105": {
   "tone": 5,
@@ -3029,7 +3327,8 @@
   "complex": -1,
   "fantastic": 3,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:14": {
   "tone": -3,
@@ -3039,7 +3338,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:111": {
   "tone": -4,
@@ -3049,7 +3349,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:82690": {
   "tone": 3,
@@ -3059,7 +3360,8 @@
   "complex": 0,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:745": {
   "tone": -3,
@@ -3069,7 +3371,8 @@
   "complex": 2,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:166426": {
   "tone": -2,
@@ -3079,7 +3382,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:351286": {
   "tone": -2,
@@ -3091,7 +3395,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 2
  },
  "movie:61791": {
   "tone": -3,
@@ -3101,7 +3406,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:14161": {
   "tone": -4,
@@ -3111,7 +3417,8 @@
   "complex": 0,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1724": {
   "tone": -2,
@@ -3121,7 +3428,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:73": {
   "tone": -5,
@@ -3131,7 +3439,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:9502": {
   "tone": 4,
@@ -3141,7 +3450,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1418": {
   "tone": 5,
@@ -3151,7 +3461,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1399": {
   "tone": -4,
@@ -3161,7 +3472,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:66732": {
   "tone": -2,
@@ -3173,7 +3485,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:71446": {
   "tone": -3,
@@ -3183,7 +3496,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:1396": {
   "tone": -3,
@@ -3195,7 +3509,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 5
  },
  "tv:1402": {
   "tone": -4,
@@ -3207,7 +3522,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 4
  },
  "tv:18165": {
   "tone": -1,
@@ -3220,7 +3536,8 @@
   "confirmed": [
    "horror",
    "romance"
-  ]
+  ],
+  "audience": 2
  },
  "tv:69050": {
   "tone": 0,
@@ -3232,7 +3549,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 2
  },
  "tv:60625": {
   "tone": 4,
@@ -3242,7 +3560,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:31910": {
   "tone": -3,
@@ -3252,7 +3571,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:114695": {
   "tone": 0,
@@ -3262,7 +3582,8 @@
   "complex": -2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:60574": {
   "tone": -4,
@@ -3272,7 +3593,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:456": {
   "tone": 5,
@@ -3282,7 +3604,8 @@
   "complex": 3,
   "fantastic": -4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:93405": {
   "tone": -3,
@@ -3292,7 +3615,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:76479": {
   "tone": 1,
@@ -3302,7 +3626,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:63174": {
   "tone": 0,
@@ -3312,7 +3637,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:85271": {
   "tone": -2,
@@ -3322,7 +3648,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:84958": {
   "tone": -1,
@@ -3332,7 +3659,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:1622": {
   "tone": -3,
@@ -3344,7 +3672,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:76669": {
   "tone": -2,
@@ -3356,7 +3685,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 1
  },
  "tv:94605": {
   "tone": -1,
@@ -3368,7 +3698,8 @@
   "humor": null,
   "confirmed": [
    "war"
-  ]
+  ],
+  "audience": 2
  },
  "tv:1429": {
   "tone": -4,
@@ -3380,7 +3711,8 @@
   "humor": null,
   "confirmed": [
    "war"
-  ]
+  ],
+  "audience": 4
  },
  "tv:96129": {
   "tone": -3,
@@ -3390,7 +3722,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:44217": {
   "tone": -4,
@@ -3400,7 +3733,8 @@
   "complex": 1,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:119051": {
   "tone": 3,
@@ -3410,7 +3744,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:71712": {
   "tone": -5,
@@ -3420,7 +3755,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:82856": {
   "tone": -2,
@@ -3430,7 +3766,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:48866": {
   "tone": -3,
@@ -3440,7 +3777,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:70523": {
   "tone": -2,
@@ -3450,7 +3788,8 @@
   "complex": 5,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:42009": {
   "tone": 0,
@@ -3462,7 +3801,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 4
  },
  "tv:60059": {
   "tone": -1,
@@ -3472,7 +3812,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:95557": {
   "tone": -2,
@@ -3482,7 +3823,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:85937": {
   "tone": -4,
@@ -3492,7 +3834,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1428": {
   "tone": 0,
@@ -3502,7 +3845,8 @@
   "complex": 2,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:87739": {
   "tone": -3,
@@ -3512,7 +3856,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1668": {
   "tone": 5,
@@ -3522,7 +3867,8 @@
   "complex": -4,
   "fantastic": -4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:19885": {
   "tone": -3,
@@ -3532,7 +3878,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1413": {
   "tone": -1,
@@ -3544,7 +3891,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:62286": {
   "tone": -3,
@@ -3556,7 +3904,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:65334": {
   "tone": 2,
@@ -3566,7 +3915,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -3
  },
  "tv:246": {
   "tone": 0,
@@ -3576,7 +3926,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:46260": {
   "tone": -1,
@@ -3586,7 +3937,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:100698": {
   "tone": -4,
@@ -3596,7 +3948,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "tv:4613": {
   "tone": -5,
@@ -3606,7 +3959,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:81356": {
   "tone": 4,
@@ -3616,7 +3970,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1412": {
   "tone": -2,
@@ -3626,7 +3981,8 @@
   "complex": 2,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:1405": {
   "tone": -3,
@@ -3636,7 +3992,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:62104": {
   "tone": -1,
@@ -3648,7 +4005,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 1
  },
  "tv:86831": {
   "tone": 1,
@@ -3661,7 +4019,8 @@
   "confirmed": [
    "horror",
    "thriller"
-  ]
+  ],
+  "audience": 4
  },
  "tv:2190": {
   "tone": 5,
@@ -3671,7 +4030,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 0,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:37854": {
   "tone": 3,
@@ -3681,7 +4041,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:64439": {
   "tone": -4,
@@ -3691,7 +4052,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:67915": {
   "tone": 1,
@@ -3701,7 +4063,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:77169": {
   "tone": 2,
@@ -3711,7 +4074,8 @@
   "complex": 1,
   "fantastic": -3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:62560": {
   "tone": -3,
@@ -3723,7 +4087,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 3
  },
  "tv:13916": {
   "tone": -2,
@@ -3735,7 +4100,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:78191": {
   "tone": -1,
@@ -3747,7 +4113,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 4
  },
  "tv:1434": {
   "tone": 5,
@@ -3757,7 +4124,8 @@
   "complex": 0,
   "fantastic": -4,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:65930": {
   "tone": -1,
@@ -3767,7 +4135,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:61929": {
   "tone": -4,
@@ -3777,7 +4146,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "tv:80752": {
   "tone": -1,
@@ -3789,7 +4159,8 @@
   "humor": null,
   "confirmed": [
    "war"
-  ]
+  ],
+  "audience": 3
  },
  "tv:1100": {
   "tone": 5,
@@ -3799,7 +4170,8 @@
   "complex": -2,
   "fantastic": -4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:99966": {
   "tone": -2,
@@ -3811,7 +4183,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:91239": {
   "tone": 0,
@@ -3823,7 +4196,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 2
  },
  "tv:91363": {
   "tone": -1,
@@ -3833,7 +4207,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:62715": {
   "tone": -3,
@@ -3843,7 +4218,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:103506": {
   "tone": -4,
@@ -3853,7 +4229,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "tv:1407": {
   "tone": -3,
@@ -3865,7 +4242,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 4
  },
  "tv:2316": {
   "tone": 5,
@@ -3875,7 +4253,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:90462": {
   "tone": 0,
@@ -3887,7 +4266,8 @@
   "humor": 1,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:104877": {
   "tone": 3,
@@ -3899,7 +4279,8 @@
   "humor": -1,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 0
  },
  "tv:615": {
   "tone": 4,
@@ -3909,7 +4290,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:12971": {
   "tone": -1,
@@ -3919,7 +4301,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:99626": {
   "tone": -4,
@@ -3929,7 +4312,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:16997": {
   "tone": -5,
@@ -3939,7 +4323,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:124364": {
   "tone": -2,
@@ -3951,7 +4336,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 4
  },
  "tv:67335": {
   "tone": -3,
@@ -3963,7 +4349,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 3
  },
  "tv:40075": {
   "tone": 4,
@@ -3973,7 +4360,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:95479": {
   "tone": -2,
@@ -3983,7 +4371,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:15826": {
   "tone": 2,
@@ -3993,7 +4382,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:35610": {
   "tone": -1,
@@ -4003,7 +4393,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:79242": {
   "tone": -2,
@@ -4015,7 +4406,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:56570": {
   "tone": -3,
@@ -4027,7 +4419,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 0
  },
  "tv:387": {
   "tone": 5,
@@ -4037,7 +4430,8 @@
   "complex": -3,
   "fantastic": -4,
   "humor": -2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:63926": {
   "tone": 3,
@@ -4047,7 +4441,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:85833": {
   "tone": -5,
@@ -4057,7 +4452,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:63333": {
   "tone": -4,
@@ -4067,7 +4463,8 @@
   "complex": 1,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:112888": {
   "tone": 2,
@@ -4079,7 +4476,8 @@
   "humor": 3,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 0
  },
  "tv:15260": {
   "tone": 1,
@@ -4091,7 +4489,8 @@
   "humor": 2,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 1
  },
  "tv:12609": {
   "tone": -2,
@@ -4101,7 +4500,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:116989": {
   "tone": -4,
@@ -4111,7 +4511,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:126308": {
   "tone": -3,
@@ -4121,7 +4522,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:33880": {
   "tone": -1,
@@ -4131,7 +4533,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:80020": {
   "tone": -2,
@@ -4141,7 +4544,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:114705": {
   "tone": -4,
@@ -4151,7 +4555,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:86031": {
   "tone": 4,
@@ -4163,7 +4568,8 @@
   "humor": 3,
   "confirmed": [
    "war"
-  ]
+  ],
+  "audience": 1
  },
  "tv:96481": {
   "tone": -3,
@@ -4173,7 +4579,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:105177": {
   "tone": -2,
@@ -4183,7 +4590,8 @@
   "complex": 3,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:58957": {
   "tone": 5,
@@ -4193,7 +4601,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:60735": {
   "tone": -2,
@@ -4203,7 +4612,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1416": {
   "tone": -3,
@@ -4213,7 +4623,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:85552": {
   "tone": -4,
@@ -4223,7 +4634,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:75006": {
   "tone": -1,
@@ -4233,7 +4645,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:88396": {
   "tone": -2,
@@ -4243,7 +4656,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:87108": {
   "tone": -5,
@@ -4253,7 +4667,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "tv:1408": {
   "tone": -4,
@@ -4263,7 +4678,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:100088": {
   "tone": -4,
@@ -4273,7 +4689,8 @@
   "complex": 3,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:71912": {
   "tone": -2,
@@ -4283,7 +4700,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:94997": {
   "tone": -3,
@@ -4293,7 +4711,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:63247": {
   "tone": -1,
@@ -4303,7 +4722,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:4604": {
   "tone": -1,
@@ -4313,7 +4733,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:62688": {
   "tone": -2,
@@ -4323,7 +4744,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:5920": {
   "tone": -4,
@@ -4333,7 +4755,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:46648": {
   "tone": -3,
@@ -4343,7 +4766,8 @@
   "complex": 5,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:2734": {
   "tone": -5,
@@ -4353,7 +4777,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:105214": {
   "tone": -1,
@@ -4363,7 +4788,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:60797": {
   "tone": -2,
@@ -4373,7 +4799,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:4057": {
   "tone": -3,
@@ -4383,7 +4810,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:48891": {
   "tone": 5,
@@ -4393,7 +4821,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:46331": {
   "tone": -2,
@@ -4403,7 +4832,8 @@
   "complex": 4,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:46952": {
   "tone": -2,
@@ -4413,7 +4843,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:16286": {
   "tone": 4,
@@ -4423,7 +4854,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:44953": {
   "tone": -4,
@@ -4433,7 +4865,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:92749": {
   "tone": -1,
@@ -4443,7 +4876,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:39351": {
   "tone": -3,
@@ -4453,7 +4887,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1911": {
   "tone": -3,
@@ -4463,7 +4898,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:63351": {
   "tone": -4,
@@ -4475,7 +4911,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 3
  },
  "tv:110492": {
   "tone": 1,
@@ -4485,7 +4922,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:71886": {
   "tone": -2,
@@ -4495,7 +4933,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:80213": {
   "tone": -3,
@@ -4505,7 +4944,8 @@
   "complex": 3,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:73586": {
   "tone": -3,
@@ -4515,7 +4955,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:52814": {
   "tone": -2,
@@ -4525,7 +4966,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:106379": {
   "tone": -1,
@@ -4535,7 +4977,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:67744": {
   "tone": -4,
@@ -4547,7 +4990,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 4
  },
  "tv:79460": {
   "tone": 0,
@@ -4559,7 +5003,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": -1
  },
  "tv:115036": {
   "tone": -2,
@@ -4569,7 +5014,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:40008": {
   "tone": -5,
@@ -4581,7 +5027,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 4
  },
  "tv:71728": {
   "tone": 4,
@@ -4591,7 +5038,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:46296": {
   "tone": -4,
@@ -4601,7 +5049,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:60866": {
   "tone": -1,
@@ -4613,7 +5062,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:61222": {
   "tone": 0,
@@ -4623,7 +5073,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:108978": {
   "tone": -4,
@@ -4633,7 +5084,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:75450": {
   "tone": -1,
@@ -4643,7 +5095,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:63639": {
   "tone": -3,
@@ -4653,7 +5106,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:113988": {
   "tone": -5,
@@ -4665,7 +5119,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 5
  },
  "tv:1705": {
   "tone": -2,
@@ -4675,7 +5130,8 @@
   "complex": 4,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:69740": {
   "tone": -4,
@@ -4685,7 +5141,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:1424": {
   "tone": 1,
@@ -4695,7 +5152,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:31917": {
   "tone": -1,
@@ -4705,7 +5163,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:75219": {
   "tone": -3,
@@ -4715,7 +5174,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:98": {
   "tone": -3,
@@ -4725,7 +5185,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:24": {
   "tone": -4,
@@ -4735,7 +5196,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:245891": {
   "tone": -3,
@@ -4745,7 +5207,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:120": {
   "tone": -2,
@@ -4755,7 +5218,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:348": {
   "tone": -4,
@@ -4765,7 +5229,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:152601": {
   "tone": -1,
@@ -4775,7 +5240,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:862": {
   "tone": 5,
@@ -4785,7 +5251,8 @@
   "complex": -3,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:12477": {
   "tone": -5,
@@ -4795,7 +5262,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:489931": {
   "tone": -1,
@@ -4805,7 +5273,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:324786": {
   "tone": -4,
@@ -4815,7 +5284,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:2288": {
   "tone": -2,
@@ -4825,7 +5295,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:37680": {
   "tone": -3,
@@ -4835,7 +5306,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:61889": {
   "tone": -1,
@@ -4845,7 +5317,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:12637": {
   "tone": 3,
@@ -4855,7 +5328,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:82883": {
   "tone": -4,
@@ -4867,7 +5341,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 4
  },
  "tv:4607": {
   "tone": -1,
@@ -4877,7 +5352,8 @@
   "complex": 5,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:70785": {
   "tone": -4,
@@ -4887,7 +5363,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:2004": {
   "tone": 5,
@@ -4897,7 +5374,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:34524": {
   "tone": 1,
@@ -4907,7 +5385,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:66788": {
   "tone": -5,
@@ -4917,7 +5396,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:1421": {
   "tone": 5,
@@ -4927,7 +5407,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:57243": {
   "tone": -1,
@@ -4937,7 +5418,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:34307": {
   "tone": 3,
@@ -4947,7 +5429,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:69478": {
   "tone": -4,
@@ -4957,7 +5440,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:60622": {
   "tone": 0,
@@ -4967,7 +5451,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:79744": {
   "tone": 2,
@@ -4977,7 +5462,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:1409": {
   "tone": -3,
@@ -4987,7 +5473,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:19614": {
   "tone": -2,
@@ -4999,7 +5486,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 4
  },
  "tv:67178": {
   "tone": -4,
@@ -5009,7 +5497,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:1425": {
   "tone": -3,
@@ -5021,7 +5510,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 4
  },
  "tv:1403": {
   "tone": -1,
@@ -5031,7 +5521,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:60708": {
   "tone": -3,
@@ -5041,7 +5532,8 @@
   "complex": 3,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:84773": {
   "tone": -4,
@@ -5051,7 +5543,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:88329": {
   "tone": 3,
@@ -5061,7 +5554,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:43348": {
   "tone": -4,
@@ -5071,7 +5565,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:1398": {
   "tone": -3,
@@ -5081,7 +5576,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:2691": {
   "tone": 5,
@@ -5091,7 +5587,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:74577": {
   "tone": 1,
@@ -5101,7 +5598,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:4087": {
   "tone": -2,
@@ -5111,7 +5609,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:46896": {
   "tone": -2,
@@ -5123,7 +5622,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "movie:115": {
   "tone": 5,
@@ -5133,7 +5633,8 @@
   "complex": 1,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:207": {
   "tone": -4,
@@ -5143,7 +5644,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:2048": {
   "tone": -3,
@@ -5153,7 +5655,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:161": {
   "tone": -1,
@@ -5163,7 +5666,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:562": {
   "tone": -3,
@@ -5173,7 +5677,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:36657": {
   "tone": -2,
@@ -5183,7 +5688,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:561": {
   "tone": -2,
@@ -5193,7 +5699,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:854": {
   "tone": 4,
@@ -5203,7 +5710,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:127380": {
   "tone": -3,
@@ -5215,7 +5723,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:37797": {
   "tone": -3,
@@ -5225,7 +5734,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:2359": {
   "tone": 0,
@@ -5235,7 +5745,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": -3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:152532": {
   "tone": -4,
@@ -5245,7 +5756,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:510": {
   "tone": -4,
@@ -5255,7 +5767,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:601": {
   "tone": -2,
@@ -5267,7 +5780,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -2
  },
  "movie:18": {
   "tone": -3,
@@ -5277,7 +5791,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:110415": {
   "tone": -3,
@@ -5287,7 +5802,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:93456": {
   "tone": 5,
@@ -5297,7 +5813,8 @@
   "complex": -2,
   "fantastic": 3,
   "humor": -2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:1359": {
   "tone": 1,
@@ -5307,7 +5824,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:38757": {
   "tone": 0,
@@ -5319,7 +5837,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -2
  },
  "movie:23483": {
   "tone": 0,
@@ -5329,7 +5848,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:196": {
   "tone": 3,
@@ -5339,7 +5859,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:670": {
   "tone": -4,
@@ -5349,7 +5870,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:310": {
   "tone": 5,
@@ -5359,7 +5881,8 @@
   "complex": 0,
   "fantastic": 3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:8358": {
   "tone": -3,
@@ -5369,7 +5892,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:119450": {
   "tone": -2,
@@ -5379,7 +5903,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:242582": {
   "tone": -3,
@@ -5389,7 +5914,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:49530": {
   "tone": -2,
@@ -5399,7 +5925,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:604": {
   "tone": -1,
@@ -5409,7 +5936,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:530385": {
   "tone": -1,
@@ -5419,7 +5947,8 @@
   "complex": 4,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:453": {
   "tone": -4,
@@ -5429,7 +5958,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:508442": {
   "tone": -1,
@@ -5439,7 +5969,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:198375": {
   "tone": -2,
@@ -5449,7 +5980,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:680058": {
   "tone": -3,
@@ -5459,7 +5991,8 @@
   "complex": 0,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:314365": {
   "tone": -4,
@@ -5469,7 +6002,8 @@
   "complex": 2,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:621": {
   "tone": 5,
@@ -5479,7 +6013,8 @@
   "complex": -2,
   "fantastic": -1,
   "humor": -1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:679": {
   "tone": -2,
@@ -5489,7 +6024,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:629": {
   "tone": -1,
@@ -5499,7 +6035,8 @@
   "complex": 5,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:664413": {
   "tone": -1,
@@ -5509,7 +6046,8 @@
   "complex": 0,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:45243": {
   "tone": 5,
@@ -5519,7 +6057,8 @@
   "complex": -1,
   "fantastic": -2,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:1949": {
   "tone": -3,
@@ -5529,7 +6068,8 @@
   "complex": 3,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:8681": {
   "tone": -3,
@@ -5539,7 +6079,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:75612": {
   "tone": -1,
@@ -5549,7 +6090,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:458723": {
   "tone": -2,
@@ -5559,7 +6101,8 @@
   "complex": 4,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:266856": {
   "tone": -5,
@@ -5569,7 +6112,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:62211": {
   "tone": 5,
@@ -5579,7 +6123,8 @@
   "complex": -2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:38142": {
   "tone": -3,
@@ -5589,7 +6134,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:377462": {
   "tone": -4,
@@ -5599,7 +6145,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:487558": {
   "tone": 3,
@@ -5609,7 +6156,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:762": {
   "tone": 5,
@@ -5621,7 +6169,8 @@
   "humor": 5,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:87": {
   "tone": -2,
@@ -5631,7 +6180,8 @@
   "complex": 2,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:8844": {
   "tone": 0,
@@ -5643,7 +6193,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -2
  },
  "movie:598": {
   "tone": -4,
@@ -5653,7 +6204,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:346698": {
   "tone": 5,
@@ -5663,7 +6215,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:458156": {
   "tone": -3,
@@ -5673,7 +6226,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:36557": {
   "tone": -2,
@@ -5683,7 +6237,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:4232": {
   "tone": -1,
@@ -5693,7 +6248,8 @@
   "complex": 3,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:19913": {
   "tone": 3,
@@ -5703,7 +6259,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:211672": {
   "tone": 4,
@@ -5715,7 +6272,8 @@
   "humor": 3,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:125521": {
   "tone": 4,
@@ -5725,7 +6283,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:627070": {
   "tone": -3,
@@ -5735,7 +6294,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:14574": {
   "tone": -4,
@@ -5745,7 +6305,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:948": {
   "tone": -3,
@@ -5755,7 +6316,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:620": {
   "tone": 5,
@@ -5765,7 +6327,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:10020": {
   "tone": 0,
@@ -5775,7 +6338,8 @@
   "complex": -1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:619264": {
   "tone": -2,
@@ -5785,7 +6349,8 @@
   "complex": 5,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:787": {
   "tone": 2,
@@ -5795,7 +6360,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:291805": {
   "tone": 0,
@@ -5805,7 +6371,8 @@
   "complex": 4,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1091": {
   "tone": -3,
@@ -5815,7 +6382,8 @@
   "complex": 5,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:420817": {
   "tone": 3,
@@ -5827,7 +6395,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:502356": {
   "tone": 4,
@@ -5839,7 +6408,8 @@
   "humor": 3,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:420818": {
   "tone": -1,
@@ -5849,7 +6419,8 @@
   "complex": -2,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:149871": {
   "tone": -3,
@@ -5859,7 +6430,8 @@
   "complex": 0,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:438446": {
   "tone": -4,
@@ -5869,7 +6441,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:616": {
   "tone": -3,
@@ -5879,7 +6452,8 @@
   "complex": 2,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:583": {
   "tone": 5,
@@ -5889,7 +6463,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:106": {
   "tone": -2,
@@ -5899,7 +6474,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:602": {
   "tone": -1,
@@ -5909,7 +6485,8 @@
   "complex": 0,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:8329": {
   "tone": -3,
@@ -5919,7 +6496,8 @@
   "complex": 2,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:343668": {
   "tone": 3,
@@ -5929,7 +6507,8 @@
   "complex": 2,
   "fantastic": 2,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:395992": {
   "tone": -2,
@@ -5939,7 +6518,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:18239": {
   "tone": -1,
@@ -5949,7 +6529,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:301528": {
   "tone": 3,
@@ -5959,7 +6540,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:242828": {
   "tone": -3,
@@ -5969,7 +6551,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:753230": {
   "tone": -4,
@@ -5979,7 +6562,8 @@
   "complex": 3,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:398978": {
   "tone": -5,
@@ -5989,7 +6573,8 @@
   "complex": 5,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:9659": {
   "tone": -3,
@@ -5999,7 +6584,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:268": {
   "tone": -2,
@@ -6009,7 +6595,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:10674": {
   "tone": 0,
@@ -6021,7 +6608,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -2
  },
  "movie:152584": {
   "tone": -2,
@@ -6031,7 +6619,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:310131": {
   "tone": -1,
@@ -6041,7 +6630,8 @@
   "complex": 4,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:50620": {
   "tone": -1,
@@ -6051,7 +6641,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:82702": {
   "tone": 0,
@@ -6061,7 +6652,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:83389": {
   "tone": -2,
@@ -6071,7 +6663,8 @@
   "complex": 0,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:12237": {
   "tone": -3,
@@ -6081,7 +6674,8 @@
   "complex": 3,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:3131": {
   "tone": -4,
@@ -6091,7 +6685,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:1367": {
   "tone": -3,
@@ -6101,7 +6696,8 @@
   "complex": 1,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:2108": {
   "tone": 3,
@@ -6111,7 +6707,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:627": {
   "tone": -4,
@@ -6121,7 +6718,8 @@
   "complex": 3,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:11216": {
   "tone": -3,
@@ -6131,7 +6729,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:282035": {
   "tone": -1,
@@ -6141,7 +6740,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:50646": {
   "tone": 3,
@@ -6151,7 +6751,8 @@
   "complex": -2,
   "fantastic": -4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:9479": {
   "tone": 0,
@@ -6161,7 +6762,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:18491": {
   "tone": -4,
@@ -6171,7 +6773,8 @@
   "complex": 5,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:962697": {
   "tone": -3,
@@ -6181,7 +6784,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:676": {
   "tone": -4,
@@ -6191,7 +6795,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:840": {
   "tone": -3,
@@ -6201,7 +6806,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:4011": {
   "tone": 4,
@@ -6211,7 +6817,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:564": {
   "tone": -1,
@@ -6221,7 +6828,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:520763": {
   "tone": -5,
@@ -6231,7 +6839,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:122906": {
   "tone": -2,
@@ -6241,7 +6850,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:950": {
   "tone": 4,
@@ -6251,7 +6861,8 @@
   "complex": -2,
   "fantastic": 3,
   "humor": -2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:916224": {
   "tone": -1,
@@ -6263,7 +6874,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:17204": {
   "tone": -4,
@@ -6273,7 +6885,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "movie:7446": {
   "tone": 5,
@@ -6283,7 +6896,8 @@
   "complex": 2,
   "fantastic": -2,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:11886": {
   "tone": 0,
@@ -6293,7 +6907,8 @@
   "complex": -3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:10144": {
   "tone": 0,
@@ -6303,7 +6918,8 @@
   "complex": -2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -3
  },
  "movie:954": {
   "tone": -3,
@@ -6313,7 +6929,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:2668": {
   "tone": -2,
@@ -6323,7 +6940,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:50619": {
   "tone": -2,
@@ -6335,7 +6953,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 2
  },
  "movie:330457": {
   "tone": 3,
@@ -6345,7 +6964,8 @@
   "complex": -1,
   "fantastic": 4,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:810693": {
   "tone": -1,
@@ -6355,7 +6975,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:381028": {
   "tone": -4,
@@ -6365,7 +6986,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:53182": {
   "tone": -3,
@@ -6375,7 +6997,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:7340": {
   "tone": -2,
@@ -6385,7 +7008,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:380": {
   "tone": -4,
@@ -6395,7 +7019,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:49018": {
   "tone": -3,
@@ -6405,7 +7030,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:24021": {
   "tone": -1,
@@ -6417,7 +7043,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:504253": {
   "tone": -3,
@@ -6427,7 +7054,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1261924": {
   "tone": -5,
@@ -6437,7 +7065,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:80278": {
   "tone": -4,
@@ -6447,7 +7076,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1924": {
   "tone": -1,
@@ -6457,7 +7087,8 @@
   "complex": -1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:927": {
   "tone": 3,
@@ -6467,7 +7098,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:1933": {
   "tone": -4,
@@ -6477,7 +7109,8 @@
   "complex": 3,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:55931": {
   "tone": -3,
@@ -6487,7 +7120,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:682587": {
   "tone": -4,
@@ -6499,7 +7133,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:1579": {
   "tone": -3,
@@ -6509,7 +7144,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:11778": {
   "tone": -5,
@@ -6519,7 +7155,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:1368": {
   "tone": -2,
@@ -6529,7 +7166,8 @@
   "complex": 1,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:439079": {
   "tone": -3,
@@ -6539,7 +7177,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:347201": {
   "tone": 4,
@@ -6549,7 +7188,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:473415": {
   "tone": -3,
@@ -6559,7 +7199,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:855": {
   "tone": -4,
@@ -6569,7 +7210,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:829": {
   "tone": -2,
@@ -6579,7 +7221,8 @@
   "complex": 5,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:235": {
   "tone": -1,
@@ -6589,7 +7232,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:381283": {
   "tone": -1,
@@ -6599,7 +7243,8 @@
   "complex": 4,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:126963": {
   "tone": -2,
@@ -6609,7 +7254,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:1229958": {
   "tone": -4,
@@ -6619,7 +7265,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:12162": {
   "tone": -3,
@@ -6629,7 +7276,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:703": {
   "tone": 5,
@@ -6639,7 +7287,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:88": {
   "tone": -1,
@@ -6649,7 +7298,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:315465": {
   "tone": -1,
@@ -6659,7 +7309,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:259910": {
   "tone": -3,
@@ -6669,7 +7320,8 @@
   "complex": 0,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:117": {
   "tone": -4,
@@ -6679,7 +7331,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:252": {
   "tone": 5,
@@ -6689,7 +7342,8 @@
   "complex": -2,
   "fantastic": 3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -3
  },
  "movie:10228": {
   "tone": -2,
@@ -6699,7 +7353,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:1061117": {
   "tone": -2,
@@ -6709,7 +7364,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:568": {
   "tone": -4,
@@ -6719,7 +7375,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:30497": {
   "tone": -3,
@@ -6729,7 +7386,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:13398": {
   "tone": 2,
@@ -6739,7 +7397,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:1662317": {
   "tone": -3,
@@ -6749,7 +7408,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:375262": {
   "tone": 0,
@@ -6759,7 +7419,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": -3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:3034": {
   "tone": 4,
@@ -6769,7 +7430,8 @@
   "complex": -1,
   "fantastic": 3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:37933": {
   "tone": -3,
@@ -6781,7 +7443,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:810731": {
   "tone": -4,
@@ -6791,7 +7454,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:968": {
   "tone": -3,
@@ -6801,7 +7465,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:667520": {
   "tone": 0,
@@ -6811,7 +7476,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:850329": {
   "tone": -4,
@@ -6821,7 +7487,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:13223": {
   "tone": -5,
@@ -6831,7 +7498,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:411": {
   "tone": -2,
@@ -6843,7 +7511,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:51876": {
   "tone": -1,
@@ -6853,7 +7522,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:338952": {
   "tone": 0,
@@ -6865,7 +7535,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:2080": {
   "tone": -1,
@@ -6875,7 +7546,8 @@
   "complex": 0,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:497698": {
   "tone": -2,
@@ -6885,7 +7557,8 @@
   "complex": 1,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:577922": {
   "tone": -3,
@@ -6895,7 +7568,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:580489": {
   "tone": -1,
@@ -6905,7 +7579,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:206647": {
   "tone": -3,
@@ -6915,7 +7590,8 @@
   "complex": 3,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:84892": {
   "tone": -4,
@@ -6925,7 +7601,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:293167": {
   "tone": -1,
@@ -6935,7 +7612,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:9799": {
   "tone": -1,
@@ -6945,7 +7623,8 @@
   "complex": 1,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:36658": {
   "tone": -2,
@@ -6955,7 +7634,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:361743": {
   "tone": -1,
@@ -6965,7 +7645,8 @@
   "complex": 1,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:294254": {
   "tone": -2,
@@ -6975,7 +7656,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:64688": {
   "tone": 5,
@@ -6985,7 +7667,8 @@
   "complex": 0,
   "fantastic": 0,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:41154": {
   "tone": 3,
@@ -6995,7 +7678,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:641": {
   "tone": -5,
@@ -7005,7 +7689,8 @@
   "complex": 2,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:359940": {
   "tone": -3,
@@ -7015,7 +7700,8 @@
   "complex": 1,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:791373": {
   "tone": -2,
@@ -7025,7 +7711,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:1593": {
   "tone": 4,
@@ -7035,7 +7722,8 @@
   "complex": 0,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:58574": {
   "tone": -2,
@@ -7047,7 +7735,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 2
  },
  "movie:59967": {
   "tone": -1,
@@ -7057,7 +7746,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:495764": {
   "tone": 0,
@@ -7067,7 +7757,8 @@
   "complex": 2,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:181812": {
   "tone": -3,
@@ -7077,7 +7768,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:605": {
   "tone": -2,
@@ -7087,7 +7779,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:337339": {
   "tone": -2,
@@ -7097,7 +7790,8 @@
   "complex": 1,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:56292": {
   "tone": -1,
@@ -7107,7 +7801,8 @@
   "complex": 3,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:399566": {
   "tone": -1,
@@ -7117,7 +7812,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:608": {
   "tone": 4,
@@ -7127,7 +7823,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:1402": {
   "tone": -4,
@@ -7137,7 +7834,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:36668": {
   "tone": -1,
@@ -7147,7 +7845,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:453395": {
   "tone": -1,
@@ -7157,7 +7856,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:392044": {
   "tone": -2,
@@ -7167,7 +7867,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:566525": {
   "tone": -1,
@@ -7177,7 +7878,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:13475": {
   "tone": -3,
@@ -7187,7 +7889,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:283366": {
   "tone": 0,
@@ -7199,7 +7902,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:454626": {
   "tone": 3,
@@ -7209,7 +7913,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:262500": {
   "tone": -4,
@@ -7219,7 +7924,8 @@
   "complex": 4,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:17654": {
   "tone": -3,
@@ -7229,7 +7935,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:70": {
   "tone": -4,
@@ -7239,7 +7946,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:76170": {
   "tone": -2,
@@ -7249,7 +7957,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:568124": {
   "tone": 2,
@@ -7259,7 +7968,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:8960": {
   "tone": -1,
@@ -7269,7 +7979,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:287947": {
   "tone": 3,
@@ -7279,7 +7990,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:337404": {
   "tone": 4,
@@ -7289,7 +8001,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:5915": {
   "tone": -4,
@@ -7299,7 +8012,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:2501": {
   "tone": -3,
@@ -7309,7 +8023,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:591": {
   "tone": -2,
@@ -7319,7 +8034,8 @@
   "complex": 3,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:399579": {
   "tone": -2,
@@ -7329,7 +8045,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:316029": {
   "tone": -1,
@@ -7339,7 +8056,8 @@
   "complex": -1,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:107": {
   "tone": 5,
@@ -7349,7 +8067,8 @@
   "complex": 1,
   "fantastic": -2,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:13183": {
   "tone": -2,
@@ -7359,7 +8078,8 @@
   "complex": 4,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:550988": {
   "tone": 5,
@@ -7371,7 +8091,8 @@
   "humor": 3,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 2
  },
  "movie:9738": {
   "tone": -1,
@@ -7381,7 +8102,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:156022": {
   "tone": -4,
@@ -7391,7 +8113,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:9741": {
   "tone": -3,
@@ -7401,7 +8124,8 @@
   "complex": 4,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:180": {
   "tone": -2,
@@ -7411,7 +8135,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:318846": {
   "tone": 3,
@@ -7421,7 +8146,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:810": {
   "tone": 4,
@@ -7433,7 +8159,8 @@
   "humor": 2,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:9487": {
   "tone": 5,
@@ -7445,7 +8172,8 @@
   "humor": 2,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": -1
  },
  "movie:124905": {
   "tone": -2,
@@ -7455,7 +8183,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:273481": {
   "tone": -4,
@@ -7465,7 +8194,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:177677": {
   "tone": -2,
@@ -7475,7 +8205,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:436969": {
   "tone": 2,
@@ -7485,7 +8216,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:264644": {
   "tone": -4,
@@ -7495,7 +8227,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:54138": {
   "tone": -3,
@@ -7505,7 +8238,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:68724": {
   "tone": -3,
@@ -7515,7 +8249,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:646380": {
   "tone": 3,
@@ -7525,7 +8260,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:138832": {
   "tone": 5,
@@ -7535,7 +8271,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:10625": {
   "tone": 4,
@@ -7545,7 +8282,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:512200": {
   "tone": 3,
@@ -7557,7 +8295,8 @@
   "humor": 2,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:330": {
   "tone": -2,
@@ -7567,7 +8306,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:348350": {
   "tone": -1,
@@ -7577,7 +8317,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:524434": {
   "tone": -2,
@@ -7587,7 +8328,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:74": {
   "tone": -3,
@@ -7597,7 +8339,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:109439": {
   "tone": 5,
@@ -7607,7 +8350,8 @@
   "complex": 2,
   "fantastic": -2,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:39254": {
   "tone": -2,
@@ -7617,7 +8361,8 @@
   "complex": 1,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:63": {
   "tone": -2,
@@ -7627,7 +8372,8 @@
   "complex": 5,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:47971": {
   "tone": -2,
@@ -7637,7 +8383,8 @@
   "complex": 0,
   "fantastic": 1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:8373": {
   "tone": -2,
@@ -7647,7 +8394,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:275": {
   "tone": -3,
@@ -7657,7 +8405,8 @@
   "complex": 3,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:76492": {
   "tone": 3,
@@ -7667,7 +8416,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:45612": {
   "tone": -1,
@@ -7677,7 +8427,8 @@
   "complex": 4,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:353081": {
   "tone": -2,
@@ -7687,7 +8438,8 @@
   "complex": 2,
   "fantastic": 0,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:464052": {
   "tone": -1,
@@ -7697,7 +8449,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:450465": {
   "tone": -3,
@@ -7707,7 +8460,8 @@
   "complex": 5,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:50014": {
   "tone": -4,
@@ -7717,7 +8471,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:315162": {
   "tone": 4,
@@ -7729,7 +8484,8 @@
   "humor": 1,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 0
  },
  "movie:14836": {
   "tone": -2,
@@ -7739,7 +8495,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:114": {
   "tone": 5,
@@ -7749,7 +8506,8 @@
   "complex": -3,
   "fantastic": -4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:217": {
   "tone": -1,
@@ -7759,7 +8517,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:254128": {
   "tone": -2,
@@ -7769,7 +8528,8 @@
   "complex": 1,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:391713": {
   "tone": 0,
@@ -7779,7 +8539,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": -3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:4951": {
   "tone": 2,
@@ -7789,7 +8550,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": -1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:137": {
   "tone": 3,
@@ -7799,7 +8561,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:38356": {
   "tone": -3,
@@ -7809,7 +8572,8 @@
   "complex": 0,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:508943": {
   "tone": 1,
@@ -7819,7 +8583,8 @@
   "complex": 0,
   "fantastic": 4,
   "humor": 0,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:87101": {
   "tone": -2,
@@ -7829,7 +8594,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:68734": {
   "tone": -4,
@@ -7839,7 +8605,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:569094": {
   "tone": -1,
@@ -7849,7 +8616,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:187": {
   "tone": -2,
@@ -7859,7 +8627,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:435": {
   "tone": -3,
@@ -7871,7 +8640,8 @@
   "humor": null,
   "confirmed": [
    "action"
-  ]
+  ],
+  "audience": 1
  },
  "movie:8355": {
   "tone": 3,
@@ -7881,7 +8651,8 @@
   "complex": -2,
   "fantastic": 4,
   "humor": -2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:616037": {
   "tone": 2,
@@ -7891,7 +8662,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:533535": {
   "tone": 4,
@@ -7901,7 +8673,8 @@
   "complex": 3,
   "fantastic": 3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:402900": {
   "tone": 3,
@@ -7911,7 +8684,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:38700": {
   "tone": -2,
@@ -7921,7 +8695,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:4348": {
   "tone": -4,
@@ -7931,7 +8706,8 @@
   "complex": 0,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:91314": {
   "tone": -1,
@@ -7941,7 +8717,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:594": {
   "tone": 1,
@@ -7951,7 +8728,8 @@
   "complex": -1,
   "fantastic": -4,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:95": {
   "tone": -3,
@@ -7961,7 +8739,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:466282": {
   "tone": 4,
@@ -7971,7 +8750,8 @@
   "complex": -2,
   "fantastic": -4,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:290250": {
   "tone": 0,
@@ -7981,7 +8761,8 @@
   "complex": 2,
   "fantastic": -3,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:22538": {
   "tone": 4,
@@ -7991,7 +8772,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:447365": {
   "tone": -1,
@@ -8001,7 +8783,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:315837": {
   "tone": -2,
@@ -8011,7 +8794,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:10764": {
   "tone": -4,
@@ -8021,7 +8805,8 @@
   "complex": 2,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:35": {
   "tone": 5,
@@ -8031,7 +8816,8 @@
   "complex": 0,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:187017": {
   "tone": 3,
@@ -8041,7 +8827,8 @@
   "complex": 1,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:615457": {
   "tone": -3,
@@ -8051,7 +8838,8 @@
   "complex": 3,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "movie:254": {
   "tone": -1,
@@ -8061,7 +8849,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "movie:949": {
   "tone": -3,
@@ -8071,7 +8860,8 @@
   "complex": 2,
   "fantastic": -3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "movie:137106": {
   "tone": 5,
@@ -8081,7 +8871,8 @@
   "complex": -2,
   "fantastic": 4,
   "humor": -2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:328111": {
   "tone": 4,
@@ -8091,7 +8882,8 @@
   "complex": -3,
   "fantastic": 3,
   "humor": -1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:49013": {
   "tone": 3,
@@ -8101,7 +8893,8 @@
   "complex": -2,
   "fantastic": 3,
   "humor": 0,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:537915": {
   "tone": -3,
@@ -8111,7 +8904,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:278927": {
   "tone": -2,
@@ -8121,7 +8915,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "movie:339846": {
   "tone": 3,
@@ -8131,7 +8926,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:198184": {
   "tone": -1,
@@ -8141,7 +8937,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "movie:335797": {
   "tone": 4,
@@ -8151,7 +8948,8 @@
   "complex": -2,
   "fantastic": 4,
   "humor": 0,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "movie:2105": {
   "tone": 5,
@@ -8161,7 +8959,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "movie:1979": {
   "tone": -2,
@@ -8171,7 +8970,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:1981": {
   "tone": 0,
@@ -8181,7 +8981,8 @@
   "complex": -2,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:72844": {
   "tone": -4,
@@ -8193,7 +8994,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:110316": {
   "tone": -3,
@@ -8203,7 +9005,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1438": {
   "tone": -5,
@@ -8213,7 +9016,8 @@
   "complex": 4,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:95396": {
   "tone": -3,
@@ -8223,7 +9027,8 @@
   "complex": 5,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:62127": {
   "tone": -2,
@@ -8233,7 +9038,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:61374": {
   "tone": -4,
@@ -8245,7 +9051,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:45782": {
   "tone": -1,
@@ -8257,7 +9064,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 3
  },
  "tv:4194": {
   "tone": -3,
@@ -8267,7 +9075,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:70881": {
   "tone": 3,
@@ -8277,7 +9086,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:32608": {
   "tone": -1,
@@ -8287,7 +9097,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:71789": {
   "tone": -4,
@@ -8297,7 +9108,8 @@
   "complex": 1,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:47": {
   "tone": 5,
@@ -8307,7 +9119,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:1400": {
   "tone": 5,
@@ -8317,7 +9130,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": 5,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1920": {
   "tone": -3,
@@ -8327,7 +9141,8 @@
   "complex": 5,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:96677": {
   "tone": -2,
@@ -8337,7 +9152,8 @@
   "complex": 2,
   "fantastic": -1,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:92783": {
   "tone": 4,
@@ -8347,7 +9163,8 @@
   "complex": 2,
   "fantastic": 4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:95057": {
   "tone": -3,
@@ -8357,7 +9174,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:90802": {
   "tone": -2,
@@ -8367,7 +9185,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:153312": {
   "tone": -1,
@@ -8377,7 +9196,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:107113": {
   "tone": 4,
@@ -8387,7 +9207,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:38472": {
   "tone": -1,
@@ -8397,7 +9218,8 @@
   "complex": 2,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:47640": {
   "tone": -2,
@@ -8409,7 +9231,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 4
  },
  "tv:10545": {
   "tone": 0,
@@ -8421,7 +9244,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 3
  },
  "tv:1433": {
   "tone": 5,
@@ -8431,7 +9255,8 @@
   "complex": 0,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:31911": {
   "tone": -1,
@@ -8441,7 +9266,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:77601": {
   "tone": -1,
@@ -8451,7 +9277,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:1104": {
   "tone": -4,
@@ -8461,7 +9288,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:7842": {
   "tone": 5,
@@ -8471,7 +9299,8 @@
   "complex": -2,
   "fantastic": -4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:655": {
   "tone": -2,
@@ -8481,7 +9310,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1892": {
   "tone": 5,
@@ -8491,7 +9321,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:62455": {
   "tone": -4,
@@ -8501,7 +9332,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:97546": {
   "tone": 4,
@@ -8511,7 +9343,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:62710": {
   "tone": -3,
@@ -8521,7 +9354,8 @@
   "complex": 5,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:58841": {
   "tone": -4,
@@ -8531,7 +9365,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:693": {
   "tone": 3,
@@ -8541,7 +9376,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:62046": {
   "tone": 2,
@@ -8553,7 +9389,8 @@
   "humor": 4,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:45950": {
   "tone": 4,
@@ -8565,7 +9402,8 @@
   "humor": 2,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 2
  },
  "tv:31132": {
   "tone": 5,
@@ -8575,7 +9413,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:120089": {
   "tone": 5,
@@ -8585,7 +9424,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:90": {
   "tone": -4,
@@ -8595,7 +9435,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:83100": {
   "tone": -1,
@@ -8605,7 +9446,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:1781": {
   "tone": -3,
@@ -8615,7 +9457,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -4
  },
  "tv:57706": {
   "tone": 4,
@@ -8627,7 +9470,8 @@
   "humor": 3,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 0
  },
  "tv:60572": {
   "tone": -1,
@@ -8637,7 +9481,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:4614": {
   "tone": -3,
@@ -8647,7 +9492,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:62264": {
   "tone": 3,
@@ -8659,7 +9505,8 @@
   "humor": 4,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:89641": {
   "tone": 0,
@@ -8671,7 +9518,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 0
  },
  "tv:95594": {
   "tone": 0,
@@ -8681,7 +9529,8 @@
   "complex": -2,
   "fantastic": -2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:114410": {
   "tone": 0,
@@ -8691,7 +9540,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:209167": {
   "tone": -4,
@@ -8701,7 +9551,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 5
  },
  "tv:1621": {
   "tone": -3,
@@ -8713,7 +9564,8 @@
   "humor": null,
   "confirmed": [
    "war"
-  ]
+  ],
+  "audience": 3
  },
  "tv:2207": {
   "tone": 5,
@@ -8723,7 +9575,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": -3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:42444": {
   "tone": -2,
@@ -8733,7 +9586,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:105": {
   "tone": 3,
@@ -8743,7 +9597,8 @@
   "complex": -1,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:84661": {
   "tone": -4,
@@ -8755,7 +9610,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:90260": {
   "tone": 1,
@@ -8767,7 +9623,8 @@
   "humor": 4,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 0
  },
  "tv:93741": {
   "tone": 0,
@@ -8777,7 +9634,8 @@
   "complex": -1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:73223": {
   "tone": -1,
@@ -8787,7 +9645,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:79126": {
   "tone": -3,
@@ -8797,7 +9656,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:113962": {
   "tone": -3,
@@ -8807,7 +9667,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:873": {
   "tone": -2,
@@ -8817,7 +9678,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:2384": {
   "tone": -1,
@@ -8827,7 +9689,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:890": {
   "tone": -4,
@@ -8837,7 +9700,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:45790": {
   "tone": -2,
@@ -8849,7 +9713,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:76121": {
   "tone": 0,
@@ -8861,7 +9726,8 @@
   "humor": 2,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 2
  },
  "tv:63401": {
   "tone": 4,
@@ -8871,7 +9737,8 @@
   "complex": -1,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:204284": {
   "tone": 5,
@@ -8881,7 +9748,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:80307": {
   "tone": -2,
@@ -8891,7 +9759,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:918": {
   "tone": 3,
@@ -8901,7 +9770,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:4658": {
   "tone": 5,
@@ -8911,7 +9781,8 @@
   "complex": -2,
   "fantastic": 3,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:12697": {
   "tone": -1,
@@ -8921,7 +9792,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:200875": {
   "tone": -4,
@@ -8933,7 +9805,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:100883": {
   "tone": 3,
@@ -8945,7 +9818,8 @@
   "humor": 3,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": -1
  },
  "tv:2098": {
   "tone": -3,
@@ -8955,7 +9829,8 @@
   "complex": 4,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:34014": {
   "tone": 5,
@@ -8965,7 +9840,8 @@
   "complex": -1,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:6040": {
   "tone": -2,
@@ -8977,7 +9853,8 @@
   "humor": null,
   "confirmed": [
    "war"
-  ]
+  ],
+  "audience": 1
  },
  "tv:9160": {
   "tone": -2,
@@ -8987,7 +9864,8 @@
   "complex": 0,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:4239": {
   "tone": 5,
@@ -8997,7 +9875,8 @@
   "complex": -3,
   "fantastic": -2,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:95": {
   "tone": 2,
@@ -9007,7 +9886,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:42671": {
   "tone": -4,
@@ -9019,7 +9899,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:16420": {
   "tone": 3,
@@ -9031,7 +9912,8 @@
   "humor": 4,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": -2
  },
  "tv:4686": {
   "tone": 4,
@@ -9041,7 +9923,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:70824": {
   "tone": -3,
@@ -9051,7 +9934,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:67026": {
   "tone": -2,
@@ -9063,7 +9947,8 @@
   "humor": null,
   "confirmed": [
    "thriller"
-  ]
+  ],
+  "audience": 3
  },
  "tv:57911": {
   "tone": 4,
@@ -9073,7 +9958,8 @@
   "complex": 1,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -3
  },
  "tv:4313": {
   "tone": 5,
@@ -9083,7 +9969,8 @@
   "complex": -2,
   "fantastic": -4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:30991": {
   "tone": -1,
@@ -9093,7 +9980,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:61459": {
   "tone": -2,
@@ -9106,7 +9994,8 @@
   "confirmed": [
    "horror",
    "thriller"
-  ]
+  ],
+  "audience": 3
  },
  "tv:117581": {
   "tone": 2,
@@ -9118,7 +10007,8 @@
   "humor": 2,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": 1
  },
  "tv:92685": {
   "tone": 4,
@@ -9128,7 +10018,8 @@
   "complex": -2,
   "fantastic": 5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:26101": {
   "tone": -4,
@@ -9138,7 +10029,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:116135": {
   "tone": -3,
@@ -9148,7 +10040,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:19649": {
   "tone": -5,
@@ -9158,7 +10051,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1988": {
   "tone": 0,
@@ -9168,7 +10062,8 @@
   "complex": -1,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:4629": {
   "tone": -2,
@@ -9178,7 +10073,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:109958": {
   "tone": -2,
@@ -9190,7 +10086,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 2
  },
  "tv:21421": {
   "tone": -3,
@@ -9200,7 +10097,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:88803": {
   "tone": -3,
@@ -9210,7 +10108,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:16118": {
   "tone": -1,
@@ -9222,7 +10121,8 @@
   "humor": null,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:1516": {
   "tone": 3,
@@ -9232,7 +10132,8 @@
   "complex": -1,
   "fantastic": -1,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:2085": {
   "tone": 1,
@@ -9242,7 +10143,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:76307": {
   "tone": -4,
@@ -9252,7 +10154,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:87917": {
   "tone": -3,
@@ -9262,7 +10165,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:648": {
   "tone": -2,
@@ -9272,7 +10176,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:4500": {
   "tone": 4,
@@ -9282,7 +10187,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:4709": {
   "tone": -5,
@@ -9292,7 +10198,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:4331": {
   "tone": -1,
@@ -9302,7 +10209,8 @@
   "complex": 0,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:2391": {
   "tone": 0,
@@ -9314,7 +10222,8 @@
   "humor": 3,
   "confirmed": [
    "horror"
-  ]
+  ],
+  "audience": 3
  },
  "tv:1639": {
   "tone": -1,
@@ -9324,7 +10233,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:39272": {
   "tone": -1,
@@ -9334,7 +10244,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:62643": {
   "tone": -2,
@@ -9344,7 +10255,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:1437": {
   "tone": -1,
@@ -9354,7 +10266,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:71914": {
   "tone": -3,
@@ -9364,7 +10277,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:44006": {
   "tone": -4,
@@ -9374,7 +10288,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:65494": {
   "tone": -5,
@@ -9384,7 +10299,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:71915": {
   "tone": 3,
@@ -9394,7 +10310,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:68421": {
   "tone": -2,
@@ -9404,7 +10321,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:102903": {
   "tone": -3,
@@ -9414,7 +10332,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1395": {
   "tone": -2,
@@ -9424,7 +10343,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:92830": {
   "tone": -2,
@@ -9434,7 +10354,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:125988": {
   "tone": -3,
@@ -9444,7 +10365,8 @@
   "complex": 4,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:30984": {
   "tone": -1,
@@ -9454,7 +10376,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:46298": {
   "tone": -1,
@@ -9464,7 +10387,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:11250": {
   "tone": -4,
@@ -9474,7 +10398,8 @@
   "complex": 1,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:18347": {
   "tone": 5,
@@ -9484,7 +10409,8 @@
   "complex": 3,
   "fantastic": -4,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:1419": {
   "tone": -1,
@@ -9494,7 +10420,8 @@
   "complex": 2,
   "fantastic": -4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:83867": {
   "tone": -2,
@@ -9504,7 +10431,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:67198": {
   "tone": -2,
@@ -9514,7 +10442,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1411": {
   "tone": -1,
@@ -9524,7 +10453,8 @@
   "complex": 4,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:62126": {
   "tone": 0,
@@ -9534,7 +10464,8 @@
   "complex": 1,
   "fantastic": 2,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:74428": {
   "tone": -3,
@@ -9544,7 +10475,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:90239": {
   "tone": -1,
@@ -9554,7 +10486,8 @@
   "complex": 4,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:61550": {
   "tone": -2,
@@ -9564,7 +10497,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:66573": {
   "tone": 4,
@@ -9574,7 +10508,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:60573": {
   "tone": 5,
@@ -9584,7 +10519,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:2038": {
   "tone": 5,
@@ -9594,7 +10530,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:31586": {
   "tone": -4,
@@ -9604,7 +10541,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:68507": {
   "tone": -1,
@@ -9614,7 +10552,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:67070": {
   "tone": 3,
@@ -9624,7 +10563,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": 5,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:61664": {
   "tone": -1,
@@ -9634,7 +10574,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:75758": {
   "tone": -2,
@@ -9644,7 +10585,8 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:85949": {
   "tone": -3,
@@ -9654,7 +10596,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:1606": {
   "tone": -4,
@@ -9664,7 +10607,8 @@
   "complex": 1,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:114868": {
   "tone": -2,
@@ -9674,7 +10618,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:8592": {
   "tone": 5,
@@ -9684,7 +10629,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:32798": {
   "tone": -2,
@@ -9694,7 +10640,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:1415": {
   "tone": -3,
@@ -9704,7 +10651,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:105248": {
   "tone": -1,
@@ -9714,7 +10662,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:73375": {
   "tone": -3,
@@ -9724,7 +10673,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:46639": {
   "tone": -1,
@@ -9734,7 +10684,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:127532": {
   "tone": -2,
@@ -9744,7 +10695,8 @@
   "complex": 3,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:79696": {
   "tone": -3,
@@ -9754,7 +10706,8 @@
   "complex": 3,
   "fantastic": 4,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:111110": {
   "tone": 0,
@@ -9764,7 +10717,8 @@
   "complex": 2,
   "fantastic": 3,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:12926": {
   "tone": -4,
@@ -9774,7 +10728,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 0
  },
  "tv:1972": {
   "tone": -2,
@@ -9784,7 +10739,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:46786": {
   "tone": -4,
@@ -9794,7 +10750,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:61617": {
   "tone": 1,
@@ -9804,7 +10761,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:61056": {
   "tone": -2,
@@ -9814,7 +10772,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:85723": {
   "tone": -3,
@@ -9824,7 +10783,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:1973": {
   "tone": -3,
@@ -9834,7 +10794,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 4
  },
  "tv:136315": {
   "tone": 0,
@@ -9844,7 +10805,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:64464": {
   "tone": -4,
@@ -9854,7 +10816,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:77606": {
   "tone": 4,
@@ -9864,7 +10827,8 @@
   "complex": -2,
   "fantastic": 4,
   "humor": -1,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:37606": {
   "tone": 3,
@@ -9874,7 +10838,8 @@
   "complex": -1,
   "fantastic": 5,
   "humor": 5,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:39340": {
   "tone": 5,
@@ -9884,7 +10849,8 @@
   "complex": -3,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:66292": {
   "tone": -2,
@@ -9894,7 +10860,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:93740": {
   "tone": -3,
@@ -9904,7 +10871,8 @@
   "complex": 5,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:31251": {
   "tone": 4,
@@ -9914,7 +10882,8 @@
   "complex": -2,
   "fantastic": -3,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -2
  },
  "tv:124834": {
   "tone": -1,
@@ -9926,7 +10895,8 @@
   "humor": null,
   "confirmed": [
    "romance"
-  ]
+  ],
+  "audience": -2
  },
  "tv:115004": {
   "tone": -4,
@@ -9936,7 +10906,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:76331": {
   "tone": 0,
@@ -9946,7 +10917,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 3,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:1620": {
   "tone": -3,
@@ -9956,7 +10928,8 @@
   "complex": 0,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:64432": {
   "tone": -2,
@@ -9966,7 +10939,8 @@
   "complex": 4,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:80743": {
   "tone": -1,
@@ -9976,7 +10950,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": 4,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 1
  },
  "tv:1420": {
   "tone": 5,
@@ -9986,7 +10961,8 @@
   "complex": -2,
   "fantastic": -5,
   "humor": 2,
-  "confirmed": []
+  "confirmed": [],
+  "audience": -1
  },
  "tv:8358": {
   "tone": -3,
@@ -9996,7 +10972,8 @@
   "complex": 1,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  },
  "tv:4589": {
   "tone": 1,
@@ -10006,7 +10983,8 @@
   "complex": 3,
   "fantastic": -5,
   "humor": 5,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:86430": {
   "tone": -4,
@@ -10016,7 +10994,8 @@
   "complex": 2,
   "fantastic": -5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 3
  },
  "tv:62285": {
   "tone": -1,
@@ -10026,6 +11005,7 @@
   "complex": 2,
   "fantastic": 5,
   "humor": null,
-  "confirmed": []
+  "confirmed": [],
+  "audience": 2
  }
 }

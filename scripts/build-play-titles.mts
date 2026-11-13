@@ -47,7 +47,7 @@ import {
 import { GAME_GENRE_IDS, candidateGenres, neverGenres, type GameGenre } from '@/app/play/lib/genres'
 import { selectBalanced } from '@/app/play/lib/select'
 import { pickWatchProvider } from '@/lib/watch-providers'
-import { SCALE_GUIDE, batchSchema, titleLine, repairBatch } from '@/lib/taste-scales/prompt'
+import { SCALE_GUIDE, batchSchema, batchPrompt, repairBatch } from '@/lib/taste-scales/prompt'
 import { AI_SCALES, spread, rankSpread, type AIScale, type GameTitle, type Scale } from '@/app/play/lib/scales'
 
 // ── Knobs ──────────────────────────────────────────────────────
@@ -201,14 +201,7 @@ type AIScore = Record<Exclude<AIScale, 'humor'>, number> & { humor: number | nul
 
 async function scoreBatch(batch: Candidate[]): Promise<Map<string, AIScore>> {
   const mistral = createMistral({ apiKey: batchMistralApiKey() })
-  const prompt = `${SCALE_GUIDE}
-
-"Check genres" uses these ids: thriller = thriller or mystery, war = war or history, horror, romance, action. Confirm one only if it is truly a main genre of the title, not a side element.
-
-Titles:
-${batch.map((c, i) => titleLine(c, i + 1)).join('\n')}
-
-Return one entry per title, with n matching its number.`
+  const prompt = batchPrompt(SCALE_GUIDE, batch)
 
   recordMistralCall()
   let output: z.infer<typeof batchSchema>

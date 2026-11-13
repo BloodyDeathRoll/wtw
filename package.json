@@ -25,6 +25,7 @@
     "record-intro": "node --env-file=.env.local --import tsx scripts/record-intro.mts",
     "build-play-titles": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-play-titles.mts",
     "derive-scale-norms": "node --import tsx scripts/derive-scale-norms.mts",
+    "score-catalog-scales": "node --env-file=.env.local --conditions=react-server --import tsx scripts/score-catalog-scales.mts",
     "eval": "node --env-file=.env.local --conditions=react-server --import tsx scripts/eval/harness.mts",
     "live-score": "node --env-file=.env.local --conditions=react-server --import tsx scripts/live-score.mts",
     "reset-account": "node --env-file=.env.local --conditions=react-server --import tsx scripts/reset-account.mts",

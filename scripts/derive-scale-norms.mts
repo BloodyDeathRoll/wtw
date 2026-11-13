@@ -78,6 +78,8 @@ for (const t of titles) {
   for (const k of keys) {
     const want = t.scales[k as keyof GameTitle['scales']]
     const have = got[k]
+    // titles.json has no `audience` (the 11th scale is AI-only): nothing to check it against.
+    if (k === 'audience' && want === undefined) continue
     if (want !== undefined && have !== undefined && Math.abs(want - have) <= 0.01) continue
     const fixed = fixes[t.id]?.scales?.[k] !== undefined
     if (fixed) overrides++
