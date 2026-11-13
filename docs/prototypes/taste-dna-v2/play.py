@@ -127,6 +127,9 @@ CALLS = {'never': {'name': 'Never', 'icon': B.I_NEVER, 'col': '#ff5a4f'}, 'less'
          'neutral': {'name': 'Neutral', 'icon': B.I_NEUTRAL, 'col': '#8c8c91'}, 'more': {'name': 'More of', 'icon': I_MORE, 'col': '#3ddc97'}}
 for d in data:
     d['calls'] = {g: c for g, c in d['calls'].items() if c == 'never'}
+# Nobody has a More of / Less of yet (it doesn't exist in the app). Example calls on the new user, so the lit rows can be tried:
+# More of on two genres it said Love to on the genre screen, Less of on one its ratings mostly dislike.
+data[0]['calls'].update({'comedy': 'more', 'drama': 'more', 'doc': 'less'})
 
 # ── the app's CSS, fonts inlined ──
 css = ''
@@ -178,8 +181,8 @@ body{background:#000;color:#fff}
 .pbar button[aria-pressed="true"]{background:#1b1b1b;color:#fff;border-color:#1b1b1b}
 .pad-bottom{height:calc(var(--bar-h) + 24px)}
 
-/* sheets rise to fit their content, never past 72% of the screen; the list scrolls inside */
-.sheet{top:auto!important;max-height:72%;height:auto}
+/* every sheet is 75% of the screen tall, whatever it holds; the list scrolls inside */
+.sheet{top:auto!important;height:75%;max-height:none}
 .sbody{flex:1;min-height:0}
 .more{align-self:flex-start;height:36px;padding:0 14px;border-radius:999px;border:0;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:14px;cursor:pointer}
 /* a person's face, as tall as name + line */
@@ -188,6 +191,7 @@ body{background:#000;color:#fff}
 .stitle.face .who{display:flex;flex-direction:column;gap:4px;min-width:0}
 .prow{grid-template-columns:minmax(0,1fr) 16px}
 .seg{grid-template-columns:repeat(4,1fr)}
+.pdiv{flex:none;height:6px;border-radius:3px;background:#ffa900;margin:4px 0 6px}
 """
 
 page_shell = (f'<div class="inter_3d9c7ff2-module__6cOLqa__variable font-sans"><div class="{B.A("page")}"><div class="{B.A("app")}">'
@@ -207,10 +211,10 @@ const MARK = {loved:['❤️','Loved'], liked:['👍','Liked'], disliked:['👎'
 const ORDER = ['never','less','neutral','more'];
 const SHOW = 20;   // titles shown in a sheet before "Show all"
 const DOES = {
-  more: g => `${g} moves up your feed, so you see more of it. Stays until you change it.`,
-  neutral: g => `Your ratings alone decide how much ${g} you see.`,
-  less: g => `${g} moves down your feed, so you see less of it. Stays until you change it.`,
-  never: g => `We’ll never show you ${g}.`};
+  more: g => `${g} shows up higher in your feed than your ratings alone would put it. Stays until you change it.`,
+  neutral: g => `Your ratings alone decide where ${g} shows up in your feed.`,
+  less: g => `${g} still shows up, but lower than your ratings alone would put it. Stays until you change it.`,
+  never: g => `${g} never shows up in your feed. Stays until you change it.`};
 let acc = DATA[0], calls = {};
 
 function says(t, call) {
@@ -337,7 +341,7 @@ function openGenre(id) {
 function openPerson(p) {
   const face = p.face ? `<img src="${p.face}" alt="">` : '';
   openSheet(`<div class="shead"><div class="stitle${face ? ' face' : ''}">${face}<div class="who"><h2>${esc(p.name)}</h2><div class="smeta">${p.roles} · ${psays(p.titles)}</div></div></div>
-    <button class="sclose" aria-label="Close">${X}</button></div><div class="sbody">${titleRows(p.titles)}</div>`);
+    <button class="sclose" aria-label="Close">${X}</button></div><div class="sbody"><div class="pdiv"></div>${titleRows(p.titles)}</div>`);
   wireMore(p.titles);
 }
 
