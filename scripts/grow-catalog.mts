@@ -25,6 +25,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { discoverVaried, getMovie, getTV, getWatchProviders } from '@/lib/tmdb'
 import { fetchAndCacheTitle } from '@/modules/engine/enrichment/fetch-and-cache-title'
 import { runNightlyEnrichment, type EnrichmentReport } from '@/modules/engine/enrichment/nightly-enrichment'
+import { refreshRatingDrift } from '@/lib/taste-scales/catalogue'
 
 // (tmdb_id, type) is the real title key — TMDB movie/tv ids share a namespace.
 const key = (type: string, tmdb_id: string) => `${type}:${tmdb_id}`
@@ -424,12 +425,17 @@ async function main() {
   let mistralCalls = 0
   let mistralRateLimited = false
   let mistralBudgetExhausted = false
+  // P1-D3: the taste-scales phase rides each enrichment run (runNightlyEnrichment `scales: true`).
+  let scalesScored = 0
+  let scalesFinalised = 0
+  let scalesFailed = 0
+  let scalesQueueFailures = 0
   while (enriched < ENRICH_MAX && stalls < 2) {
     const callsLeft = MISTRAL_CALL_BUDGET - mistralCalls
     if (callsLeft <= 0) { mistralBudgetExhausted = true; break }
     let report: EnrichmentReport
     try {
-      report = await runNightlyEnrichment({ maxMistralCalls: callsLeft })
+      report = await runNightlyEnrichment({ maxMistralCalls: callsLeft, scales: true })
     } catch (e) {
       enrichQueueFailures++
       stalls++
@@ -440,6 +446,10 @@ async function main() {
     enriched += report.titles_processed
     enrichFailures += report.titles_failed
     mistralCalls += report.mistral_calls
+    scalesScored += report.scales_scored
+    scalesFinalised += report.scales_finalised
+    scalesFailed += report.scales_failed
+    if (report.scales_queue_failed) scalesQueueFailures++
     // The crew select failed after its retries: titles went fine, lineage was
     // skipped this run. Not a stall — but it must show in the summary.
     if (report.crew_queue_failed) crewQueueFailures++
@@ -455,7 +465,20 @@ async function main() {
     }
     if (report.titles_processed === 0) stalls++
     else stalls = 0
-    if (report.titles_processed === 0 && report.crew_processed === 0) break
+    if (report.titles_processed === 0 && report.crew_processed === 0 && report.scales_scored === 0) break
+  }
+
+  // ── 2b. Taste vectors whose rating moved (P1-D3) ─────────────────────────
+  // The rating is the taste model's input [0]; a title re-seeded with a new
+  // tmdb_rating keeps a vector built from the old one until this rebuilds it
+  // from its stored scales and genres. No AI calls; reads every finalised row.
+  let scalesRatingRefreshed = 0
+  try {
+    const drift = await refreshRatingDrift()
+    scalesRatingRefreshed = drift.refreshed
+    if (drift.refreshed || drift.failed) console.log(`[grow] taste vectors refreshed for a moved rating: ${drift.refreshed} of ${drift.checked} (${drift.failed} failed)`)
+  } catch (e) {
+    console.error('[grow] rating drift check failed (non-fatal):', e instanceof Error ? e.message : e)
   }
 
   // ── 3. Backfill posters for the least-recently-checked slice of the NULL
@@ -673,12 +696,18 @@ async function main() {
     enriched,
     enrich_failures: enrichFailures,
     mistral_calls: mistralCalls,
+    // P1-D3: new titles put on the 11 taste scales, and vectors written (new + moved ratings).
+    scales_scored: scalesScored,
+    scales_finalised: scalesFinalised,
     // Present only on the nights they fire, so they cost nothing in the
     // digest's 400-byte window otherwise and cannot be missed when they do.
     ...(mistralRateLimited ? { mistral_rate_limited: true } : {}),
     ...(mistralBudgetExhausted ? { mistral_budget_exhausted: MISTRAL_CALL_BUDGET } : {}),
     ...(enrichQueueFailures ? { enrich_queue_failures: enrichQueueFailures } : {}),
     ...(crewQueueFailures ? { crew_queue_failures: crewQueueFailures } : {}),
+    ...(scalesFailed ? { scales_failed: scalesFailed } : {}),
+    ...(scalesQueueFailures ? { scales_queue_failures: scalesQueueFailures } : {}),
+    ...(scalesRatingRefreshed ? { scales_rating_refreshed: scalesRatingRefreshed } : {}),
     // Past here is beyond the 400-byte digest window on a stalling night, by
     // choice: all four are either constant, recomputable from Supabase, or
     // (the two backfills) have read 0/0 on every committed summary to date.
