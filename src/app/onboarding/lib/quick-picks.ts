@@ -103,3 +103,30 @@ export function haventSeen(q: QuickPicks, side: Side, T: Title[]): { q: QuickPic
   const note: SwapNote = off.a && off.b ? 'no-swaps' : noneLeft ? null : swaps[side] === 1 ? 'swapped' : 'last-swap'
   return { q: { ...q, pair: p, swaps, off, note }, event }
 }
+
+/** The quick picks as saved in play_state (`state.onboarding.picks`): titles as ids, so a visit later resumes on the same pair. */
+export interface SavedPicks {
+  S: PlayState
+  pair: { a: string; b: string; axis: Pair['axis'] } | null
+  picks: number
+  pairs: number
+  swaps: Record<Side, number>
+  off: Record<Side, boolean>
+  note: SwapNote
+  done: boolean
+  /** The picked titles, oldest first: the closing screen fans the newest. */
+  picked: string[]
+}
+
+export function savePicks(q: QuickPicks, picked: string[]): SavedPicks {
+  const { S, pair, picks, pairs, swaps, off, note, done } = q
+  return { S, pair: pair ? { a: pair.a.id, b: pair.b.id, axis: pair.axis } : null, picks, pairs, swaps, off, note, done, picked }
+}
+
+/** Back from the saved copy; null when a title is no longer in the set (start the picks afresh then). */
+export function loadPicks(s: SavedPicks, byId: Map<string, Title>): QuickPicks | null {
+  const a = s.pair && byId.get(s.pair.a), b = s.pair && byId.get(s.pair.b)
+  if (s.pair && (!a || !b)) return null
+  const pair: Pair | null = s.pair && a && b ? { a, b, axis: s.pair.axis, pitch: false, unseenCount: 0 } : null
+  return { S: s.S, pair, picks: s.picks, pairs: s.pairs, swaps: s.swaps, off: s.off, note: s.note, done: s.done }
+}

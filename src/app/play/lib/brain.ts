@@ -117,6 +117,8 @@ export interface PlayState {
     step?: 'genres' | 'cards' | 'between' | 'picks' | 'showtime'
     /** The rating cards' progress (P2-U3, src/app/onboarding/lib/cards.ts). */
     cards?: import('@/app/onboarding/lib/cards').CardsState
+    /** The quick picks' progress (P2-U4, src/app/onboarding/lib/quick-picks.ts). */
+    picks?: import('@/app/onboarding/lib/quick-picks').SavedPicks
     done_at?: string
   }
 }
