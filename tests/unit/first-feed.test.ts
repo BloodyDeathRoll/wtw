@@ -51,9 +51,9 @@ beforeEach(() => {
 describe('kickFirstFeed', () => {
   // Eran's first run (#246, 2026-11-13): the batch was built for 'all' while the
   // feed opens on "movies", and each build waited 2.5 s for new plot summaries.
-  it('builds the list the feed opens on ("movies"), without waiting for new plot summaries', async () => {
+  it('builds the list the feed opens on (FEED_START_TYPE, "all"), without waiting for new plot summaries', async () => {
     await kickFirstFeed('u1')
-    expect(io.kicked).toEqual(['u1:movies:400'])
+    expect(io.kicked).toEqual(['u1:all:400'])
   })
   it('a caller can ask for another list', async () => {
     await kickFirstFeed('u1', 'series')
@@ -78,12 +78,12 @@ describe('finishFirstFeed', () => {
     expect(r.ms).toBeGreaterThanOrEqual(3 * 150 - 20)
   })
 
-  it('with nothing current parked: bumps the version and generates the "movies" feed at it', async () => {
+  it('with nothing current parked: bumps the version and generates the starting list at it', async () => {
     const r = await finishFirstFeed('u1')
     expect(r).toMatchObject({ taste_version: 8, adopted: false })
     expect(io.generated).toHaveLength(1)
     expect(io.generated[0].dna.metadata.taste_version).toBe(8)
-    expect(io.generated[0].contentType).toBe('movies')
+    expect(io.generated[0].contentType).toBe('all')
   })
 
   it('throws when the fingerprint can\'t be bumped, so the screen shows "Try again"', async () => {

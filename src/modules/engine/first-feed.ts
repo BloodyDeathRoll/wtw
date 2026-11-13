@@ -28,19 +28,19 @@
 import 'server-only'
 
 import type { DNASchema } from '@/types/dna'
-import type { ContentType } from '@/lib/content-type'
+import { FEED_START_TYPE, type ContentType } from '@/lib/content-type'
 import { precomputeNextBatch, precomputeRunning } from './pipeline/precompute'
 import { generateRecommendations, INLINE_PLOT_WAIT_MS } from './pipeline/generate'
 import { refreshLiveBatch } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate, bumpVersion } from '@/modules/dna/lib/load-save'
 
 /**
- * The list the feed opens on for a new user: WTWApp starts on "movies" when
- * nothing is saved (wtw:contentType). Until 2026-11-13 this was 'all', so the
- * batch built during onboarding was for a list the feed didn't open, and
- * opening it cost a second build (Eran's first run, #246).
+ * The list the first feed is built for: the one the feed opens on
+ * (FEED_START_TYPE, which WTWApp starts on and the onboarding routes pass).
+ * One constant, so the two can't drift apart again (#307 and #308 crossed on
+ * 2026-11-13; #311 joined them).
  */
-export const FIRST_FEED_TYPE: ContentType = 'movies'
+export const FIRST_FEED_TYPE: ContentType = FEED_START_TYPE
 /** How often, and how long at most, to wait for a build the last answer started. */
 const WAIT_STEP_MS = 150
 const WAIT_MAX_MS = 8_000
