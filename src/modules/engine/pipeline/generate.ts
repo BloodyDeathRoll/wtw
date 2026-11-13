@@ -73,6 +73,12 @@ export interface GenerateOptions {
   precompute?: boolean
   /** Movies/Series — built into the batch and the cache key, not filtered later. */
   contentType?: ContentType
+  /**
+   * How long to wait for NEW plot summaries. Default: a precompute keeps
+   * card-plot's own wait, any other build INLINE_PLOT_WAIT_MS. The first feed
+   * is a precompute someone is waiting on (P2-U5), so it passes the short one.
+   */
+  plotWaitMs?: number
 }
 
 // ─────────────────────────────────────────────
@@ -134,7 +140,7 @@ async function runColdStart(
  * 6.8 s "Find more", 2026-11-13). The model still finishes in the background
  * and caches them for the next batch.
  */
-const INLINE_PLOT_WAIT_MS = 400
+export const INLINE_PLOT_WAIT_MS = 400
 
 /** Steps 1–6: the fingerprint-driven pipeline described at the top. */
 async function runPipeline(
@@ -236,7 +242,7 @@ export async function generateRecommendations(
   const versioned = coldStart
     ? await runColdStart(dna, opts.contentType, t)
     // A precompute runs in the background and keeps card-plot's own wait; any other build has a user waiting.
-    : await runPipeline(userId, dna, sessionContext, opts.contentType, t, opts.precompute ? undefined : INLINE_PLOT_WAIT_MS)
+    : await runPipeline(userId, dna, sessionContext, opts.contentType, t, opts.plotWaitMs ?? (opts.precompute ? undefined : INLINE_PLOT_WAIT_MS))
   if (versioned.length === 0) return []
 
   // ── Precompute mode: hand the batch back, no cache, no explanations yet ─

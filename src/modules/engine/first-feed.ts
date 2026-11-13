@@ -28,13 +28,19 @@
 import 'server-only'
 
 import type { DNASchema } from '@/types/dna'
+import type { ContentType } from '@/lib/content-type'
 import { precomputeNextBatch, precomputeRunning } from './pipeline/precompute'
-import { generateRecommendations } from './pipeline/generate'
+import { generateRecommendations, INLINE_PLOT_WAIT_MS } from './pipeline/generate'
 import { refreshLiveBatch } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate, bumpVersion } from '@/modules/dna/lib/load-save'
 
-/** The first feed is the mixed list; the Movies / Series toggle comes later. */
-const FIRST_FEED_TYPE = 'all' as const
+/**
+ * The list the feed opens on for a new user: WTWApp starts on "movies" when
+ * nothing is saved (wtw:contentType). Until 2026-11-13 this was 'all', so the
+ * batch built during onboarding was for a list the feed didn't open, and
+ * opening it cost a second build (Eran's first run, #246).
+ */
+export const FIRST_FEED_TYPE: ContentType = 'movies'
 /** How often, and how long at most, to wait for a build the last answer started. */
 const WAIT_STEP_MS = 150
 const WAIT_MAX_MS = 8_000
@@ -47,9 +53,14 @@ export interface FirstFeedResult {
   ms: number
 }
 
-/** Build the first feed in the background. Never throws (precompute.ts). */
-export function kickFirstFeed(userId: string): Promise<void> {
-  return precomputeNextBatch(userId, FIRST_FEED_TYPE)
+/**
+ * Build the first feed in the background. Never throws (precompute.ts). It is
+ * a build someone will wait on, so it doesn't wait for NEW plot summaries
+ * (a new user has none cached; 2.5 s each build made "It's Showtime" ~10 s):
+ * they finish in the background, and a card without one keeps its fact line.
+ */
+export function kickFirstFeed(userId: string, contentType: ContentType = FIRST_FEED_TYPE): Promise<void> {
+  return precomputeNextBatch(userId, contentType, undefined, { plotWaitMs: INLINE_PLOT_WAIT_MS })
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -59,7 +70,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
  * fingerprint can't be bumped or the generation itself fails; the closing
  * screen shows its "Try again" then.
  */
-export async function finishFirstFeed(userId: string): Promise<FirstFeedResult> {
+export async function finishFirstFeed(userId: string, contentType: ContentType = FIRST_FEED_TYPE): Promise<FirstFeedResult> {
   const t0 = Date.now()
 
   // 1. The last answer usually started a build a moment ago: let it finish
@@ -67,7 +78,7 @@ export async function finishFirstFeed(userId: string): Promise<FirstFeedResult> 
   while (Date.now() - t0 < WAIT_MAX_MS && await precomputeRunning(userId)) await sleep(WAIT_STEP_MS)
 
   // 2. Promote it if it is current (bump + adopt + save, compare-and-set).
-  const promoted = await refreshLiveBatch(userId, FIRST_FEED_TYPE)
+  const promoted = await refreshLiveBatch(userId, contentType)
   if (promoted != null) {
     const ms = Date.now() - t0
     console.log(`[first-feed] adopted the batch built during onboarding as v${promoted} (${ms} ms)`)
@@ -81,7 +92,7 @@ export async function finishFirstFeed(userId: string): Promise<FirstFeedResult> 
   const outcome = await withDNAUpdate(userId, dna => { bumpVersion(dna); bumped = dna; return true })
   if (outcome !== 'saved' || !bumped) throw new Error(`First feed: could not bump the fingerprint (${outcome})`)
   const dna: DNASchema = bumped
-  await generateRecommendations(userId, undefined, { dna, skipCacheRead: true, contentType: FIRST_FEED_TYPE })
+  await generateRecommendations(userId, undefined, { dna, skipCacheRead: true, contentType })
   const ms = Date.now() - t0
   console.log(`[first-feed] generated the first feed as v${dna.metadata.taste_version} (${ms} ms)`)
   return { taste_version: dna.metadata.taste_version, adopted: false, ms }

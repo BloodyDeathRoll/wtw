@@ -151,6 +151,8 @@ export async function precomputeNextBatch(
    * a fresh one for "Find more".
    */
   onParked?: () => Promise<unknown>,
+  /** Passed to the build (generate.ts): the first feed asks for the short plot wait, as someone is waiting on it. */
+  build?: { plotWaitMs?: number },
 ): Promise<void> {
   const redis = getRedis()
   // Only the holder releases the lock. An earlier version deleted it in
@@ -175,7 +177,7 @@ export async function precomputeNextBatch(
       // Read before generating: anything that lands during the build makes the
       // batch older than its hash says, so it is re-checked at adoption.
       const hash = generationInputsHash(dna, await outsideInputsMark(userId))
-      const results = await generateRecommendations(userId, undefined, { dna, precompute: true, contentType })
+      const results = await generateRecommendations(userId, undefined, { dna, precompute: true, contentType, plotWaitMs: build?.plotWaitMs })
       const batch: PendingBatch = { hash, results }
       await redis.set(pendingKey(userId, contentType), batch, { ex: PENDING_TTL_SECONDS })
       let consumed = false

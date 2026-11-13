@@ -23,7 +23,7 @@ vi.mock('@/lib/supabase/service', () => ({
 
 const generateRecommendations = vi.fn(async () => [{ tmdb_id: '900', type: 'movie' } as unknown as RecommendationResult])
 vi.mock('@/modules/engine/pipeline/generate', () => ({
-  generateRecommendations: () => generateRecommendations(),
+  generateRecommendations: (...a: unknown[]) => (generateRecommendations as (...x: unknown[]) => unknown)(...a),
   scheduleExplanationPatch: () => {},
 }))
 
@@ -91,5 +91,15 @@ describe('precomputeNextBatch onParked', () => {
     await precomputeNextBatch('u1', 'movies', async () => { throw new Error('promotion failed') })
     expect(redis.store.has(PENDING)).toBe(true)
     expect(redis.store.has(LOCK)).toBe(false)
+  })
+})
+
+// P2-U5 (#246): the first feed is a precompute someone waits on, so it asks for the short plot wait.
+describe('precomputeNextBatch build options', () => {
+  it('passes plotWaitMs to the build when asked, and leaves it unset otherwise', async () => {
+    await precomputeNextBatch('u1', 'movies', undefined, { plotWaitMs: 400 })
+    expect(generateRecommendations).toHaveBeenLastCalledWith('u1', undefined, expect.objectContaining({ precompute: true, contentType: 'movies', plotWaitMs: 400 }))
+    await precomputeNextBatch('u1', 'movies')
+    expect(generateRecommendations).toHaveBeenLastCalledWith('u1', undefined, expect.objectContaining({ plotWaitMs: undefined }))
   })
 })
