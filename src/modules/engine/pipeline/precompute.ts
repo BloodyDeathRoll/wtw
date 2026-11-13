@@ -49,7 +49,7 @@ const DIRTY_TTL_SECONDS = 120
 // refresh hook took the parked batch for the live feed (it left nothing for
 // "Find more" to adopt; seen 2026-11-13, #240).
 const MAX_RUNS_PER_KICK = 3
-/** No rating for this long = the user paused; build then. 8 s left "Find more" tapped soon after a rating with a one-rating-old batch (2026-11-13). */
+/** No rating for this long = the user paused; build then (INTEGRATION.md, 2026-11-13, for why 4 s). */
 export const QUIET_MS = 4_000
 // The stamp must outlive the wait plus scheduling slop.
 const QUIET_TTL_SECONDS = 30
