@@ -17,13 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
-
-// Mirrors the client's MAX_ENTRIES — the list a device can hold.
-const MAX_ENTRIES = 200;
-// A card plus its Why breakdown is ~1–3KB; this only stops abuse.
-const MAX_JSON_BYTES = 32_000;
-const MAX_ID_LENGTH = 64;
-const RATINGS = new Set(["loved", "liked", "disliked", "removed"]);
+import { MAX_ENTRIES, isId, saveRows, toRow, type WatchlistRow } from "./store";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -33,40 +27,6 @@ interface Row {
   explain: Record<string, unknown> | null;
   rating: string | null;
   added_at: string;
-}
-
-function isId(v: unknown): v is string {
-  return typeof v === "string" && v.length > 0 && v.length <= MAX_ID_LENGTH;
-}
-
-function isSmallObject(v: unknown): v is Record<string, unknown> {
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    !Array.isArray(v) &&
-    JSON.stringify(v).length <= MAX_JSON_BYTES
-  );
-}
-
-/** A client entry → a row, or null when it's malformed. */
-function toRow(userId: string, e: unknown) {
-  if (typeof e !== "object" || e === null) return null;
-  const { rec, explain, rating, added_at } = e as Record<string, unknown>;
-  if (!isSmallObject(rec) || !isId(rec.id)) return null;
-  if (explain != null && !isSmallObject(explain)) return null;
-  if (rating != null && !(typeof rating === "string" && RATINGS.has(rating))) return null;
-  const added =
-    typeof added_at === "number" && Number.isFinite(added_at) ? new Date(added_at) : new Date();
-  if (Number.isNaN(added.getTime())) return null;
-  return {
-    user_id: userId,
-    rec_id: rec.id,
-    rec,
-    explain: explain ?? null,
-    rating: (rating as string | null) ?? null,
-    added_at: added.toISOString(),
-    updated_at: new Date().toISOString(),
-  };
 }
 
 async function readList(supabase: SupabaseClient, userId: string) {
@@ -127,7 +87,7 @@ export async function POST(req: NextRequest) {
   // Malformed changes are skipped and named back, not allowed to fail the
   // batch: the client drops what it's told was rejected and keeps the rest.
   const rejected: string[] = [];
-  const rows: NonNullable<ReturnType<typeof toRow>>[] = [];
+  const rows: WatchlistRow[] = [];
   for (const e of upsertIn) {
     const row = toRow(user.id, e);
     if (row) rows.push(row);
@@ -150,33 +110,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (rows.length > 0) {
-    const { error } = await supabase
-      .from("watchlist_entries")
-      .upsert(rows, { onConflict: "user_id,rec_id" });
-    if (error) {
-      console.error("[watchlist] upsert failed", error.message);
-      return NextResponse.json({ error: "Failed to update watchlist" }, { status: 500 });
-    }
-
-    // Same cap as the client: drop the oldest past MAX_ENTRIES so the table
-    // can't grow without bound. Best-effort — the read below is capped anyway.
-    const { data: overflow } = await supabase
-      .from("watchlist_entries")
-      .select("rec_id")
-      .eq("user_id", user.id)
-      .order("added_at", { ascending: false })
-      .range(MAX_ENTRIES, MAX_ENTRIES * 2);
-    if (overflow && overflow.length > 0) {
-      await supabase
-        .from("watchlist_entries")
-        .delete()
-        .eq("user_id", user.id)
-        .in(
-          "rec_id",
-          overflow.map((r) => r.rec_id as string),
-        );
-    }
+  const saveError = await saveRows(supabase, user.id, rows);
+  if (saveError) {
+    console.error("[watchlist] upsert failed", saveError.message);
+    return NextResponse.json({ error: "Failed to update watchlist" }, { status: 500 });
   }
 
   const { entries, error } = await readList(supabase, user.id);

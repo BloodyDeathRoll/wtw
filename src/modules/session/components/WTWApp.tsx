@@ -34,6 +34,7 @@ import {
   markRemovalsSynced,
   markSynced,
   watchlistCount,
+  CHAT_ADDED,
   hydrateWatchlist,
   WATCHLIST_HYDRATED_EVENT,
 } from "@/lib/watchlist";
@@ -674,6 +675,11 @@ export default function WTWApp({
     // The consultant is asked ad hoc: it opens empty, without the old interview's turns.
     // useChat reads this once, on mount: fine, `chatReady` is the server's and does not change within a page load.
     messages: consultant ? [] : conversation.messages.map((m) => textMessage(m.id, m.role, m.content)),
+    // The consultant can add a title to the watchlist on the server (P3-6). Its reply then starts
+    // with CHAT_ADDED: take the list again, so the Watchlist screen and the cards' buttons show it.
+    onFinish: ({ message, isError }) => {
+      if (consultant && !isError && textOf(message).startsWith(`${CHAT_ADDED} `)) void hydrateWatchlist(user.id);
+    },
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
