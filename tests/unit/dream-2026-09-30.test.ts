@@ -1,30 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from 'vitest'
-import { extractDirectivesFromText } from '@/modules/session/directive-patterns'
 import { matchesRule } from '@/lib/exclusion-rules'
 import { injectStretchPick } from '@/modules/engine/pipeline/step5-stretch-pick'
 import { cowatchCacheKey } from '@/modules/engine/pipeline/step8-cache'
 
 // Regression tests for the Dream review of 2026-09-30, so these fixes are
 // guarded by the repo's own suite and not only by Dream's external proofs.
-
-const said = (t: string) => extractDirectivesFromText(t).map(d => `${d.kind}:${d.name}`)
-
-describe('a contrast clause is never a target ("less X, more Y")', () => {
-  it.each([
-    ['Less romance, more action', ['soft_preference:romance']],
-    ['No horror, but more comedy', ['exclusion:horror']],
-    ['No horror, more comedy and thrillers', ['exclusion:horror']],
-    ['Less romance, more action or westerns', ['soft_preference:romance']],
-    ['Never show me anime, just documentaries and dramas', ['exclusion:anime']],
-  ])('%s', (text, expected) => {
-    expect(said(text)).toEqual(expected)
-  })
-
-  it('still reads several targets before the contrast', () => {
-    expect(said('No horror or westerns, more comedy')).toEqual(['exclusion:horror', 'exclusion:western'])
-  })
-})
 
 describe('sub-genres are keyword rules, not their parent genre', () => {
   const rule = (name: string) => ({ type: 'keyword' as const, id: '', name, raw: '', reason: '' })

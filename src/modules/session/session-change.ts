@@ -20,12 +20,12 @@ import { matchesKeySet, recordKey } from '@/lib/title-key'
  * "Find more" after rating returns false here even though the served rec cache
  * still contains the rated titles. session/end therefore pairs this with a
  * stale-cache check (does the cache still hold a rated title?) before skipping
- * regeneration. `recommendation_made` is included defensively: analyzeSession
- * leaves it null today, but if it's ever populated, skipping the update here
- * would otherwise silently drop the acceptance/stretch-pick history it feeds.
- * `directives` counts too: a session where the user only said "never show me
- * anime" produces no signals, and fast-pathing it would keep serving the warm
- * cache the rule was meant to replace.
+ * regeneration. `recommendation_made` is included defensively: nothing sets
+ * it today, but if it's ever populated, skipping the update here would
+ * otherwise silently drop the acceptance/stretch-pick history it feeds.
+ * `directives` counts too, for the same reason: session/end sends none since
+ * P1-C1 and the code that read them from the chat is deleted (P3-5), but a
+ * summary that carries one must not be fast-pathed past the rule it states.
  */
 export function hasMaterialChange(summary: SessionSummary): boolean {
   return (

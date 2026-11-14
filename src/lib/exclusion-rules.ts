@@ -172,15 +172,6 @@ export function canonicalGenre(name: string): string {
   return n
 }
 
-/**
- * Is this a category word beyond plain genres and keywords? Only anime now.
- * Its one caller, the chat's directive-patterns.ts, is unused since P1-C1 and
- * goes in P3-5.
- */
-export function isKnownCategory(name: string): boolean {
-  return norm(name) === 'anime'
-}
-
 const norm = (s: string) => s.trim().toLowerCase()
 
 /**

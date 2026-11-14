@@ -7,16 +7,14 @@
  *   - `/api/conversation/message` bounds what one chat turn costs. It used to
  *     enforce that by refusing with a 413, which locked users out of their own
  *     conversation once it passed 60 messages.
- *   - `analyzeSession` bounds what one session-end extraction reads. It had no
- *     bound at all, and a 107-message account exceeded the client's 45s
- *     timeout.
+ *   - The session-end extraction (`analyzeSession`, deleted in P3-5) bounded
+ *     what it read. It had no bound at all, and a 107-message account exceeded
+ *     the client's 45s timeout.
  *
- * Both want the same thing, so they share it rather than drifting.
+ * Both wanted the same thing, so they shared it. The chat is the one left.
  *
  * Most-recent is the right end to keep. For the chat, the recent turns are what
- * the next question follows from. For extraction, older turns were already
- * extracted at an earlier session end, and a title the user already has an
- * opinion on is deduped on merge.
+ * the next question follows from.
  *
  * The newest item is ALWAYS kept, however long it is. Checking its size first
  * would let one pasted wall of text return nothing — and nothing is

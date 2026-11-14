@@ -696,6 +696,7 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
   - Test with mocks. Never test on this model.
 - **P3-5 · Delete dead code** — A1 + A3 · S.
   - Delete `analyze-session.ts`, `directive-patterns.ts` and their tests, `update-from-session.ts`, `/api/dna/update-from-session`, and the `temporal_modifiers` readers.
+  - Done 2026-11-14 (#255), with one change: **`src/modules/dna/update-from-session.ts` stays.** It is not dead: `/api/session/end` folds the card ratings into the DNA through it (P1-C1 step 2 kept that), and it already ignores chat-named titles and directives. The route `/api/dna/update-from-session` went in P1-C1, and nothing in the engine reads `temporal_modifiers` any more (only `strip-chat.ts`, which empties them).
 - **P3-6 · Watchlist from chat** — A1 · S–M. Added 2026-11-14 with the Q5 answer (#321).
   - When the person asks for it, the chat adds a title to the watchlist. Never on its own, and never the DNA, the rules or the feed.
   - The title is a catalogue row matched as in P3-3. P3-2's test gets one exception, for the watchlist only.

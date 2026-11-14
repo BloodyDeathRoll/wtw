@@ -4,9 +4,10 @@
  * The standing rules in the user's contextual_logic, and the Taste DNA page's
  * two controls over them.
  *
- * DELETE removes one. Rules are written from conversation (analyze-session →
- * apply-directives), so a misheard instruction has to be undoable somewhere;
- * this is that somewhere.
+ * DELETE removes one. Rules were written from conversation until P1-C1
+ * (analyze-session → apply-directives; analyze-session is deleted, P3-5), so
+ * a misheard instruction had to be undoable somewhere; this is that somewhere.
+ * Since P1-C1 the page's POST below is the only writer.
  *
  * POST adds one by hand (2026-09-20). Until now the only writer was the
  * conversation, and when that path failed — which it did for every user while

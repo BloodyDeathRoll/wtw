@@ -47,12 +47,12 @@ export const MODELS = {
   text: 'openai/gpt-oss-120b',
 
   /** STRUCTURED output (`generateText` + `Output.object`) on the low-volume,
-   *  latency-sensitive paths: engine explanation / co-watch, and session
-   *  transcript analysis (the engine rerank moved to `jev` on 2026-11-05).
+   *  latency-sensitive paths: engine explanation / co-watch (the engine rerank
+   *  moved to `jev` on 2026-11-05; session transcript analysis is deleted, P3-5).
    *  MUST be NON-reasoning — reasoning models (Groq gpt-oss-*, qwen3.6)
    *  spend their budget on a `reasoning` trace and often return empty `content`,
    *  which structured output can't parse. Measured 2026-07-09: gpt-oss-120b fails
-   *  ~1/6 on complex schemas (e.g. analyze-session) and these sites sit in the
+   *  ~1/6 on complex schemas (e.g. the old session analysis) and these sites sit in the
    *  rec pipeline with no try/catch → one failure zeroes out generateRecommendations
    *  → GET keeps serving mocks. Mistral is reliable here. Kept separate from
    *  `text` (which stays on fast Groq for streaming chat). Was

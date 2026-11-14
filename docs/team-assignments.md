@@ -434,7 +434,7 @@ Example: *"You gravitate toward morally complex stories with sharp dialogue and 
 - ~~`POST /api/dna/update-from-session`~~ — deleted 2026-11-11 (P1-C1): nothing called it; `session/end` calls `updateSchemaFromSession()` in-process
 - `POST /api/dna/update-regret` — receives regret signal for a specific watch entry
 - `POST /api/dna/update-stretch-feedback` — receives stretch pick outcome
-- `DELETE /api/dna/rules` — removes one standing rule (the Taste DNA page's Remove control). Rules are WRITTEN from conversation: analyzeSession extracts them, applyDirectives merges them. There was a `POST /api/dna/parse-instruction` here; it was never called by anything, and it wrote person rules with an empty id, so it was deleted 2026-08-29.
+- `DELETE /api/dna/rules` — removes one standing rule (the Taste DNA page's Remove control). Rules were WRITTEN from conversation until P1-C1 (analyzeSession extracted them, applyDirectives merged them); since then only the page's `POST /api/dna/rules` writes one, and `analyze-session.ts` is deleted (P3-5). There was a `POST /api/dna/parse-instruction` here; it was never called by anything, and it wrote person rules with an empty id, so it was deleted 2026-08-29.
 - `GET /api/dna/summary` — returns plain-language summary (cached, invalidated on version bump)
 - `PATCH /api/dna/dimension` — user manually corrects a dimension
 - `DELETE /api/dna/signal` — user flags a signal as wrong
