@@ -92,7 +92,8 @@ const ALL_DAILY = { scope: "chat-day-all", perUser: 20, windowSec: DAY };
 const MAX_MESSAGE_CHARS = 4_000;
 
 // Shown as the chat's own reply: the client shows every failed request as "Couldn't reach the model".
-const TOO_LONG = "That message is too long for me. Please keep it under 4,000 characters and send it again.";
+// OVER_USER and OVER_ALL say "daily" and "within a day": they go with DAY.
+const TOO_LONG = `That message is too long for me. Please keep it under ${MAX_MESSAGE_CHARS.toLocaleString("en-US")} characters and send it again.`;
 const OVER_USER = "That's all the questions I can take from you for now: the chat has a daily limit. It opens again within a day. Your recommendations are on the home screen as always.";
 const OVER_ALL = "The chat has reached its daily limit for everyone. It opens again within a day. Your recommendations are on the home screen as always.";
 
