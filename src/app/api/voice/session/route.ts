@@ -60,7 +60,8 @@ const ALLOWED_VOICES = [
 const DEFAULT_VOICE = "Aoede";
 
 export async function POST(req: Request) {
-  if (chatMode() === "off") return NextResponse.json({ error: "chat is off" }, { status: 404 });
+  // Voice is the old interviewing chat. The consultant (CHAT_MODE=consultant) is typed only.
+  if (chatMode() !== "legacy") return NextResponse.json({ error: "chat is off" }, { status: 404 });
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
   if (!user) {

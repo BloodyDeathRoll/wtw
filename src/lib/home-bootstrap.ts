@@ -21,6 +21,8 @@ import {
 import { countUserSignals } from "@/lib/welcome";
 import { isMissingTable, loadPlay, type SavedPlay } from "@/app/play/lib/server";
 import type { PlayState } from "@/app/play/lib/brain";
+import { chatMode } from "@/lib/flags";
+import { needsOnboarding } from "@/lib/onboarding-route";
 
 export interface HomeBootstrap {
   /** The open conversation, or null when there is none — `openConversation`
@@ -100,4 +102,22 @@ async function fallback(supabase: SupabaseClient, userId: string): Promise<HomeB
     loadPlay(supabase, userId),
   ]);
   return { conversation, nextSessionNumber: 0, signals, play };
+}
+
+/**
+ * Q5: may this person open the consultant chat? The home page's rule, for the
+ * screens that don't load the whole bootstrap (search, My taste). Nothing is
+ * read unless the chat is on, and a failed read keeps the chat out of the menu.
+ */
+export async function loadChatReady(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  if (chatMode() !== "consultant") return false;
+  try {
+    const { state } = await loadPlay(supabase, userId);
+    // Done: one small read. Only an account that never did the onboarding has its signals counted (DEC-8).
+    // The `done_at` test repeats the first line of `needsOnboarding`, to skip that count: keep the two in step.
+    return !!state?.onboarding?.done_at || !needsOnboarding(state, await countUserSignals(supabase, userId));
+  } catch (err) {
+    console.warn("[chat] loadChatReady failed:", err instanceof Error ? err.message : err);
+    return false;
+  }
 }

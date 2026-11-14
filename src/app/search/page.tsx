@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import AppShell from "@/modules/session/components/AppShell";
+import { loadChatReady } from "@/lib/home-bootstrap";
 import SearchView from "./SearchView";
 
 export const metadata = { title: "Search — WTW" };
@@ -24,11 +25,15 @@ export default async function SearchPage() {
     avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
   };
 
+  // Nothing else is read here to put it beside. With the chat off it reads nothing; with it on, one small
+  // `play_state` read (and a signal count for an account that never did the onboarding).
+  const chatReady = await loadChatReady(supabase, user.id);
+
   return (
     <AppShell>
       {/* SearchView reads ?t= (the open card) with useSearchParams. */}
       <Suspense>
-        <SearchView user={appUser} />
+        <SearchView user={appUser} chatReady={chatReady} />
       </Suspense>
     </AppShell>
   );

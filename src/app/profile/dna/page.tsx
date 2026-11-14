@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadDNA } from '@/modules/dna/lib/load-save'
+import { loadChatReady } from '@/lib/home-bootstrap'
 import AppShell from '@/modules/session/components/AppShell'
 import { DnaHeader } from './DnaHeader'
 import { DnaFrame } from './DnaFrame'
@@ -29,6 +30,9 @@ export default async function TastePageRoute() {
     avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
   }
 
+  // Beside the taste page's own reads, not after them. It never rejects (a failed read is `false`),
+  // so nothing is left unhandled if this page throws before the header awaits it.
+  const chatReady = loadChatReady(supabase, user.id)
   let data: TastePageData | null = null
   try {
     data = await loadTastePage(await loadDNA(user.id), user.id)
@@ -43,7 +47,7 @@ export default async function TastePageRoute() {
   return (
     <AppShell>
       <main className={styles.page}>
-        <DnaFrame header={<DnaHeader user={appUser} subtitle={subtitle} title="My taste" />}>
+        <DnaFrame header={<DnaHeader user={appUser} subtitle={subtitle} title="My taste" chatReady={await chatReady} />}>
           <div className={styles.container}>
             {data ? <TastePage data={data} /> : <p className={styles.note}>Couldn’t load your taste right now. Try again in a moment.</p>}
           </div>
