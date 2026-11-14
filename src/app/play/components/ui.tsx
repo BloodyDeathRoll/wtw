@@ -105,7 +105,7 @@ export const Icon = {
 /** Same key WTWApp keeps the Gemini Live voice under. */
 const VOICE_KEY = 'wtw:voice'
 const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'ratings', 'profile', 'chat', 'voice']
-const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile', 'chat']
+const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile']
 
 /**
  * The app's header on every games screen (2026-10-20): Skip or back on the

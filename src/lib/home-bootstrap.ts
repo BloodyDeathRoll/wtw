@@ -114,6 +114,7 @@ export async function loadChatReady(supabase: SupabaseClient, userId: string): P
   try {
     const { state } = await loadPlay(supabase, userId);
     // Done: one small read. Only an account that never did the onboarding has its signals counted (DEC-8).
+    // The `done_at` test repeats the first line of `needsOnboarding`, to skip that count: keep the two in step.
     return !!state?.onboarding?.done_at || !needsOnboarding(state, await countUserSignals(supabase, userId));
   } catch (err) {
     console.warn("[chat] loadChatReady failed:", err instanceof Error ? err.message : err);
