@@ -26,6 +26,14 @@ import type { ExplainData } from "@/lib/explain-cache"
 
 const STORAGE_KEY = "wtw_watchlist"
 
+/**
+ * The first word of the consultant chat's reply when it saved a title on the
+ * server (docs/plan/PLAN.md P3-6): "Added Heat (film, 1995) to your
+ * watchlist." The chat writes it and the home screen reads it, to take the
+ * list again.
+ */
+export const CHAT_ADDED = "Added"
+
 // Storage backstop, not a product limit. localStorage caps at ~5MB and an entry
 // is ~1KB, so this is nowhere near the ceiling — it just stops an unbounded list
 // from ever getting there. /api/watchlist applies the same cap.

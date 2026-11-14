@@ -207,6 +207,20 @@ describe('the answer to the chat\'s own question about an ask', () => {
   })
 })
 
+describe('a first draft that fails the check', () => {
+  // "Al Mann" is in nobody's credits, so the first draft is sent back.
+  const BAD = 'It was directed by Al Mann.\nADD: *Heat*'
+
+  it('keeps its ADD line when the second try leaves it out', async () => {
+    expect(await turn(['add Heat to my watchlist'], BAD, 'A tense one.')).toBe('Added Heat (film, 1995) to your watchlist. A tense one.')
+  })
+
+  it('adds nothing when the second try asks the person which title they mean', async () => {
+    expect(await turn(['add Heat to my watchlist'], BAD, 'Which one do you mean?')).toBe('Which one do you mean?')
+    expect(db.writes).toEqual([])
+  })
+})
+
 describe('a title the person did not ask to add', () => {
   it('is not saved because the model decided to', async () => {
     const shown = await turn(['I loved Heat. What is like it?'], 'Try *Parasite*.\nADD: *Parasite*')
@@ -245,6 +259,16 @@ describe('asksToSave', () => {
     // An ask that was answered, not questioned, is over.
     expect(asksToSave('and Parasite?', 'Added Heat (film, 1995) to your watchlist.', 'add Heat to my watchlist')).toBe(false)
   })
+
+  it('no after an ask that was carried out, even when the reply went on to a question', () => {
+    expect(asksToSave('I loved Parasite, what is like it?', 'Added Heat (film, 1995) to your watchlist. Anything else?', 'add Heat to my watchlist')).toBe(false)
+    expect(asksToSave('what is like it?', 'Heat (film, 1995) is already on your watchlist. Want something like it?', 'add Heat to my watchlist')).toBe(false)
+  })
+
+  it('yes when one title was added and another is still asked about', () => {
+    const reply = `Added Heat (film, 1995) to your watchlist. ${WHICH_ONE} "Dune": Dune (film, 2021) and Dune (film, 1984). Which one should I add?`
+    expect(asksToSave('the newer one', reply, 'add Heat and Dune to my watchlist')).toBe(true)
+  })
 })
 
 describe('splitAdds', () => {
@@ -263,6 +287,11 @@ describe('splitAdds', () => {
     expect(splitAdds('ADD: *Heat*; *heat*; *A*; *B*; *C*').wanted.map(w => w.name)).toEqual(['Heat', 'A', 'B'])
   })
 
+  it('reads ADD in capitals only: "Add:" is the model\'s own prose', () => {
+    expect(splitAdds('You could add: *Heat*.').wanted).toEqual([])
+    expect(splitAdds('Add: *Heat*').wanted).toEqual([])
+  })
+
   it('leaves a reply without the line as it is', () => {
     expect(splitAdds('Try *Heat*. Add it to your evening.')).toEqual({ text: 'Try *Heat*. Add it to your evening.', wanted: [] })
   })
@@ -270,10 +299,11 @@ describe('splitAdds', () => {
 
 describe('dropSaveClaims', () => {
   it.each([
-    "I've added it to your watchlist.", 'I have saved Heat for you.', "I'll add it now.", 'Heat has been added.', 'It is now on your watchlist.', 'Done, added Heat to your watchlist.', 'I’ve put it on your list.',
+    "I've added it to your watchlist.", 'I have saved Heat for you.', "I'll add it now.", 'Heat has been added.', 'It is now on your watchlist.', 'Done, added Heat to your watchlist.', 'I’ve put it on your list.', "It's been saved.",
   ])('drops: %s', (claim) => expect(dropSaveClaims(`${claim} Try Parasite.`)).toBe('Try Parasite.'))
 
   it.each([
     "I can't remove a title from this chat.", 'Arrival is on your watchlist, and it fits tonight.', 'It adds a slow dread to the heist.', "I'd watch Heat first.",
+    'I put this ahead of the sequel.', 'The ending is saved for the last act.', "I'll save the spoilers.",
   ])('keeps: %s', (line) => expect(dropSaveClaims(line)).toBe(line))
 })

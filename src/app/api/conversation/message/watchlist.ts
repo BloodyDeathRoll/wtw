@@ -18,6 +18,7 @@
 import { loadSharedTitle } from "@/app/t/[key]/data";
 import { saveRows, toRow } from "@/app/api/watchlist/store";
 import { titleKey } from "@/lib/title-key";
+import { CHAT_ADDED } from "@/lib/watchlist";
 import type { createClient } from "@/lib/supabase/server";
 import { normTitle, type Resolution } from "./grounding";
 
@@ -29,6 +30,8 @@ const MAX_OPTIONS = 4;
 
 /** The start of our own "which one?" line. */
 export const WHICH_ONE = "There is more than one";
+/** How our line about a title that was there already ends. */
+const ALREADY = "is already on your watchlist.";
 
 const ASK = /\b(?:add|save|bookmark|queue)\b|\bput\b[^.?!]*\b(?:watch\s?list|list|queue)\b|\bto (?:my|the) (?:watch\s?list|list)\b/i;
 
@@ -36,10 +39,14 @@ const ASK = /\b(?:add|save|bookmark|queue)\b|\bput\b[^.?!]*\b(?:watch\s?list|lis
  * Did the person ask for a save? In their latest message; or in the one before
  * it, when the chat answered that with a question ("which one?", ours or the
  * model's) and this is their answer. `lastReply` is the chat's message between
- * the two.
+ * the two. An ask the chat already carried out is over: "Added Heat… Anything
+ * else?" does not make the next message an ask.
  */
 export function asksToSave(lastUser: string, lastReply = "", userBefore = ""): boolean {
-  return ASK.test(lastUser) || (lastReply.trim().endsWith("?") && ASK.test(userBefore));
+  if (ASK.test(lastUser)) return true;
+  const reply = lastReply.trim();
+  const open = reply.includes(WHICH_ONE) || (reply.endsWith("?") && !reply.startsWith(`${CHAT_ADDED} `) && !reply.includes(ALREADY));
+  return open && ASK.test(userBefore);
 }
 
 export interface Wanted {
@@ -48,7 +55,8 @@ export interface Wanted {
   year: number | null;
 }
 
-// The model is asked for a last line of its own, and often writes it at the end of its last sentence instead.
+// The model is asked for a last line of its own, and often writes it at the
+// end of its last sentence instead. Capitals only: "add: Heat" is the model's prose.
 const ADD_LINE = /(?:^|(?<=\s))ADD:[ \t]*([^\n]*)/g;
 
 /** A draft, split into what is shown and the titles its `ADD:` line asks for. */
@@ -64,12 +72,24 @@ export function splitAdds(draft: string): { text: string; wanted: Wanted[] } {
   return { text, wanted: wanted.slice(0, MAX_ADDS) };
 }
 
-// The model is told not to say a title was saved: the app says it. A sentence that says so anyway is dropped.
-const SAVE_CLAIM = /\bI(?:'ve| have|'ll| will)?\s+(?:just |now |already |also )?(?:add(?:ed)?|sav(?:e|ed)|put)\b|\b(?:has|have|was|were|is|are|been) (?:now )?(?:added|saved)\b|\b(?:is|are) now on your (?:watch\s?list|list)\b|\b(?:added|saved) (?:\S+ ){0,6}to your (?:watch\s?list|list)\b/i;
+// The model is told not to say a title was saved: the app says it. A sentence
+// that says so anyway is dropped, on every turn: a claim nobody asked for is
+// as false as one that was. Kept narrow, so "I put this ahead of the sequel"
+// and "the ending is saved for the last act" stay.
+const SAVE_CLAIMS = [
+  /\bI(?:'ve| have)?\s+(?:just |now |already |also )?(?:added|saved)\b/i, // "I've added it", "I saved Heat"
+  /\bI(?:'ll| will)\s+(?:add|save|put)\s+(?:it|that|them|this|those|both)\b/i, // "I'll add it now"
+  /\bbeen (?:added|saved)\b/i,
+  /\bnow on your (?:watch\s?list|list)\b/i,
+];
+const THE_LIST = /\b(?:watch\s?list|your list)\b/i;
+// Only in a sentence about the list: "Done, added Heat to your watchlist", "I've put it on your list".
+const SAVING = /\b(?:added|saved|adding|saving)\b|\bI(?:'ve| have|'ll| will)?\s+(?:just |now )?(?:add|put)\b/i;
 
 /** The reply's sentences without any that say a title was, or will be, saved. */
 export function dropSaveClaims(text: string): string {
-  return text.split(/(?<=[.!?])\s+/).filter((s) => s && !SAVE_CLAIM.test(s.replace(/’/g, "'"))).join(" ");
+  const claims = (s: string) => SAVE_CLAIMS.some((re) => re.test(s)) || (THE_LIST.test(s) && SAVING.test(s));
+  return text.split(/(?<=[.!?])\s+/).filter((s) => s && !claims(s.replace(/’/g, "'"))).join(" ");
 }
 
 export interface Added {
@@ -159,13 +179,13 @@ export async function addTitles(wanted: Wanted[], resolution: Resolution, add: (
       const done = await add(keys[0]);
       const label = done.label || quoted(w.name);
       if (done.status === "saved") saved.push(label);
-      else if (done.status === "already") lines.push(`${label} is already on your watchlist.`);
+      else if (done.status === "already") lines.push(`${label} ${ALREADY}`);
       else {
         allThere = false;
         lines.push(`I couldn't add ${label} just now. You can add it from Search.`);
       }
     }
   }
-  if (saved.length) lines.unshift(`Added ${listed(saved)} to your watchlist.`);
+  if (saved.length) lines.unshift(`${CHAT_ADDED} ${listed(saved)} to your watchlist.`);
   return { said: lines.join(" "), allThere };
 }

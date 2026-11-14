@@ -11,8 +11,9 @@
  *      those facts: "Tom Hanks" is not known because a Tom and a Hanks are.
  *
  * A sentence that fails either is dropped. This file only reads (the folder's
- * one write is watchlist.ts, P3-6). The approach (and the capitalised-name scan) follows the "Why it's a
- * match" fact-check in src/modules/engine/why/write-why.ts.
+ * one write is watchlist.ts, P3-6). The approach (and the capitalised-name
+ * scan) follows the "Why it's a match" fact-check in
+ * src/modules/engine/why/write-why.ts.
  */
 
 import { createServiceClient } from "@/lib/supabase/service";

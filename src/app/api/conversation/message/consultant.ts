@@ -1,8 +1,9 @@
 /**
  * The consultant chat's prompt and its checked reply (docs/plan/PLAN.md P3-2,
  * P3-3), and the one thing it may do besides answer: add a title to the
- * watchlist when the person asks (P3-6, watchlist.ts). The route calls `consultantAnswer` with CHAT_MODE=consultant, and
- * hands it the model call: the route is the chat's one listed model call site
+ * watchlist when the person asks (P3-6, watchlist.ts). The route calls
+ * `consultantAnswer` with CHAT_MODE=consultant, and hands it the model call:
+ * the route is the chat's one listed model call site
  * (tests/unit/groq-text-options.test.ts).
  */
 
@@ -86,7 +87,7 @@ async function checkedDraft(
     const retry = await write(
       `\n\nYOUR FIRST DRAFT CANNOT BE SHOWN. It was: "${draft}"\nWhat was wrong with it:\n${first.problems.map((p) => `- ${p}`).join("\n")}` +
       (facts ? `\nOur records for the titles you named:\n${facts}` : "") +
-      `\nWrite the answer again. For years, running times and people use only these records. Name no title that is not in our catalogue; if the user asked about one, say you don't have it, without naming it.`,
+      `\nWrite the answer again. For years, running times and people use only these records. Name no title that is not in our catalogue; if the user asked about one, say you don't have it, without naming it. If your first draft had an ADD line and it still holds, end with it again.`,
     );
     second = await check(retry);
   } catch (e) {
@@ -95,6 +96,8 @@ async function checkedDraft(
     return first;
   }
   if (second.problems.length) console.log(`[conversation] consultant retry still failed (${second.problems.length}): ${second.problems.join("; ").slice(0, 300)}`);
-  // The second try is told to write the whole answer again, its ADD line included; a first draft's is kept when it left it out.
-  return { kept: second.kept || first.kept, wanted: second.wanted.length ? second.wanted : first.wanted };
+  // The second try is told to end with its ADD line again. When it left the line out, the first draft's
+  // stands, unless the second try now asks the person something ("which one?"): then nothing is added.
+  const asksBack = second.kept.trim().endsWith("?");
+  return { kept: second.kept || first.kept, wanted: second.wanted.length || asksBack ? second.wanted : first.wanted };
 }
