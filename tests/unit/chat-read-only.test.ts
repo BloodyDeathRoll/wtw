@@ -130,7 +130,14 @@ beforeEach(() => {
   store.dna = dna
   store.saves = 0
   prompts = []
-  Object.assign(db, { rows: [{ rec: { id: 'movie:329865', title: 'Arrival', type: 'movie', year: 2016 } }], calls: [], writes: [], fail: false })
+  Object.assign(db, {
+    rows: [
+      { rec_id: 'movie:329865', rec: { id: 'movie:329865', title: 'Arrival', type: 'movie', year: 2016 } },
+      // Saved, then rated on a feed card: the watchlist row still has no rating.
+      { rec_id: 'movie:807', rec: { id: 'movie:807', title: 'Seven', type: 'movie', year: 1995 } },
+    ],
+    calls: [], writes: [], fail: false,
+  })
   Object.assign(cache, {
     lists: {
       // The same list the feed reads: this user's batch at their taste_version.
@@ -149,7 +156,7 @@ describe('a consultant turn', () => {
     const res = await ask('what should I watch tonight?')
     expect(res.status).toBe(200)
     expect(shown()).toContain('film and TV consultant')
-    expect(shown()).toContain('IN THEIR RECOMMENDATIONS NOW (best match first): Heat (film); Dark (series).')
+    expect(shown()).toContain('IN THEIR RECOMMENDATIONS NOW: Heat (film); Dark (series).')
     expect(shown()).toContain('ON THEIR WATCHLIST (newest first): Arrival (film, 2016).')
     // Only saves still to watch, and only this user's.
     expect(db.calls).toContain('watchlist_entries.is("rating",null)')
