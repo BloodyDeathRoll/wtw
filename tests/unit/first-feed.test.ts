@@ -12,6 +12,19 @@ const io = vi.hoisted(() => ({
   generated: [] as { dna: DNASchema; contentType: string }[],
   kicked: [] as string[],
   version: 7,
+  redis: [] as string[],    // first_feed:timings, newest first
+  redisDown: false,
+}))
+
+vi.mock('@/lib/redis', () => ({
+  getRedis: () => {
+    if (io.redisDown) throw new Error('Upstash Redis env vars are not set')
+    return {
+      lpush: async (_k: string, v: string) => { io.redis.unshift(v) },
+      ltrim: async (_k: string, a: number, b: number) => { io.redis = io.redis.slice(a, b + 1) },
+      lrange: async (_k: string, a: number, b: number) => io.redis.slice(a, b + 1),
+    }
+  },
 }))
 
 vi.mock('@/modules/engine/pipeline/precompute', () => ({
@@ -37,7 +50,7 @@ vi.mock('@/modules/engine/pipeline/generate', () => ({
   },
 }))
 
-const { kickFirstFeed, finishFirstFeed } = await import('@/modules/engine/first-feed')
+const { kickFirstFeed, finishFirstFeed, firstFeedTimings } = await import('@/modules/engine/first-feed')
 
 beforeEach(() => {
   io.runningPolls = 0
@@ -45,6 +58,8 @@ beforeEach(() => {
   io.bumpOutcome = 'saved'
   io.generated = []
   io.kicked = []
+  io.redis = []
+  io.redisDown = false
   vi.spyOn(console, 'log').mockImplementation(() => {})
 })
 
@@ -90,5 +105,49 @@ describe('finishFirstFeed', () => {
     io.bumpOutcome = 'conflict'
     await expect(finishFirstFeed('u1')).rejects.toThrow(/could not bump/)
     expect(io.generated).toHaveLength(0)
+  })
+})
+
+// #246: Vercel keeps runtime logs an hour, so the timing is also kept in Redis.
+describe('first-feed timings', () => {
+  const settle = () => new Promise(r => setTimeout(r, 0))
+
+  it('records each finish: total, the wait for a running build, adopted; no user id', async () => {
+    io.runningPolls = 2
+    io.promoted = 8
+    const r = await finishFirstFeed('u1')
+    await settle()
+    const [t] = await firstFeedTimings()
+    expect(t).toMatchObject({ ms: r.ms, adopted: true })
+    expect(t.waited_ms).toBeGreaterThanOrEqual(2 * 150 - 20)
+    expect(t.waited_ms).toBeLessThanOrEqual(t.ms)
+    expect(io.redis[0]).not.toContain('u1')
+  })
+
+  it('records a failed finish too, with its error, and still throws', async () => {
+    io.bumpOutcome = 'conflict'
+    await expect(finishFirstFeed('u1')).rejects.toThrow(/could not bump/)
+    await settle()
+    const [t] = await firstFeedTimings()
+    expect(t).toMatchObject({ adopted: false, error: expect.stringMatching(/could not bump/) })
+  })
+
+  it('keeps the last 50, newest first, and skips a corrupt row', async () => {
+    io.promoted = 8
+    for (let i = 0; i < 52; i++) await finishFirstFeed('u1')
+    await settle()
+    expect(io.redis).toHaveLength(50)
+    io.redis.splice(1, 0, '{not json')
+    const ts = await firstFeedTimings()
+    expect(ts).toHaveLength(49)            // 50 read, the corrupt one skipped
+    expect(ts.every(t => t.adopted)).toBe(true)
+  })
+
+  it('Redis down: the first feed still works', async () => {
+    io.redisDown = true
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    io.promoted = 8
+    await expect(finishFirstFeed('u1')).resolves.toMatchObject({ adopted: true })
+    await settle()
   })
 })
