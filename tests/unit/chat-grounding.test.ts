@@ -204,6 +204,20 @@ describe('what a reply may say', () => {
     expect((await check('*Heat* has Pacino and De Niro at their best.')).problems).toEqual([])
   })
 
+  it('reads a name at the start of a sentence too', async () => {
+    expect((await check('Spielberg directed *Heat*.')).problems).toEqual(['it mentions "Spielberg", which is not in our facts'])
+    expect((await check('*Heat* is tense. Al Mann directed it.')).kept).toBe('Heat is tense.')
+    expect((await check('*Heat* Spielberg is great.')).kept).toBe('')
+    expect((await check('*Heat* is tense. Spielberg\'s direction is tight.')).kept).toBe('Heat is tense.')
+    // An everyday first word is not a name, and a real name there is fine.
+    expect((await check('Since Pacino leads *Heat*, start there. Michael Mann directed it. Honestly, it holds up.')).problems).toEqual([])
+  })
+
+  it('reads names in a list one by one', async () => {
+    expect((await check('*Heat* has Pacino, De Niro and a great crew.')).problems).toEqual([])
+    expect((await check('*Heat* has Pacino, Spielberg and a great crew.')).kept).toBe('')
+  })
+
   it('matches whole words: part of a word of ours is not a name', async () => {
     // "Ang" is inside "Angeles", "Rob" inside "Robert".
     expect((await check('*Heat* is pure Ang.')).kept).toBe('')
@@ -286,6 +300,8 @@ describe('a consultant turn', () => {
     model.replies = ['*Zardoz* is your film.', '*Zardoz* is your film. *Heat* is close to it.']
     const errors = vi.spyOn(console, 'log').mockImplementation(() => {})
     expect((await ask('weird sci-fi?')).text).toBe('Heat is close to it.')
+    // Named in both drafts, searched once.
+    expect(tmdb.asked.filter(q => q === 'Zardoz')).toHaveLength(1)
     errors.mockRestore()
   })
 

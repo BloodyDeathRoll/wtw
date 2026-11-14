@@ -56,16 +56,18 @@ export interface Resolution {
   rows: TitleRow[];
 }
 
-export async function resolveTitles(names: string[], known: KnownTitles): Promise<Resolution> {
+/** `searched` carries a turn's search results from the first draft to the second try. */
+export async function resolveTitles(names: string[], known: KnownTitles, searched = new Map<string, string[]>()): Promise<Resolution> {
   const keysByName = new Map<string, string[]>();
   await Promise.all(names.slice(0, MAX_TITLES).map(async (name) => {
     const n = normTitle(name);
-    const mine = known.get(n);
+    const mine = known.get(n) ?? searched.get(n);
     if (mine) return void keysByName.set(n, mine);
     try {
       const hits = await searchTitles(name.slice(0, 100), SEARCH_HITS);
       // The model's wording must be the title's own: "the one with the heist" finds something, and proves nothing.
-      keysByName.set(n, hits.filter((h) => normTitle(h.title) === n).map((h) => titleKey(h.type, h.tmdb_id)));
+      searched.set(n, hits.filter((h) => normTitle(h.title) === n).map((h) => titleKey(h.type, h.tmdb_id)));
+      keysByName.set(n, searched.get(n)!);
     } catch (e) {
       console.error("[conversation] title search failed", e instanceof Error ? e.message : e);
       keysByName.set(n, []);
@@ -205,6 +207,10 @@ function knownName(name: string, facts: Facts): boolean {
   return true;
 }
 
+/** Everyday words that take a "'s" or a credit verb at the start of a sentence: "It's", "She plays". */
+const SUBJECTS = new Set("it that this there here what let he she who they we you i everyone everybody nobody someone anyone one both each all tonight today nothing something".split(" "));
+const CREDIT_VERB = /^(directed|directs|stars|starred|co-stars|wrote|writes|plays|played|leads|shot|scored|produced|helmed)$/i;
+
 const JOINER = /^(of|the|in|on|a|de|la|von|van)$/;
 const HOUR_WORDS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 /** What a small number counts when it is a claim about a title. */
@@ -219,7 +225,8 @@ function sentenceProblems(sentence: string, resolved: ReadonlySet<string>, facts
     if (!resolved.has(normTitle(t))) problems.push(`*${t}* is not a title in our catalogue`);
   }
   if ((sentence.match(/\*/g) ?? []).length % 2 === 1) problems.push("it has an unpaired asterisk");
-  const plain = sentence.replace(/\*[^*\n]+\*/g, " ");
+  // "§" stands where a title was: it ends a run of names, and a word after it is not the sentence's first.
+  const plain = sentence.replace(/\*[^*\n]+\*/g, " § ");
 
   // A number of two digits or more, or any number of hours, episodes or seasons, has to be ours.
   // (A lone small number is usually a count of the chat's own: "2 picks".)
@@ -236,8 +243,17 @@ function sentenceProblems(sentence: string, resolved: ReadonlySet<string>, facts
   }
 
   // Names and places: any capitalised word, or run of them, must be in the
-  // facts. A sentence's first word is capitalised anyway and is not checked alone.
-  const tokens = plain.match(/[A-Za-zÀ-ÿ'’.-]+/g) ?? [];
+  // facts. Punctuation ends a run: "Pacino, De Niro" is two names.
+  const tokens = plain.match(/[A-Za-zÀ-ÿ'’.-]+|[^\sA-Za-zÀ-ÿ'’.-]/g) ?? [];
+  // A sentence's first word is capitalised whatever it is. It is read as a name
+  // when our facts have it only inside a name ("Al Mann directed it"), or when
+  // they don't have it and it is credited with something ("Spielberg directed it").
+  const firstIsName = (tok: string) => {
+    const w = wordsOf(tok)[0] ?? "";
+    if (SUBJECTS.has(w)) return false;
+    if (facts.words.has(w)) return !facts.alone.has(w);
+    return /['’]s$/i.test(tok) || CREDIT_VERB.test(tokens[1] ?? "");
+  };
   let run: string[] = [];
   const flush = () => {
     if (run.length) {
@@ -248,7 +264,7 @@ function sentenceProblems(sentence: string, resolved: ReadonlySet<string>, facts
   };
   tokens.forEach((tok, i) => {
     if (/^I(['’](d|ll|m|ve))?$/.test(tok)) flush();
-    else if (/^[A-ZÀ-Ý]/.test(tok) && i > 0) run.push(tok);
+    else if (/^[A-ZÀ-Ý]/.test(tok) && (i > 0 || firstIsName(tok))) run.push(tok);
     else if (run.length && JOINER.test(tok) && /^[A-ZÀ-Ý]/.test(tokens[i + 1] ?? "")) run.push(tok);
     else flush();
   });
