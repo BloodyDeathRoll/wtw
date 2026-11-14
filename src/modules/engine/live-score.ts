@@ -87,3 +87,46 @@ export function userLiveScores(served: ServedRow[], reactions: ReactionRow[], mi
   }
   return out.sort((a, b) => a.formula.localeCompare(b.formula))
 }
+
+export interface ServedShares {
+  formula: Exclude<ServedFormula, 'cold'>
+  /** Scored cards of this formula first served in the window. */
+  served: number
+  loved: number
+  liked: number
+  disliked: number
+  /**
+   * Served, never rated. The feed records no skip (people scroll past), so
+   * this is everything else: a title not wanted, a forgotten dislike, or a
+   * card the user never scrolled down to. Read it as an upper bound.
+   */
+  unknown: number
+}
+
+/**
+ * Shares of everything served (Shahar, #240, 2026-11-14): the concordance
+ * above only sees rated cards, so it can't tell a feed people rate from a feed
+ * they scroll past. Per formula, the scored cards first served since `since`,
+ * split by the reaction they got after being served (the latest one), else
+ * `unknown`. Cold-start and unscored cards are left out, as above.
+ */
+export function servedShares(served: ServedRow[], reactions: ReactionRow[], since: string): ServedShares[] {
+  const latest = new Map<string, ReactionRow>()
+  for (const r of reactions) {
+    const prev = latest.get(r.key)
+    if (!prev || r.at > prev.at) latest.set(r.key, r)
+  }
+  const from = Date.parse(since)
+  const by = new Map<'v1' | 'v2', ServedShares>()
+  for (const s of served) {
+    if (s.score == null || (s.formula !== 'v1' && s.formula !== 'v2')) continue
+    if (Date.parse(s.first_served_at) < from) continue
+    const row = by.get(s.formula) ?? { formula: s.formula, served: 0, loved: 0, liked: 0, disliked: 0, unknown: 0 }
+    row.served++
+    const r = latest.get(s.key)
+    if (r && Date.parse(r.at) >= Date.parse(s.first_served_at)) row[r.level]++
+    else row.unknown++
+    by.set(s.formula, row)
+  }
+  return [...by.values()].sort((a, b) => a.formula.localeCompare(b.formula))
+}
