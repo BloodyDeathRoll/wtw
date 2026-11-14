@@ -43,24 +43,27 @@ describe('the chat folder', () => {
 // ── 2. A consultant turn: what the model is shown, and that nothing is written ──
 const store = vi.hoisted(() => ({ dna: null as unknown, saves: 0 }))
 const db = vi.hoisted(() => ({ rows: [] as unknown[], calls: [] as string[], writes: [] as string[], fail: false }))
+// One recording client for the person's own tables and for the catalogue (the service client).
+const client = vi.hoisted(() => () => ({
+  from(table: string) {
+    const q: Record<string, unknown> = {}
+    for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit']) {
+      q[m] = (...args: unknown[]) => { db.calls.push(`${table}.${m}(${args.map(a => JSON.stringify(a)).join(',')})`); return q }
+    }
+    for (const m of ['insert', 'update', 'upsert', 'delete']) q[m] = () => { db.writes.push(`${table}.${m}`); return q }
+    q.then = (done: (v: unknown) => unknown) =>
+      Promise.resolve(db.fail ? { data: null, error: { message: 'db down' } } : { data: table === 'titles' ? [] : db.rows, error: null }).then(done)
+    return q
+  },
+  rpc: (name: string) => { db.writes.push(`rpc ${name}`) },
+}))
 const cache = vi.hoisted(() => ({ lists: {} as Record<string, unknown>, writes: [] as string[], fail: false }))
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({
-    auth: { getClaims: async () => ({ data: { claims: { sub: 'u1' } }, error: null }) },
-    from(table: string) {
-      const q: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'is', 'order', 'limit']) {
-        q[m] = (...args: unknown[]) => { db.calls.push(`${table}.${m}(${args.map(a => JSON.stringify(a)).join(',')})`); return q }
-      }
-      for (const m of ['insert', 'update', 'upsert', 'delete']) q[m] = () => { db.writes.push(`${table}.${m}`); return q }
-      q.then = (done: (v: unknown) => unknown) =>
-        Promise.resolve(db.fail ? { data: null, error: { message: 'db down' } } : { data: db.rows, error: null }).then(done)
-      return q
-    },
-    rpc: (name: string) => { db.writes.push(`rpc ${name}`) },
-  }),
+  createClient: async () => ({ auth: { getClaims: async () => ({ data: { claims: { sub: 'u1' } }, error: null }) }, ...client() }),
 }))
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => client() }))
+vi.mock('@/lib/tmdb', () => ({ searchTitles: async () => [] }))
 vi.mock('@/lib/redis', () => ({
   getRedis: () => new Proxy({}, {
     get: (_t, method: string) => method === 'get'
@@ -78,7 +81,16 @@ vi.mock('@/modules/dna/lib/load-save', async (orig) => ({
 }))
 
 let prompts: unknown[] = []
+const usage = {
+  inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
+  outputTokens: { total: 1, text: 1, reasoning: undefined },
+}
 const model = new MockLanguageModelV4({
+  // The consultant's reply is written whole and checked before it is sent (P3-3).
+  doGenerate: async (options) => {
+    prompts.push(options.prompt)
+    return { content: [{ type: 'text', text: 'Try *Heat*.' }], finishReason: { unified: 'stop', raw: undefined }, usage, warnings: [] }
+  },
   doStream: async (options) => {
     prompts.push(options.prompt)
     return {
@@ -87,14 +99,7 @@ const model = new MockLanguageModelV4({
           { type: 'text-start', id: 't' },
           { type: 'text-delta', id: 't', delta: 'Try Heat.' },
           { type: 'text-end', id: 't' },
-          {
-            type: 'finish',
-            finishReason: { unified: 'stop', raw: undefined },
-            usage: {
-              inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
-              outputTokens: { total: 1, text: 1, reasoning: undefined },
-            },
-          },
+          { type: 'finish', finishReason: { unified: 'stop', raw: undefined }, usage },
         ],
       }),
     }
@@ -190,5 +195,12 @@ describe('a consultant turn', () => {
     expect(shown()).not.toContain('film and TV consultant')
     expect(shown()).not.toContain('IN THEIR RECOMMENDATIONS NOW')
     expect(db.calls).toEqual([])
+  })
+
+  it('checks the reply against the catalogue with reads only', async () => {
+    const res = await ask('what should I watch tonight?')
+    expect(res.status).toBe(200)
+    expect(db.calls.some(c => c.startsWith('titles.in("tmdb_id",["949"])'))).toBe(true)
+    expect(db.writes).toEqual([])
   })
 })
