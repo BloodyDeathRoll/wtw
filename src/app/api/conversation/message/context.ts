@@ -3,8 +3,8 @@
  * titles in the person's feed right now and the ones on their watchlist
  * (docs/plan/PLAN.md P3-2).
  *
- * Read-only, like everything under src/app/api/conversation/ (DEC-5;
- * tests/unit/chat-read-only.test.ts fails on a write here). Best-effort: a
+ * Read-only (DEC-5; tests/unit/chat-read-only.test.ts fails on a write here:
+ * the folder's one write is watchlist.ts, P3-6). Best-effort: a
  * failed read leaves that list out of the turn, it does not fail the chat.
  */
 

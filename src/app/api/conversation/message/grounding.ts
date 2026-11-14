@@ -10,8 +10,8 @@
  *      matched as whole words, and a name of two words or more as it stands in
  *      those facts: "Tom Hanks" is not known because a Tom and a Hanks are.
  *
- * A sentence that fails either is dropped. Read-only, like the rest of this
- * folder. The approach (and the capitalised-name scan) follows the "Why it's a
+ * A sentence that fails either is dropped. This file only reads (the folder's
+ * one write is watchlist.ts, P3-6). The approach (and the capitalised-name scan) follows the "Why it's a
  * match" fact-check in src/modules/engine/why/write-why.ts.
  */
 
@@ -35,7 +35,7 @@ export function namedTitles(reply: string): string[] {
   return [...new Set([...reply.matchAll(/\*([^*\n]+)\*/g)].map((m) => m[1].trim()).filter(Boolean))];
 }
 
-interface TitleRow {
+export interface TitleRow {
   title: string;
   type: "movie" | "tv";
   tmdb_id: string;
@@ -54,6 +54,8 @@ export interface Resolution {
   resolved: Set<string>;
   /** Our rows for the titles named, for the fact check and the retry. */
   rows: TitleRow[];
+  /** Each resolved name's "type:tmdb_id" keys: the person's own, or the ones with a row of ours. */
+  keys: Map<string, string[]>;
 }
 
 /** `searched` carries a turn's search results from the first draft to the second try. */
@@ -92,8 +94,14 @@ export async function resolveTitles(names: string[], known: KnownTitles, searche
   }
   const have = new Set(rows.map((r) => titleKey(r.type, r.tmdb_id)));
   const resolved = new Set<string>();
-  for (const [n, keys] of keysByName) if (known.has(n) || keys.some((k) => have.has(k))) resolved.add(n);
-  return { resolved, rows };
+  const keys = new Map<string, string[]>();
+  for (const [n, found] of keysByName) {
+    const ours = known.has(n) ? found : found.filter((k) => have.has(k));
+    if (!ours.length) continue;
+    resolved.add(n);
+    keys.set(n, ours);
+  }
+  return { resolved, rows, keys };
 }
 
 const peopleOf = (r: TitleRow) => {

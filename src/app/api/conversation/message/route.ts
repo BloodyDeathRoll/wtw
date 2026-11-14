@@ -14,8 +14,9 @@
 //
 // CHAT_MODE=consultant (P3-2): the chat answers questions instead of
 // interviewing, and also sees the person's feed and watchlist titles
-// (context.ts). It still only reads; tests/unit/chat-read-only.test.ts fails
-// on a write anywhere under this folder.
+// (context.ts). It reads, with one exception (P3-6, watchlist.ts): it adds a
+// title to the watchlist when the person asks for that in so many words.
+// tests/unit/chat-read-only.test.ts fails on any other write under this folder.
 //
 // A consultant reply is checked before it is shown (P3-3, grounding.ts): every
 // title it names must be ours, and every number and name must come from our
@@ -50,6 +51,8 @@ import type { ConversationStage } from "@/modules/session/types";
 import { consultantContext } from "./context";
 import { consultantAnswer } from "./consultant";
 import type { KnownTitles } from "./grounding";
+import { addToWatchlist, asksToSave, type Added } from "./watchlist";
+import { loadChatReady } from "@/lib/home-bootstrap";
 
 export const runtime = "nodejs";
 // A consultant turn can be two model calls and a wait on Groq's per-minute limit: up to 25 s measured.
@@ -253,7 +256,20 @@ export async function POST(req: Request) {
           messages: modelMessages,
           maxOutputTokens: MAX_REPLY_TOKENS,
         })).text;
-      answer = await consultantAnswer(ask, dnaContext, known, history.map(messageText).join(" "));
+      // A save needs the person's own words for it (P3-6), and the onboarding done: the menu
+      // item is gated on that (P3-1), and a direct call to this route must not get past it to a write.
+      const textAt = (back: number, role: UIMessage["role"]) => {
+        const m = messages[messages.length - back];
+        return m?.role === role ? messageText(m) : "";
+      };
+      let ready: Promise<boolean> | undefined;
+      const add = asksToSave(userTurn, textAt(2, "assistant"), textAt(3, "user"))
+        ? async (key: string): Promise<Added> =>
+            (await (ready ??= loadChatReady(supabase, user.id)))
+              ? addToWatchlist(supabase, user.id, key)
+              : { status: "failed", label: "" }
+        : undefined;
+      answer = await consultantAnswer(ask, dnaContext, known, history.map(messageText).join(" "), add);
     } catch (e) {
       console.error("[conversation] consultant reply failed", e instanceof Error ? e.message : e);
       return NextResponse.json({ error: "The chat is unavailable right now" }, { status: 502 });

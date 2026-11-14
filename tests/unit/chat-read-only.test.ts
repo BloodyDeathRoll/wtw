@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { MockLanguageModelV4, simulateReadableStream } from 'ai/test'
 
 // P3-2 (DEC-5): the consultant chat reads the person's taste, feed and
-// watchlist, and writes to none of them.
+// watchlist, and writes to none of them. One exception since P3-6: a title the
+// person asked it to add to the watchlist (tests/unit/chat-watchlist.test.ts).
 
 // ── 1. Nothing under src/app/api/conversation/ may reach for a writer ──────
 const CHAT_DIR = 'src/app/api/conversation'
@@ -29,6 +30,13 @@ describe('the chat folder', () => {
     for (const f of files) {
       expect(offences(readFileSync(join(CHAT_DIR, f), 'utf8')), f).toEqual([])
     }
+  })
+
+  // P3-6: the chat's one write is a title the person asked it to put on the watchlist.
+  // It goes through the watchlist's own `saveRows`, and only message/watchlist.ts may call it.
+  it('reaches the watchlist\'s save from one file only', () => {
+    const users = files.filter(f => /\bsaveRows\b/.test(readFileSync(join(CHAT_DIR, f), 'utf8')))
+    expect(users.map(f => f.replace(/\\/g, '/'))).toEqual(['message/watchlist.ts'])
   })
 
   it('the check itself catches each kind of write', () => {

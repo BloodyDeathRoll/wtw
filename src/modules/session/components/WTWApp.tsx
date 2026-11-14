@@ -674,6 +674,11 @@ export default function WTWApp({
     // The consultant is asked ad hoc: it opens empty, without the old interview's turns.
     // useChat reads this once, on mount: fine, `chatReady` is the server's and does not change within a page load.
     messages: consultant ? [] : conversation.messages.map((m) => textMessage(m.id, m.role, m.content)),
+    // The consultant can add a title to the watchlist on the server (P3-6): take the list again, so
+    // the Watchlist screen and the cards' buttons show it. The legacy chat never saves anything.
+    onFinish: ({ isError }) => {
+      if (consultant && !isError) void hydrateWatchlist(user.id);
+    },
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
