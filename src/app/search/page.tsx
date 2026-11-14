@@ -25,6 +25,8 @@ export default async function SearchPage() {
     avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
   };
 
+  // Nothing else is read here to put it beside. With the chat off it reads nothing; with it on, one small
+  // `play_state` read (and a signal count for an account that never did the onboarding).
   const chatReady = await loadChatReady(supabase, user.id);
 
   return (

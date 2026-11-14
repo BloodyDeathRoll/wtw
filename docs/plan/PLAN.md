@@ -696,6 +696,10 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
   - Test with mocks. Never test on this model.
 - **P3-5 · Delete dead code** — A1 + A3 · S.
   - Delete `analyze-session.ts`, `directive-patterns.ts` and their tests, `update-from-session.ts`, `/api/dna/update-from-session`, and the `temporal_modifiers` readers.
+- **P3-6 · Watchlist from chat** — A1 · S–M. Added 2026-11-14 with the Q5 answer (#321).
+  - When the person asks for it, the chat adds a title to the watchlist. Never on its own, and never the DNA, the rules or the feed.
+  - The title is a catalogue row matched as in P3-3. P3-2's test gets one exception, for the watchlist only.
+  - The chat route checks the onboarding itself (P3-1 gates the menu item only).
 - **P3-G:** the chat answers 10 scripted questions with grounded titles, and the DNA's `taste_version` is unchanged afterwards.
 
 ---

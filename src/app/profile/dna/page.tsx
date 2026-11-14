@@ -30,7 +30,8 @@ export default async function TastePageRoute() {
     avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
   }
 
-  // Beside the taste page's own reads, not after them. It never rejects.
+  // Beside the taste page's own reads, not after them. It never rejects (a failed read is `false`),
+  // so nothing is left unhandled if this page throws before the header awaits it.
   const chatReady = loadChatReady(supabase, user.id)
   let data: TastePageData | null = null
   try {

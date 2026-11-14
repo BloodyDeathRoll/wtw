@@ -672,6 +672,7 @@ export default function WTWApp({
   const { messages, sendMessage, setMessages, status, error, regenerate } = useChat({
     transport,
     // The consultant is asked ad hoc: it opens empty, without the old interview's turns.
+    // useChat reads this once, on mount: fine, `chatReady` is the server's and does not change within a page load.
     messages: consultant ? [] : conversation.messages.map((m) => textMessage(m.id, m.role, m.content)),
   });
 
