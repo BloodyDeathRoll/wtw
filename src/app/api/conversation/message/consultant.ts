@@ -41,6 +41,8 @@ export async function consultantAnswer(
   const instructions = CONSULTANT_PROMPT + context;
   const write = async (extra = "") => (await ask(instructions + extra)).trim();
   const searched = new Map<string, string[]>(); // a title named in both drafts is searched once
+  // Both drafts are held to the same text. The second try's extra instructions are not a
+  // source: the records in them are `rows` again, and the first draft's errors are quoted there.
   const check = async (draft: string) => {
     const resolution = await resolveTitles(namedTitles(draft), known, searched);
     return { resolution, ...checkReply(draft, resolution, `${instructions} ${said}`) };

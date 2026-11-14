@@ -141,6 +141,11 @@ describe('which titles are ours', () => {
     expect(r.rows.map(x => x.title)).toEqual(['Heat'])
   })
 
+  it('a title written twice is looked up once', async () => {
+    await resolveTitles(['Heat', 'heat', 'HEAT'], known())
+    expect(tmdb.asked).toEqual(['Heat'])
+  })
+
   it('a row with the same tmdb_id but the other type is not the title', async () => {
     catalogue.rows = [OTHER_949]
     expect([...(await resolveTitles(['Heat'], known())).resolved]).toEqual([])
@@ -211,6 +216,16 @@ describe('what a reply may say', () => {
     expect((await check('*Heat* is tense. Spielberg\'s direction is tight.')).kept).toBe('Heat is tense.')
     // An everyday first word is not a name, and a real name there is fine.
     expect((await check('Since Pacino leads *Heat*, start there. Michael Mann directed it. Honestly, it holds up.')).problems).toEqual([])
+  })
+
+  it('lets an everyday subject take a credit verb', async () => {
+    expect((await check('*Heat* is long. Critics wrote that it drags, and it plays well late at night.')).problems).toEqual([])
+  })
+
+  it('after a colon a capitalised word is still a name, except yes and no', async () => {
+    expect((await check('Short answer: Yes, *Heat* fits.')).problems).toEqual([])
+    // Looser here, and a title named without asterisks would pass.
+    expect((await check('My pick: Dune.')).kept).toBe('')
   })
 
   it('reads names in a list one by one', async () => {

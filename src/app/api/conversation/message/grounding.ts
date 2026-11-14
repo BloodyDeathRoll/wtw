@@ -59,8 +59,10 @@ export interface Resolution {
 /** `searched` carries a turn's search results from the first draft to the second try. */
 export async function resolveTitles(names: string[], known: KnownTitles, searched = new Map<string, string[]>()): Promise<Resolution> {
   const keysByName = new Map<string, string[]>();
-  await Promise.all(names.slice(0, MAX_TITLES).map(async (name) => {
-    const n = normTitle(name);
+  // *Heat* and *heat* are one title, looked up once.
+  const asWritten = new Map<string, string>();
+  for (const name of names) if (!asWritten.has(normTitle(name))) asWritten.set(normTitle(name), name);
+  await Promise.all([...asWritten].slice(0, MAX_TITLES).map(async ([n, name]) => {
     const mine = known.get(n) ?? searched.get(n);
     if (mine) return void keysByName.set(n, mine);
     try {
@@ -145,7 +147,7 @@ export function factsHaystack(rows: TitleRow[]): string {
 }
 
 /** Words the chat may always use: its own name, the page it points to, and how people write genres. */
-const ALWAYS = "wtw | my taste | tv | sci-fi | i | ok";
+const ALWAYS = "wtw | my taste | tv | sci-fi | i | ok | yes | no";
 
 /** Text as words. "Sánchez-Gijón's" is "Sanchez Gijon"; "|" marks where a phrase ends. */
 function tokens(s: string): string[] {
@@ -207,8 +209,11 @@ function knownName(name: string, facts: Facts): boolean {
   return true;
 }
 
-/** Everyday words that take a "'s" or a credit verb at the start of a sentence: "It's", "She plays". */
-const SUBJECTS = new Set("it that this there here what let he she who they we you i everyone everybody nobody someone anyone one both each all tonight today nothing something".split(" "));
+/** Everyday words that take a "'s" or a credit verb at the start of a sentence: "It's", "She plays", "Critics wrote". */
+const SUBJECTS = new Set((
+  "it that this there here what let he she who they we you i everyone everybody nobody someone anyone one both each all tonight today " +
+  "nothing something critics reviewers audiences viewers fans people"
+).split(" "));
 const CREDIT_VERB = /^(directed|directs|stars|starred|co-stars|wrote|writes|plays|played|leads|shot|scored|produced|helmed)$/i;
 
 const JOINER = /^(of|the|in|on|a|de|la|von|van)$/;
@@ -248,6 +253,8 @@ function sentenceProblems(sentence: string, resolved: ReadonlySet<string>, facts
   // A sentence's first word is capitalised whatever it is. It is read as a name
   // when our facts have it only inside a name ("Al Mann directed it"), or when
   // they don't have it and it is credited with something ("Spielberg directed it").
+  // Only the very first word gets this leave: after a colon or a dash a capitalised
+  // word is a name like any other, or "My pick: Dune" would pass unchecked.
   const firstIsName = (tok: string) => {
     const w = wordsOf(tok)[0] ?? "";
     if (SUBJECTS.has(w)) return false;
