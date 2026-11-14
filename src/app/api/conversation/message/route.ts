@@ -79,6 +79,24 @@ const MAX_HISTORY_CHARS = 24_000;
 const MAX_REPLY_TOKENS = 1200;
 const RATE_LIMIT = { scope: "conversation", perUser: 60, perIp: 120, windowSec: 10 * 60 };
 
+// The chat's share of the model's free budget (docs/plan/PLAN.md P3-4): about
+// 200k tokens a day, which the welcome line, the DNA summary and the dimension
+// notes also draw on. A turn is one model call, or two when the consultant's
+// first draft fails its check, at about 2,300 tokens a call (measured
+// 2026-11-14): 20 turns are 92k tokens at most.
+// shortcut: counts turns, not tokens, in a fixed 24 h window, so two windows' worth (184k) can fall inside one rolling day; count usage.totalTokens in hourly buckets if the chat ever runs the model dry.
+const DAY = 24 * 60 * 60;
+const USER_DAILY = { scope: "chat-day", perUser: 10, windowSec: DAY };
+const ALL_DAILY = { scope: "chat-day-all", perUser: 20, windowSec: DAY };
+// One pasted wall of text would otherwise go to the model whole: boundedTail always keeps the newest message.
+const MAX_MESSAGE_CHARS = 4_000;
+
+// Shown as the chat's own reply: the client shows every failed request as "Couldn't reach the model".
+// OVER_USER and OVER_ALL say "daily" and "within a day": they go with DAY.
+const TOO_LONG = `That message is too long for me. Please keep it under ${MAX_MESSAGE_CHARS.toLocaleString("en-US")} characters and send it again.`;
+const OVER_USER = "That's all the questions I can take from you for now: the chat has a daily limit. It opens again within a day. Your recommendations are on the home screen as always.";
+const OVER_ALL = "The chat has reached its daily limit for everyone. It opens again within a day. Your recommendations are on the home screen as always.";
+
 const SYSTEM_PROMPT = `You are WTW (What To Watch). Your job is to build a vivid, layered picture of the user's film and TV taste through light, casual conversation — not an interview.
 
 Each turn, ask ONE focused question that surfaces a NEW dimension of their taste. Rotate territory across turns: directors or actors whose work they trust, a recent watch they loved or hated and why, tolerance for moral ambiguity, fast cuts vs. long takes, what they'll never watch, who they usually watch with, how much narrative work they want to do, mood right now.
@@ -106,6 +124,21 @@ function messageText(m: UIMessage): string {
 /** The parts-only shape convertToModelMessages reads, whatever the client sent. */
 function toPartsMessage(m: UIMessage): UIMessage {
   return { id: m.id, role: m.role, parts: [{ type: "text", text: messageText(m) }] };
+}
+
+/** A whole reply in one piece, in the shape the v7 client reads. */
+function sayOnce(text: string) {
+  return createUIMessageStreamResponse({
+    stream: createUIMessageStream({
+      execute({ writer }) {
+        writer.write({ type: "start" });
+        writer.write({ type: "text-start", id: "answer" });
+        writer.write({ type: "text-delta", id: "answer", delta: text });
+        writer.write({ type: "text-end", id: "answer" });
+        writer.write({ type: "finish" });
+      },
+    }),
+  });
 }
 
 export async function POST(req: Request) {
@@ -159,6 +192,16 @@ export async function POST(req: Request) {
   // continue anyway (the model still gets the context from `messages`).
   const last = messages[messages.length - 1];
   const userTurn = last.role === "user" ? messageText(last) : "";
+
+  // The budget (P3-4), before anything is saved or sent to the model. A turn
+  // refused here is not kept: it is gone when the chat is opened again.
+  if (userTurn.length > MAX_MESSAGE_CHARS) return sayOnce(TOO_LONG);
+  // The person's own count first, so someone over their limit does not use up everyone's.
+  const overUser = await enforceRateLimit(req, user.id, USER_DAILY);
+  if (overUser) return overUser.status === 429 ? sayOnce(OVER_USER) : overUser;
+  const overAll = await enforceRateLimit(req, "all", ALL_DAILY);
+  if (overAll) return overAll.status === 429 ? sayOnce(OVER_ALL) : overAll;
+
   if (userTurn) {
     try {
       await saveMessage(supabase, conversationId, "user", userTurn);
@@ -220,17 +263,7 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("[conversation] failed to save assistant message", e);
     }
-    return createUIMessageStreamResponse({
-      stream: createUIMessageStream({
-        execute({ writer }) {
-          writer.write({ type: "start" });
-          writer.write({ type: "text-start", id: "answer" });
-          writer.write({ type: "text-delta", id: "answer", delta: answer });
-          writer.write({ type: "text-end", id: "answer" });
-          writer.write({ type: "finish" });
-        },
-      }),
-    });
+    return sayOnce(answer);
   }
 
   const result = streamText({
