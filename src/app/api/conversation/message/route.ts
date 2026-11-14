@@ -52,6 +52,8 @@ import { consultantAnswer } from "./consultant";
 import type { KnownTitles } from "./grounding";
 
 export const runtime = "nodejs";
+// A consultant turn can be two model calls and a wait on Groq's per-minute limit: up to 25 s measured.
+export const maxDuration = 60;
 
 // What one request may cost us (audit 2026-09-11, RULES A5/G10). The client
 // sends the whole history every turn, so bound it: a calibration chat is a few

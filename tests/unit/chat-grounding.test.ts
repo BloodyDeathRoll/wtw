@@ -22,9 +22,9 @@ const PARASITE = {
 const OTHER_949 = { ...PARASITE, title: 'Some Series', type: 'tv', tmdb_id: '949' }
 
 const store = vi.hoisted(() => ({ dna: null as unknown, saves: 0 }))
-const catalogue = vi.hoisted(() => ({ rows: [] as unknown[], asked: [] as string[][], writes: 0 }))
+const catalogue = vi.hoisted(() => ({ rows: [] as unknown[], asked: [] as string[][], writes: 0, down: false }))
 const tmdb = vi.hoisted(() => ({ hits: {} as Record<string, unknown[]>, asked: [] as string[], down: false }))
-const model = vi.hoisted(() => ({ replies: [] as string[], instructions: [] as string[], down: false }))
+const model = vi.hoisted(() => ({ replies: [] as string[], instructions: [] as string[], down: false, downOnRetry: false }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -45,7 +45,7 @@ vi.mock('@/lib/supabase/service', () => ({
       q.select = () => q
       q.in = (_col: string, ids: string[]) => { catalogue.asked.push(ids); (q as { ids?: string[] }).ids = ids; return q }
       for (const m of ['insert', 'update', 'upsert', 'delete']) q[m] = () => { catalogue.writes++; return q }
-      q.then = (done: (v: unknown) => unknown) => Promise.resolve({
+      q.then = (done: (v: unknown) => unknown) => Promise.resolve(catalogue.down ? { data: null, error: { message: 'db down' } } : {
         data: (catalogue.rows as { tmdb_id: string }[]).filter(r => (q as { ids?: string[] }).ids?.includes(r.tmdb_id)),
         error: null,
       }).then(done)
@@ -72,7 +72,7 @@ vi.mock('@/modules/dna/lib/load-save', async (orig) => ({
 vi.mock('@ai-sdk/groq', () => ({
   groq: () => new MockLanguageModelV4({
     doGenerate: async (options) => {
-      if (model.down) throw new Error('model down')
+      if (model.down || (model.downOnRetry && model.instructions.length)) throw new Error('model down')
       model.instructions.push(JSON.stringify(options.prompt))
       return {
         content: [{ type: 'text', text: model.replies.shift() ?? '' }],
@@ -101,7 +101,7 @@ beforeEach(() => {
   } satisfies DNASignal)
   store.dna = dna
   store.saves = 0
-  Object.assign(catalogue, { rows: [HEAT, PARASITE, OTHER_949], asked: [], writes: 0 })
+  Object.assign(catalogue, { rows: [HEAT, PARASITE, OTHER_949], asked: [], writes: 0, down: false })
   Object.assign(tmdb, {
     hits: {
       Heat: [{ tmdb_id: '949', type: 'movie', title: 'Heat', year: 1995, poster_path: null }],
@@ -114,7 +114,7 @@ beforeEach(() => {
     asked: [],
     down: false,
   })
-  Object.assign(model, { replies: [], instructions: [], down: false })
+  Object.assign(model, { replies: [], instructions: [], down: false, downOnRetry: false })
   saveMessage.mockClear()
   process.env.CHAT_MODE = 'consultant'
 })
@@ -156,6 +156,15 @@ describe('which titles are ours', () => {
     expect([...(await resolveTitles(['Heat'], known())).resolved]).toEqual([])
     errors.mockRestore()
   })
+
+  it('when the catalogue cannot be read, only the person\'s own titles stand (and it does not throw)', async () => {
+    catalogue.down = true
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const r = await resolveTitles(['Heat', 'Seven'], known())
+    expect([...r.resolved]).toEqual(['seven'])
+    expect(r.rows).toEqual([])
+    errors.mockRestore()
+  })
 })
 
 describe('what a reply may say', () => {
@@ -184,6 +193,29 @@ describe('what a reply may say', () => {
     const r = await check('*Heat* stars Tom Cruise. It is tense.')
     expect(r.kept).toBe('It is tense.')
     expect(r.problems).toEqual(['it mentions "Tom Cruise", which is not in our facts'])
+  })
+
+  it('cuts a name put together from words that are each ours', async () => {
+    // Al Pacino and Michael Mann are in the credits; "Al Mann" is nobody.
+    expect((await check('*Heat* stars Al Mann.')).problems).toEqual(['it mentions "Al Mann", which is not in our facts'])
+    expect((await check('*Heat* stars Robert Pacino.')).kept).toBe('')
+    // Two of our phrases side by side are fine, and so is one name of a person.
+    expect((await check('*Parasite* is Bong Joon Ho\'s Korean thriller.')).problems).toEqual([])
+    expect((await check('*Heat* has Pacino and De Niro at their best.')).problems).toEqual([])
+  })
+
+  it('matches whole words: part of a word of ours is not a name', async () => {
+    // "Ang" is inside "Angeles", "Rob" inside "Robert".
+    expect((await check('*Heat* is pure Ang.')).kept).toBe('')
+    expect((await check('*Heat* has Rob in it.')).kept).toBe('')
+    expect((await check('*Heat* is set in Los Angeles.')).problems).toEqual([])
+  })
+
+  it('does not split a title at its own full stop', async () => {
+    const resolution = await resolveTitles(['Mr. Robot'], new Map([[normTitle('Mr. Robot'), ['tv:62560']]]))
+    const r = checkReply('*Mr. Robot* is your kind of show. Start it tonight.', resolution, '')
+    expect(r.problems).toEqual([])
+    expect(r.kept).toBe('Mr. Robot is your kind of show. Start it tonight.')
   })
 
   it('knows a name whatever its accents and hyphens', async () => {
@@ -254,6 +286,16 @@ describe('a consultant turn', () => {
     model.replies = ['*Zardoz* is your film.', '*Zardoz* is your film. *Heat* is close to it.']
     const errors = vi.spyOn(console, 'log').mockImplementation(() => {})
     expect((await ask('weird sci-fi?')).text).toBe('Heat is close to it.')
+    errors.mockRestore()
+  })
+
+  it('keeps the good sentences of the first draft when the second try fails', async () => {
+    model.replies = ['*Zardoz* is a wild one. *Heat* is the safer pick.']
+    model.downOnRetry = true
+    const logs = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(await ask('weird sci-fi?')).toEqual({ status: 200, text: 'Heat is the safer pick.' })
+    logs.mockRestore()
     errors.mockRestore()
   })
 

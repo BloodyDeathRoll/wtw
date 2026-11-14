@@ -6,7 +6,9 @@
  *      a row in `titles`, found through the same search the Search screen uses.
  *   2. Every number and every capitalised name in the reply must come from our
  *      rows for those titles, from the briefing the model was given, or from
- *      what the person wrote. The model's memory is not a source.
+ *      what the person wrote. The model's memory is not a source. Names are
+ *      matched as whole words, and a name of two words or more as it stands in
+ *      those facts: "Tom Hanks" is not known because a Tom and a Hanks are.
  *
  * A sentence that fails either is dropped. Read-only, like the rest of this
  * folder. The approach (and the capitalised-name scan) follows the "Why it's a
@@ -27,11 +29,6 @@ const CAST_NAMES = 12;
 export const normTitle = (s: string) =>
   s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ").trim().replace(/^the /, "");
-
-/** For comparing a name in the reply with our rows: "Sánchez-Gijón" is "Sanchez Gijon". */
-const norm = (s: string) =>
-  s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"')
-    .replace(/[\u2010-\u2015-]/g, " ").replace(/\s+/g, " ").trim();
 
 /** The titles a reply names, as written. */
 export function namedTitles(reply: string): string[] {
@@ -83,9 +80,11 @@ export async function resolveTitles(names: string[], known: KnownTitles): Promis
       .from("titles")
       .select("title, type, tmdb_id, release_year, runtime_minutes, genres, crew, synopsis, keywords, original_language, watch_providers")
       .in("tmdb_id", ids);
-    if (error) throw new Error(error.message);
+    // Without our rows only the person's own titles stand, and no year, running time or name
+    // can be checked, so those sentences are cut: a shorter answer, never an unchecked one.
+    if (error) console.error("[conversation] catalogue lookup failed", error.message);
     // tmdb_id alone is not a title: a film and a series can share one.
-    rows = ((data ?? []) as TitleRow[]).filter((r) => wanted.has(titleKey(r.type, r.tmdb_id)));
+    else rows = ((data ?? []) as TitleRow[]).filter((r) => wanted.has(titleKey(r.type, r.tmdb_id)));
   }
   const have = new Set(rows.map((r) => titleKey(r.type, r.tmdb_id)));
   const resolved = new Set<string>();
@@ -126,33 +125,84 @@ export function factsForModel(rows: TitleRow[]): string {
   }).join("\n");
 }
 
-/** Everything our rows say about the titles named: what a reply may repeat. */
+/** Everything our rows say about the titles named: what a reply may repeat. " | " ends a phrase. */
 export function factsHaystack(rows: TitleRow[]): string {
-  return rows.map((r) => {
+  return rows.flatMap((r) => {
     const p = peopleOf(r);
     const m = r.runtime_minutes ?? 0;
     // "about 3 hours" for 2h 50m and "2 hours" for 2h 5m are both fair; 0 is not a fact.
     const hours = m >= 60 ? `${Math.floor(m / 60)} ${Math.round(m / 60)} ${m % 60}` : "";
     return [
-      r.title, r.release_year ?? "", m || "", hours, genresOf(r).join(" "),
-      ...p.directors, ...p.writers, ...p.cast, ...p.camera,
-      r.synopsis ?? "", (r.keywords ?? []).join(" "), languageOf(r),
-      Object.values(r.watch_providers ?? {}).flat().join(" "),
-    ].join(" ");
-  }).join(" ");
+      r.title, r.release_year ?? "", m || "", hours, ...genresOf(r),
+      // "with" keeps a person's two names tied to each other (readFacts).
+      ...[...p.directors, ...p.writers, ...p.cast, ...p.camera].map((name) => `with ${name}`),
+      r.synopsis ?? "", ...(r.keywords ?? []), languageOf(r),
+      ...Object.values(r.watch_providers ?? {}).flat(),
+    ];
+  }).join(" | ");
 }
 
 /** Words the chat may always use: its own name, the page it points to, and how people write genres. */
-const ALWAYS = "wtw my taste tv sci-fi i ok";
+const ALWAYS = "wtw | my taste | tv | sci-fi | i | ok";
 
-/** A capitalised word is known as written, or as London is to Londoner. */
-function knownWord(word: string, haystack: string): boolean {
-  const w = norm(word).replace(/'s$/, "").replace(/s'$/, "s");
-  if (haystack.includes(w)) return true;
+/** Text as words. "Sánchez-Gijón's" is "Sanchez Gijon"; "|" marks where a phrase ends. */
+function tokens(s: string): string[] {
+  const flat = s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[\u2018\u2019]/g, "'").replace(/'s(?![\p{L}\p{N}])/giu, "")
+    // A full stop ends a phrase after a word, not after "Mr." or an initial.
+    .replace(/(?<=[\p{L}\p{N}]{4})\.(?=\s|$)/gu, " | ").replace(/\n|[^\p{L}\p{N}\s'.\u2010\u2011-]/gu, " | ");
+  return flat.match(/[\p{L}\p{N}]+|\|/gu) ?? [];
+}
+const wordsOf = (s: string) => tokens(s).filter((t) => t !== "|").map((t) => t.toLowerCase());
+
+/** The facts a reply is held to, read once per reply. */
+interface Facts {
+  /** Lower-case words in order, a space on each side, "|" between phrases. */
+  text: string;
+  words: Set<string>;
+  /** Words that stand somewhere without a capitalised neighbour: "Korean", not the "Tom" of "Tom Cruise". */
+  alone: Set<string>;
+  numbers: Set<string>;
+}
+
+function readFacts(raw: string): Facts {
+  const toks = tokens(raw);
+  // A phrase's first word is capitalised anyway, so it does not tie its neighbour to it.
+  const cap = (i: number) => i > 0 && i < toks.length && /^\p{Lu}/u.test(toks[i]) && toks[i - 1] !== "|";
+  const alone = new Set<string>();
+  toks.forEach((t, i) => {
+    if (t !== "|" && !cap(i - 1) && !cap(i + 1)) alone.add(t.toLowerCase());
+  });
+  const lower = toks.map((t) => t.toLowerCase());
+  return { text: ` ${lower.join(" ")} `, words: new Set(lower.filter((t) => t !== "|")), alone, numbers: new Set(raw.match(/\d+/g) ?? []) };
+}
+
+/** A word of ours, or one made from it as Londoner is from London. */
+function knownWord(w: string, words: ReadonlySet<string>): boolean {
+  if (words.has(w)) return true;
   for (const suffix of ["ers", "er", "ians", "ian", "ans", "an", "es", "s"]) {
-    if (w.endsWith(suffix) && w.length - suffix.length >= 4 && haystack.includes(w.slice(0, -suffix.length))) return true;
+    const stem = w.endsWith(suffix) ? w.slice(0, -suffix.length) : "";
+    if (stem.length >= 4 && [...words].some((h) => h.startsWith(stem) && h.length <= stem.length + 2)) return true;
   }
   return false;
+}
+
+/**
+ * A capitalised run is known when it can be read off the facts piece by piece:
+ * each piece a phrase of ours of two words or more, or a single word that
+ * stands alone in the facts. One capitalised word on its own only has to be a
+ * word of ours ("Bong", "Nolan's").
+ */
+function knownName(name: string, facts: Facts): boolean {
+  const w = wordsOf(name);
+  if (w.length === 1) return knownWord(w[0], facts.words);
+  for (let i = 0; i < w.length;) {
+    let j = w.length;
+    while (j - i >= 2 && !facts.text.includes(` ${w.slice(i, j).join(" ")} `)) j--;
+    if (j - i >= 2) i = j;
+    else if (JOINER.test(w[i]) || facts.alone.has(w[i]) || (!facts.words.has(w[i]) && knownWord(w[i], facts.words))) i++;
+    else return false;
+  }
+  return true;
 }
 
 const JOINER = /^(of|the|in|on|a|de|la|von|van)$/;
@@ -162,7 +212,8 @@ const UNIT = "(?:h|hr|hrs|hours?|min|mins|minutes?|episodes?|seasons?|parts?)";
 const COUNT_IN_WORDS = new RegExp(`\\b(${HOUR_WORDS.join("|")})(?:\\s+and\\s+a\\s+half)?[\\s\\u2010-\\u2015-]+${UNIT}\\b`, "gi");
 const UNIT_AFTER = new RegExp(`^[\\s\\u2010-\\u2015-]*${UNIT}\\b`, "i");
 
-function sentenceProblems(sentence: string, resolved: ReadonlySet<string>, haystack: string, numbers: ReadonlySet<string>): string[] {
+function sentenceProblems(sentence: string, resolved: ReadonlySet<string>, facts: Facts): string[] {
+  const { numbers } = facts;
   const problems: string[] = [];
   for (const t of namedTitles(sentence)) {
     if (!resolved.has(normTitle(t))) problems.push(`*${t}* is not a title in our catalogue`);
@@ -191,8 +242,7 @@ function sentenceProblems(sentence: string, resolved: ReadonlySet<string>, hayst
   const flush = () => {
     if (run.length) {
       const name = run.join(" ").replace(/[’']s$/i, "").replace(/(s)[’']$/i, "$1").replace(/[.]$/, "");
-      const ok = haystack.includes(norm(name)) || run.filter((w) => !JOINER.test(w)).every((w) => knownWord(w, haystack));
-      if (!ok) problems.push(`it mentions "${name}", which is not in our facts`);
+      if (!knownName(name, facts)) problems.push(`it mentions "${name}", which is not in our facts`);
     }
     run = [];
   };
@@ -217,12 +267,14 @@ export interface Checked {
  * `rows` are ours for the titles the reply names.
  */
 export function checkReply(reply: string, resolution: Resolution, allowed: string): Checked {
-  const haystack = norm(`${allowed} ${factsHaystack(resolution.rows)} ${ALWAYS}`);
-  const numbers = new Set(haystack.match(/\d+/g) ?? []);
+  const facts = readFacts(`${allowed} | ${factsHaystack(resolution.rows)} | ${ALWAYS}`);
   const kept: string[] = [];
   const problems: string[] = [];
-  for (const sentence of reply.trim().split(/(?<=[.!?])\s+/).filter(Boolean)) {
-    const found = sentenceProblems(sentence, resolution.resolved, haystack, numbers);
+  // A title is never split: the "." of *Mr. Robot* does not end a sentence.
+  const whole = reply.trim().replace(/\*[^*\n]+\*/g, (title) => title.replace(/\s/g, "\u0001"));
+  for (const part of whole.split(/(?<=[.!?])\s+/).filter(Boolean)) {
+    const sentence = part.replace(/\u0001/g, " ");
+    const found = sentenceProblems(sentence, resolution.resolved, facts);
     if (found.length) problems.push(...found);
     else kept.push(sentence.replace(/\*/g, ""));
   }

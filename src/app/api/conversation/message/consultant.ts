@@ -51,12 +51,19 @@ export async function consultantAnswer(
 
   console.log(`[conversation] consultant draft failed the check (${first.problems.length}): ${first.problems.join("; ").slice(0, 300)}`);
   const facts = factsForModel(first.resolution.rows);
-  const retry = await write(
-    `\n\nYOUR FIRST DRAFT CANNOT BE SHOWN. It was: "${draft}"\nWhat was wrong with it:\n${first.problems.map((p) => `- ${p}`).join("\n")}` +
-    (facts ? `\nOur records for the titles you named:\n${facts}` : "") +
-    `\nWrite the answer again. For years, running times and people use only these records. Name no title that is not in our catalogue; if the user asked about one, say you don't have it, without naming it.`,
-  );
-  const second: Checked = await check(retry);
+  let second: Checked;
+  try {
+    const retry = await write(
+      `\n\nYOUR FIRST DRAFT CANNOT BE SHOWN. It was: "${draft}"\nWhat was wrong with it:\n${first.problems.map((p) => `- ${p}`).join("\n")}` +
+      (facts ? `\nOur records for the titles you named:\n${facts}` : "") +
+      `\nWrite the answer again. For years, running times and people use only these records. Name no title that is not in our catalogue; if the user asked about one, say you don't have it, without naming it.`,
+    );
+    second = await check(retry);
+  } catch (e) {
+    // The first draft's good sentences are still good. Only a first draft that fails is the route's 502.
+    console.error("[conversation] consultant retry failed", e instanceof Error ? e.message : e);
+    return first.kept || NOTHING_SURE;
+  }
   if (second.problems.length) console.log(`[conversation] consultant retry still failed (${second.problems.length}): ${second.problems.join("; ").slice(0, 300)}`);
   return second.kept || first.kept || NOTHING_SURE;
 }
