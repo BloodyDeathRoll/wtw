@@ -448,48 +448,6 @@ export async function discoverMovies(page = 1): Promise<TMDBDiscoverItem[]> {
   }))
 }
 
-/**
- * Search TMDB for a title by name and resolve it to a tmdb_id.
- * Used by the Session Brain to turn a film/show mentioned in conversation
- * into a real TMDB id so it can become a DNASignal.
- *
- * `type` narrows the search endpoint; omit to search both and take the
- * most popular match across movies + TV.
- * Returns null when TMDB has no match.
- */
-export async function searchTitle(
-  name: string,
-  type?: 'movie' | 'tv',
-): Promise<TMDBDiscoverItem | null> {
-  const query = name.trim()
-  if (!query) return null
-
-  const endpoints: ('movie' | 'tv')[] = type ? [type] : ['movie', 'tv']
-  let best: { tmdb_id: string; title: string; type: 'movie' | 'tv'; popularity: number } | null = null
-
-  for (const kind of endpoints) {
-    const raw = await tmdbFetch<{
-      results: { id: number; title?: string; name?: string; popularity?: number }[]
-    }>(`/search/${kind}`, { query, page: '1' })
-
-    const top = raw?.results?.[0]
-    if (!top) continue
-
-    const popularity = top.popularity ?? 0
-    if (!best || popularity > best.popularity) {
-      best = {
-        tmdb_id: String(top.id),
-        title: top.title ?? top.name ?? query,
-        type: kind,
-        popularity,
-      }
-    }
-  }
-
-  if (!best) return null
-  return { tmdb_id: best.tmdb_id, title: best.title, type: best.type }
-}
-
 /** One row of the Search screen's list. */
 export interface TitleSearchHit {
   tmdb_id: string
