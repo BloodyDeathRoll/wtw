@@ -43,8 +43,11 @@ const IMG = "https://image.tmdb.org/t/p/";
 export default function SearchView({
   user,
   menu,
+  chatReady = false,
 }: {
   user: AppUser;
+  /** The onboarding is done: this screen's own menu offers the chat (Q5). */
+  chatReady?: boolean;
   /**
    * Opened over another screen by HeaderSearch (a pushState, not a route):
    * that screen's own menu, shown in place of this one's, and Back pops back
@@ -378,6 +381,7 @@ export default function SearchView({
                 onFastLearning={() => leave("/play?tab=games")}
                 onRatings={go("ratings")}
                 onProfile={() => leave("/profile/dna")}
+                onChat={chatReady ? go("conversation") : undefined}
                 user={user}
                 onSignOut={async () => {
                   await createClient().auth.signOut();

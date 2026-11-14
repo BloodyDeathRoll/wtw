@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
+  ArrowUp,
   AudioLines,
   Bookmark,
   ChevronDown,
@@ -101,6 +102,7 @@ const I = {
   games: <Gamepad2 size={26.5} strokeWidth={ICON_STROKE} aria-hidden="true" />,
   // The input's live/send button ("speak" in the design).
   speak: <AudioLines size={25} strokeWidth={2} aria-hidden="true" />,
+  send: <ArrowUp size={25} strokeWidth={2} aria-hidden="true" />,
   replay: <Volume2 size={20} strokeWidth={ICON_STROKE} aria-hidden="true" />,
 };
 
@@ -116,6 +118,7 @@ function TopBar({
   onFastLearning,
   onRatings,
   onProfile,
+  onChat,
   user,
   onSignOut,
   contentType,
@@ -125,8 +128,10 @@ function TopBar({
 }: {
   hasConversation: boolean;
   onBack: () => void;
-  /** Absent when the chat is off (CHAT_MODE=off): no chat icon. */
+  /** The old chat's icon (CHAT_MODE=legacy only). The consultant has no icon: it is in the menu. */
   onOpenChat?: () => void;
+  /** The menu's "Ask WTW" (see AppMenu). */
+  onChat?: () => void;
   onRecommend: () => void;
   onWatchlist: () => void;
   onFastLearning: () => void;
@@ -162,6 +167,7 @@ function TopBar({
       onFastLearning={onFastLearning}
       onRatings={onRatings}
       onProfile={onProfile}
+      onChat={onChat}
       user={user}
       onSignOut={onSignOut}
       voice={voice}
@@ -382,6 +388,9 @@ function TypingDots() {
 // ─────────────────────────────────────────────────────────────
 // Input bar
 // ─────────────────────────────────────────────────────────────
+/** What the consultant chat shows before the first question. */
+const CONSULTANT_HELLO = "Ask me what to watch tonight, whether a title is for you, or which of two to pick.";
+
 /** Stages a standalone route may link into with ?stage=… (see AppMenu). */
 const DEEP_LINK_STAGES: readonly Stage[] = [
   "recommendations",
@@ -462,7 +471,8 @@ function InputBar({
   value: string;
   setValue: (s: string) => void;
   onSend: (s: string) => void;
-  onLive: () => void;
+  /** Opens voice mode. Absent in the consultant chat, which is typed only. */
+  onLive?: () => void;
 }) {
   function submit() {
     const v = value.trim();
@@ -471,7 +481,7 @@ function InputBar({
     setValue("");
   }
   function handleLiveBtn() {
-    if (value.trim()) submit();
+    if (value.trim() || !onLive) submit();
     else onLive();
   }
   return (
@@ -479,7 +489,7 @@ function InputBar({
       <div className={styles.inputbar}>
         <input
           className={styles.inputfield}
-          placeholder="Speak or type"
+          placeholder={onLive ? "Speak or type" : "Ask what to watch"}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -489,12 +499,12 @@ function InputBar({
         <button
           className={styles.liveBtn}
           onClick={handleLiveBtn}
-          aria-label={value.trim() ? "send" : "start live session"}
+          aria-label={value.trim() || !onLive ? "send" : "start live session"}
         >
-          {I.speak}
+          {onLive ? I.speak : I.send}
         </button>
       </div>
-      <p className={styles.inputHint}>You can always skip a question</p>
+      {onLive && <p className={styles.inputHint}>You can always skip a question</p>}
     </div>
   );
 }
@@ -507,16 +517,22 @@ export default function WTWApp({
   conversation,
   welcome,
   calibrationNudge = false,
+  chatReady = false,
 }: {
   user: AppUser;
   conversation: Conversation;
   welcome: Welcome;
+  /** The onboarding is done, or was never needed: the consultant chat may be opened. */
+  chatReady?: boolean;
   /** Skipped the taste games part-way: the feed nudges them back now and then. */
   calibrationNudge?: boolean;
 }) {
   const router = useRouter();
-  // CHAT_MODE=off (DEC-5): no way into the chat, text or voice.
-  const chatEnabled = chatMode() !== "off";
+  // CHAT_MODE (DEC-5). `legacy`: the old interviewing chat, behind the header's
+  // icon, with voice. `consultant`: a typed chat you ask things, and the menu's
+  // "Ask WTW" is its only way in, once the onboarding is done (Q5). `off`: none.
+  const chatEnabled = chatMode() === "legacy";
+  const consultant = chatMode() === "consultant" && chatReady;
   // Every login (and every reload) lands on the welcome/continue screen,
   // not directly inside the chat. The chat is still one tap away (via the
   // message icon in the top-left when there's history) and the Onboard
@@ -532,10 +548,11 @@ export default function WTWApp({
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const s = q.get("stage");
-    if (s && DEEP_LINK_STAGES.includes(s as Stage)) setStage(s as Stage);
+    // The menu on a standalone route opens the consultant with ?stage=conversation.
+    if (s && (DEEP_LINK_STAGES.includes(s as Stage) || (s === "conversation" && consultant))) setStage(s as Stage);
     // ?from=play only tells the server not to send the player back to the games.
     if (s || q.has("from")) window.history.replaceState(null, "", window.location.pathname);
-  }, []);
+  }, [consultant]);
   const [favorites, setFavorites] = useState(conversation.favorites);
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -654,7 +671,8 @@ export default function WTWApp({
   );
   const { messages, sendMessage, setMessages, status, error, regenerate } = useChat({
     transport,
-    messages: conversation.messages.map((m) => textMessage(m.id, m.role, m.content)),
+    // The consultant is asked ad hoc: it opens empty, without the old interview's turns.
+    messages: consultant ? [] : conversation.messages.map((m) => textMessage(m.id, m.role, m.content)),
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -693,7 +711,8 @@ export default function WTWApp({
     const nextStage: Stage = "conversation";
 
     setHasInteracted(true);
-    chattedThisLoadRef.current = true; // new transcript content → next Recommend needs session-end
+    // New transcript content → next Recommend needs session-end. Not the consultant's: it changes nothing (DEC-5).
+    if (!consultant) chattedThisLoadRef.current = true;
     if (isFirstOnboard) setFavorites(text);
     setStage(nextStage);
 
@@ -830,6 +849,13 @@ export default function WTWApp({
     setStage("watchlist");
   }
 
+  // The menu's "Ask WTW": the consultant chat's only way in (Q5).
+  function openChat() {
+    setVoiceOpen(false);
+    setStage("conversation");
+  }
+  const onChat = consultant ? openChat : undefined;
+
   // The menu's "Play" and the home screen's Games button both open the games
   // (2026-10-21). The old rating feed ("learning") stays reachable by ?stage=.
   function openGames() {
@@ -915,6 +941,7 @@ export default function WTWApp({
       onFastLearning={handleFastLearning}
       onRatings={handleRatings}
       onProfile={openProfile}
+      onChat={onChat}
       user={user}
       onSignOut={signOut}
       voice={voice}
@@ -1025,6 +1052,7 @@ export default function WTWApp({
             onFastLearning={handleFastLearning}
             onRatings={handleRatings}
             onProfile={openProfile}
+            onChat={onChat}
             user={user}
             onSignOut={signOut}
             contentType={contentType}
@@ -1052,6 +1080,11 @@ export default function WTWApp({
             )}
             {stage === "conversation" && (
               <div className={styles.messages}>
+                {consultant && messages.length === 0 && (
+                  <AIMessage>
+                    <div className={styles.aiIntro}>{CONSULTANT_HELLO}</div>
+                  </AIMessage>
+                )}
                 {messages.map((m) =>
                   m.role === "user" ? (
                     <UserMessage key={m.id} text={textOf(m)} />
@@ -1105,7 +1138,7 @@ export default function WTWApp({
 
           {stage === "conversation" ? (
             <>
-              {showRecommend && (
+              {showRecommend && !consultant && (
                 <div className={styles.recommendBar}>
                   <RecommendPill onClick={handleRecommend} />
                 </div>
@@ -1114,7 +1147,7 @@ export default function WTWApp({
                 value={input}
                 setValue={setInput}
                 onSend={handleSubmit}
-                onLive={() => {
+                onLive={consultant ? undefined : () => {
                   setVoicePrimer(null);
                   setVoiceOpen(true);
                 }}

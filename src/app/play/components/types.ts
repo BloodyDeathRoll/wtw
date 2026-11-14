@@ -170,6 +170,8 @@ export interface Ctl {
   user: AppUser
   /** Used the app before the games: full menu from the start. */
   existingUser: boolean
+  /** The onboarding is done: the menu offers the chat (Q5). */
+  chatReady: boolean
   /** On a screen of the season (the way out is Skip, not back). */
   inTraining: boolean
   /** The season's Skip button is on offer (any training screen once the genres are rated). */

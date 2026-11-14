@@ -83,6 +83,8 @@ export default async function Home({
         conversation={conversation}
         welcome={welcome}
         calibrationNudge={play.skipped}
+        // Q5: the chat shows once the onboarding is done. An existing account that skips it (DEC-8) counts.
+        chatReady={!needsOnboarding(boot.play.state, boot.signals)}
       />
     </>
   );

@@ -104,8 +104,8 @@ export const Icon = {
 
 /** Same key WTWApp keeps the Gemini Live voice under. */
 const VOICE_KEY = 'wtw:voice'
-const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'ratings', 'profile', 'voice']
-const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile']
+const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'ratings', 'profile', 'chat', 'voice']
+const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile', 'chat']
 
 /**
  * The app's header on every games screen (2026-10-20): Skip or back on the
@@ -144,6 +144,7 @@ export function TopBar({ ctl }: { ctl: Ctl }) {
       onFastLearning={() => ctl.go('games')}
       onRatings={go('ratings')}
       onProfile={() => ctl.leave('/profile/dna')}
+      onChat={ctl.chatReady ? go('conversation') : undefined}
       user={ctl.user}
       onSignOut={async () => {
         await createClient().auth.signOut()

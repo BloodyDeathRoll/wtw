@@ -57,7 +57,7 @@ export type { Voice };
 
 /** Menu entries a screen can leave out (sign out is always there). */
 // Search left the menu (2026-11-07): it's the icon beside the hamburger in every header (HeaderSearch).
-export type MenuItem = "recommend" | "watchlist" | "play" | "ratings" | "profile" | "voice";
+export type MenuItem = "recommend" | "watchlist" | "play" | "ratings" | "profile" | "chat" | "voice";
 
 // ─────────────────────────────────────────────────────────────
 // AppMenu — the hamburger and its drawer.
@@ -78,6 +78,7 @@ export function AppMenu({
   onFastLearning,
   onRatings,
   onProfile,
+  onChat,
   user,
   onSignOut,
   voice,
@@ -89,6 +90,12 @@ export function AppMenu({
   onFastLearning: () => void;
   onRatings: () => void;
   onProfile: () => void;
+  /**
+   * Opens the consultant chat. This item is the chat's only way in (Q5, Eran
+   * 2026-11-14): it needs CHAT_MODE=consultant, and a host passes this only
+   * where the person may use it. The home screen checks the onboarding is done.
+   */
+  onChat?: () => void;
   user: AppUser;
   onSignOut: () => void;
   voice: Voice;
@@ -96,8 +103,12 @@ export function AppMenu({
   /** Entries to leave out, e.g. the taste games keep a short menu for new users. */
   hide?: readonly MenuItem[];
 }) {
-  // The voice picker only configures the chat, so it goes when the chat is off (DEC-5).
-  const shown = (item: MenuItem) => !hide.includes(item) && !(item === "voice" && chatMode() === "off");
+  // The voice picker only configures the old spoken chat, so it shows with that chat only (DEC-5).
+  // The consultant is typed, and it is in the menu only where a host gave it a way to open.
+  const shown = (item: MenuItem) =>
+    !hide.includes(item) &&
+    !(item === "voice" && chatMode() !== "legacy") &&
+    !(item === "chat" && !(onChat && chatMode() === "consultant"));
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<"root" | "voice">("root");
   const [previewVoice, setPreviewVoice] = useState<string | null>(null);
@@ -306,6 +317,20 @@ export function AppMenu({
                   }}
                 >
                   <span>My taste</span>
+                  <span className={styles.userMenuTrail}>{I.chevRight}</span>
+                </button>
+              )}
+              {shown("chat") && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.userMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onChat?.();
+                  }}
+                >
+                  <span>Ask WTW</span>
                   <span className={styles.userMenuTrail}>{I.chevRight}</span>
                 </button>
               )}

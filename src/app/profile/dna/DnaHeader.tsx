@@ -20,7 +20,11 @@ import styles from "./dna.module.css";
 /** Same key WTWApp persists the Gemini Live voice under. */
 const VOICE_KEY = "wtw:voice";
 
-export function DnaHeader({ user, subtitle, title = 'My taste' }: { user: AppUser; subtitle: string; title?: string }) {
+export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = false }: {
+  user: AppUser; subtitle: string; title?: string
+  /** The onboarding is done: the menu offers the chat (Q5). */
+  chatReady?: boolean
+}) {
   const router = useRouter();
   const [voice, setVoice] = useState<Voice>(VOICES[0].id);
 
@@ -67,6 +71,7 @@ export function DnaHeader({ user, subtitle, title = 'My taste' }: { user: AppUse
       onWatchlist={go("watchlist")}
       onFastLearning={() => leave("/play?tab=games")}
       onRatings={go("ratings")}
+      onChat={chatReady ? go("conversation") : undefined}
       // Already on this page. AppMenu closes the drawer itself, so there is
       // nothing to do — a router.refresh() here would refetch the whole
       // server component for no change.

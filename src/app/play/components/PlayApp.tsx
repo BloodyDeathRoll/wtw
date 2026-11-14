@@ -77,10 +77,12 @@ function allowedForGames(S: PlayState, t: Title): boolean {
   return !L.length || t.genres.some(g => L.includes(g))
 }
 
-export default function PlayApp({ user, existingUser, voiceIntro = false, titles, saved, jumpTo, tab }: {
+export default function PlayApp({ user, existingUser, chatReady = false, voiceIntro = false, titles, saved, jumpTo, tab }: {
   user: AppUser
   /** Has used the app before (chat or ratings): gets the full menu from the start. */
   existingUser: boolean
+  /** The onboarding is done: the menu offers the chat (Q5). */
+  chatReady?: boolean
   /** A brand-new user who hasn't heard the voice intro: it opens the games (before the genres). */
   voiceIntro?: boolean
   titles: GameTitle[]
@@ -429,6 +431,7 @@ export default function PlayApp({ user, existingUser, voiceIntro = false, titles
   const ctl: Ctl = {
     S, T, ui, firstName, user,
     existingUser,
+    chatReady,
     inTraining: inSeasonTraining,
     canSkip: inSeasonTraining,   // from the first screen after the genres (2026-10-20)
     leave(href) { void leave(href) },

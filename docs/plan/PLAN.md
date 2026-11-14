@@ -72,7 +72,7 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
 | DEC-2 | **Taste model.** In plain words: a small calculation per person that learns which scales and genres you go for, from your ratings and picks. Technically: a per-user ridge regression on 25 inputs (§P1-D4). It is retrained on every scoring call from the user's ratings and picks, so no weights are stored. |
 | DEC-3 | **11 scales for every catalogue title** (deck option A + T2). These are the season's 10, plus **`audience`: made for kids ↔ made for adults** (decided by Eran on 2026-11-09 after the T2 test). Today only the 980 game titles have the 10, and none has `audience`. The same AI prompt as the season, plus one field, 10 titles per call. One backfill, then nightly. |
 | DEC-4 | **New-user flow:** genres (guardrails) → learner cards (about 30 seen, 35–45 shown) → about 12 this-or-that → feed. The season becomes an optional extra in the Games tab. |
-| DEC-5 | **Chat is a gated, ad-hoc consultant, and only a feature.** The main product is the recommendation list and the watchlist. Chat has zero effect on the brain (DNA), the rules or the ranking. Phase 1 removes every chat-made rule, preference, title signal and "tonight" modifier, and **hides the chat input** (`CHAT_MODE=off`) until phase 3. Still open: whether chat may add titles to the watchlist (leaning yes). |
+| DEC-5 | **Chat is a gated, ad-hoc consultant, and only a feature.** The main product is the recommendation list and the watchlist. Chat has zero effect on the brain (DNA), the rules or the ranking. Phase 1 removes every chat-made rule, preference, title signal and "tonight" modifier, and **hides the chat input** (`CHAT_MODE=off`) until phase 3. Chat may add a title to the watchlist when the person asks it to (Q5, decided 2026-11-14). |
 | DEC-6 | **A rule hides only what it names.** "No rom-coms" ≠ "no romance". Rules are made only by people, by picking, never by the chat: "Never" in the genre step; per-title Remove; and **your call on each of the 16 genres on the Taste DNA page: Never · Less · Normal · More · Much more** (P2-U8, decided with Eran 2026-11-13; `src/lib/genre-calls.ts`). Never is the exact 16-genre rule. Less / More / Much more are soft preferences that multiply a title's **odds** of making the feed (step 3): × 1/3, × 2.5, × 6, about half / one and a half / twice the genre's share of the feed (simulated), and a genre turned up fills at most half a batch. The old "Less of" (score × 0.5–0.7) emptied the genre from a 50-title batch, so it moved to odds. `dna.ts`: `weight_modifier` may be above 1, and `genre16` marks a call on one of the 16 (additive). Genre-screen Love / Like stay the fading lean (DEC-13). Rules about people come later. |
 | DEC-7 | **Jev stays at 0.8** until P1-E7 decides keep, fix or off. |
 | DEC-8 | **Launch order:** phases 1–3, then a friends-and-family soft launch. **Existing accounts are kept.** C1 step 4 cleans them. Phase-2 testing uses fresh second accounts (§P2-G). |
@@ -681,9 +681,9 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
 
 ### Phase 3 — chat as a consultant
 
-> **In plain words:** bring the chat back as a consultant you can ask things. It never changes your profile or your recommendations, it names only real titles from our catalogue, and it stays inside the free AI budget. What opens it, and whether it may add to your watchlist, is still open (Q5).
+> **In plain words:** bring the chat back as a consultant you can ask things. It never changes your profile or your recommendations, it names only real titles from our catalogue, and it stays inside the free AI budget. It opens only from an item in the main menu, once the onboarding is done, and it may add a title to your watchlist when you ask it to (Q5, decided 2026-11-14).
 
-- **P3-1 · Gate and entry point** — A1 · S–M. OPEN Q5.
+- **P3-1 · Gate and entry point** — A1 · S–M. Q5 is decided (§9): the only way in is an item in the main menu, shown once the onboarding is done (`done_at` set). No icon, no button on the feed, no "ask about this" on cards.
 - **P3-2 · Read-only** — A1 · M.
   - Context = `dnaPromptContext` (read-only) plus the user's current feed and watchlist titles.
   - Enforce it with a unit test that fails if anything under `src/app/api/conversation/**` imports `saveDNA`, `applyDirectives`, `mergeFeedback*` or writes to `served_titles` or the recommendation history.
@@ -779,7 +779,7 @@ Decided on 2026-11-09 and moved into §1:
 
 | # | Question | Status |
 |---|---|---|
-| Q5 | What gates the chat (after onboarding? only from a title? a daily cap?), and may it add titles to the watchlist? | Open. Watchlist: leaning yes. Needed before phase 3 starts. |
+| Q5 | What gates the chat (after onboarding? only from a title? a daily cap?), and may it add titles to the watchlist? | **Decided (Eran, 2026-11-14, #251).** For now only an item in the main menu opens it: no icon, no button on the feed, no "ask about this" on cards. It shows only once the onboarding is done (`done_at` set). Watchlist: yes, the chat may add a title when the person asks it to; it still never touches the DNA, the rules or the feed. Daily cap: as in P3-4, nothing extra. |
 | Q6 | Soft launch sign-up: open, or an invite list? | Open. Needed before the soft launch. |
 | Q9 | Does the soft launch need the chat at all, or can it go out after phase 2, with the chat following? | Open. |
 
