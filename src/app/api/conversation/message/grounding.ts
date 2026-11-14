@@ -147,6 +147,7 @@ export function factsHaystack(rows: TitleRow[]): string {
 }
 
 /** Words the chat may always use: its own name, the page it points to, and how people write genres. */
+// "yes" and "no" are here for "Short answer: Yes, …": after a colon a capitalised word is read as a name.
 const ALWAYS = "wtw | my taste | tv | sci-fi | i | ok | yes | no";
 
 /** Text as words. "Sánchez-Gijón's" is "Sanchez Gijon"; "|" marks where a phrase ends. */
