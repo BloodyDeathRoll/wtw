@@ -29,8 +29,10 @@ const STORAGE_KEY = "wtw_watchlist"
 /**
  * The first word of the consultant chat's reply when it saved a title on the
  * server (docs/plan/PLAN.md P3-6): "Added Heat (film, 1995) to your
- * watchlist." The chat writes it and the home screen reads it, to take the
- * list again.
+ * watchlist." The chat writes it and two places read it back from the reply's
+ * text: the home screen, to take the list again, and `asksToSave`
+ * (src/app/api/conversation/message/watchlist.ts), to know the ask was
+ * carried out. Change the wording here and nowhere else.
  */
 export const CHAT_ADDED = "Added"
 
