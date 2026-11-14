@@ -10,6 +10,7 @@
 
 import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
 import { titleKey } from "@/lib/title-key";
+import { normTitle, type KnownTitles } from "./grounding";
 import type { createClient } from "@/lib/supabase/server";
 import type { DNASchema } from "@/types/dna";
 
@@ -30,7 +31,13 @@ const MAX_TITLE_CHARS = 80;
 const clean = (s: string) => s.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE_CHARS);
 const kind = (type: unknown) => (type === "tv" ? "series" : "film");
 
-async function feedTitles(userId: string, dna: DNASchema, rated: ReadonlySet<string>): Promise<string[]> {
+/** Remembers a title the person already holds, so the reply check needs no search for it (grounding.ts). */
+function note(known: KnownTitles, title: string, key: string) {
+  const n = normTitle(title);
+  known.set(n, [...(known.get(n) ?? []), key]);
+}
+
+async function feedTitles(userId: string, dna: DNASchema, rated: ReadonlySet<string>, known: KnownTitles): Promise<string[]> {
   // The feed has one cached list per picker choice; Both comes first because the feed opens on it.
   const lists = await Promise.all(
     (["all", "movies", "series"] as const).map((t) =>
@@ -45,13 +52,13 @@ async function feedTitles(userId: string, dna: DNASchema, rated: ReadonlySet<str
     const key = titleKey(r.type, r.tmdb_id);
     if (seen.has(key) || rated.has(key)) continue;
     seen.add(key);
-    out.push(`${clean(r.title)} (${kind(r.type)})`);
-    if (out.length === FEED_TITLES) break;
+    note(known, r.title, key);
+    if (out.length < FEED_TITLES) out.push(`${clean(r.title)} (${kind(r.type)})`);
   }
   return out;
 }
 
-async function watchlistTitles(supabase: SupabaseClient, userId: string, rated: ReadonlySet<string>): Promise<string[]> {
+async function watchlistTitles(supabase: SupabaseClient, userId: string, rated: ReadonlySet<string>, known: KnownTitles): Promise<string[]> {
   const { data, error } = await supabase
     .from("watchlist_entries")
     .select("rec_id, rec")
@@ -65,24 +72,33 @@ async function watchlistTitles(supabase: SupabaseClient, userId: string, rated: 
     .filter((row) => !rated.has(row.rec_id) && typeof row.rec?.title === "string" && row.rec.title.trim())
     .slice(0, WATCHLIST_TITLES)
     .map((row) => {
+      note(known, row.rec!.title as string, row.rec_id);
       const year = typeof row.rec!.year === "number" && row.rec!.year > 0 ? `, ${row.rec!.year}` : "";
       return `${clean(row.rec!.title as string)} (${kind(row.rec!.type)}${year})`;
     });
 }
 
-/** The block appended to the consultant's instructions, or '' when both lists are empty. */
+export interface ConsultantContext {
+  /** The block appended to the consultant's instructions; '' when both lists are empty. */
+  text: string;
+  /** The person's feed, watchlist and rated titles: ours without a search. */
+  known: KnownTitles;
+}
+
 export async function consultantContext(
   supabase: SupabaseClient,
   userId: string,
   dna: DNASchema,
-): Promise<string> {
+): Promise<ConsultantContext> {
+  const known: KnownTitles = new Map();
+  for (const s of dna.signals) note(known, s.title, titleKey(s.type, s.tmdb_id));
   const rated = new Set(dna.signals.map((s) => titleKey(s.type, s.tmdb_id)));
   const [feed, watchlist] = await Promise.all([
-    feedTitles(userId, dna, rated).catch((e) => {
+    feedTitles(userId, dna, rated, known).catch((e) => {
       console.error("[conversation] feed titles unavailable", e instanceof Error ? e.message : e);
       return [] as string[];
     }),
-    watchlistTitles(supabase, userId, rated).catch((e) => {
+    watchlistTitles(supabase, userId, rated, known).catch((e) => {
       console.error("[conversation] watchlist titles unavailable", e instanceof Error ? e.message : e);
       return [] as string[];
     }),
@@ -90,5 +106,5 @@ export async function consultantContext(
   const lines: string[] = [];
   if (feed.length) lines.push(`IN THEIR RECOMMENDATIONS NOW: ${feed.join("; ")}.`);
   if (watchlist.length) lines.push(`ON THEIR WATCHLIST (newest first): ${watchlist.join("; ")}.`);
-  return lines.length ? `\n\n${lines.join("\n")}` : "";
+  return { text: lines.length ? `\n\n${lines.join("\n")}` : "", known };
 }
