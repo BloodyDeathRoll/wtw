@@ -38,6 +38,7 @@ import { getCandidates }            from './step1-candidate-gen'
 import { scoreCandidates }          from './step2-composite-score'
 import { applySoftModifiers }       from './step3-soft-modifiers'
 import { composeBatch }             from './step3b-compose-batch'
+import { capTurnedUp }              from './turned-up-cap'
 import { capKidsShare, spreadKids } from './kids-share'
 import { llmRerank }                from './step4-llm-rerank'
 import { injectStretchPick }        from './step5-stretch-pick'
@@ -171,8 +172,9 @@ async function runPipeline(
   // ── Step 3b: 80% fresh / 20% previously-served, by score ─
   // Kids' titles first get the share this viewer has earned for them
   // (kids-share.ts): without it a warm, hopeful taste fills half the batch
-  // with kids' films nobody asked for.
-  const batch = capKidsShare(composeBatch(modified), modified, dna, sessionContext)
+  // with kids' films nobody asked for. A genre turned up on the Taste DNA
+  // page gets at most half the batch (turned-up-cap.ts).
+  const batch = capTurnedUp(capKidsShare(composeBatch(modified), modified, dna, sessionContext), modified, dna)
 
   // ── Step 4: LLM re-ranking of the batch ──────────────────
   const reranked = await llmRerank(batch, dna)

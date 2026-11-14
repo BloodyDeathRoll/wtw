@@ -46,6 +46,9 @@ describe('drawer overlay containing block', () => {
     ['.header (dna)', CSS['.header (dna)'], '.header'],
     ['.page (dna)', CSS['.header (dna)'], '.page'],
     ['.container (dna)', CSS['.header (dna)'], '.container'],
+    // The quick-return header (2026-11-14): its slot moves by margin, never by position or transform.
+    ['.headerSlot (dna)', CSS['.header (dna)'], '.headerSlot'],
+    ['.scroller (dna)', CSS['.header (dna)'], '.scroller'],
   ])('%s stays unpositioned so the overlay resolves to .shell', (_label, file, selector) => {
     const body = ruleBody(readFileSync(join(process.cwd(), file), 'utf8'), selector)
     expect(body).not.toMatch(/position:\s*(relative|absolute|fixed|sticky)/)

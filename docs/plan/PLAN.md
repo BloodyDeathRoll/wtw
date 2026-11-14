@@ -73,7 +73,7 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
 | DEC-3 | **11 scales for every catalogue title** (deck option A + T2). These are the season's 10, plus **`audience`: made for kids ↔ made for adults** (decided by Eran on 2026-11-09 after the T2 test). Today only the 980 game titles have the 10, and none has `audience`. The same AI prompt as the season, plus one field, 10 titles per call. One backfill, then nightly. |
 | DEC-4 | **New-user flow:** genres (guardrails) → learner cards (about 30 seen, 35–45 shown) → about 12 this-or-that → feed. The season becomes an optional extra in the Games tab. |
 | DEC-5 | **Chat is a gated, ad-hoc consultant, and only a feature.** The main product is the recommendation list and the watchlist. Chat has zero effect on the brain (DNA), the rules or the ranking. Phase 1 removes every chat-made rule, preference, title signal and "tonight" modifier, and **hides the chat input** (`CHAT_MODE=off`) until phase 3. Still open: whether chat may add titles to the watchlist (leaning yes). |
-| DEC-6 | **A rule hides only what it names.** "No rom-coms" ≠ "no romance". Rules are made only by people, by picking, never by the chat: "Never" in the genre step; **"Never" or "Less of"** + a genre from a list on the Taste DNA page (P1-C3); per-title Remove. **"Less of" stays** (score × 0.7). "More of" and rules about people come later (they need a `dna.ts` change). |
+| DEC-6 | **A rule hides only what it names.** "No rom-coms" ≠ "no romance". Rules are made only by people, by picking, never by the chat: "Never" in the genre step; per-title Remove; and **your call on each of the 16 genres on the Taste DNA page: Never · Less · Normal · More · Much more** (P2-U8, decided with Eran 2026-11-13; `src/lib/genre-calls.ts`). Never is the exact 16-genre rule. Less / More / Much more are soft preferences that multiply a title's **odds** of making the feed (step 3): × 1/3, × 2.5, × 6, about half / one and a half / twice the genre's share of the feed (simulated), and a genre turned up fills at most half a batch. The old "Less of" (score × 0.5–0.7) emptied the genre from a 50-title batch, so it moved to odds. `dna.ts`: `weight_modifier` may be above 1, and `genre16` marks a call on one of the 16 (additive). Genre-screen Love / Like stay the fading lean (DEC-13). Rules about people come later. |
 | DEC-7 | **Jev stays at 0.8** until P1-E7 decides keep, fix or off. |
 | DEC-8 | **Launch order:** phases 1–3, then a friends-and-family soft launch. **Existing accounts are kept.** C1 step 4 cleans them. Phase-2 testing uses fresh second accounts (§P2-G). |
 | DEC-9 | **No change to `src/types/dna.ts` is needed.** If a WP seems to need one, stop and raise it: it is the shared contract. |
@@ -664,12 +664,11 @@ The screen designs come from P2-U0: `docs/prototypes/first-run/`, one approved J
 **P2-U8 · Redesign the Taste DNA page** — **Eran** — A3 (page) · U · M · deps: D4 (taste model) · **includes C3's rule picker** (folded in 2026-11-12)
 > **In plain words:** Rebuild the Taste DNA page so it shows only what really drives your recommendations.
 
-- **The full spec is in `docs/BACKLOG.md` → "Taste DNA — task details"**, rewritten for v2 on 2026-11-09. Read it first.
-- **In short:**
-  - The page shows only what drives recommendations: the header, the 11 scales (the season's `AxisRow` look), genres, how much you follow the crowd, people who pull you in, and rules (Never / Less of).
-  - Story traits, Mood & pace, Open Questions and every "Confidence" % are removed.
-- **New read-only route** `GET /api/dna/taste` (A3), built from P1-D4's `loadTasteTraining` + `trainTasteModel`, cached per `taste_version`.
-- **Before mocks:** settle what the page says about a genre the person watches a lot but rates unevenly (the Alon sci-fi case in the backlog entry).
+- **Built 2026-11-13 (branch `feat/p2-u8-taste-dna`), as signed off on the playable prototype** (`docs/prototypes/taste-dna-v2/play.py`). Spec and decisions: `docs/BACKLOG.md` → "Taste DNA — task details".
+- **The page, top to bottom:** In short (a sentence from facts), How you like it (the taste model's leans, the season's `AxisRow` look), People who pull you in (Cast, Directors, Writers; "from N titles"; the sheet shows the face and the titles), Genres (the 16, what your ratings say, and your call). Every sheet is 88% of the screen. Story traits, Mood & pace, the rules list, Open Questions, stretch-pick results, the crowd card and every "Confidence" % are gone.
+- **Your call on a genre: Never · Less · Normal · More · Much more** (DEC-6, as updated 2026-11-13). Normal = no call, your ratings decide. The others stay until changed. A level-meter icon shows the call on the row. Saved by `POST /api/dna/genre-call`.
+- **Engine (decided here with Eran, Alon told on GitHub):** soft preferences move a title's odds, not its score; a genre turned up gets at most half a batch (`turned-up-cap.ts`); the card's match % keeps the score before the call.
+- **Alon's sci-fi case, settled for the page (2026-11-13):** genres are shown on the 16 from the person's own ratings, which tells Sci-fi (28 rated, none disliked) from Superheroes (21 rated, 14 disliked).
 - **Soft launch:** it ships before the soft launch, since F&F users will open this page.
 
 **P2-G · Gate**

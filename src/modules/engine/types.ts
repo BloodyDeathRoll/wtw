@@ -114,6 +114,12 @@ export interface ScoredTitle {
   dimension_matches:      import('@/types/dna').ReasonPayload['dimension_matches']
 
   // ── Step 3: filled by soft modifier application ────────
+  /**
+   * The score before your Less / More / Much more calls, set only when one
+   * applied. The card's match % and the served score read this; the ranking
+   * reads composite_score (step3-soft-modifiers.ts).
+   */
+  match_score?:           number
   soft_preferences_applied: import('@/types/dna').ReasonPayload['soft_preferences_applied']
 
   // ── Step 4: filled by LLM re-ranking ──────────────────

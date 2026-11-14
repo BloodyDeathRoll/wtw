@@ -4,6 +4,7 @@ Things we've decided to come back to. Newest first. When one gets picked up, mov
 
 | Added | Item | Notes |
 |---|---|---|
+| 2026-11-14 | **One header behaviour on every long page: quick return** | Decided with Eran on My taste (built there, `DnaFrame.tsx`): at the top the header is always there; scrolling down slides it away; scrolling up a little brings it back; never hidden while its search box has focus; fades instead of sliding with reduced motion. Do the same on Watchlist, Seen (Ratings) and the games' long screens. The feed is the open question: its top bar holds Movies / Series / Both, so keeping it pinned is also fine (Eran to decide). Move it by margin, never `position` / `transform` (the menu drawer, `tests/unit/drawer-containing-block.test.ts`). |
 | 2026-11-12 | **The menu (☰): rethink it as a whole. Eran, very important** | Eran wants to handle the whole menu himself, first thing over the weekend of 2026-11-14. **Today:** one drawer (`src/modules/session/components/AppMenu.tsx`) with Recommendations, Watchlist, Games (`play`), My ratings, Taste DNA (`profile`), Voice, Sign out. The season hides items by stage (`src/app/play/components/ui.tsx`): before genres only Sign out (`NOTHING_YET`); a new user then sees Watchlist, Games, Voice, Sign out until the season is done (`NEW_USER`). **Parked inside it:** during the new onboarding (#241) the menu shows **Sign out only** (decided 2026-11-12 so the build isn't blocked, but Eran is unsure). **Questions:** what each kind of user sees (brand-new, mid-onboarding, done); whether Games and Voice belong in the main menu; where search lives; what replaces the hidden chat (`CHAT_MODE=off`, DEC-5). |
 | 2026-11-06 | **Recommendations: "Clear all seen" in one tap** | Rated cards stay in place now (the Seen task), so after rating a lot while scrolling, the feed fills up with titles you've already seen, and clearing them one by one is a chore. Add one action that clears every card you've rated from the list in one go, something like WhatsApp's "Archived" row at the top of the chat list. They're already in Seen, so nothing is lost. Decide where it sits (top of the list, or next to Movies / Series / Both) and whether it shows only once there's something to clear, with a count ("Clear 12 seen"). Related: [Seen — task details](#seen--task-details) and "never lose picks, never pile up". |
 | 2026-11-06 | **Adding a title to the Watchlist takes it off Recommendations** | Eran (2026-11-06): Add to Watchlist moves the title off the recommendation list. Today the card stays on the feed until you leave and come back (the server already drops saved titles from the next load). Make it leave right away, with a light animation and a short "Moved to Watchlist" note that fades by itself. The Seen task's rule is updated to match: only the X, Add to Watchlist or "Remove from Watchlist" takes a title off a list; a rating never does. |
@@ -19,7 +20,7 @@ Things we've decided to come back to. Newest first. When one gets picked up, mov
 | 2026-11-05 | **UI: redraw the loading graphic** | The swirl under "Reading your fingerprint · Finding matches" (part fingerprint, part eye) doesn't look clean. Eran wants revisions. It's `FingerprintLoader` (`src/modules/session/components/FingerprintLoader.tsx`), shown while recommendations load, on the Ratings page and on page-to-page loading (`src/app/components/RouteLoading.tsx`), so one redraw fixes all three. Related: the eyebrow still says "fingerprint", a word Eran dropped from the "Why it's a match" sheet. Reword it in the same change. |
 | 2026-11-05 | **The feed should act on people you love sooner** | Love two De Niro films and a third De Niro film gains less than one point out of 100 on its match today: a person's pull is how much you like their work × how many titles it's based on (the 15% / +8 steps), and two titles still counts as "early"; actors also weigh least of all roles (`computeCrewAffinity` in `src/modules/engine/scoring/crew-affinity.ts`; people are 32% of the match in `step2-composite-score.ts`). Decided (Eran, 2026-11-05): two loved titles with someone should noticeably lift their other work, so the feed matches what the Taste DNA page will say ("People who pull you in", which shows a person from 2 titles). |
 | 2026-11-05 | **The 48-hour check-in: needs more thinking** | Eran saw it live (2026-11-05) and likes it: "it has a lot of potential, I just don't know how yet". To discuss, not to remove. What it is today: loving or liking a title from the Watchlist queues a card that shows two days later on the home screen, "48-hour check-in · Still glad you watched Zootopia?" with "Yes, glad I did" / "Wish I hadn't"; the answer nudges the title's people again and is kept as its own "regret" signal (`RegretPrompt` in `src/app/components/RegretPrompt.tsx`, shown from `WTWApp.tsx`; queue in `src/lib/regret-queue.ts`). Things to weigh: it only starts from the Watchlist (and `RecCard`'s "watched"), so most ratings never trigger it; the queue lives in that phone or browser only; and nothing yet shows the user what their answers did. |
-| 2026-11-05 | **Taste DNA: make it read like a person, not a model** | **Rewritten 2026-11-09 for the v2 formula** (`docs/plan/PLAN.md`, P2-U8, owner Eran). Story traits and Mood & pace no longer drive recommendations, so they leave the page. In their place: where you lean on the 11 scales (the taste model, half of every score), genres, how much you follow the crowd, people, and rules (Never / Less of now; More of and people later). Full task: [Taste DNA — task details](#taste-dna--task-details). |
+| 2026-11-05 | **Taste DNA: make it read like a person, not a model** | **Rewritten 2026-11-09 for the v2 formula** (`docs/plan/PLAN.md`, P2-U8, owner Eran). Story traits and Mood & pace no longer drive recommendations, so they leave the page. In their place: where you lean on the 11 scales (the taste model, half of every score), genres, how much you follow the crowd, people, and your call on each genre (Never · Less · Normal · More · Much more, on the genre's row; no separate rules list). **Built 2026-11-13** (`feat/p2-u8-taste-dna`). Full task: [Taste DNA — task details](#taste-dna--task-details). |
 | 2026-11-05 | **Pin the Jev model** | `MODELS.jev` is `jev-latest` (`src/lib/ai-models.ts`). A floating alias can change what step 4 drops without a deploy. Once the filter has been watched on real batches for a while, pin the version Jev reports in its responses (`model` field, e.g. `jev-1.14.0`) and re-run `scripts/jev-threshold-probe.mts`. |
 | 2026-11-05 | **"Why it's a match": what the Crew bar means, and put it last** | (1) The bar doesn't say what it measures. On Meet the Parents it's a short sliver with Robert De Niro listed under Crew: does that mean you only like him a little, that his part is small, or that people you love aren't in it? Today it's the average of how much you like *every* person in the title the app knows from your ratings, liked and disliked together (`crewScore` in `WhyPanel`, `src/app/components/RecCard.tsx`), so one favourite plus a few people you're lukewarm on comes out short. Decide what it should mean, then make the bar (or a few words by it) say that. (2) Most recommendations have no one you follow, so the Crew bar is often empty: move it to the **bottom** of the Score breakdown (Eran, 2026-11-05). |
 | 2026-11-05 | **Two of the five "Why" bars are guesses** | Mood & pace is the overall match × 0.88, Recency is always 88%, and Narrative is the overall match itself (`WhyPanel` in `src/app/components/RecCard.tsx`). Only Crew and Reviews are real. The engine works out the real parts while scoring but doesn't pass them on; it needs to (A2), then the bars read them. |
@@ -128,7 +129,17 @@ Two concurrent first loads (`/` plus a prefetched `/play`, or two tabs) can each
 
 ### Taste DNA — task details
 
-*Added 2026-11-05 · **Rewritten 2026-11-09 for the v2 formula** · Owner: Eran (`docs/plan/PLAN.md`, P2-U8) · Page: `src/app/profile/dna/page.tsx` (rules: `RulesSection.tsx`, header: `DnaHeader.tsx`) · The mocks from 2026-11-07 (`docs/prototypes/taste-dna/`) were drawn before v2. Re-mock the sections marked "new" below.*
+*Added 2026-11-05 · **Rewritten 2026-11-09 for the v2 formula** · **Genres and rules redesigned 2026-11-13** · Owner: Eran (`docs/plan/PLAN.md`, P2-U8) · Page: `src/app/profile/dna/page.tsx` (rules: `RulesSection.tsx`, header: `DnaHeader.tsx`) · Mocks: `docs/prototypes/taste-dna-v2/` (2026-11-13, real data; `build.py`, the data file stays outside the repo). The 2026-11-07 mocks (`docs/prototypes/taste-dna/`) are pre-v2.*
+
+**Built 2026-11-13 (`feat/p2-u8-taste-dna`): this block wins over anything below it that disagrees.** Signed off by Eran on the playable prototype (`docs/prototypes/taste-dna-v2/play.py`, private artifact).
+- **Order:** header ("30 ratings · 12 picks"; the date didn't fit beside the search and menu buttons), In short, How you like it, People who pull you in, Genres. **No crowd card** (the In short sentence already says it), no Rules section, no stretch-pick results.
+- **People:** groups **Cast**, Directors, Writers (in that order); each row "from N titles" (the rated titles they're in), no bar; someone who directs and writes shows once ("Director, writer"). Tapping opens a sheet: the face (TMDB) beside the name, the orange divider, then the titles.
+- **Genres:** the 16, each row = what your ratings say ("Mostly enjoyed · 8 titles") plus a level-meter icon when there's a call. The intro: "Your ratings decide how often each genre shows up in your feed, and that keeps changing as you rate. Want more or less of one? Tap it and pick. Your pick stays until you change it. Bars on a genre show your pick; no bars means your ratings decide."
+- **The call, five steps:** **Never · Less · Normal · More · Much more**. Icons: four rising bars, 0–4 lit (Never = four dim red bars). The line under them is the person's own words ("I want to see more Comedy in my feed."), then "Stays until you change it." (Normal: "The more you rate, the better it gets."). Normal is no call at all.
+- **What each does (engine, decided with Eran):** Never hides it (exact 16-genre rule). Less / More / Much more multiply a title's odds of making the feed by 1/3 · 2.5 · 6: for a genre that is a quarter of the pool, about half · one and a half times · twice its share of the feed (simulated on pools of 150 and 300). A genre turned up fills at most half a batch. The card's match % is the score before the call. The old "Less of" (score × 0.5–0.7) took that genre to 0–11% of the feed, in practice a Never.
+- **Genre-screen Love / Like** stay the fading starting lean (DEC-13, #278); the page doesn't show them as calls.
+- **Sheets:** every sheet is 88% of the screen whatever it holds (the deep survey drawer's height); 20 titles, then "Show all N".
+- **Still to check:** the strengths on real feeds with the eval harness (a live-database read, Eran approves it first).
 
 **Context: why this was rewritten (read first)**
 - **The team approved the v2 formula on 2026-11-09:**
@@ -144,17 +155,16 @@ Two concurrent first loads (`/` plus a prefetched `/play`, or two tabs) can each
   - The decided items about them are cancelled: old items 1, 6 and 7, and the build note about greying moods, which needed a change to `src/types/dna.ts`.
 
 **Order, top to bottom (new)**
-1. Header
+1. Header and the "In short" sentence
 2. How you like it (the scales)
-3. Genres
-4. People who pull you in
-5. Rules
-6. Stretch pick results (unchanged, see below)
+3. Genres, with your call on each (this is where rules live now)
+4. You and the crowd
+5. People who pull you in
 
 Page title: still along the lines of "My taste" (old item 9). Settle the exact words at mock time.
 
 **1. Header (new)**
-- **The meta line:** "Based on 46 ratings and 12 picks · updated 3 Nov", replacing "22 signals · v4 · 11/3/2026". The footer "Schema v1 · N sessions" goes.
+- **The meta line:** "46 ratings · 12 picks · updated 3 Nov" (the longer "Based on…" ran under the back and menu buttons in the mocks), replacing "22 signals · v4 · 11/3/2026". The footer "Schema v1 · N sessions" goes.
 - **The summary sentence** at the top (today an AI text from the people and story traits, `src/app/api/dna/summary/route.ts`, cached per `taste_version`) is rebuilt from the v2 facts: the 2 strongest scale leanings, the strongest genre, the crowd line and the strongest person.
   - Example, from Eran's real data: "You go for light, down-to-earth stories, you usually agree with the crowd, and anything Christopher Nolan makes."
   - Same rules as "Why it's a match": facts only, fact-checked, and a plain fact-built sentence if the AI is down.
@@ -178,16 +188,20 @@ Page title: still along the lines of "My taste" (old item 9). Settle the exact w
   - **Cause, measured 2026-11-09:** he has rated 77 sci-fi/fantasy titles, and 23 are dislikes. 15 of those are Marvel or DC superhero films, and the game genres file superheroes under sci-fi. He loved Star Wars, Blade Runner, Alien and Interstellar.
   - **There is a second, deeper effect.** A fan watches everything in his genre, the mediocre ones too, so his *average* there drops, while the model ignores how much of his watching that genre is.
   - **One fix was tested:** a "superhero" input lifts Alon's own score from 76.6 to 78.2 and changes nothing for Eran and Shahar. His sci-fi lean is still negative with it, so it is only part of the answer.
-  - It belongs to the "fingerprint from hits" discussion (PLAN.md, open topics). Settle what the page says about genres you watch a lot before mocking this section.
+  - It belongs to the "fingerprint from hits" discussion (PLAN.md, open topics).
+  - **Settled for the page on 2026-11-13:** genres are shown on the 16 from your ratings, so Alon's page reads "Sci-fi: enjoyed all 28 · Superheroes: mostly disliked". The model's own 13 genre inputs still lump them (a later note for Shahar).
 
-**3. Genres (revised from old item 10)**
-- **The 13 game genres**, show only: Action, Animation, Anime, Comedy, Crime, Documentary, Drama, Family & kids, Horror, Romance, Sci-fi & fantasy, Thriller, War (`GAME_GENRES` in `src/app/play/lib/genres.ts`).
-- **The bar = the taste model's genre weight** (`w[1..13]`), so the page shows what drives the feed. Longest first, no numbers. A genre with fewer than 3 rated titles is greyed.
-- **A genre with a "Never" rule** says "Never" instead of a bar. **A "Less of" rule** shows a small "Less of" tag next to its bar.
-- **Under each genre name**, a grey "from 9 titles". Tapping it lists them with your loved / liked / disliked mark, the same pattern as the people section.
-- *Alternative, not chosen yet:* bars from your average reaction per genre (old item 10). That's easier to explain, but it can disagree with what the feed does. Decide at mock time; the Alon case above applies to both.
+**3. Genres, with your call on each (redesigned 2026-11-13; replaces old item 10 and the Rules section)**
+- **The 16 genres** (`GENRES_16`, `src/app/play/lib/genres16.ts`), in the genre screen's order, with its icons, colours and wash (`GenreStep.tsx` `LOOK`, `onboarding.css`). A row with a call lights up exactly as on the genre screen.
+- **Each row, two things:**
+  - **Left, under the name: what your ratings say**, in words, from your loved / liked / disliked titles in that genre (`genres16Of` on each rated title): "Loved all 7" · "Enjoyed all 28" (none disliked) · "Mostly enjoyed · 9 titles" (≤ ¼ disliked) · "Mostly disliked · 21 titles" (≥ 60%) · "Mixed · 12 titles" · "Only 2 rated so far" (under 3) · "Nothing rated yet" · a Never with nothing rated: "Hidden from your feed".
+  - **Right: your call** as the genre screen's own icon on its grey tile: pink heart = Love, green thumb = Like, red ban = Never, double chevron = Less of. Neutral = no tile.
+- **Above the rows:** "Tap a genre to get more or less of it." and the genre screen's own line, "We'll never show you Horror, Anime."
+- **Tapping a row opens a sheet** (the person sheet's look): the genre's icon and name, the words line, then "How much of it do you want?" with the five choices in a row (Never · Less of · Neutral · Like · Love), one line saying what the chosen one does (it changes as you tap), then **What you rated**: the titles with your marks, newest first.
+  - The lines: Love "Your feed leans towards Action from the start. As you rate more, your ratings take over." · Like "Your feed leans a little towards Action. …" · Neutral "No lean either way: your ratings alone decide." · Less of "You'll still see Action, just lower down your feed. Stays until you change it." · Never "We'll never show you Action."
+- **Where the answers live:** one store for the page and the genre screen (the 16 answers the genre screen saves), so #278's lean reads page edits too. Never also writes its `genre16Rule()`; Less of a soft preference (`weight_modifier: 0.7`) on that genre16. Every change bumps `taste_version`, so the feed rebuilds.
 
-**4. How much you follow the crowd (new, one line, under Genres)**
+**4. You and the crowd (new, its own small card under Genres; mocked 2026-11-13)**
 - **The data:** the taste model's crowd-rating weight (`w[0]`).
 - **The words:**
   - ≥ 0.30: "You tend to love what everybody loves."
@@ -196,7 +210,7 @@ Page title: still along the lines of "My taste" (old item 9). Settle the exact w
 - **Today:** Eran 0.38 / Alon 0.18 / Shahar 0.09 — one of each.
 - **Settle at mock time:** where it sits, and the exact words. The "Why" sheet's rule against talking about critics doesn't apply here: this line is about you, not about a title.
 
-**5. People who pull you in (unchanged from old item 5; still drives 30% of every score)**
+**5. People who pull you in (unchanged from old item 5; still drives 30% of every score). Later, rules about people use the same sheet as genres.**
 - **Title:** "People who pull you in" (working title), not "Creative Affinities".
 - **Who:** directors, actors, and writers who wrote the script (not the author of the book it's based on; already how writers are collected in `src/lib/tmdb.ts`). **No cinematographers** on the page, though the engine still counts them.
 - **The bar = how much you like their work**, not how many titles: everything "loved" = a full bar, everything "liked" = half, a mix in between. No number.
@@ -206,50 +220,34 @@ Page title: still along the lines of "My taste" (old item 9). Settle the exact w
 - **Empty state:** "Rate a few titles you've seen and we'll spot the directors and actors you keep coming back to."
 - **Related backlog rows:** "The feed should act on people you love sooner"; dislikes no longer move people (done).
 
-**6. Rules (updated)**
-- **Two dropdowns, no typing.**
-  - **First, the intention:** **Never show me · Less of** now. **More of** and more kinds of target later (Eran, 2026-11-09).
-  - **Second, a closed list:** the 13 genres above, for now. **People (creators)** come next, then maybe others.
-  - **A genre that already has a rule is greyed out** in the list, so "Never horror" and "Less of horror" can't sit side by side. To change one, remove the old rule first.
-- **What each one does in v2:**
-  - **Never:** the title is never shown. It hides exactly the genre named: "no rom-coms" is not "no romance" (PLAN DEC-6).
-  - **Less of:** the title's score is multiplied by 0.7 (step 3, `step3-soft-modifiers.ts`). It sinks but can still appear.
-  - **More of:** later. It needs a change to the shared DNA contract (`src/types/dna.ts`), because a "Less of" strength (0–1) can only lower a score. Tell all three first.
-- **Rules typed before v2:**
-  - The chat and the old typing box saved rules that hid far more than they named. Alon's "never dramas" hid 39 titles he loved.
-  - Phase 1 of the plan removes every rule not made by the genre screen (`scripts/strip-chat-from-dna.mts`, PLAN P1-C1) and lists them for each person, to re-add on purpose.
-- **Phase 1 already ships the bare minimum here** (PLAN P1-C3): the two dropdowns with Never / Less of and the genre list. This task restyles them to match the page.
+**6. Rules: folded into Genres (2026-11-13)**
+- No Rules section, no dropdowns: the genre sheet is the rule picker (it covers P1-C3's spec: Never / Less of + a genre from a closed list, no typing, one rule per genre).
+- **Rules typed before v2** were removed by P1-C1. If a fingerprint still holds a rule that isn't one of the 16 genres, show it in a quiet "Older rules" line with a remove button; nothing new can be made there.
+- **People rules** come later, on the person sheet, same five choices.
 
 **7. Removed from the page**
 - **Story traits** ("Narrative Dimensions"): not used by v2.
 - **Mood & pace** ("Visceral Specs"): not used by v2.
 - **"Confidence" bars and percentages, everywhere.**
 - **Open Questions:** filled only by the chat, which no longer writes anything (PLAN DEC-5). The section can't fill any more; remove it.
-- **Stretch Pick Results:** unchanged for now. Stretch picks still exist (1 in 20, from 15 ratings). Decide their look later.
+- **Stretch Pick Results** (decided 2026-11-13): accepting or rejecting a stretch pick writes only to story traits (`update-from-stretch.ts`), which weigh zero in v2, so it changes nothing in the feed. Stretch picks themselves stay (1 in 20, from 15 ratings).
 
 **Build notes (for whoever builds it)**
-- **No DNA contract change is needed** for any of the above, except "More of" later.
-- **A new read-only route, `GET /api/dna/taste`** (A3), returns `{ scales: [{ id, lean, sure }], genres: [{ id, weight, n, rule }], crowd, ratings, picks, updated_at }`.
+- **No DNA contract change is needed.** "More of" is Love / Like (DEC-13).
+- **A new read-only route, `GET /api/dna/taste`** (A3), returns `{ scales: [{ id, lean, sure }], genres: [{ id, loved, liked, disliked, call }], crowd, ratings, picks, updated_at }` (genres on the 16; `call` = never / less / like / love / null).
   - It's built from `loadTasteTraining` + `trainTasteModel` (P1-D4), cached per `taste_version`.
   - It needs P1-D4 merged. Until the scales cover every title (P1-D2), it reads only rated titles among the 980 that have them, so mocks can use real data now.
 - **Reuse `AxisRow` from the season as is** (the "own the pixels" rule). If the page needs a variant, change the shared component, not a copy.
-- **Process:** discussion first, then one JPEG mock per state:
-  - the full page;
-  - a brand-new user right after onboarding (30 cards + 12 picks);
-  - a user with very little data;
-  - a genre tapped;
-  - a person tapped;
-  - "Add a rule" with a genre greyed out;
-  - Alon's page, which shows the sci-fi question.
+- **Mocks** (`docs/prototypes/taste-dna-v2/`, 2026-11-13): the page right after onboarding (top, genres, bottom), a genre tapped, Alon's genres, Alon setting Less of on Superheroes, and a user with very little data. The person sheet is unchanged from `docs/prototypes/taste-dna/3-name-tapped`.
 
 **Done when**
-- The page shows only what drives recommendations: scales, genres, crowd, people and rules.
+- The page shows only what drives recommendations: scales, genres with your calls, crowd and people.
 - No percentages or "Confidence" labels anywhere.
-- The scales look exactly like the season's.
-- "Add a rule" is Never / Less of + a genre from a list: no typing, and no two rules on one genre.
-- Story traits, Mood & pace and Open Questions are gone.
+- The scales look exactly like the season's; the genre rows exactly like the genre screen's.
+- A genre's call is set from its sheet: Never · Less of · Neutral · Like · Love. No typing, one call per genre, and the genre screen shows the same answers.
+- Story traits, Mood & pace, Open Questions, Stretch pick results and the Rules section are gone.
 
 **Parked: rethinking rules** (Eran, 2026-11-05, back burner)
-- **Rules on the items themselves:** a chevron on each person or genre row opens a sheet (evidence first, then More of / Less of / Never), like "Block" at the bottom of a contact's page.
+- ~~**Rules on the items themselves**~~ **Adopted for genres on 2026-11-13** (section 3); people follow later.
 - **A "Tune" mode with draggable dots** on the scales: drag where you want to be. A dragged dot stays and is marked as yours, with a reset. Knobs appear only in Tune mode, so the page never looks like a form (the no-forms rule). In v2 a dragged scale would set an override on the taste model's weight. That isn't designed yet.
-- **The rules list then shrinks** to things not on the page, added by picking, never typing.
+- ~~**The rules list then shrinks**~~ Done: there is no rules list.

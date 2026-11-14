@@ -295,6 +295,8 @@ export interface TMDBPersonDetail {
   name: string
   known_for_department: string  // 'Directing' | 'Writing' | 'Camera' | 'Acting'
   known_for: { tmdb_id: string; title: string; type: 'movie' | 'tv' }[]
+  /** The face, as a TMDB image path (tmdbPosterUrl-style sizes apply); null when TMDB has none. */
+  profile_path: string | null
 }
 
 // ─────────────────────────────────────────────
@@ -400,6 +402,7 @@ export async function getPerson(tmdb_person_id: string): Promise<TMDBPersonDetai
     id: number
     name: string
     known_for_department: string
+    profile_path?: string | null
     known_for: {
       id: number
       title?: string       // movie
@@ -414,6 +417,7 @@ export async function getPerson(tmdb_person_id: string): Promise<TMDBPersonDetai
     tmdb_person_id: String(raw.id),
     name: raw.name,
     known_for_department: raw.known_for_department,
+    profile_path: raw.profile_path ?? null,
     known_for: (raw.known_for ?? []).map(kf => ({
       tmdb_id: String(kf.id),
       title: kf.title ?? kf.name ?? '',

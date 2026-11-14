@@ -28,11 +28,37 @@
      art and particles stay fixed while only this page scrolls. AppShell also
      handles the safe-area insets. */
   height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  /* A column: the header on top, the scroller under it (DnaFrame.tsx). Only
+     the scroller scrolls, so the header can step out of the way and come back. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   color: var(--white);
   font-weight: 400;
+}
+
+/* The header's slot. Quick return (Eran, 2026-11-14): it slides away as you
+   scroll down and comes back the moment you scroll up, always there at the
+   top. Done with a negative margin, NOT position or transform: either would
+   make the header the drawer overlay's containing block (see .header below
+   and tests/unit/drawer-containing-block.test.ts). */
+.headerSlot {
+  flex: none;
+  transition: margin-top 0.26s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
+}
+.headerHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding-bottom: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .headerSlot { transition: opacity 0.2s ease; }
 }
 .container {
   max-width: 560px;

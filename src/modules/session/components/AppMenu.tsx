@@ -305,7 +305,7 @@ export function AppMenu({
                     onProfile();
                   }}
                 >
-                  <span>My Taste DNA</span>
+                  <span>My taste</span>
                   <span className={styles.userMenuTrail}>{I.chevRight}</span>
                 </button>
               )}

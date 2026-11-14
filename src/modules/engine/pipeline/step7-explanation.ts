@@ -36,7 +36,7 @@ export function toResults(
     title:              item.title.title,
     tmdb_id:            item.title.tmdb_id,
     type:               item.title.type,
-    composite_score:    item.composite_score,
+    composite_score:    item.match_score ?? item.composite_score,
     reason_payload:     item.reason_payload,
     explanation:        cardReason(item, rated, plots),
     is_stretch_pick:    item.is_stretch_pick,
