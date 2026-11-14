@@ -37,6 +37,8 @@ async function feedTitles(userId: string, dna: DNASchema, rated: ReadonlySet<str
       getCachedRecommendations(userId, dna.metadata.taste_version, t),
     ),
   );
+  // A miss (a new taste_version, or 6 h without a build), not a failure: a failed read throws.
+  if (lists.every((l) => !l)) console.log("[conversation] no cached feed for the consultant");
   const seen = new Set<string>();
   const out: string[] = [];
   for (const r of lists.flatMap((l) => l ?? [])) {
@@ -85,8 +87,6 @@ export async function consultantContext(
       return [] as string[];
     }),
   ]);
-  // An empty feed here is a cache miss (a new taste_version, or 6 h without a build); a failed read logs above.
-  console.log(`[conversation] consultant context: ${feed.length} feed titles, ${watchlist.length} watchlist titles`);
   const lines: string[] = [];
   if (feed.length) lines.push(`IN THEIR RECOMMENDATIONS NOW: ${feed.join("; ")}.`);
   if (watchlist.length) lines.push(`ON THEIR WATCHLIST (newest first): ${watchlist.join("; ")}.`);
