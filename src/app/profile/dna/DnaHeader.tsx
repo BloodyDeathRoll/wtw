@@ -100,7 +100,7 @@ export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = fals
   return (
     <header className={styles.header}>
       {you ? (
-        chatReady ? <AskButton className={styles.backBtn} onClick={go("conversation")} /> : <span />
+        chatReady ? <AskButton className={styles.backBtn} onClick={() => leave(`/?stage=conversation&back=${encodeURIComponent("/you")}`)} /> : <span />
       ) : (
       <button
         type="button"

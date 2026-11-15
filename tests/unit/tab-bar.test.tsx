@@ -91,6 +91,13 @@ describe('the home route under the bar', () => {
     expect(app).toMatch(/const headerLeft = tabsOn \? \(onChat \? <AskButton/)
     expect(app).toMatch(/const headerMenu = tabsOn \? null : appMenu;/)
   })
+  it("the chat's Back returns to where the chat was opened", () => {
+    expect(app).toMatch(/chatBackRef\.current = \{ stage \};/)
+    expect(app).toMatch(/if \(tabsOn && from\?\.href\) leaveTo\(from\.href\);/)
+    expect(app).toMatch(/const CHAT_BACK = \/\^\\\/\(play\\\?tab=games\|you\)\$\/;/)
+    expect(readFileSync('src/app/play/components/ui.tsx', 'utf8')).toMatch(/stage=conversation&back=\$\{encodeURIComponent\('\/play\?tab=games'\)\}/)
+    expect(readFileSync('src/app/profile/dna/DnaHeader.tsx', 'utf8')).toMatch(/stage=conversation&back=\$\{encodeURIComponent\("\/you"\)\}/)
+  })
   it('moves the 48-hour check-in to For you, and reports saves when a tab leaves the cards', () => {
     expect(app).toMatch(/\{tabsOn && regret && \(/)
     expect(app).toMatch(/if \(stage === "recommendations" \|\| stage === "watchlist"\) syncSaves\(\);/)

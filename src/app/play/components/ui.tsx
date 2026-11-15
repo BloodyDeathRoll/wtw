@@ -153,7 +153,7 @@ export function TopBar({ ctl }: { ctl: Ctl }) {
   const tabsOn = navTabsEnabled() && hide.length === 0
   const left = tabsOn && !ctl.canSkip
     ? ctl.ui.screen === 'games'
-      ? ctl.chatReady ? <AskButton className="tb-back" onClick={go('conversation')} /> : null
+      ? ctl.chatReady ? <AskButton className="tb-back" onClick={() => ctl.leave(`/?stage=conversation&back=${encodeURIComponent('/play?tab=games')}`)} /> : null
       : !ctl.inTraining
         ? <button className="tb-back" onClick={() => ctl.go('games')} aria-label="Back to games"><ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" /></button>
         : null

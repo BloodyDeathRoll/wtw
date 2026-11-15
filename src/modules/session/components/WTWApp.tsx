@@ -397,6 +397,9 @@ function TypingDots() {
 /** What the consultant chat shows before the first question. */
 const CONSULTANT_HELLO = "Ask me what to watch tonight, whether a title is for you, or which of two to pick.";
 
+/** Routes the chat's Back may return to (&back=, the chat bubble on Games and You). Nothing else, so no open redirect. */
+const CHAT_BACK = /^\/(play\?tab=games|you)$/;
+
 /** Stages a standalone route may link into with ?stage=… (see AppMenu). */
 const DEEP_LINK_STAGES: readonly Stage[] = [
   "recommendations",
@@ -547,6 +550,8 @@ export default function WTWApp({
   // A brand-new user (nothing said yet, no mature greeting to show) starts
   // inside the chat with the intro already on screen — no onboard shell.
   const isNewUser = conversation.messages.length === 0 && !welcome.greeting;
+  // Where the chat's Back goes under the tab bar: the stage it was opened from, or the route (Games, You).
+  const chatBackRef = useRef<{ stage?: Stage; href?: string } | null>(null);
   // NAV_TABS: no home screen. The app opens on For you (the feed), and the bar at the bottom is the way around.
   const tabsOn = navTabsEnabled();
   const [stage, setStage] = useState<Stage>(isNewUser ? "intro" : tabsOn ? "recommendations" : "onboard");
@@ -558,6 +563,9 @@ export default function WTWApp({
     const s = q.get("stage");
     // The menu on a standalone route opens the consultant with ?stage=conversation.
     if (s && (DEEP_LINK_STAGES.includes(s as Stage) || (s === "conversation" && consultant))) setStage(s as Stage);
+    // The chat bubble on Games or You (NAV_TABS) says where it was tapped (&back=), so the chat's Back returns there.
+    const back = q.get("back");
+    if (s === "conversation" && back && CHAT_BACK.test(back)) chatBackRef.current = { href: back };
     // ?from=play only tells the server not to send the player back to the games.
     if (s || q.has("from")) window.history.replaceState(null, "", window.location.pathname);
   }, [consultant]);
@@ -887,9 +895,11 @@ export default function WTWApp({
     setStage("watchlist");
   }
 
-  // The menu's "Ask WTW": the consultant chat's only way in (Q5).
+  // The menu's "Ask WTW": the consultant chat's only way in (Q5). Under the tab bar, the chat bubble; the chat's
+  // Back returns to the screen it was opened from.
   function openChat() {
     setVoiceOpen(false);
+    chatBackRef.current = { stage };
     setStage("conversation");
   }
   const onChat = consultant ? openChat : undefined;
@@ -921,8 +931,11 @@ export default function WTWApp({
   // existing messages. Doesn't persist to DB (stage flip is local-only;
   // a reload lands them back in conversation view).
   function backToOnboard() {
-    // No home screen under the tab bar: the chat's Back returns to For you.
-    setStage(tabsOn ? "recommendations" : "onboard");
+    // No home screen under the tab bar: the chat's Back returns to where it was opened (For you when unknown).
+    const from = chatBackRef.current;
+    chatBackRef.current = null;
+    if (tabsOn && from?.href) leaveTo(from.href);
+    else setStage(tabsOn ? (from?.stage ?? "recommendations") : "onboard");
     setInput("");
   }
 
