@@ -10,6 +10,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { PrefetchKind } from 'next/dist/client/components/router-reducer/router-reducer-types'
 import AppShell from '@/modules/session/components/AppShell'
 import type { AppUser } from '@/modules/session/types'
 import { readLocal, usePersistence } from '@/app/play/components/persist'
@@ -32,7 +33,7 @@ import {
   cantDecide, haventSeen, loadPicks, pick, savePicks, startQuickPicks,
   type GenreAnswer, type QuickPicks, type Side,
 } from '../lib/quick-picks'
-import { fanOf, runShowtime } from '../lib/showtime'
+import { FEED_HREF, fanOf, runShowtime } from '../lib/showtime'
 import type { GameGenre } from '@/app/play/lib/genres'
 import { furthest, readDevice, useCardQueue } from '../lib/card-queue'
 import {
@@ -296,12 +297,16 @@ export default function OnboardingApp({ user, saved, titles }: { user: AppUser; 
       await flushNow()
       await queue.flushNow()
       if (demo) return
+      // The feed page starts loading now, during the hold, instead of after it (#246: ~2 s from `GET /` to the
+      // page's first calls). Only after the flushes: `done_at` is saved by then, so the page renders the feed
+      // and not a redirect back here. `finish` runs alongside; the page itself doesn't read the feed.
+      router.prefetch(FEED_HREF, { kind: PrefetchKind.FULL })
       const res = await fetch('/api/onboarding/finish', { method: 'POST' })
       if (!res.ok) throw new Error(`finish ${res.status}`)
     }
     return runShowtime(feed, {
       // Straight to the feed (P2-U0 part 6), not the home screen; the deep link the menu uses.
-      ready: () => { if (!demo) router.replace('/?stage=recommendations') },
+      ready: () => { if (!demo) router.replace(FEED_HREF) },
       slow: () => setShowtime('slow'),
       failed: () => setShowtime('failed'),
     })
