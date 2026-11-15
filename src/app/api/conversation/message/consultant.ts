@@ -57,8 +57,11 @@ export async function consultantAnswer(
     const { text, wanted } = splitAdds(draft);
     const resolution = await resolveTitles(namedTitles(text), known, searched);
     const checked = checkReply(text, resolution, `${instructions} ${said}`);
+    // An answer whose every pick was cut is only its frame ("The humor arises from…", P3-G Q8):
+    // show none of it, so the person hears there is no sure answer.
+    const kept = checked.picksLeft ? checked.kept : "";
     // Whether a title was saved is the app's to say, never the model's.
-    return { resolution, wanted, ...checked, kept: dropSaveClaims(checked.kept) };
+    return { resolution, wanted, ...checked, kept: dropSaveClaims(kept) };
   };
 
   const { kept, wanted } = await checkedDraft(write, check);

@@ -256,6 +256,12 @@ describe('what a reply may say', () => {
     expect((await check('*Parasite* has 3 seasons.')).kept).toBe('')
   })
 
+  it('says whether a pick is left after the cut', async () => {
+    expect((await check('*Parasite* has 3 seasons. The humor is dry.')).picksLeft).toBe(false)
+    expect((await check('*Parasite* has 3 seasons. *Heat* is close.')).picksLeft).toBe(true)
+    expect((await check('I can\'t change that from this chat.')).picksLeft).toBe(true)
+  })
+
   it('cuts a title named without asterisks: it was never looked up', async () => {
     expect((await check('You could watch Blade Runner tonight.')).kept).toBe('')
   })
@@ -336,6 +342,16 @@ describe('a consultant turn', () => {
     const r = await ask('weird sci-fi?')
     expect(r.text).toMatch(/^I can't give you a sure answer/)
     expect(r.text).not.toContain('Zardoz')
+    logs.mockRestore()
+  })
+
+  it('says so when every pick is cut, instead of showing what is left', async () => {
+    // P3-G, Q8 on 2026-11-15: both picks were cut, and only "The humor arises from…" was left.
+    model.replies = ['*Zardoz* is your film. It is witty and strange.', 'Try *Zardoz*. The humor is dry.']
+    const logs = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const r = await ask('weird sci-fi?')
+    expect(r.text).toMatch(/^I can't give you a sure answer/)
+    expect(r.text).not.toMatch(/witty|humor/)
     logs.mockRestore()
   })
 
