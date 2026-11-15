@@ -132,12 +132,14 @@ console.log(`chat gate (P3-G): user ${USER.slice(0, 8)}…, app ${BASE}, databas
 console.log(`before: taste_version ${before.taste_version}, DNA ${before.hash}, watchlist ${before.watchlist}`)
 
 const failures: string[] = []
+let lastAsked = 0 // the run stops early at a daily-limit reply
 if (DRY) {
   const res = await fetch(`${BASE}/api/watchlist`, { headers: { cookie } })
   console.log(`dry run: signed in, GET /api/watchlist answered ${res.status}; no question was asked`)
   if (res.status !== 200) failures.push(`the sign-in did not work on ${BASE} (HTTP ${res.status})`)
 } else {
   for (const [i, question] of QUESTIONS.entries()) {
+    lastAsked = i + 1
     // A question that throws is a failure, not the end: the DNA check below is what the gate is for.
     const reply = await ask(cookie, question).catch((e: unknown) => e instanceof Error ? e.message : String(e))
     if (typeof reply === 'string') {
@@ -169,7 +171,7 @@ if (after.hash !== before.hash || after.taste_version !== before.taste_version |
 }
 if (after.watchlist < before.watchlist || after.watchlist > before.watchlist + 1) failures.push(`the watchlist went from ${before.watchlist} to ${after.watchlist} titles`)
 // Not a failure either way: "Heat" is two titles in the catalogue, so the chat may ask which one and save nothing.
-if (!DRY) console.log(after.watchlist === before.watchlist + 1 ? 'question 10: one title was saved to the watchlist' : 'question 10: nothing was saved to the watchlist (read A10 for why)')
+if (lastAsked === QUESTIONS.length) console.log(after.watchlist === before.watchlist + 1 ? 'question 10: one title was saved to the watchlist' : 'question 10: nothing was saved to the watchlist (read A10 for why)')
 
 if (failures.length) {
   console.log(`\nFAIL\n${failures.map((f) => `  - ${f}`).join('\n')}`)
