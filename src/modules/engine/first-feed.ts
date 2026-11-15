@@ -30,8 +30,8 @@ import 'server-only'
 import { after } from 'next/server'
 import type { DNASchema } from '@/types/dna'
 import { FEED_START_TYPE, type ContentType } from '@/lib/content-type'
-import { precomputeNextBatch, precomputeRunning } from './pipeline/precompute'
-import { generateRecommendations, INLINE_PLOT_WAIT_MS } from './pipeline/generate'
+import { holdQuietBuilds, precomputeNextBatch, precomputeRunning } from './pipeline/precompute'
+import { generateRecommendations } from './pipeline/generate'
 import { refreshLiveBatch } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate, bumpVersion } from '@/modules/dna/lib/load-save'
 import { getRedis } from '@/lib/redis'
@@ -43,6 +43,13 @@ import { getRedis } from '@/lib/redis'
  * 2026-11-13; #311 joined them).
  */
 export const FIRST_FEED_TYPE: ContentType = FEED_START_TYPE
+/**
+ * How long a first-feed build waits for NEW plot summaries: not at all. The
+ * cached ones are still read (card-plot.ts); the rest are written in the
+ * background, and a card without one keeps its fact line. Was 400 ms (#307);
+ * Eran's production run (#246, 2026-11-15) spent 3 s waiting for this build.
+ */
+export const FIRST_FEED_PLOT_WAIT_MS = 0
 /** How often, and how long at most, to wait for a build the last answer started. */
 const WAIT_STEP_MS = 150
 const WAIT_MAX_MS = 8_000
@@ -62,8 +69,9 @@ export interface FirstFeedResult {
  * they finish in the background, and a card without one keeps its fact line.
  */
 export function kickFirstFeed(userId: string, contentType: ContentType = FIRST_FEED_TYPE): Promise<void> {
-  return precomputeNextBatch(userId, contentType, undefined, { plotWaitMs: INLINE_PLOT_WAIT_MS })
+  return precomputeNextBatch(userId, contentType, undefined, { plotWaitMs: FIRST_FEED_PLOT_WAIT_MS })
 }
+
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -140,6 +148,12 @@ export async function finishFirstFeed(userId: string, contentType: ContentType =
 }
 
 async function finish(userId: string, contentType: ContentType, t0: number, waited: { ms: number }): Promise<FirstFeedResult> {
+  // The card answer flushed just before this call goes through the feedback
+  // route, which builds after a 4 s pause and may promote that batch under a
+  // new version while the feed loads (Eran's run, #246, 2026-11-15: an answer
+  // saved 70 ms before the finish; its build ran as the feed was asked for).
+  // This feed is made from everything saved, so that build stands down.
+  await holdQuietBuilds(userId)
   // 1. The last answer usually started a build a moment ago: let it finish
   //    rather than start a second one.
   while (Date.now() - t0 < WAIT_MAX_MS && await precomputeRunning(userId)) await sleep(WAIT_STEP_MS)

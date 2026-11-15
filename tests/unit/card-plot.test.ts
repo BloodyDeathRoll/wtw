@@ -60,7 +60,7 @@ describe('cardPlots', () => {
       .mockResolvedValueOnce({ text: '1 | Dewey Finn talks his way into a substitute teaching job and turns his class into a rock band.' })
       .mockRejectedValueOnce(new Error('rate limited'))
     expect((await cardPlots([item('1', LONG)])).size).toBe(0)
-    expect(store.size).toBe(0)
+    expect([...store.keys()].filter(k => k.startsWith('card_plot:v2:'))).toEqual([])   // no summary cached (the rate limit's cool-down flag may be)
   })
 
   it('never holds a batch up: a slow model is finished in the background and cached for next time', async () => {
@@ -73,6 +73,30 @@ describe('cardPlots', () => {
     release()
     await new Promise(r => setTimeout(r, 20))
     expect(store.get('card_plot:v2:movie:1')).toMatch(/^Dewey Finn/)
+  })
+
+  // #246 (2026-11-15): the first feed waits for no new summaries, but the cached ones still count.
+  it('a 0 wait still uses the summaries already cached, and writes the rest in the background', async () => {
+    store.set('card_plot:v2:movie:1', 'Cached: Dewey Finn becomes a substitute teacher.')
+    let release!: () => void
+    generateText.mockImplementationOnce(() => new Promise(r => { release = () => r({ text: '1 | Dewey Finn talks his way into a substitute teaching job and turns his class into a rock band.' }) }))
+      .mockResolvedValueOnce({ text: '1 | OK' })
+    const out = await cardPlots([item('1', LONG), item('2', LONG)], 0)
+    expect([...out.keys()]).toEqual(['movie:1'])
+    release()
+    await new Promise(r => setTimeout(r, 20))
+    expect(store.get('card_plot:v2:movie:2')).toMatch(/^Dewey Finn/)
+  })
+
+  it('after a rate limit, asks for no new summaries for a minute (cached ones still served)', async () => {
+    generateText.mockRejectedValueOnce(Object.assign(new Error('Rate limit exceeded'), { statusCode: 429 }))
+    await cardPlots([item('1', LONG)], 50)
+    expect(store.get('card_plot:out')).toBe('1')
+    generateText.mockClear()
+    store.set('card_plot:v2:movie:3', 'Cached line.')
+    const out = await cardPlots([item('2', LONG), item('3', LONG)], 50)
+    expect(generateText).not.toHaveBeenCalled()
+    expect([...out.keys()]).toEqual(['movie:3'])
   })
 
   it('never uses the chat\'s model', async () => {

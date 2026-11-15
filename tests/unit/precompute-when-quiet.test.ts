@@ -20,7 +20,7 @@ vi.mock('@/modules/engine/pipeline/generate', () => ({
   scheduleExplanationPatch: () => {},
 }))
 
-const { precomputeWhenQuiet, supersedeQuietPrecompute, QUIET_MS } = await import('@/modules/engine/pipeline/precompute')
+const { precomputeWhenQuiet, supersedeQuietPrecompute, holdQuietBuilds, QUIET_MS } = await import('@/modules/engine/pipeline/precompute')
 
 beforeEach(() => {
   redis = createFakeRedis()
@@ -79,6 +79,22 @@ describe('precomputeWhenQuiet', () => {
     await waiting
     expect(generateRecommendations).not.toHaveBeenCalled()
     log.mockRestore()
+  })
+
+  // #246 (2026-11-15): the card answer flushed just before the onboarding's
+  // finish stamps ~0.9 s AFTER the finish started, so a stamp can't stop it.
+  it('stands down while the first feed\'s hold is on, even when it stamped after the hold was set', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    await holdQuietBuilds('u1')
+    await precomputeWhenQuiet('u1', 'movies', undefined, async () => {})
+    expect(generateRecommendations).not.toHaveBeenCalled()
+    log.mockRestore()
+  })
+
+  it('the hold is short: it outlasts one quiet wait plus a save, no more', async () => {
+    await holdQuietBuilds('u1')
+    const call = redis.set.mock.calls.find(c => c[0] === 'rec_precompute_hold:u1')
+    expect((call?.[2] as { ex?: number } | undefined)?.ex).toBe(Math.ceil(QUIET_MS / 1000) + 2)
   })
 
   it('builds anyway when Redis fails', async () => {

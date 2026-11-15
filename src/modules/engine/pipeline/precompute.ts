@@ -41,6 +41,7 @@ const lockKey    = (userId: string) => `rec_precompute_lock:${userId}`
 const dirtyKey   = (userId: string) => `rec_precompute_dirty:${userId}`
 // Per list: a movie rating and a series rating in one burst each get their batch.
 const quietKey   = (userId: string, contentType: ContentType) => `rec_precompute_quiet:${userId}:${contentType}`
+const holdKey    = (userId: string) => `rec_precompute_hold:${userId}`
 
 // A generation takes ~6-8s; the lock outlives a stuck one by a wide margin.
 const LOCK_TTL_SECONDS  = 90
@@ -53,6 +54,11 @@ const MAX_RUNS_PER_KICK = 3
 export const QUIET_MS = 4_000
 // The stamp must outlive the wait plus scheduling slop.
 const QUIET_TTL_SECONDS = 30
+/**
+ * How long holdQuietBuilds lasts: a rating saved just before it stamps up to
+ * ~1 s later (the save comes first) and checks QUIET_MS after that.
+ */
+const HOLD_SECONDS = Math.ceil(QUIET_MS / 1000) + 2
 // How long a parked batch waits to be adopted before it's discarded.
 const PENDING_TTL_SECONDS = 30 * 60
 
@@ -246,6 +252,25 @@ export async function supersedeQuietPrecompute(userId: string, contentType: Cont
 }
 
 /**
+ * The first feed was just made from everything saved (first-feed.ts): a quiet
+ * build that a rating from the same moment queued would only rebuild the same
+ * batch while the feed loads, and could promote it under a new version
+ * (refreshIfDue) mid-load. For HOLD_SECONDS, quiet builds stand down; a rating
+ * made on the feed after that builds as usual. Never throws.
+ *
+ * A stamp can't do this (supersedeQuietPrecompute): the card answer the
+ * onboarding flushes just before the finish stamps only after its own save,
+ * ~0.9 s later, so it would stamp over the finish's (#246, 2026-11-15).
+ */
+export async function holdQuietBuilds(userId: string): Promise<void> {
+  try {
+    await getRedis().set(holdKey(userId), '1', { ex: HOLD_SECONDS })
+  } catch (err) {
+    console.warn('[precompute] could not hold quiet builds (non-fatal):', err instanceof Error ? err.message : err)
+  }
+}
+
+/**
  * precomputeNextBatch once the user stops rating: each call stamps the user,
  * waits QUIET_MS, and builds only if no later call re-stamped meanwhile. A run
  * of ratings costs one build after the last one instead of one per rating.
@@ -264,6 +289,10 @@ export async function precomputeWhenQuiet(
     await wait(QUIET_MS)
     if ((await redis.get(quietKey(userId, contentType))) !== stamp) {
       console.log('[precompute] superseded by a later rating or a "Find more", skipping')
+      return
+    }
+    if (await redis.get(holdKey(userId))) {
+      console.log('[precompute] held: the first feed was just made, skipping')
       return
     }
   } catch (err) {
