@@ -85,6 +85,9 @@ export default async function Home({
         calibrationNudge={play.skipped}
         // Q5: the chat shows once the onboarding is done. An existing account that skips it (DEC-8) counts.
         chatReady={!needsOnboarding(boot.play.state, boot.signals)}
+        // The new onboarding replaces the v0.1 voice welcome (Eran 2026-11-15): someone past it with few
+        // ratings and no chat opens on the feed, not on "Hey there, welcome to What To Watch!".
+        voiceWelcome={!onboardingV2Enabled()}
       />
     </>
   );

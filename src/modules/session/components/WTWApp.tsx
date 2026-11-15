@@ -527,6 +527,7 @@ export default function WTWApp({
   welcome,
   calibrationNudge = false,
   chatReady = false,
+  voiceWelcome = true,
 }: {
   user: AppUser;
   conversation: Conversation;
@@ -535,6 +536,8 @@ export default function WTWApp({
   chatReady?: boolean;
   /** Skipped the taste games part-way: the feed nudges them back now and then. */
   calibrationNudge?: boolean;
+  /** The v0.1 spoken welcome for an account with no chat and few ratings; off under ONBOARDING_V2. */
+  voiceWelcome?: boolean;
 }) {
   const router = useRouter();
   // CHAT_MODE (DEC-5). `legacy`: the old interviewing chat, behind the header's
@@ -549,7 +552,8 @@ export default function WTWApp({
   // sees continuity.
   // A brand-new user (nothing said yet, no mature greeting to show) starts
   // inside the chat with the intro already on screen — no onboard shell.
-  const isNewUser = conversation.messages.length === 0 && !welcome.greeting;
+  // Not under the new onboarding (`voiceWelcome` false): it is the way in there, and the intro is retired.
+  const isNewUser = voiceWelcome && conversation.messages.length === 0 && !welcome.greeting;
   // Where the chat's Back goes under the tab bar: the stage it was opened from, or the route (Games, You).
   const chatBackRef = useRef<{ stage?: Stage; href?: string } | null>(null);
   // NAV_TABS: no home screen. The app opens on For you (the feed), and the bar at the bottom is the way around.
