@@ -26,6 +26,7 @@ import { mergeFeedbackSignalsLight } from '@/modules/dna/merge-feedback-signal'
 import { kickFirstFeed } from '@/modules/engine/first-feed'
 import { FEED_START_TYPE } from '@/lib/content-type'
 import { withDNAUpdate, bumpVersion } from '@/modules/dna/lib/load-save'
+import { ensureFingerprint } from '@/lib/ensure-fingerprint'
 import { HISTORY_WRITE_ATTEMPTS, applyFeedbackToDNA } from '@/lib/rating-write'
 import type { Reaction } from '@/types/dna'
 import titles from '@/app/play/data/titles.json'
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
   const unseen = [...last.values()].filter(a => a.r === 'unseen')
 
   if (rated.length) {
-    const outcome = await withDNAUpdate(user.id, dna => {
+    const save = () => withDNAUpdate(user.id, dna => {
       for (const a of rated) {
         const t = gameTitle(a.id)!
         applyFeedbackToDNA(dna, {
@@ -78,6 +79,10 @@ export async function POST(req: NextRequest) {
       bumpVersion(dna)
       return true
     }, HISTORY_WRITE_ATTEMPTS)
+    let outcome = await save()
+    // A brand-new account reaches the onboarding before anything has written
+    // its blank fingerprint: create it, then save (#246, 2026-11-15).
+    if (outcome === 'missing' && (await ensureFingerprint(user.id)) !== 'failed') outcome = await save()
     if (outcome === 'missing') return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     if (outcome === 'conflict') {
       console.error('[onboarding/cards] history write lost every compare-and-set; answers not recorded')
