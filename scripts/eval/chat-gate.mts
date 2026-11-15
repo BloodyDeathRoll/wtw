@@ -88,20 +88,26 @@ async function snapshot() {
   }
 }
 
-/** One question as a chat of its own. The reply is the stream's text. */
-async function ask(cookie: string, text: string): Promise<{ status: number; answer: string }> {
+// The route's two limit replies (OVER_USER and OVER_ALL in route.ts, which a route file cannot export).
+const LIMIT_LINES = ['the chat has a daily limit. It opens again within a day.', 'The chat has reached its daily limit for everyone.']
+
+/** One question as a chat of its own. The reply is the stream's text; `errors` are the stream's error parts. */
+async function ask(cookie: string, text: string): Promise<{ status: number; answer: string; errors: string[] }> {
   const res = await fetch(`${BASE}/api/conversation/message`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie },
     body: JSON.stringify({ conversation_id: randomUUID(), messages: [{ id: randomUUID(), role: 'user', parts: [{ type: 'text', text }] }] }),
   })
   const body = await res.text()
+  const errors: string[] = []
   const answer = body.split('\n').flatMap((line) => {
     if (!line.startsWith('data: {')) return []
-    const part = JSON.parse(line.slice(6)) as { type?: string; delta?: string }
+    let part: { type?: string; delta?: string; errorText?: string }
+    try { part = JSON.parse(line.slice(6)) } catch { return [] } // a broken line is not worth the run
+    if (part.type === 'error') errors.push(part.errorText ?? 'an error part with no text')
     return part.type === 'text-delta' && part.delta ? [part.delta] : []
   }).join('')
-  return { status: res.status, answer: answer || body.slice(0, 200) }
+  return { status: res.status, answer: answer || body.slice(0, 200), errors }
 }
 
 /**
@@ -132,11 +138,19 @@ if (DRY) {
   if (res.status !== 200) failures.push(`the sign-in did not work on ${BASE} (HTTP ${res.status})`)
 } else {
   for (const [i, question] of QUESTIONS.entries()) {
-    const { status, answer } = await ask(cookie, question)
+    // A question that throws is a failure, not the end: the DNA check below is what the gate is for.
+    const reply = await ask(cookie, question).catch((e: unknown) => e instanceof Error ? e.message : String(e))
+    if (typeof reply === 'string') {
+      console.log(`\nQ${i + 1}: ${question}\nA${i + 1}: (no answer: ${reply})`)
+      failures.push(`Q${i + 1}: ${reply}`)
+      continue
+    }
+    const { status, answer, errors } = reply
     console.log(`\nQ${i + 1}: ${question}\nA${i + 1}: ${answer}`)
     if (status !== 200) failures.push(`Q${i + 1}: HTTP ${status}`)
+    else if (errors.length) failures.push(`Q${i + 1}: the stream carried an error (${errors.join('; ')})`)
     else if (!answer.trim()) failures.push(`Q${i + 1}: an empty answer`)
-    else if (answer.includes('daily limit')) failures.push(`Q${i + 1}: the chat's daily limit, not an answer`)
+    else if (LIMIT_LINES.some((line) => answer.includes(line))) failures.push(`Q${i + 1}: the chat's daily limit, not an answer`)
     else {
       // The names are an aid: a failed lookup must not cost the answer, each one is a turn of the daily limit.
       const found = await names(answer, question).catch((e: unknown) => (console.log(`    names not looked up: ${e instanceof Error ? e.message : e}`), null))
@@ -151,6 +165,8 @@ if (after.hash !== before.hash || after.taste_version !== before.taste_version |
   failures.push(`the DNA changed (taste_version ${before.taste_version} → ${after.taste_version}, ${before.hash} → ${after.hash})`)
 }
 if (after.watchlist < before.watchlist || after.watchlist > before.watchlist + 1) failures.push(`the watchlist went from ${before.watchlist} to ${after.watchlist} titles`)
+// Not a failure either way: "Heat" is two titles in the catalogue, so the chat may ask which one and save nothing.
+if (!DRY) console.log(after.watchlist === before.watchlist + 1 ? 'question 10: one title was saved to the watchlist' : 'question 10: nothing was saved to the watchlist (read A10 for why)')
 
 if (failures.length) {
   console.log(`\nFAIL\n${failures.map((f) => `  - ${f}`).join('\n')}`)
