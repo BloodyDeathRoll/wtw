@@ -11,6 +11,7 @@ const io = vi.hoisted(() => ({
   bumpOutcome: 'saved' as 'saved' | 'conflict' | 'missing' | 'unchanged',
   generated: [] as { dna: DNASchema; contentType: string }[],
   kicked: [] as string[],
+  superseded: [] as string[],
   version: 7,
   redis: [] as string[],    // first_feed:timings, newest first
   redisDown: false,
@@ -32,6 +33,7 @@ vi.mock('@/modules/engine/pipeline/precompute', () => ({
     io.kicked.push(`${userId}:${contentType}:${build?.plotWaitMs ?? 'default'}`)
   },
   precomputeRunning: async () => io.runningPolls-- > 0,
+  holdQuietBuilds: async (userId: string) => { io.superseded.push(userId) },
 }))
 vi.mock('@/modules/dna/refresh-batch', () => ({ refreshLiveBatch: async () => io.promoted }))
 vi.mock('@/modules/dna/lib/load-save', () => ({
@@ -58,6 +60,7 @@ beforeEach(() => {
   io.bumpOutcome = 'saved'
   io.generated = []
   io.kicked = []
+  io.superseded = []
   io.redis = []
   io.redisDown = false
   vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -66,13 +69,13 @@ beforeEach(() => {
 describe('kickFirstFeed', () => {
   // Eran's first run (#246, 2026-11-13): the batch was built for 'all' while the
   // feed opens on "movies", and each build waited 2.5 s for new plot summaries.
-  it('builds the list the feed opens on (FEED_START_TYPE, "all"), without waiting for new plot summaries', async () => {
+  it('builds the list the feed opens on (FEED_START_TYPE, "all"), without waiting for new plot summaries (#246: 0, cached ones only)', async () => {
     await kickFirstFeed('u1')
-    expect(io.kicked).toEqual(['u1:all:400'])
+    expect(io.kicked).toEqual(['u1:all:0'])
   })
   it('a caller can ask for another list', async () => {
     await kickFirstFeed('u1', 'series')
-    expect(io.kicked).toEqual(['u1:series:400'])
+    expect(io.kicked).toEqual(['u1:series:0'])
   })
 })
 
@@ -99,6 +102,14 @@ describe('finishFirstFeed', () => {
     expect(io.generated).toHaveLength(1)
     expect(io.generated[0].dna.metadata.taste_version).toBe(8)
     expect(io.generated[0].contentType).toBe('all')
+  })
+
+  // #246, Eran's run 2026-11-15: a card answer flushed just before the finish
+  // started a quiet build that could re-promote the feed while it loaded.
+  it('holds the quiet build the last card answer queued, so it can\'t rebuild or re-promote while the feed loads', async () => {
+    io.promoted = 8
+    await finishFirstFeed('u1')
+    expect(io.superseded).toEqual(['u1'])
   })
 
   it('throws when the fingerprint can\'t be bumped, so the screen shows "Try again"', async () => {

@@ -93,17 +93,47 @@ function mistral() {
   return createMistral({ apiKey })
 }
 
+/** A cache read that hangs must not hold the batch up either. */
+const CACHE_READ_MAX_MS = 300
+/**
+ * After a rate limit, no new summaries for this long. Eran's onboarding
+ * (#246, 2026-11-15) ran 8 builds in 20 s and every one got "Rate limit
+ * exceeded" from Mistral after ~450 ms: calls that could not succeed, on the
+ * key the nightly enrichment shares.
+ */
+const OUT_KEY = 'card_plot:out'
+const OUT_SECONDS = 60
+
 /**
  * Plot sentences for the titles whose own plot text won't fit the card,
  * keyed `${type}:${tmdb_id}`. Best-effort: never throws, and a title it
  * can't do is simply absent.
+ *
+ * `waitMs` is how long the batch waits for NEW summaries. The ones already
+ * cached are always read first (one Redis call), so 0 means "cached only, write
+ * the rest in the background" — the first feed's choice, someone is waiting on
+ * it (P2-U5, #246). Before 2026-11-15 the wait covered the cache read too, so a
+ * short wait could lose cached summaries as well.
  */
 export async function cardPlots(items: PlotSource[], waitMs = WAIT_MS): Promise<Map<string, string>> {
   const out = new Map<string, string>()
-  const work = fillPlots(items, out)
+  const need = items.filter(i => i.title.synopsis && !plotLine(i.title.synopsis, CARD_REASON_MAX_CHARS))
+  if (!need.length) return out
+  const ids = [...new Set(need.map(i => `${i.title.type}:${i.title.tmdb_id}`))]
+  const byId = new Map(need.map(i => [`${i.title.type}:${i.title.tmdb_id}`, i.title]))
+
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const out429 = await Promise.race([
+    readCached(ids, out),
+    new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), CACHE_READ_MAX_MS) }),
+  ])
+  clearTimeout(timer)
+  const found = new Map(out)
+  if (out429 || ids.every(id => found.has(id))) return found
+
+  const work = writeNew(ids.filter(id => !found.has(id)), byId, out)
   // The batch waits a moment, never longer: what isn't written by then is
   // finished in the background and cached, so the next batch has it.
-  let timer: ReturnType<typeof setTimeout> | undefined
   const late = await Promise.race([
     work.then(() => false),
     new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(true), waitMs) }),
@@ -111,24 +141,28 @@ export async function cardPlots(items: PlotSource[], waitMs = WAIT_MS): Promise<
   clearTimeout(timer)
   if (late) {
     try { after(() => work) } catch { void work }
+    return found
   }
   return new Map(out)
 }
 
-async function fillPlots(items: PlotSource[], out: Map<string, string>): Promise<void> {
-  const need = items.filter(i => i.title.synopsis && !plotLine(i.title.synopsis, CARD_REASON_MAX_CHARS))
-  if (!need.length) return
-  const ids = [...new Set(need.map(i => `${i.title.type}:${i.title.tmdb_id}`))]
-  const byId = new Map(need.map(i => [`${i.title.type}:${i.title.tmdb_id}`, i.title]))
-
+/** Fills `out` from the cache; true while a rate limit's cool-down is on (read in the same call). */
+async function readCached(ids: string[], out: Map<string, string>): Promise<boolean> {
   try {
-    const cached = await getRedis().mget<(string | null)[]>(...ids.map(id => key(id.split(':')[0], id.split(':')[1])))
+    const cached = await getRedis().mget<(string | null)[]>(...ids.map(id => key(id.split(':')[0], id.split(':')[1])), OUT_KEY)
     ids.forEach((id, n) => { if (cached[n]) out.set(id, cached[n]!) })
+    return cached[ids.length] != null
   } catch (err) {
     console.warn('[card-plot] cache read failed:', err instanceof Error ? err.message : err)
+    return false
   }
+}
 
-  const missing = ids.filter(id => !out.has(id)).slice(0, MAX_PER_CALL)
+const isRateLimit = (err: unknown) =>
+  (err as { statusCode?: unknown })?.statusCode === 429 || /rate limit/i.test(err instanceof Error ? err.message : String(err))
+
+async function writeNew(ids: string[], byId: Map<string, PlotSource['title']>, out: Map<string, string>): Promise<void> {
+  const missing = ids.slice(0, MAX_PER_CALL)
   if (!missing.length) return
   try {
     const { text } = await generateText({
@@ -158,5 +192,6 @@ async function fillPlots(items: PlotSource[], out: Map<string, string>): Promise
     }
   } catch (err) {
     console.warn('[card-plot] summaries unavailable (cards keep their story line):', err instanceof Error ? err.message : err)
+    if (isRateLimit(err)) await getRedis().set(OUT_KEY, '1', { ex: OUT_SECONDS }).catch(() => {})
   }
 }
