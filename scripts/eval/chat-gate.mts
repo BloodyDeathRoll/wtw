@@ -150,7 +150,10 @@ if (DRY) {
     if (status !== 200) failures.push(`Q${i + 1}: HTTP ${status}`)
     else if (errors.length) failures.push(`Q${i + 1}: the stream carried an error (${errors.join('; ')})`)
     else if (!answer.trim()) failures.push(`Q${i + 1}: an empty answer`)
-    else if (LIMIT_LINES.some((line) => answer.includes(line))) failures.push(`Q${i + 1}: the chat's daily limit, not an answer`)
+    else if (LIMIT_LINES.some((line) => answer.includes(line))) {
+      failures.push(`Q${i + 1}: the chat's daily limit, not an answer; the later questions were not asked`)
+      break // every later question would get the same line
+    }
     else {
       // The names are an aid: a failed lookup must not cost the answer, each one is a turn of the daily limit.
       const found = await names(answer, question).catch((e: unknown) => (console.log(`    names not looked up: ${e instanceof Error ? e.message : e}`), null))
