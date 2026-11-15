@@ -103,3 +103,15 @@ describe('the home route under the bar', () => {
     expect(app).toMatch(/if \(stage === "recommendations" \|\| stage === "watchlist"\) syncSaves\(\);/)
   })
 })
+
+// Eran 2026-11-15: the new onboarding retires the v0.1 spoken welcome ("Hey there, welcome to What To Watch!").
+describe('no old voice welcome under the new onboarding', () => {
+  it('the home route opens on the feed for an account with no chat and few ratings', () => {
+    expect(readFileSync('src/app/page.tsx', 'utf8')).toMatch(/voiceWelcome=\{!onboardingV2Enabled\(\)\}/)
+    expect(readFileSync('src/modules/session/components/WTWApp.tsx', 'utf8'))
+      .toMatch(/const isNewUser = voiceWelcome && conversation\.messages\.length === 0 && !welcome\.greeting;/)
+  })
+  it('the Games page does not play it either', () => {
+    expect(readFileSync('src/app/play/page.tsx', 'utf8')).toMatch(/voiceIntro=\{!onboardingV2Enabled\(\) && signals === 0 && !heard\}/)
+  })
+})
