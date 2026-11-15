@@ -27,12 +27,14 @@
  */
 import 'server-only'
 
+import { after } from 'next/server'
 import type { DNASchema } from '@/types/dna'
 import { FEED_START_TYPE, type ContentType } from '@/lib/content-type'
 import { precomputeNextBatch, precomputeRunning } from './pipeline/precompute'
 import { generateRecommendations, INLINE_PLOT_WAIT_MS } from './pipeline/generate'
 import { refreshLiveBatch } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate, bumpVersion } from '@/modules/dna/lib/load-save'
+import { getRedis } from '@/lib/redis'
 
 /**
  * The list the first feed is built for: the one the feed opens on
@@ -65,6 +67,59 @@ export function kickFirstFeed(userId: string, contentType: ContentType = FIRST_F
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
+// ─────────────────────────────────────────────
+// Timing log (#246)
+// ─────────────────────────────────────────────
+
+/**
+ * Every finishFirstFeed, newest first, the last 50: how long it took, how much
+ * of that was waiting for a build still running, and whether the onboarding
+ * batch was adopted. In Redis because Vercel's Hobby plan keeps runtime logs
+ * for an hour, and a test run is usually read later than that (#246, Eran's
+ * run of 2026-11-14 15:19 UTC). No user id. Read with `npm run budget-check`.
+ */
+export const FIRST_FEED_TIMINGS_KEY = 'first_feed:timings'
+const TIMINGS_KEEP = 50
+
+export interface FirstFeedTiming {
+  at: string          // ISO, when finishFirstFeed returned or threw
+  ms: number          // all of finishFirstFeed
+  waited_ms: number   // of which: waiting for a build the last answer started
+  adopted: boolean
+  error?: string
+}
+
+/** Best-effort: a logging failure must never fail the first feed. */
+async function recordTiming(t: FirstFeedTiming): Promise<void> {
+  try {
+    const redis = getRedis()
+    await redis.lpush(FIRST_FEED_TIMINGS_KEY, JSON.stringify(t))
+    await redis.ltrim(FIRST_FEED_TIMINGS_KEY, 0, TIMINGS_KEEP - 1)
+  } catch (e) {
+    console.warn('[first-feed] could not record timing:', e instanceof Error ? e.message : e)
+  }
+}
+
+/** After the response when there is one (the user isn't kept waiting on Redis); right away in a script or test. */
+function afterResponse(task: () => Promise<void>): void {
+  try { after(task) } catch { void task() }
+}
+
+/** The recorded timings, newest first; a corrupt row is skipped. */
+export async function firstFeedTimings(limit = TIMINGS_KEEP): Promise<FirstFeedTiming[]> {
+  const rows = await getRedis().lrange<FirstFeedTiming | string>(FIRST_FEED_TIMINGS_KEY, 0, limit - 1)
+  const out: FirstFeedTiming[] = []
+  for (const r of rows) {
+    try {
+      const t = typeof r === 'string' ? (JSON.parse(r) as FirstFeedTiming) : r
+      if (t && typeof t.at === 'string' && typeof t.ms === 'number') out.push(t)
+    } catch {
+      // skip
+    }
+  }
+  return out
+}
+
 /**
  * Make the first feed ready at a new taste_version. Throws only when the
  * fingerprint can't be bumped or the generation itself fails; the closing
@@ -72,10 +127,23 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
  */
 export async function finishFirstFeed(userId: string, contentType: ContentType = FIRST_FEED_TYPE): Promise<FirstFeedResult> {
   const t0 = Date.now()
+  const waited = { ms: 0 }
+  try {
+    const result = await finish(userId, contentType, t0, waited)
+    afterResponse(() => recordTiming({ at: new Date().toISOString(), ms: result.ms, waited_ms: waited.ms, adopted: result.adopted }))
+    return result
+  } catch (err) {
+    const t = { at: new Date().toISOString(), ms: Date.now() - t0, waited_ms: waited.ms, adopted: false, error: err instanceof Error ? err.message : String(err) }
+    afterResponse(() => recordTiming(t))
+    throw err
+  }
+}
 
+async function finish(userId: string, contentType: ContentType, t0: number, waited: { ms: number }): Promise<FirstFeedResult> {
   // 1. The last answer usually started a build a moment ago: let it finish
   //    rather than start a second one.
   while (Date.now() - t0 < WAIT_MAX_MS && await precomputeRunning(userId)) await sleep(WAIT_STEP_MS)
+  waited.ms = Date.now() - t0
 
   // 2. Promote it if it is current (bump + adopt + save, compare-and-set).
   const promoted = await refreshLiveBatch(userId, contentType)

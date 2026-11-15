@@ -9,6 +9,10 @@
  * Groq models the Why writer marked out (`why_model_out:*`) and Jev's failure
  * log (`jev:failures`). Warns at 80% of Supabase's 500 MB (src/lib/budget.ts).
  * Mistral's nightly budget is in grow-catalog's summary; TMDB has no quota.
+ *
+ * Also the last first-feed timings (#246, `first_feed:timings`, written by
+ * src/modules/engine/first-feed.ts): Vercel keeps runtime logs an hour, so a
+ * test run's "It's Showtime" time is read here instead. Target: 3 s (P2-U5).
  */
 import pg from 'pg'
 import { budgetReport, type BudgetSnapshot } from '@/lib/budget'
@@ -53,16 +57,34 @@ async function redis(): Promise<Pick<BudgetSnapshot, 'modelsOut' | 'jevFailures2
   return { modelsOut, jevFailures24h, redisKeys: Number(await cmd(['DBSIZE'])) }
 }
 
+/** first-feed.ts's key; read raw here (that module is server-only). */
+const FIRST_FEED_TIMINGS_KEY = 'first_feed:timings'
+interface FirstFeedTiming { at: string; ms: number; waited_ms: number; adopted: boolean; error?: string }
+
+async function firstFeedTimings(n = 5): Promise<FirstFeedTiming[]> {
+  const url = process.env.UPSTASH_REDIS_REST_URL, token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return []
+  const res = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(['LRANGE', FIRST_FEED_TIMINGS_KEY, 0, n - 1]) })
+  const rows = ((await res.json() as { result: string[] | null }).result) ?? []
+  return rows.flatMap(r => { try { return [JSON.parse(r) as FirstFeedTiming] } catch { return [] } })
+}
+
 const snapshot: BudgetSnapshot = { ...(await database()), ...(await redis()) }
+const firstFeed = await firstFeedTimings()
 const report = budgetReport(snapshot)
 
 if (JSON_OUT) {
-  console.log(JSON.stringify({ ok: report.ok, db_mb: report.db?.mb ?? null, db_share: report.db?.share ?? null, models_out: snapshot.modelsOut.map(m => m.model), jev_failures_24h: snapshot.jevFailures24h, redis_keys: snapshot.redisKeys, warnings: report.warnings }))
+  console.log(JSON.stringify({ ok: report.ok, db_mb: report.db?.mb ?? null, db_share: report.db?.share ?? null, models_out: snapshot.modelsOut.map(m => m.model), jev_failures_24h: snapshot.jevFailures24h, redis_keys: snapshot.redisKeys, first_feed: firstFeed, warnings: report.warnings }))
 } else {
   const mb = (b: number) => `${Math.round(b / 1024 / 1024)} MB`
   console.log(`Budgets ${report.ok ? 'OK' : 'need a look'}`)
   if (report.db) console.log(`  database: ${report.db.mb} MB of 500 MB (${Math.round(report.db.share * 100)}%)${snapshot.dbTables ? ` · ${snapshot.dbTables.map(t => `${t.name} ${mb(t.bytes)}`).join(', ')}` : ''}`)
   console.log(`  Groq (Why writer): ${snapshot.modelsOut.length ? snapshot.modelsOut.map(m => `${m.model} out ${Math.ceil(m.ttlSeconds / 60)} min`).join(', ') : 'no model out of budget'}`)
   console.log(`  Jev: ${snapshot.jevFailures24h} failure(s) in 24 h · Redis: ${snapshot.redisKeys ?? '?'} keys`)
+  const s = (ms: number) => `${(ms / 1000).toFixed(1)} s`
+  console.log(`  First feed (target 3 s): ${firstFeed.length ? '' : 'no runs recorded yet'}`)
+  for (const t of firstFeed) {
+    console.log(`    ${t.at.slice(5, 16).replace('T', ' ')} UTC  ${s(t.ms)}${t.ms > 3000 ? ' ⚠' : ''}  (waited ${s(t.waited_ms)} for a running build)  ${t.error ? `failed: ${t.error}` : t.adopted ? 'adopted the onboarding batch' : 'generated at the end'}`)
+  }
   for (const w of report.warnings) console.log(`  ⚠ ${w}`)
 }
