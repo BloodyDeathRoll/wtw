@@ -12,9 +12,14 @@ import type { PlayState } from '@/app/play/lib/brain'
 
 export const EXISTING_USER_SIGNALS = 10
 
+/** Finished the new onboarding ("It's Showtime", or Skip on the picks). */
+export function onboardingDone(state: PlayState | null | undefined): boolean {
+  return !!state?.onboarding?.done_at
+}
+
 export function needsOnboarding(state: PlayState | null | undefined, signals: number): boolean {
   const ob = state?.onboarding
-  if (ob?.done_at) return false
+  if (onboardingDone(state)) return false
   if (ob?.step) return true
   return signals < EXISTING_USER_SIGNALS
 }

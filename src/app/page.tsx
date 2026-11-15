@@ -6,7 +6,7 @@ import { loadHomeBootstrap, openConversation } from "@/lib/home-bootstrap";
 import { welcomeForSignals } from "@/lib/welcome";
 import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
 import { onboardingV2Enabled } from "@/lib/flags";
-import { needsOnboarding } from "@/lib/onboarding-route";
+import { needsOnboarding, onboardingDone } from "@/lib/onboarding-route";
 import { progressOf } from "./play/lib/server";
 import WTWApp from "@/modules/session/components/WTWApp";
 import type { AppUser } from "@/modules/session/types";
@@ -70,7 +70,9 @@ export default async function Home({
   // greeting (Groq, cached) and the dev notice (Redis) are independent.
   const [conversation, welcome, jevFailures] = await Promise.all([
     openConversation(supabase, user.id, boot),
-    welcomeForSignals(user.id, boot.signals, appUser.name, utcOffsetMinutes),
+    // Done with the new onboarding means not new, whatever the signal count: no old games intro.
+    welcomeForSignals(user.id, boot.signals, appUser.name, utcOffsetMinutes,
+      onboardingV2Enabled() && onboardingDone(boot.play.state)),
     // Jev failures since this dev last dismissed the notice; [] for everyone else.
     devJevFailures(appUser.email),
   ]);
