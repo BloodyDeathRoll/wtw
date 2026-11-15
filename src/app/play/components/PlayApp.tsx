@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AppShell from '@/modules/session/components/AppShell'
+import { TabBar } from '@/app/components/TabBar'
 import type { AppUser } from '@/modules/session/types'
 import { LEAVE_TIMEOUT_MS, RouteLoading } from '@/app/components/RouteLoading'
 import IntroVoice from '@/modules/session/voice/IntroVoice'
@@ -42,6 +43,7 @@ import { SAVED_FROM, loadAccountWatchlist, saveTitle, savedIds, unsaveTitle, typ
 import type { BlindRun, Ctl, GameId, GameRun, ShowdownRun, SpecialRun, Summary, UI } from './types'
 import { GAMES } from './games'
 import Screens from './Screens'
+import { showsTabs } from './ui'
 
 // No intro screen (2026-10-20): the first thing a player sees is the genre setup.
 const INITIAL_UI: UI = {
@@ -932,7 +934,7 @@ export default function PlayApp({ user, existingUser, chatReady = false, voiceIn
   // The app's own frame: gradient and particles (2026-10-20). "Behind the
   // curtain" (Curtain.tsx) waits for a desktop layout; it isn't part of the phone app.
   return (
-    <AppShell>
+    <AppShell tabs={showsTabs(ctl) && <TabBar active="games" user={ctl.user} />}>
       <div className={`phone${arcade ? ' arcade' : ''}${specialOn ? ` special special-${ui.blockType}` : ''}`} style={{ ['--gacc' as string]: accent }}>
         <Screens ctl={ctl} />
         {ui.confirm && <Confirm ctl={ctl} />}

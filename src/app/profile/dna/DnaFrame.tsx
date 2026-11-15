@@ -5,6 +5,7 @@
  * little brings it back. It never hides while something in it has focus (the search box).
  */
 import { useEffect, useRef, useState } from 'react'
+import { TAB_SCROLL } from '@/app/components/TabBar'
 import styles from './dna.module.css'
 
 /** Pixels of scrolling, in one direction, before the header hides / comes back. */
@@ -25,6 +26,12 @@ export function DnaFrame({ header, children }: { header: React.ReactNode; childr
     const ro = new ResizeObserver(() => setHeight(el.offsetHeight))
     ro.observe(el)
     return () => ro.disconnect()
+  }, [])
+
+  // ?at=people (You's "See all" links): open at that part of the page.
+  useEffect(() => {
+    const at = new URLSearchParams(window.location.search).get('at')
+    if (at && /^[a-z]+$/.test(at)) document.getElementById(`taste-${at}`)?.scrollIntoView({ block: 'start' })
   }, [])
 
   useEffect(() => {
@@ -59,7 +66,7 @@ export function DnaFrame({ header, children }: { header: React.ReactNode; childr
       <div ref={slot} className={`${styles.headerSlot} ${hidden ? styles.headerHidden : ''}`} style={{ marginTop: hidden ? -height : 0 }} aria-hidden={hidden || undefined}>
         {header}
       </div>
-      <div ref={scroller} className={styles.scroller}>{children}</div>
+      <div ref={scroller} className={styles.scroller} {...TAB_SCROLL}>{children}</div>
     </>
   )
 }

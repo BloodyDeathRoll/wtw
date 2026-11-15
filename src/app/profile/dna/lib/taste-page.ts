@@ -25,7 +25,12 @@ export interface TastePageData {
   people: { role: 'Cast' | 'Directors' | 'Writers'; list: TastePerson[] }[]
   genres: TasteGenre[]
   calls: Record<Genre16, GenreCall>
+  /** The You tab's Seen card (NAV_TABS): your reactions counted, and the titles you rated most recently, newest first. */
+  seen: { tally: Tally; recent: TasteTitle[] }
 }
+
+/** Posters the Seen card shows. */
+const SEEN_RECENT = 12
 
 interface TitleRowLite {
   tmdb_id: string; type: 'movie' | 'tv'; title: string; release_year: number | null; poster_path: string | null
@@ -134,7 +139,20 @@ export async function loadTastePage(dna: DNASchema, userId: string): Promise<Tas
   const top = groups.filter(g => g.role !== 'Cast').flatMap(g => g.list)
     .sort((a, b) => Math.round(b.score * 100) - Math.round(a.score * 100) || b.titles.length - a.titles.length)[0]
 
+  // Newest first: signals are appended as they come, so the last time a title appears is when it was last rated.
+  const byKey = new Map(rated.map(r => [r.t.key, r.t]))
+  const recent: TasteTitle[] = []
+  for (let i = dna.signals.length - 1; i >= 0 && recent.length < SEEN_RECENT; i--) {
+    const sg = dna.signals[i]
+    if (sg.source.startsWith('session_') || !REACTIONS.has(sg.reaction)) continue
+    const t = byKey.get(`${sg.type}:${sg.tmdb_id}`)
+    if (t && !recent.includes(t)) recent.push(t)
+  }
+  const tally: Tally = { loved: 0, liked: 0, disliked: 0 }
+  for (const r of rated) tally[r.t.reaction]++
+
   return {
+    seen: { tally, recent },
     ratings: latest.size,
     picks: training.pairs.length,
     updated: dna.metadata.last_updated,

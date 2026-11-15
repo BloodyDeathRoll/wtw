@@ -8,6 +8,8 @@ import { DnaHeader } from './DnaHeader'
 import { DnaFrame } from './DnaFrame'
 import { TastePage } from './TastePage'
 import { loadTastePage, type TastePageData } from './lib/taste-page'
+import { TabBar } from '@/app/components/TabBar'
+import { navTabsEnabled } from '@/lib/flags'
 import styles from './dna.module.css'
 
 export const metadata = { title: 'My taste — WTW' }
@@ -45,7 +47,8 @@ export default async function TastePageRoute() {
   const subtitle = data ? `${plural(data.ratings, 'rating')} · ${plural(data.picks, 'pick')}` : ''
 
   return (
-    <AppShell>
+    // Under the tab bar (NAV_TABS) My taste is one of You's pages: the bar shows You, and tapping it returns there.
+    <AppShell tabs={navTabsEnabled() && <TabBar active="you" atRoot={false} user={appUser} />}>
       <main className={styles.page}>
         <DnaFrame header={<DnaHeader user={appUser} subtitle={subtitle} title="My taste" chatReady={await chatReady} />}>
           <div className={styles.container}>

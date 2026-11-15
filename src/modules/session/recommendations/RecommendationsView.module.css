@@ -49,6 +49,13 @@
 .headerBtn:first-child {
   justify-self: start;
 }
+/* Under the tab bar: the back arrow's slot, holding the chat bubble (or nothing). */
+.headerLeft {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-width: 36px;
+}
 /* The app menu is anchored at the far right on every screen. */
 .headerRight {
   display: inline-flex;
@@ -235,7 +242,7 @@
   /* No bottom padding: the trailing .sentinel owns the space below the last
      card so the "Find more" gaps stay symmetric (list padding-bottom would be
      partly clipped by the frame and skew the bottom gap smaller). */
-  padding: 6px 16px 0;
+  padding: 6px 16px var(--tabbar-space, 0px);
   display: flex;
   flex-direction: column;
   gap: 16px;

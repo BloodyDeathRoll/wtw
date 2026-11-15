@@ -31,6 +31,7 @@ import type {
 import { setWatchlistRating } from "@/lib/watchlist";
 import { FingerprintLoader } from "../components/FingerprintLoader";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
+import { TAB_SCROLL } from "@/app/components/TabBar";
 import styles from "./RatingsView.module.css";
 
 type Tab = Reaction | "removed";
@@ -77,8 +78,11 @@ export default function RatingsView({
   contentType,
   headerRight,
   user,
+  title = "Ratings",
 }: {
   onBack: () => void;
+  /** "Seen" under the tab bar (NAV_TABS): the You tab calls it that (docs/prototypes/nav/4-you.jpg). */
+  title?: string;
   /** The Movies/Series list the user is on — the batch a re-rate rebuilds. */
   contentType: ContentType;
   /** App menu — same slot on every screen (2026-08-29). */
@@ -250,7 +254,7 @@ export default function RatingsView({
         <button className={styles.headerBtn} onClick={onBack} aria-label="back">
           <ChevronLeft size={30} strokeWidth={1.5} />
         </button>
-        <span className={styles.headerTitle}>Ratings</span>
+        <span className={styles.headerTitle}>{title}</span>
         <div className={styles.headerRight}>
           {/* Search travels with the app menu (both are the app's, not the
               view's): from here it lists the rated titles first, and its
@@ -273,7 +277,7 @@ export default function RatingsView({
       )}
 
       {status === "ready" && data && (
-        <div className={styles.scroll}>
+        <div className={styles.scroll} {...TAB_SCROLL}>
           <div className={styles.reviewed}>
             <span className={styles.reviewedNum}>{reviewedTotal}</span>
             <span className={styles.reviewedLabel}>

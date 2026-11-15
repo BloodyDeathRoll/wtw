@@ -1,0 +1,29 @@
+/* The You tab's own cards (YouCards.tsx), on My taste's page styles (dna.module.css, taste.module.css). */
+.count { margin: -6px 0 0; font-size: var(--text-small); color: var(--white-70); }
+
+/* The newest rated posters: the onboarding's rated-posters row (onboarding.css .brow / .bw-p / .bw-e),
+   running off the card's right edge with a fade. */
+.row {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  margin-right: calc(-1 * var(--pad-large)); padding-right: var(--pad-large);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 70px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 70px), transparent);
+}
+.row::-webkit-scrollbar { display: none; }
+.poster {
+  position: relative; flex: none; width: 96px; aspect-ratio: 2 / 3; border-radius: 12px; overflow: hidden; background: #1a1a1d;
+}
+.poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.poster::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, .55)); }
+.noPoster { position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; text-align: center; font-size: 12px; color: var(--white-70); }
+.mark {
+  position: absolute; left: 5px; bottom: 5px; z-index: 1; width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(0, 0, 0, .6); display: grid; place-items: center; font-size: 14px; line-height: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .3);
+}
+
+.signOut {
+  display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none;
+  color: #fff; font: inherit; font-size: 16px; cursor: pointer; text-align: left;
+}
+.signOut svg { color: var(--white-70); }

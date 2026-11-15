@@ -98,6 +98,10 @@
   z-index: 1;
 }
 
+/* The tab bar's height (TabBar.module.css), for the scrollers to leave room under their last item. */
+.withTabs {
+  --tabbar-space: 52px;
+}
 .appInner {
   position: relative;
   z-index: 2;

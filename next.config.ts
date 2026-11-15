@@ -12,10 +12,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Phone testing over the home Wi-Fi (`next dev` reached at the Mac's address): Next blocks other origins in dev.
+  // Next's dev-tools button would sit over the For you tab on the phone, so it goes too.
+  ...(process.env.DEV_LAN_HOST ? { allowedDevOrigins: [process.env.DEV_LAN_HOST], devIndicators: false as const } : {}),
   // v2 plan flags the client needs too (src/lib/flags.ts): inlined at build,
   // so changing one in Vercel takes a redeploy.
   env: {
     CHAT_MODE: process.env.CHAT_MODE ?? "",
+    NAV_TABS: process.env.NAV_TABS ?? "",
   },
   images: {
     remotePatterns: [
