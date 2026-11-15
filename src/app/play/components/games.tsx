@@ -1,6 +1,7 @@
 'use client'
 /* The arcade: game registry, lobby, and the game screens (season games + The Bet, Mind Reader). */
 import { useState } from 'react'
+import { ArrowUpDown, Clapperboard, Dices, UsersRound, VenetianMask, Waypoints, type LucideIcon } from 'lucide-react'
 import { accuracy, isUnlocked } from '../lib/brain'
 import { SEASON_LENGTH, seasonDone } from '../lib/blocks'
 import { LEVELS } from '../lib/games'
@@ -11,12 +12,15 @@ import { SixPlay } from './six'
 import { CastPlay } from './cast'
 import { RULES_EVENT } from '../lib/cast'
 import { SeasonBar } from './season'
+import { navTabsEnabled } from '@/lib/flags'
 
 interface GameDef {
   id: string
   name: string
   kind?: 'test' | 'teach' | 'season'
   icon: string
+  /** Under the tab bar: an outlined icon in the genres' look (genre-look.ts), in place of the letter (Eran, 2026-11-15). */
+  line?: LucideIcon
   acc: string
   blurb: string
   rules?: string[]
@@ -24,29 +28,34 @@ interface GameDef {
   teach?: string
   /** Not playable in this build. `soon` = later slice. */
   soon?: boolean
+  /**
+   * Off the Games tab under the tab bar (Eran, 2026-11-15): the games that teach the brain rather than
+   * play. Kept whole so they can come back; see docs/BACKLOG.md "Games teaching the brain".
+   */
+  shelved?: boolean
 }
 
 export const GAMES: (GameDef & { id: GameId | string })[] = [
   // The season's games: always open, on real catalogue data (lib/games.ts).
-  { id: 'blind', name: 'Blind Taste Test', kind: 'season', icon: '?', acc: '#3ddc97', blurb: 'Just the story, without its cover. Would you watch it? Then see what it really is.',
+  { id: 'blind', name: 'Blind Taste Test', kind: 'season', shelved: true, icon: '?', acc: '#3ddc97', blurb: 'Just the story, without its cover. Would you watch it? Then see what it really is.',
     rules: ['You get a story with no title and no poster: nothing you\'d judge on sight.', 'Would you watch it? Answer on the story alone.', 'Then the cover: it\'s a cartoon, a series, an old film, in Korean…', 'Still in? That second answer shows what a cover changes for you.', 'Every level hides a different kind of cover.'],
     levels: LEVELS.blind.map(l => l.label),
     teach: 'What they like in a story, and what puts them off before they read a word.' },
-  { id: 'other', name: 'The Other Side of the Story', kind: 'season', icon: 'O', acc: '#ff5fa2', blurb: 'Famous stories, told only by their side characters.',
+  { id: 'other', name: 'The Other Side of the Story', kind: 'season', icon: 'O', line: VenetianMask, acc: '#ff5fa2', blurb: 'Famous stories, told only by their side characters.',
     rules: ['Each clue is the story told by one of its side characters, in their own words.', 'Type your guess any time: clue 1 is worth 5 points, clue 5 is worth 1.', 'From clue 4, pick from four options instead. A wrong guess unlocks the next clue.', 'Stuck? Ask for the next clue, or give up on the last one to see the answer.', 'Seen it? Tell me how it was, and it counts toward your taste.'],
     levels: LEVELS.other.map(l => l.label),
     teach: 'Recognition = seen it; recognising early = knows it well. Rating it on the reveal teaches your taste.' },
-  { id: 'hilo', name: 'Higher or Lower', kind: 'season', icon: '↕', acc: '#ffd23d', blurb: 'Which one has the higher rating? Keep the streak alive.',
+  { id: 'hilo', name: 'Higher or Lower', kind: 'season', icon: '↕', line: ArrowUpDown, acc: '#ffd23d', blurb: 'Which one has the higher rating? Keep the streak alive.',
     rules: ['Two titles. Which one has the higher TMDB rating?', 'Right: the winner stays and a new challenger arrives.', 'One wrong answer ends the run.', 'Reach the level\'s streak to clear it.'],
     levels: LEVELS.hilo.map(l => l.label),
     teach: 'A game first. It also shows where their sense of quality meets the crowd\'s.' },
   // A pure fun game (Eran, 2026-10-24): no levels yet; themed levels wait for a wider title set.
-  { id: 'six', name: 'Six Degrees', icon: '6', acc: '#4fc3f7', blurb: 'Six actors, five films. Put the chain in order.',
+  { id: 'six', name: 'Six Degrees', icon: '6', line: Waypoints, acc: '#4fc3f7', blurb: 'Six actors, five films. Put the chain in order.',
     rules: ['Get from the first actor to the last. Each one was in a film with the next.', 'Drag the four in the middle into order. Under each name: who they played, ↑ in the film with the actor above, ↓ below.', 'Check turns everyone in the right spot green. You have 4 tries.', 'Stuck? Hints show films from the chain, then put one actor in place.'],
     levels: [],
     teach: 'Just for fun. A film saved from the chain still counts as a taste signal.' },
   // Fast and easy (Eran, 2026-10-27): the captcha, with posters. Seven faces a round (ten was out of reach, 2026-10-30), no levels.
-  { id: 'cast', name: 'Cast Call', icon: '✓', acc: '#4d8dff', blurb: 'Seven actors, one minute. For each one, find the four titles they were in.',
+  { id: 'cast', name: 'Cast Call', icon: '✓', line: Clapperboard, acc: '#4d8dff', blurb: 'Seven actors, one minute. For each one, find the four titles they were in.',
     rules: ['Each actor comes with nine titles. Four are movies or shows they were in: tap those four, then Check.',
       'Each right one wins you a point. Each wrong one loses a point.',
       'Get all four right: 2 more points and 3 extra seconds.',
@@ -54,7 +63,7 @@ export const GAMES: (GameDef & { id: GameId | string })[] = [
     levels: [],
     teach: 'Just for fun.' },
   // Cast Call reversed (Eran, 2026-10-30): a poster and nine faces; the same clock, points and screen.
-  { id: 'lineup', name: 'Line-up', icon: 'L', acc: '#17b3a3', blurb: 'Seven posters, one minute. Find the four actors in each.',
+  { id: 'lineup', name: 'Line-up', icon: 'L', line: UsersRound, acc: '#17b3a3', blurb: 'Seven posters, one minute. Find the four actors in each.',
     rules: ['Each poster comes with nine actors. Four of them were in it: tap those four, then Check.',
       'Each right one wins you a point. Each wrong one loses a point.',
       'Get all four right: 2 more points and 3 extra seconds.',
@@ -62,11 +71,11 @@ export const GAMES: (GameDef & { id: GameId | string })[] = [
     levels: [],
     teach: 'Just for fun.' },
   // Games where WTW guesses: they need a tested brain, so they open with the season's finale.
-  { id: 'bet', name: 'The Bet', kind: 'test', icon: 'B', acc: '#7b8cff', blurb: 'I guess your rating before you give it.',
+  { id: 'bet', name: 'The Bet', kind: 'test', shelved: true, icon: 'B', acc: '#7b8cff', blurb: 'I guess your rating before you give it.',
     rules: ['I secretly lock in how many stars I think you\'d give a title.', 'You rate it. Haven\'t seen it? Skip, no points.', 'If I nail your exact rating, I score. If I miss, you score.', 'First to the target wins the match.'],
     levels: ['First to 3', 'First to 4', 'Series join in', 'Deep cuts', 'First to 5, no mercy'],
     teach: 'Real ratings on titles they\'ve seen, plus how this person uses stars (generous or tough). Misses teach the most: the profile shifts toward what they actually felt.' },
-  { id: 'mind', name: 'Mind Reader', kind: 'test', icon: 'M', acc: '#b46bff', blurb: 'I pick for you. Tell me if I\'m right.',
+  { id: 'mind', name: 'Mind Reader', kind: 'test', shelved: true, icon: 'M', acc: '#b46bff', blurb: 'I pick for you. Tell me if I\'m right.',
     rules: ['I show two titles and secretly pick the one I think you\'d choose.', 'Then I reveal my guess.', 'Tell me: right or wrong.', 'How many can I read?'],
     levels: ['8 rounds', '10 rounds', 'Series edition', 'Tough pairs', '12 rounds, no hints'],
     teach: 'A live accuracy check. Right answers confirm the profile, wrong answers are pure gold: the profile corrects itself exactly where it was weakest.' },
@@ -102,6 +111,10 @@ function CalibrationCard({ ctl }: { ctl: Ctl }) {
 
 export function GamesLobby({ ctl }: { ctl: Ctl }) {
   const { S } = ctl
+  // Under the tab bar (Eran, 2026-11-15): no calibration card (the old season; the new onboarding replaced
+  // it), no shelved games, no "Soon" cards (one "More games coming soon" line at the end instead), and no
+  // "teaches me" line under the title.
+  const tabs = navTabsEnabled()
   const calibrated = seasonDone(S)
   const plays = Object.values(S.games).reduce((s, g) => s + g.plays, 0)
   const lvls = Object.values(S.games).reduce((s, g) => s + g.level, 0)
@@ -109,22 +122,23 @@ export function GamesLobby({ ctl }: { ctl: Ctl }) {
     <div className="lobby">
       <div className="lobby-hero">
         <div className="big">Games</div>
-        <p>Beat your own best. Every game also teaches me a little more about your taste.</p>
+        {!tabs && <p>Beat your own best. Every game also teaches me a little more about your taste.</p>}
       </div>
       <div className="lstats">
         <div><b>{plays}</b><span>GAMES PLAYED</span></div>
         <div><b>{lvls}</b><span>LEVELS CLEARED</span></div>
         <div><b>{Object.keys(S.gameBest ?? {}).length}</b><span>BEST SCORES</span></div>
       </div>
-      {!calibrated && <CalibrationCard ctl={ctl} />}
-      {GAMES.map(d => {
+      {!tabs && !calibrated && <CalibrationCard ctl={ctl} />}
+      {GAMES.filter(d => !(tabs && (d.shelved || d.soon))).map(d => {
         const gp = S.games[d.id] ?? { level: 0, plays: 0 }
         const lock = !d.soon && (d.id === 'bet' || d.id === 'mind') && !isUnlocked(S, d.id)
         const best = S.gameBest?.[d.id]
+        const Line = tabs ? d.line : undefined
         return (
           <button key={d.id} className={`gcard${d.soon ? ' soon' : lock ? ' lock' : ''}`} style={{ ['--ga' as string]: d.acc }}
             onClick={() => d.soon ? ctl.toast(`${d.name} is coming soon`) : ctl.startGame(d.id as GameId)}>
-            <span className="gi">{d.icon}</span>
+            <span className={`gi${Line ? ' line' : ''}`}>{Line ? <Line size={32} strokeWidth={1.75} aria-hidden /> : d.icon}</span>
             <span style={{ minWidth: 0 }}>
               <b>{d.name}{d.kind === 'test' && <span className="gkind">I GUESS YOU</span>}</b>
               <span className="d">{d.blurb}</span>
@@ -146,7 +160,8 @@ export function GamesLobby({ ctl }: { ctl: Ctl }) {
           </button>
         )
       })}
-      {calibrated && <CalibrationCard ctl={ctl} />}
+      {tabs && <p className="more-soon"><span><Dices size={18} strokeWidth={1.75} aria-hidden />More games coming soon</span></p>}
+      {!tabs && calibrated && <CalibrationCard ctl={ctl} />}
     </div>
   )
 }
@@ -191,9 +206,10 @@ export function GameScreen({ ctl }: { ctl: Ctl }) {
   let body: React.ReactNode = null
 
   if (g.phase === 'intro') {
+    const Line = navTabsEnabled() ? d.line : undefined
     body = (
       <div className="gintro">
-        <div className="gbadge">{d.icon}</div>
+        <div className={`gbadge${Line ? ' line' : ''}`}>{Line ? <Line size={56} strokeWidth={1.5} aria-hidden /> : d.icon}</div>
         <h2>{d.blurb}</h2>
         <ol className="rules">{d.rules!.map(r => <li key={r}>{r}</li>)}</ol>
         {d.levels.length > 0 && <div className="lvl-list">
