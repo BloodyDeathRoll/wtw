@@ -47,9 +47,17 @@ export async function welcomeForSignals(
   signals: number,
   name: string | null,
   utcOffsetMinutes: number | null = null,
+  /**
+   * Finished the new onboarding (ONBOARDING_V2). The home screen reads a null
+   * greeting as "brand new" and opens the old games intro, so someone who did
+   * the onboarding with fewer than 10 signals (Skip on the cards, or answers
+   * lost) would be sent back to the old season (#250, 2026-11-15). They get the
+   * plain line instead, without a Groq call.
+   */
+  onboarded = false,
 ): Promise<WelcomeData> {
   if (signals < MATURE_THRESHOLD) {
-    return { greeting: null };
+    return { greeting: onboarded ? `Hi ${firstName(name)}, what are you in the mood for tonight?` : null };
   }
   const localHour = utcOffsetMinutes === null
     ? null

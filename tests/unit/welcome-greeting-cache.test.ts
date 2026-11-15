@@ -21,6 +21,13 @@ describe('welcomeForSignals', () => {
     expect(redis.get).not.toHaveBeenCalled()
   })
 
+  it('below the bar but done with the new onboarding: the plain line, so the home screen skips the old games intro (#250)', async () => {
+    expect(await welcomeForSignals('u1', 3, 'Ada Lovelace', -180, true)).toEqual({ greeting: 'Hi Ada, what are you in the mood for tonight?' })
+    expect(await welcomeForSignals('u1', 0, null, null, true)).toEqual({ greeting: 'Hi there, what are you in the mood for tonight?' })
+    expect(generateText).not.toHaveBeenCalled()
+    expect(redis.get).not.toHaveBeenCalled()
+  })
+
   it('first load generates and caches for 4 hours under a per-user, per-quarter-day key', async () => {
     const out = await welcomeForSignals('u1', 12, 'Ada Lovelace', -180)
     expect(out.greeting).toContain('Ada')
