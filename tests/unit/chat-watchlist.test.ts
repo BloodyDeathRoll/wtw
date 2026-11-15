@@ -185,6 +185,15 @@ describe('a title the person asked to add', () => {
     expect(db.writes).toEqual([])
   })
 
+  it('says only what was saved when every other pick in the answer is cut', async () => {
+    // Zardoz is not in our catalogue: both drafts lose their only pick, and the frame around it is not shown.
+    const logs = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const draft = 'Like it, try *Zardoz*. It is strange and slow.\nADD: *Heat*'
+    const shown = await turn(['add Heat to my watchlist, and what else is like it?'], draft, draft)
+    expect(shown).toBe('Added Heat (film, 1995) to your watchlist.')
+    logs.mockRestore()
+  })
+
   it('says so when the save fails, and shows none of the model\'s own lines', async () => {
     db.failUpsert = true
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})

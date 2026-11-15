@@ -60,6 +60,7 @@ export async function consultantAnswer(
     // An answer whose every pick was cut is only its frame ("The humor arises from…", P3-G Q8):
     // show none of it, so the person hears there is no sure answer.
     const kept = checked.picksLeft ? checked.kept : "";
+    if (!checked.picksLeft && checked.kept) console.log("[conversation] consultant draft dropped: every sentence naming a title was cut");
     // Whether a title was saved is the app's to say, never the model's.
     return { resolution, wanted, ...checked, kept: dropSaveClaims(kept) };
   };
