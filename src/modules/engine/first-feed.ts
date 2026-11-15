@@ -160,7 +160,8 @@ async function finish(userId: string, contentType: ContentType, t0: number, wait
   waited.ms = Date.now() - t0
 
   // 2. Promote it if it is current (bump + adopt + save, compare-and-set).
-  const promoted = await refreshLiveBatch(userId, contentType)
+  // The stored embedding moves after the response: the feed reads the cache this leaves (#246).
+  const promoted = await refreshLiveBatch(userId, contentType, 'after-response')
   if (promoted != null) {
     const ms = Date.now() - t0
     console.log(`[first-feed] adopted the batch built during onboarding as v${promoted} (${ms} ms)`)

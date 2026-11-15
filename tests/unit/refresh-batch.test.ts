@@ -186,6 +186,20 @@ describe('refreshLiveBatch', () => {
     })
   })
 
+  // #246 (2026-11-15): the first feed's finish doesn't wait for it.
+  it('with after-response, returns without waiting for the embedding, which still runs after the save', async () => {
+    let release!: () => void
+    const order: string[] = []
+    regenerateEmbedding.mockImplementationOnce(() => new Promise<void>(r => { release = () => { order.push('embed'); r() } }))
+    const version = await refreshLiveBatch('u1', 'all', 'after-response')
+    order.push('returned')
+    expect(version).toBe(8)
+    expect(regenerateEmbedding).toHaveBeenCalledOnce()
+    release()
+    await new Promise(r => setTimeout(r, 0))
+    expect(order).toEqual(['returned', 'embed'])
+  })
+
   it('still refreshes when the embedding update fails', async () => {
     regenerateEmbedding.mockRejectedValueOnce(new Error('mistral down'))
     expect(await refreshLiveBatch('u1', 'all')).toBe(8)

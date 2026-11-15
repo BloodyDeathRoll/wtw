@@ -27,6 +27,7 @@
  * the fresher batch.
  */
 
+import { after } from 'next/server'
 import { getRedis } from '@/lib/redis'
 import { adoptPendingBatch } from '@/modules/engine/pipeline/precompute'
 import { loadDNAForUpdate, saveDNAIfUnchanged, bumpVersion } from './lib/load-save'
@@ -117,6 +118,14 @@ export async function refreshIfDue(
 export async function refreshLiveBatch(
   userId: string,
   contentType: ContentType = 'all',
+  /**
+   * 'after-response': move the stored embedding after the response instead of
+   * before returning. The first feed's finish passes it (#246, 2026-11-15,
+   * agreed by Eran as A3): someone is waiting on that request, the feed it
+   * opens reads the cache this leaves, and under formula v2 the narrative
+   * embedding has weight 0. Outside a request it runs right away, unawaited.
+   */
+  embedding: 'inline' | 'after-response' = 'inline',
 ): Promise<number | null> {
   // Read updated_at alongside the DNA so the write below can be conditional.
   // This runs after the response, concurrently with whatever the user clicks
@@ -158,9 +167,14 @@ export async function refreshLiveBatch(
   // 0020), which it usually is: a handful of ratings rarely moves the dominant
   // pacing or the top two tones. Without it the next generation re-embeds from
   // scratch, which is the one real cost this whole path exists to avoid.
-  await regenerateEmbedding(userId, dna).catch(err =>
+  const embed = () => regenerateEmbedding(userId, dna).catch(err =>
     console.warn('[refresh-batch] embedding regen failed (non-fatal):', err instanceof Error ? err.message : err),
   )
+  if (embedding === 'after-response') {
+    try { after(embed) } catch { void embed() }
+  } else {
+    await embed()
+  }
 
   console.log(`[refresh-batch] live batch refreshed as v${dna.metadata.taste_version}`)
   return dna.metadata.taste_version
