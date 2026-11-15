@@ -352,6 +352,7 @@ describe('a consultant turn', () => {
     const r = await ask('weird sci-fi?')
     expect(r.text).toMatch(/^I can't give you a sure answer/)
     expect(r.text).not.toMatch(/witty|humor/)
+    expect(logs).toHaveBeenCalledWith(expect.stringContaining('draft dropped'))
     logs.mockRestore()
   })
 
