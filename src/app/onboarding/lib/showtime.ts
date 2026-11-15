@@ -7,6 +7,8 @@
  * feed or the engine knows about the 3 seconds.
  */
 export const HOLD_MS = 3000
+/** Where the screen goes when it's done: straight to the feed (P2-U0 part 6), the deep link the menu uses. */
+export const FEED_HREF = '/?stage=recommendations'
 export const SLOW_MS = 8000
 export const FAIL_MS = 30000
 
