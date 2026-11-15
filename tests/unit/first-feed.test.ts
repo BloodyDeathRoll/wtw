@@ -12,6 +12,7 @@ const io = vi.hoisted(() => ({
   generated: [] as { dna: DNASchema; contentType: string }[],
   kicked: [] as string[],
   superseded: [] as string[],
+  embedding: undefined as string | undefined,
   version: 7,
   redis: [] as string[],    // first_feed:timings, newest first
   redisDown: false,
@@ -35,7 +36,7 @@ vi.mock('@/modules/engine/pipeline/precompute', () => ({
   precomputeRunning: async () => io.runningPolls-- > 0,
   holdQuietBuilds: async (userId: string) => { io.superseded.push(userId) },
 }))
-vi.mock('@/modules/dna/refresh-batch', () => ({ refreshLiveBatch: async () => io.promoted }))
+vi.mock('@/modules/dna/refresh-batch', () => ({ refreshLiveBatch: async (_u: string, _l: string, embedding?: string) => { io.embedding = embedding; return io.promoted } }))
 vi.mock('@/modules/dna/lib/load-save', () => ({
   bumpVersion: (dna: DNASchema) => { dna.metadata.taste_version += 1 },
   withDNAUpdate: async (_u: string, mutate: (d: DNASchema) => boolean) => {
@@ -106,6 +107,12 @@ describe('finishFirstFeed', () => {
 
   // #246, Eran's run 2026-11-15: a card answer flushed just before the finish
   // started a quiet build that could re-promote the feed while it loaded.
+  it('asks the adoption to move the stored embedding after the response (#246, agreed by Eran as A3)', async () => {
+    io.promoted = 8
+    await finishFirstFeed('u1')
+    expect(io.embedding).toBe('after-response')
+  })
+
   it('holds the quiet build the last card answer queued, so it can\'t rebuild or re-promote while the feed loads', async () => {
     io.promoted = 8
     await finishFirstFeed('u1')
