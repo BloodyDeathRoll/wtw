@@ -22,8 +22,28 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .3);
 }
 
-.signOut {
-  display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none;
-  color: #fff; font: inherit; font-size: 16px; cursor: pointer; text-align: left;
+/* "Start your taste over?" (YouCards.tsx StartOverSheet): the games' "Start over?" sheet, pixel for pixel
+   (play.css .sheet, .sheet.confirm and the theme's overrides), fixed to the screen instead of the games' frame and
+   no wider than the app (WTWApp.module.css .app, 420px). */
+.sheetBg { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); z-index: 1000; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 420px; z-index: 1001;
+  background: #121214; border-radius: 24px 24px 0 0; padding: 18px 22px 28px;
+  display: grid; gap: 12px; animation: slideUp .25s ease;
 }
-.signOut svg { color: var(--white-70); }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+.sheet h3 {
+  margin: 0; font-family: var(--font-bebas), "Bebas Neue", "Impact", "Arial Narrow", sans-serif; font-weight: 400;
+  font-size: 34px; letter-spacing: .04em; color: #ffa900;
+}
+.sheet p { margin: 0 0 6px; font-size: 18px; line-height: 1.5; color: #d6d6da; }
+.sheet .sheetError { color: #ff8a7a; font-size: 16px; }
+.sheetCta, .sheetOpt {
+  width: 100%; height: 60px; padding: 0 20px; border: 0; border-radius: 999px;
+  color: #fff; font: inherit; font-size: 20px; font-weight: 700; cursor: pointer;
+}
+.sheetCta { background: linear-gradient(90deg, #ffa900 0%, #ff7a00 55%, #ff4400 100%); }
+.sheetOpt { background: #262629; }
+.sheetCta:disabled, .sheetOpt:disabled { opacity: .6; cursor: default; }
+.sheetCta:focus-visible, .sheetOpt:focus-visible { outline: 2px solid #d49b3a; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }

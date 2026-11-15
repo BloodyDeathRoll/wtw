@@ -10,7 +10,7 @@ import { DnaHeader } from '../profile/dna/DnaHeader'
 import { DnaFrame } from '../profile/dna/DnaFrame'
 import { TastePage } from '../profile/dna/TastePage'
 import { loadTastePage, type TastePageData } from '../profile/dna/lib/taste-page'
-import { SeenCard, SignOutCard } from './YouCards'
+import { AccountCard, SeenCard } from './YouCards'
 import styles from '../profile/dna/dna.module.css'
 
 export const metadata = { title: 'You — WTW' }
@@ -18,7 +18,7 @@ export const metadata = { title: 'You — WTW' }
 /**
  * The You tab (NAV_TABS; docs/prototypes/nav/4-you.jpg, Eran 2026-11-15): the person, then a card for each part of
  * My taste (how WTW sees you · the people who pull you in · the genres in your feed), each with a taste of what's in
- * it and a "See all" into My taste; then Seen (today's ratings page) and Sign out.
+ * it and a "See all" into My taste; then Seen (today's ratings page) and Account (Sign out, Start my taste over).
  */
 export default async function YouRoute() {
   if (!navTabsEnabled()) redirect('/profile/dna')
@@ -58,12 +58,12 @@ export default async function YouRoute() {
             {data ? (
               <TastePage data={data} variant="you">
                 <SeenCard seen={data.seen} total={data.ratings} />
-                <SignOutCard />
+                <AccountCard />
               </TastePage>
             ) : (
               <>
                 <p className={styles.note}>Couldn’t load your taste right now. Try again in a moment.</p>
-                <SignOutCard />
+                <AccountCard />
               </>
             )}
           </div>
