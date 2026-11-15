@@ -1,7 +1,7 @@
 "use client";
 
 // The bottom tab bar (NAV_TABS, Eran 2026-11-15; mocks in docs/prototypes/nav): For you · Watchlist · Games · You,
-// in place of the ☰ menu and the home screen. Look A · White: the selected tab white, the rest grey; 52px tall,
+// in place of the ☰ menu and the home screen. Look A · White: the selected tab white, the rest grey; 56px tall (4px of it above the icons),
 // near-black at 90% with no blur, so the screen shows through a touch.
 //
 // It sits inside AppShell (its `tabs` slot), over the bottom of the screen; AppShell sets --tabbar-space so a
