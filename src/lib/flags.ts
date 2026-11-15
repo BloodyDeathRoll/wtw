@@ -30,6 +30,14 @@ export function jevEnabled(): boolean {
 }
 
 /**
+ * The bottom tab bar (For you · Watchlist · Games · You) in place of the ☰ menu and the home screen
+ * (docs/prototypes/nav, Eran 2026-11-15). Off by default. The client reads it too (next.config.ts `env`).
+ */
+export function navTabsEnabled(): boolean {
+  return isOn(process.env.NAV_TABS)
+}
+
+/**
  * The new onboarding at /onboarding (P2-U2 … U6). Off by default; while it's off the page exists only in local
  * development, for building and checking it. Server-only. Gate: P2-G.
  */

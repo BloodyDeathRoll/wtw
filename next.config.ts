@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
   // so changing one in Vercel takes a redeploy.
   env: {
     CHAT_MODE: process.env.CHAT_MODE ?? "",
+    NAV_TABS: process.env.NAV_TABS ?? "",
   },
   images: {
     remotePatterns: [

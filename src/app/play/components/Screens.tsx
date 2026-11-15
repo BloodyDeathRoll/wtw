@@ -10,6 +10,7 @@ import {
 import { BLOCKS, PICKS_PER_BLOCK, ROUND_NAMES, genreName, isGameStep, seasonDone, type Cup } from '../lib/blocks'
 import type { Ctl } from './types'
 import { AxisRow, Icon, Marked, Poster, SaveRibbon, ShareButton, TopBar } from './ui'
+import { TAB_SCROLL } from '@/app/components/TabBar'
 import { GAMES, GameScreen, GamesLobby } from './games'
 import Picks from './Picks'
 import { FinaleCard, FinaleScreen, SeasonBar, ShowdownScreen } from './season'
@@ -41,7 +42,7 @@ export default function Screens({ ctl }: { ctl: Ctl }) {
     case 'blockDone': screen = <BlockDoneScreen ctl={ctl} top={top} />; break
     case 'tonight': screen = <Tonight ctl={ctl} top={top} />; break
     case 'hub': screen = <Hub ctl={ctl} top={top} />; break
-    case 'games': screen = <div className="screen">{top}<GamesLobby ctl={ctl} /></div>; break
+    case 'games': screen = <div className="screen" {...TAB_SCROLL}>{top}<GamesLobby ctl={ctl} /></div>; break
     case 'game': screen = <GameScreen ctl={ctl} />; break
     case 'stub': screen = (
       <div className="screen">{top}

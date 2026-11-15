@@ -61,6 +61,7 @@ import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
+import { TAB_SCROLL } from "@/app/components/TabBar";
 import type { ContentType } from "@/lib/content-type";
 import type { AppUser } from "@/modules/session/types";
 
@@ -104,6 +105,11 @@ interface Props {
   headerRight?: ReactNode;
   /** For the header's search; without it (the component tests) there is none. */
   user?: AppUser;
+  /**
+   * With the tab bar (NAV_TABS) a tab is a starting point, so there is no back arrow: this takes its place
+   * (the chat bubble, or nothing). Unset: the back arrow, as before.
+   */
+  headerLeft?: ReactNode;
   /**
    * The player skipped the taste games part-way: every NUDGE_EVERY cards the
    * list shows a card asking them to finish (2026-10-20). Tapping it opens the games.
@@ -237,6 +243,7 @@ function TypePicker({
 
 export default function RecommendationsView({
   onBack,
+  headerLeft,
   contentType,
   setContentType,
   mode = "recommendations",
@@ -679,14 +686,18 @@ export default function RecommendationsView({
   return (
     <div className={styles.view}>
       <div className={styles.header}>
-        <button
-          type="button"
-          className={styles.headerBtn}
-          onClick={onBack}
-          aria-label="back"
-        >
-          <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
-        </button>
+        {headerLeft !== undefined ? (
+          <div className={styles.headerLeft}>{headerLeft}</div>
+        ) : (
+          <button
+            type="button"
+            className={styles.headerBtn}
+            onClick={onBack}
+            aria-label="back"
+          >
+            <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
+          </button>
+        )}
         {setContentType && mode !== "watchlist" ? (
           <TypePicker contentType={contentType} setContentType={setContentType} />
         ) : (
@@ -869,7 +880,7 @@ function Feed({
   }
 
   return (
-    <div ref={listRef} className={styles.list}>
+    <div ref={listRef} className={styles.list} {...TAB_SCROLL}>
       {recs.map((rec, i) => (
         <Fragment key={rec.id}>
           <FeedCard

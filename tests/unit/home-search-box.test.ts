@@ -52,9 +52,12 @@ describe('header search', () => {
     expect(recs).toMatch(/\{user && \(\s*<HeaderSearch\s*btnClass=\{styles\.headerBtn\}\s*user=\{user\}\s*menu=\{headerRight\}\s*scope=\{mode === "watchlist" \? "watchlist" : undefined\}\s*from=\{mode\}\s*\/>/)
     expect(ratings).toMatch(/\{user && <HeaderSearch btnClass=\{styles\.headerBtn\} user=\{user\} menu=\{headerRight\} scope="ratings" from="ratings" \/>\}/)
     expect(play).toMatch(/<HeaderSearch btnClass="tb-back" user=\{ctl\.user\} menu=\{menu\} from="\/play" \/>\s*\{menu\}/)
-    expect(dna).toMatch(/<HeaderSearch btnClass=\{styles\.headerIconBtn\} user=\{user\} menu=\{menu\} from="\/profile\/dna" \/>\s*\{menu\}/)
+    expect(dna).toMatch(/<HeaderSearch btnClass=\{styles\.headerIconBtn\} user=\{user\} menu=\{menu\} from=\{from\} \/>\s*\{menu\}/)
+    expect(dna).toMatch(/const from: SearchFrom = you \? "\/you" : "\/profile\/dna";/)
     // The home passes the user down so the two views can show the icon.
-    expect(app).toMatch(/<RatingsView onBack=[\s\S]*?headerRight=\{appMenu\} user=\{user\} \/>/)
+    expect(app).toMatch(/<RatingsView\s+onBack=[\s\S]*?headerRight=\{headerMenu\}\s*user=\{user\}\s*\/>/)
+    // Under the tab bar (NAV_TABS) there is no ☰; without it, the same menu as before.
+    expect(app).toMatch(/const headerMenu = tabsOn \? null : appMenu;/)
     expect(app.match(/<RecommendationsView[\s\S]*?\/>/g)!.every((v) => v.includes('user={user}'))).toBe(true)
     expect(menu).not.toMatch(/"search"|onSearch|goingToSearch|<span>Search<\/span>/)
     expect(play).not.toMatch(/'search'/)
@@ -77,7 +80,7 @@ describe('header search', () => {
     expect(header).toMatch(/autoFocus/)
     expect(searchCss).toMatch(/\.header \{[\s\S]*?padding: 11px;/)
     expect(search).not.toMatch(/get\("q"\)/)
-    expect(search).toMatch(/\{menu \?\? \(\s*<AppMenu/)
+    expect(search).toMatch(/\{navTabsEnabled\(\) \? null : menu \?\? \(\s*<AppMenu/)
     // The group: watchlist from the local list (card already in hand), ratings from the API.
     expect(search).toMatch(/inParam === "ratings" \|\| inParam === "watchlist"/)
     expect(search).toMatch(/getWatchlist\(\)\.map/)

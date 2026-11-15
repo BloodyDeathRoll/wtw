@@ -15,16 +15,26 @@ import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMen
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
+import { AskButton } from "@/app/components/TabBar";
+import { navTabsEnabled } from "@/lib/flags";
+import type { SearchFrom } from "@/app/search/url";
 import styles from "./dna.module.css";
 
 /** Same key WTWApp persists the Gemini Live voice under. */
 const VOICE_KEY = "wtw:voice";
 
-export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = false }: {
+export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = false, you = false }: {
   user: AppUser; subtitle: string; title?: string
   /** The onboarding is done: the menu offers the chat (Q5). */
   chatReady?: boolean
+  /**
+   * The You tab's own header (NAV_TABS): a tab is a starting point, so the chat bubble takes the back arrow's
+   * corner. My taste, under the tab bar, is one of You's pages: its back arrow returns to You.
+   */
+  you?: boolean
 }) {
+  const tabsOn = navTabsEnabled();
+  const from: SearchFrom = you ? "/you" : "/profile/dna";
   const router = useRouter();
   const [voice, setVoice] = useState<Voice>(VOICES[0].id);
 
@@ -65,7 +75,8 @@ export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = fals
     return () => clearTimeout(t);
   }, [leaving]);
 
-  const menu = (
+  // Under the tab bar there is no ☰: the bar is the way around.
+  const menu = tabsOn ? null : (
     <AppMenu
       onRecommend={go("recommendations")}
       onWatchlist={go("watchlist")}
@@ -88,10 +99,13 @@ export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = fals
   );
   return (
     <header className={styles.header}>
+      {you ? (
+        chatReady ? <AskButton className={styles.backBtn} onClick={go("conversation")} /> : <span />
+      ) : (
       <button
         type="button"
         className={styles.backBtn}
-        onClick={() => leave("/")}
+        onClick={() => leave(tabsOn ? "/you" : "/")}
         aria-label="back"
       >
         {/* Figma icon/chevron-left, 72px design → 30px. */}
@@ -99,6 +113,7 @@ export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = fals
           <path d="M45 54L27 36L45 18" />
         </svg>
       </button>
+      )}
 
       <div className={styles.headerTitleBlock}>
         <h1 className={styles.title}>{title}</h1>
@@ -106,7 +121,7 @@ export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = fals
       </div>
 
       <div className={styles.headerRight}>
-        <HeaderSearch btnClass={styles.headerIconBtn} user={user} menu={menu} from="/profile/dna" />
+        <HeaderSearch btnClass={styles.headerIconBtn} user={user} menu={menu} from={from} />
         {menu}
       </div>
       {leaving && <RouteLoading label="Loading" overlay />}

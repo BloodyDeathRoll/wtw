@@ -5,6 +5,7 @@
 // instead of the old screen sitting still while the server renders the new one
 // (Taste DNA and the home page both read the database before they paint).
 
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import AppShell from "@/modules/session/components/AppShell";
 import { FingerprintLoader } from "@/modules/session/components/FingerprintLoader";
@@ -17,8 +18,11 @@ export const LEAVE_TIMEOUT_MS = 15_000;
 export function RouteLoading({
   label,
   overlay = false,
+  tabs,
 }: {
   label: string;
+  /** The tab bar, when a tab was tapped: it stays on screen, on the tab you're going to. */
+  tabs?: ReactNode;
   /** Cover the current screen — shown by the screen itself the instant a
    *  navigation away from it is tapped, before loading.tsx can arrive. */
   overlay?: boolean;
@@ -27,7 +31,7 @@ export function RouteLoading({
   // shows, the particles show too.
   const screen = (
     <div className={overlay ? styles.overlay : undefined}>
-      <AppShell>
+      <AppShell tabs={tabs}>
         <div className={styles.content}>
           <p className={styles.label}>{label}</p>
           {/* Same size as the recs loading screen. */}

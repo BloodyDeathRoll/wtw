@@ -53,7 +53,9 @@ import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
-import { chatMode } from "@/lib/flags";
+import { chatMode, navTabsEnabled } from "@/lib/flags";
+import { AskButton, TabBar, type Tab } from "@/app/components/TabBar";
+import rv from "../recommendations/RecommendationsView.module.css";
 import styles from "./WTWApp.module.css";
 
 // How many completed AI replies before "See Recommendations" appears.
@@ -126,7 +128,10 @@ function TopBar({
   setContentType,
   voice,
   setVoice,
+  noMenu = false,
 }: {
+  /** Under the tab bar (NAV_TABS) there is no ☰: the bar is the way around. */
+  noMenu?: boolean;
   hasConversation: boolean;
   onBack: () => void;
   /** The old chat's icon (CHAT_MODE=legacy only). The consultant has no icon: it is in the menu. */
@@ -161,7 +166,7 @@ function TopBar({
   }, [brandOpen]);
 
 
-  const menu = (
+  const menu = noMenu ? null : (
     <AppMenu
       onRecommend={onRecommend}
       onWatchlist={onWatchlist}
@@ -542,7 +547,9 @@ export default function WTWApp({
   // A brand-new user (nothing said yet, no mature greeting to show) starts
   // inside the chat with the intro already on screen — no onboard shell.
   const isNewUser = conversation.messages.length === 0 && !welcome.greeting;
-  const [stage, setStage] = useState<Stage>(isNewUser ? "intro" : "onboard");
+  // NAV_TABS: no home screen. The app opens on For you (the feed), and the bar at the bottom is the way around.
+  const tabsOn = navTabsEnabled();
+  const [stage, setStage] = useState<Stage>(isNewUser ? "intro" : tabsOn ? "recommendations" : "onboard");
   // A standalone route (e.g. /profile/dna) links back into a stage with
   // ?stage=… — the menu there can't call these handlers directly. Read it
   // once on mount and strip it so a refresh doesn't re-enter the stage.
@@ -568,7 +575,9 @@ export default function WTWApp({
   const [hasInteracted, setHasInteracted] = useState(false);
   // While the fingerprint is being built + recs generated (on the way into
   // the recommendations view), we show a brief building state.
-  const [buildingRecs, setBuildingRecs] = useState(false);
+  // Opening straight on For you (NAV_TABS), the feed waits for the warm-up below, as a tap on Picks did.
+  const [buildingRecs, setBuildingRecs] = useState(tabsOn && !isNewUser);
+  const firstBuildRef = useRef(tabsOn && !isNewUser);
   // Saved-card count, for the home circle + its badge. Re-read on every stage
   // change so returning from the watchlist reflects what just left it.
   const [watchlistN, setWatchlistN] = useState(0);
@@ -650,6 +659,10 @@ export default function WTWApp({
         });
       } catch {}
       warmDoneRef.current = true;
+      if (firstBuildRef.current) {
+        firstBuildRef.current = false;
+        setBuildingRecs(false);
+      }
     })();
   }, []);
 
@@ -844,11 +857,29 @@ export default function WTWApp({
   // because endSessionAndGenerate was only reachable from those two paths.
   // Fire-and-forget: the route records the intent before its no-op fast path, so
   // this is a read + write and an early return, and the user isn't waiting on it.
-  function leaveCards() {
+  function syncSaves() {
     if (getUnsyncedIds().length > 0 || getUnsyncedRemovals().length > 0) {
       void endSessionAndGenerate({ skipTranscript: true });
     }
+  }
+  function leaveCards() {
+    syncSaves();
     setStage("onboard");
+  }
+
+  // The tab bar (NAV_TABS). For you and Watchlist are stages here; Games and You are routes (TabBar goes there).
+  // Leaving the cards by any tab is the moment to report what got saved, as Back to the home screen was.
+  function onTab(tab: Tab) {
+    if (stage === "recommendations" || stage === "watchlist") syncSaves();
+    if (tab === "foryou") {
+      void handleRecommend();
+      return true;
+    }
+    if (tab === "watchlist") {
+      handleWatchlist();
+      return true;
+    }
+    return false;
   }
 
   function handleWatchlist() {
@@ -890,7 +921,8 @@ export default function WTWApp({
   // existing messages. Doesn't persist to DB (stage flip is local-only;
   // a reload lands them back in conversation view).
   function backToOnboard() {
-    setStage("onboard");
+    // No home screen under the tab bar: the chat's Back returns to For you.
+    setStage(tabsOn ? "recommendations" : "onboard");
     setInput("");
   }
 
@@ -956,8 +988,31 @@ export default function WTWApp({
     />
   );
 
+  // The tab bar's screens; the chat, voice and the intro have none (they have their own way out).
+  const TAB_OF: Partial<Record<Stage, Tab>> = { recommendations: "foryou", learning: "foryou", watchlist: "watchlist", ratings: "you" };
+  const activeTab = tabsOn && !voiceOpen ? TAB_OF[stage] : undefined;
+  // Under the tab bar: the chat bubble where the back arrow was (nothing until the chat may be used), and no ☰.
+  const headerLeft = tabsOn ? (onChat ? <AskButton className={rv.headerBtn} onClick={onChat} /> : null) : undefined;
+  const headerMenu = tabsOn ? null : appMenu;
+
+  // 48-hour check-in, one at a time so the screen never stacks cards. RegretPrompt marks the queue entry itself;
+  // we just drop it from state once its confirmation has played.
+  const regret = regretChecks[0] && (
+    <RegretPrompt
+      key={`${regretChecks[0].type}:${regretChecks[0].tmdb_id}`}
+      entry={regretChecks[0]}
+      onDone={(done) =>
+        setRegretChecks((prev) =>
+          prev.filter(
+            (e) => !(e.tmdb_id === done.tmdb_id && e.type === done.type),
+          ),
+        )
+      }
+    />
+  );
+
   return (
-    <AppShell>
+    <AppShell tabs={activeTab && <TabBar active={activeTab} atRoot={stage !== "ratings"} user={user} onTab={onTab} />}>
       {stage === "intro" ? (
         <IntroVoice
           text={GAMES_INTRO_MESSAGE}
@@ -971,6 +1026,7 @@ export default function WTWApp({
           header={
             <TopBar
               hasConversation
+              noMenu={tabsOn}
               onBack={leaveVoiceToHome}
               onOpenChat={() => {}}
               onRecommend={handleRecommend}
@@ -1009,48 +1065,62 @@ export default function WTWApp({
         <div className={styles.shell}>
           <RecommendationsView
             onBack={leaveCards}
+            headerLeft={headerLeft}
             contentType={contentType}
             mode="recommendations"
             sharerName={user.name}
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true, more: true })}
-            headerRight={appMenu}
+            headerRight={headerMenu}
             user={user}
             building={buildingRecs}
             onCalibrate={calibrationNudge ? () => leaveTo("/play") : undefined}
           />
+          {/* No home screen under the tab bar: the 48-hour check-in moves to For you, just above the bar. */}
+          {tabsOn && regret && (
+            <div className={styles.regretBar} style={{ marginBottom: "var(--tabbar-space, 0px)" }}>{regret}</div>
+          )}
         </div>
       ) : stage === "watchlist" ? (
         <div className={styles.shell}>
           <RecommendationsView
             onBack={leaveCards}
+            headerLeft={headerLeft}
             contentType={contentType}
             mode="watchlist"
             sharerName={user.name}
             onBrowse={handleRecommend}
-            headerRight={appMenu}
+            headerRight={headerMenu}
             user={user}
           />
         </div>
       ) : stage === "learning" ? (
         <div className={styles.shell}>
           <RecommendationsView
-            onBack={() => setStage("onboard")}
+            onBack={() => setStage(tabsOn ? "recommendations" : "onboard")}
             contentType={contentType}
             mode="learning"
             sharerName={user.name}
             setContentType={setContentType}
-            headerRight={appMenu}
+            headerRight={headerMenu}
             user={user}
           />
         </div>
       ) : stage === "ratings" ? (
         <div className={styles.shell}>
-          <RatingsView onBack={() => setStage("onboard")} contentType={contentType} headerRight={appMenu} user={user} />
+          {/* Under the tab bar this is Seen, one of You's pages: Back returns to You. */}
+          <RatingsView
+            onBack={tabsOn ? () => leaveTo("/you") : () => setStage("onboard")}
+            title={tabsOn ? "Seen" : undefined}
+            contentType={contentType}
+            headerRight={headerMenu}
+            user={user}
+          />
         </div>
       ) : (
         <div className={styles.shell}>
           <TopBar
+            noMenu={tabsOn}
             hasConversation={stage === "conversation"}
             onBack={backToOnboard}
             onOpenChat={chatEnabled ? () => setStage("conversation") : undefined}
@@ -1127,21 +1197,7 @@ export default function WTWApp({
               a time-sensitive prompt buried in a scrolling feed gets missed.
               RegretPrompt marks the queue entry itself; we just drop it from
               state once its confirmation has played. */}
-          {stage === "onboard" && regretChecks[0] && (
-            <div className={styles.regretBar}>
-              <RegretPrompt
-                key={`${regretChecks[0].type}:${regretChecks[0].tmdb_id}`}
-                entry={regretChecks[0]}
-                onDone={(done) =>
-                  setRegretChecks((prev) =>
-                    prev.filter(
-                      (e) => !(e.tmdb_id === done.tmdb_id && e.type === done.type),
-                    ),
-                  )
-                }
-              />
-            </div>
-          )}
+          {stage === "onboard" && regret && <div className={styles.regretBar}>{regret}</div>}
 
           {stage === "conversation" ? (
             <>

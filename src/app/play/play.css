@@ -63,6 +63,8 @@
 .wtw-play .aurora::after{background:radial-gradient(circle,rgba(75,91,255,.45),transparent 65%);right:-220px;bottom:-200px}
 .wtw-play .screen{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;animation:wp-fadeIn .35s ease;overflow-y:auto;scrollbar-width:none}
 .wtw-play .screen::-webkit-scrollbar{display:none}
+/* Room under the last item for the tab bar (NAV_TABS), where it shows: AppShell sets --tabbar-space. */
+.wtw-play .screen{padding-bottom:var(--tabbar-space,0px)}
 @keyframes wp-fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .wtw-play .topbar{display:flex;align-items:center;justify-content:center;padding:20px 18px 6px;min-height:56px;position:relative;flex-shrink:0}
 .wtw-play .brand{display:flex;align-items:center;gap:7px;font-weight:600;font-size:15px;letter-spacing:.06em}

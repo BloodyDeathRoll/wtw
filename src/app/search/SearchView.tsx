@@ -20,6 +20,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bookmark, ChevronLeft, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { navTabsEnabled } from "@/lib/flags";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -374,7 +375,8 @@ export default function SearchView({
             )}
           </form>
           <div className={rv.headerRight}>
-            {menu ?? (
+            {/* With the tab bar (NAV_TABS) there is no menu: the bar is the way around. */}
+            {navTabsEnabled() ? null : menu ?? (
               <AppMenu
                 onRecommend={go("recommendations")}
                 onWatchlist={go("watchlist")}

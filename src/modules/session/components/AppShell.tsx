@@ -9,7 +9,17 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { mountParticles, type ParticleHandle } from "./particles";
 import styles from "./WTWApp.module.css";
 
-export default function AppShell({ children }: { children: ReactNode }) {
+export default function AppShell({
+  children,
+  tabs,
+}: {
+  children: ReactNode;
+  /**
+   * The bottom tab bar (NAV_TABS), on the screens it shows on. It lies over the bottom of the screen and sets
+   * --tabbar-space, which a screen's scroller adds below its last item so nothing ends up under it.
+   */
+  tabs?: ReactNode;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -29,9 +39,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={styles.page}>
-      <div className={styles.app}>
+      <div className={`${styles.app} ${tabs ? styles.withTabs : ""}`}>
         <canvas ref={canvasRef} className={styles.canvas} />
-        <div className={styles.appInner}>{children}</div>
+        <div className={styles.appInner}>
+          {children}
+          {tabs}
+        </div>
       </div>
     </div>
   );

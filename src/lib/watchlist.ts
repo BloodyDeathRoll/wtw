@@ -84,6 +84,7 @@ function writeList(list: WatchlistEntry[]) {
   if (typeof window === "undefined") return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+    window.dispatchEvent(new Event(WATCHLIST_CHANGED_EVENT))
   } catch {
     // Quota exceeded / storage disabled. Saving is best-effort: a failed write
     // must never break the click that triggered it.
@@ -246,6 +247,8 @@ const PENDING_KEY = "wtw_watchlist_pending"
 // The user whose list the cache holds. Unset on a device that predates server
 // sync — its local list is then uploaded once, to whoever logs in first.
 const OWNER_KEY = "wtw_watchlist_owner"
+/** Fired on window whenever this device's list is written (a save, a removal, a rating): the tab bar's count. */
+export const WATCHLIST_CHANGED_EVENT = "wtw:watchlist-changed"
 /** Fired on window after hydrateWatchlist() rewrites the cache. */
 export const WATCHLIST_HYDRATED_EVENT = "wtw:watchlist-hydrated"
 

@@ -55,7 +55,7 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-bottom: 16px;
+  padding-bottom: calc(16px + var(--tabbar-space, 0px));
 }
 @media (prefers-reduced-motion: reduce) {
   .headerSlot { transition: opacity 0.2s ease; }

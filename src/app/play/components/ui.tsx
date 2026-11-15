@@ -14,6 +14,8 @@ import { conf, est, type PlayState, type Title } from '../lib/brain'
 import type { SaveSource } from '../lib/watchlist'
 import type { Ctl } from './types'
 import { HeaderSearch } from '@/app/components/HeaderSearch'
+import { AskButton } from '@/app/components/TabBar'
+import { navTabsEnabled } from '@/lib/flags'
 
 /**
  * The watchlist ribbon on a poster's corner (Eran picked the ribbon,
@@ -107,6 +109,21 @@ const VOICE_KEY = 'wtw:voice'
 const NOTHING_YET: MenuItem[] = ['recommend', 'watchlist', 'play', 'ratings', 'profile', 'chat', 'voice']
 const NEW_USER: MenuItem[] = ['recommend', 'ratings', 'profile']
 
+/** The menu entries this player can't use yet: all of them before the genres, most of them mid-season for a new account. */
+function menuHide(ctl: Ctl): MenuItem[] {
+  const { S } = ctl
+  const settled = seasonDone(S) || !!S.skipped
+  return !S.sel ? NOTHING_YET : !ctl.existingUser && !settled ? NEW_USER : []
+}
+
+/**
+ * The tab bar (NAV_TABS) shows on the games lobby, once the player has the whole app (the menu would hide
+ * nothing). Inside a game, or mid-season for a new account, the screen keeps its own way out.
+ */
+export function showsTabs(ctl: Ctl): boolean {
+  return navTabsEnabled() && ctl.ui.screen === 'games' && menuHide(ctl).length === 0
+}
+
 /**
  * The app's header on every games screen (2026-10-20): Skip or back on the
  * left, the app's own menu on the right. Before the genres are rated the menu
@@ -129,15 +146,23 @@ export function TopBar({ ctl }: { ctl: Ctl }) {
     setVoice(v)
     try { localStorage.setItem(VOICE_KEY, v) } catch { /* the choice just won't outlive the page */ }
   }
-  const settled = seasonDone(S) || !!S.skipped
-  const hide = !S.sel ? NOTHING_YET : !ctl.existingUser && !settled ? NEW_USER : []
+  const hide = menuHide(ctl)
   const go = (stage: string) => () => ctl.leave(`/?stage=${stage}`)
-  const left = ctl.canSkip
+  // Under the tab bar (NAV_TABS), for a player with the whole app: no ☰, and no back to a home screen there no
+  // longer is. The lobby is a tab, so its corner holds the chat bubble; the season's screens go back to the lobby.
+  const tabsOn = navTabsEnabled() && hide.length === 0
+  const left = tabsOn && !ctl.canSkip
+    ? ctl.ui.screen === 'games'
+      ? ctl.chatReady ? <AskButton className="tb-back" onClick={go('conversation')} /> : null
+      : !ctl.inTraining
+        ? <button className="tb-back" onClick={() => ctl.go('games')} aria-label="Back to games"><ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" /></button>
+        : null
+    : ctl.canSkip
     ? <button className="tb-skip" onClick={() => ctl.ask('skip')}>Skip</button>
     : S.sel && !ctl.inTraining && !hide.includes('recommend')
       ? <button className="tb-back" onClick={() => ctl.leave('/?from=play')} aria-label="Back to home"><ChevronLeft size={30} strokeWidth={1.5} aria-hidden="true" /></button>
       : null
-  const menu = (
+  const menu = tabsOn ? null : (
     <AppMenu
       onRecommend={go('recommendations')}
       onWatchlist={go('watchlist')}

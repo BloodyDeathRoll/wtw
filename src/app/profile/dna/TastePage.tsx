@@ -3,8 +3,13 @@
  * The Taste DNA page's body (P2-U8), as signed off on the playable prototype (docs/prototypes/taste-dna-v2/play.py,
  * Eran, 2026-11-13): In short · How you like it · People who pull you in · Genres. Tap a person or a genre for a
  * sheet; a genre's sheet holds your call on it (Never · Less · Normal · More · Much more), saved at once.
+ *
+ * `variant="you"` is the You tab's short version (NAV_TABS, docs/prototypes/nav/4-you.jpg, Eran 2026-11-15): each
+ * part its own card with a taste of what's in it and its own "See all N", which opens this page at that part. The
+ * people and genre rows open the same sheets, so a genre's call can be changed right there.
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { ChevronRight, X } from 'lucide-react'
 import { GENRE_CALLS, type GenreCall } from '@/lib/genre-calls'
 import { LOOK } from '@/app/onboarding/lib/genre-look'
@@ -40,10 +45,28 @@ const MARK = { loved: ['❤️', 'Loved'], liked: ['👍', 'Liked'], disliked: [
 
 const cssVar = (name: string, value: string) => ({ [name]: value }) as React.CSSProperties
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** You's preview sizes: scales, people per group, genre rows. */
+const YOU_SCALES = 3
+const YOU_PEOPLE = 2
+const YOU_GENRES = 3
+
+/** This page's parts, for You's "See all" links (/profile/dna?at=…). */
+export const TASTE_PARTS = ['scales', 'people', 'genres'] as const
+export type TastePart = (typeof TASTE_PARTS)[number]
+const partId = (p: TastePart) => `taste-${p}`
+
+function Section({ title, id, more, children }: {
+  title: string; id?: string
+  /** A "See all" link in the card's head, in the feed's gold ("Why it's a match"). */
+  more?: { href: string; label: string }
+  children: React.ReactNode
+}) {
   return (
-    <section className={base.section}>
-      <div className={base.sectionHead}><h2 className={`${base.sectionTitle} ${base.sectionTitleAccent}`}>{title}</h2></div>
+    <section className={base.section} id={id}>
+      <div className={base.sectionHead}>
+        <h2 className={`${base.sectionTitle} ${base.sectionTitleAccent}`}>{title}</h2>
+        {more && <Link href={more.href} className={s.seeAll}>{more.label}<ChevronRight size={18} strokeWidth={2.2} aria-hidden /></Link>}
+      </div>
       {children}
     </section>
   )
@@ -158,7 +181,12 @@ function PersonSheet({ p }: { p: TastePerson }) {
   )
 }
 
-export function TastePage({ data }: { data: TastePageData }) {
+export function TastePage({ data, variant = 'full', children }: {
+  data: TastePageData
+  variant?: 'full' | 'you'
+  /** The You tab's own cards (Seen, Sign out), after the taste ones. */
+  children?: React.ReactNode
+}) {
   const [calls, setCalls] = useState(data.calls)
   const [popped, setPopped] = useState<Genre16 | null>(null)
   const [open, setOpen] = useState<{ kind: 'genre'; id: Genre16 } | { kind: 'person'; p: TastePerson } | null>(null)
@@ -193,6 +221,84 @@ export function TastePage({ data }: { data: TastePageData }) {
 
   const genre = open?.kind === 'genre' ? data.genres.find(g => g.id === open.id)! : null
 
+  const axes = (list: TastePageData['scales']) => (
+    <div className={s.axes}>
+      {list.map(a => (
+        <div key={a.id} className={`${s.axis} ${a.clear ? (a.lean > 0 ? s.leanR : s.leanL) : s.flat}`}>
+          <span className={s.l}>{a.left}</span>
+          <div className={s.track}><span className={s.dot} style={{ left: `${50 + a.lean * 46}%`, opacity: +(0.15 + a.sure * 0.85).toFixed(2) }} /></div>
+          <span className={s.r}>{a.right}</span>
+        </div>
+      ))}
+    </div>
+  )
+  const people = (per?: number) => data.people.length ? data.people.map(g => (
+    <div key={g.role} className={base.group}>
+      <div className={base.groupHead}><span className={base.groupName}>{g.role}</span></div>
+      {(per ? g.list.slice(0, per) : g.list).map(p => (
+        <button key={p.id} type="button" className={s.prow} onClick={() => show({ kind: 'person', p })}>
+          <div><div className={s.pname}>{p.name}</div><div className={s.pfrom}>from {p.titles.length} titles</div></div>
+          <span className={s.chev}><ChevronRight size={16} strokeWidth={2} /></span>
+        </button>
+      ))}
+    </div>
+  )) : <p className={s.quiet}>Rate a few titles you’ve seen and we’ll spot the cast, directors and writers you keep coming back to.</p>
+  const genreRows = (list: TasteGenre[]) => (
+    <div className={s.grows}>
+      {list.map(g => {
+        const call = calls[g.id], lit = call !== 'normal', says = genreSays(g.tally, call), { icon: GIcon, colour } = LOOK[g.id]
+        return (
+          <button key={g.id} type="button" className={`${s.grow} ${lit ? s.lit : ''}`} style={cssVar('--gc', colour)} onClick={() => show({ kind: 'genre', id: g.id })}>
+            <i className={s.gwash} aria-hidden="true" />
+            <i className={s.gline} aria-hidden="true"><GIcon size={24} strokeWidth={1.75} /></i>
+            <span className={s.gtext}>
+              <span className={s.glabel} style={{ display: 'block' }}>{g.label}</span>
+              <span className={`${s.gsays} ${says.thin ? s.thin : ''}`} style={{ display: 'block' }}>{says.text}</span>
+            </span>
+            <span>
+              {lit && (
+                <span key={call} className={`${s.call} ${popped === g.id ? s.pop : ''}`} style={cssVar('--cc', CALL_LOOK[call].colour)} title={CALL_LOOK[call].name}>
+                  <Meter lit={CALL_LOOK[call].lit} />
+                </span>
+              )}
+            </span>
+            <span className={s.chev}><ChevronRight size={16} strokeWidth={2} /></span>
+          </button>
+        )
+      })}
+    </div>
+  )
+  const sheet = (
+    <Sheet open={!shut && !!open} onClose={close} colour={genre ? LOOK[genre.id].colour : undefined}>
+      {genre && <GenreSheet g={genre} call={calls[genre.id]} saving={saving} error={error} onCall={c => choose(genre.id, c)} />}
+      {open?.kind === 'person' && <PersonSheet p={open.p} />}
+    </Sheet>
+  )
+
+  if (variant === 'you') {
+    const nPeople = data.people.reduce((n, g) => n + g.list.length, 0)
+    const all = (part: TastePart, n: number) => ({ href: `/profile/dna?at=${part}`, label: `See all ${n}` })
+    return (
+      <>
+        <Section title="How WTW sees you" more={all('scales', data.scales.length)}>
+          {data.summary
+            ? <p className={s.summary}>{data.summary}</p>
+            : <p className={s.quiet} style={{ fontSize: 16 }}>Still getting to know you. Every title you rate sharpens this page.</p>}
+          {axes(data.scales.slice(0, YOU_SCALES))}
+        </Section>
+        <Section title="People who pull you in" more={nPeople > 0 ? all('people', nPeople) : undefined}>
+          {people(YOU_PEOPLE)}
+        </Section>
+        <Section title="Genres in your feed" more={all('genres', data.genres.length)}>
+          <p className={s.quiet} style={{ marginTop: -4 }}>Tap one to see more or less of it.</p>
+          {genreRows(data.genres.slice(0, YOU_GENRES))}
+        </Section>
+        {children}
+        {sheet}
+      </>
+    )
+  }
+
   return (
     <>
       <Section title="In short">
@@ -201,66 +307,23 @@ export function TastePage({ data }: { data: TastePageData }) {
           : <p className={s.quiet} style={{ fontSize: 16 }}>Still getting to know you. Every title you rate sharpens this page.</p>}
       </Section>
 
-      <Section title="How you like it">
-        <div className={s.axes}>
-          {data.scales.map(a => (
-            <div key={a.id} className={`${s.axis} ${a.clear ? (a.lean > 0 ? s.leanR : s.leanL) : s.flat}`}>
-              <span className={s.l}>{a.left}</span>
-              <div className={s.track}><span className={s.dot} style={{ left: `${50 + a.lean * 46}%`, opacity: +(0.15 + a.sure * 0.85).toFixed(2) }} /></div>
-              <span className={s.r}>{a.right}</span>
-            </div>
-          ))}
-        </div>
+      <Section title="How you like it" id={partId('scales')}>
+        {axes(data.scales)}
       </Section>
 
-      <Section title="People who pull you in">
-        {data.people.length ? data.people.map(g => (
-          <div key={g.role} className={base.group}>
-            <div className={base.groupHead}><span className={base.groupName}>{g.role}</span></div>
-            {g.list.map(p => (
-              <button key={p.id} type="button" className={s.prow} onClick={() => show({ kind: 'person', p })}>
-                <div><div className={s.pname}>{p.name}</div><div className={s.pfrom}>from {p.titles.length} titles</div></div>
-                <span className={s.chev}><ChevronRight size={16} strokeWidth={2} /></span>
-              </button>
-            ))}
-          </div>
-        )) : <p className={s.quiet}>Rate a few titles you’ve seen and we’ll spot the cast, directors and writers you keep coming back to.</p>}
+      <Section title="People who pull you in" id={partId('people')}>
+        {people()}
       </Section>
 
-      <Section title="Genres">
+      <Section title="Genres" id={partId('genres')}>
         <p className={s.quiet} style={{ marginTop: -4 }}>
           Your ratings decide how often each genre shows up in your feed, and that keeps changing as you rate. Want more or less
           of one? Tap it and pick. Your pick stays until you change it. Bars on a genre show your pick; no bars means your ratings decide.
         </p>
-        <div className={s.grows}>
-          {data.genres.map(g => {
-            const call = calls[g.id], lit = call !== 'normal', says = genreSays(g.tally, call), { icon: GIcon, colour } = LOOK[g.id]
-            return (
-              <button key={g.id} type="button" className={`${s.grow} ${lit ? s.lit : ''}`} style={cssVar('--gc', colour)} onClick={() => show({ kind: 'genre', id: g.id })}>
-                <i className={s.gwash} aria-hidden="true" />
-                <i className={s.gline} aria-hidden="true"><GIcon size={24} strokeWidth={1.75} /></i>
-                <span className={s.gtext}>
-                  <span className={s.glabel} style={{ display: 'block' }}>{g.label}</span>
-                  <span className={`${s.gsays} ${says.thin ? s.thin : ''}`} style={{ display: 'block' }}>{says.text}</span>
-                </span>
-                <span>
-                  {lit && (
-                    <span key={call} className={`${s.call} ${popped === g.id ? s.pop : ''}`} style={cssVar('--cc', CALL_LOOK[call].colour)} title={CALL_LOOK[call].name}>
-                      <Meter lit={CALL_LOOK[call].lit} />
-                    </span>
-                  )}
-                </span>
-                <span className={s.chev}><ChevronRight size={16} strokeWidth={2} /></span>
-              </button>
-            )
-          })}
-        </div>
+        {genreRows(data.genres)}
       </Section>
 
-      <Sheet open={!shut && !!open} onClose={close} colour={genre ? LOOK[genre.id].colour : undefined}>
-        {genre && <GenreSheet g={genre} call={calls[genre.id]} saving={saving} error={error} onCall={c => choose(genre.id, c)} />}
-        {open?.kind === 'person' && <PersonSheet p={open.p} />}
-      </Sheet>
+      {sheet}
     </>
   )
 }
