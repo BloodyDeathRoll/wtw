@@ -1,18 +1,24 @@
 name: Deploy production (Vercel)
 
 # Why this exists:
-# On the free (Hobby) Vercel plan, Git-triggered deployments are rejected when
-# the commit author isn't a member of the Vercel project — which blocks
-# teammate-authored merges to main from deploying. So Git auto-deploys are
-# turned OFF in vercel.json (`git.deploymentEnabled: false`), and this workflow
-# is the SOLE production trigger. It POSTs a Vercel Deploy Hook, which deploys
-# the latest commit on main as the project owner, regardless of commit author.
+# On the free (Hobby) Vercel plan, a deployment is blocked when the commit's
+# author isn't a member of the Vercel project, which blocks teammate-authored
+# merges to main. So Git auto-deploys are turned OFF in vercel.json
+# (`git.deploymentEnabled: false`), and this workflow is the SOLE production
+# trigger.
+#
+# Until 2026-11-14 it POSTed a Vercel Deploy Hook. Since then Vercel blocks
+# deploy-hook builds by commit author too ("The deploy-hook deployment … is
+# blocked due to insufficient permissions. The github user … is not part of the
+# team."). So it now uploads main's files with the Vercel CLI, as the token's
+# owner, WITHOUT the .git folder: with no git metadata there is no commit author
+# to check. Vercel builds the upload as usual (tested 2026-11-15 on a preview).
 #
 # One-time setup (repo admin):
-#   1. Vercel → Project → Settings → Git → Deploy Hooks → create one for the
-#      `main` branch. Copy the URL.
-#   2. Add it as a repo secret named VERCEL_DEPLOY_HOOK_URL:
-#        gh secret set VERCEL_DEPLOY_HOOK_URL
+#   1. Vercel → Account Settings → Tokens → create one scoped to the team that
+#      owns the project.
+#   2. Add it as a repo secret named VERCEL_TOKEN:
+#        gh secret set VERCEL_TOKEN
 #      (or GitHub → Settings → Secrets and variables → Actions).
 
 on:
@@ -20,25 +26,36 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
-# The job only POSTs a secret URL; it needs no GITHUB_TOKEN scope at all.
-permissions: {}
+permissions:
+  contents: read
 
+# One deploy at a time; a newer push replaces a queued one, so main's head wins.
 concurrency:
   group: vercel-production
   cancel-in-progress: false
 
 jobs:
   deploy:
+    # A manual run from another branch must not put that branch in production.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel deploy hook
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Deploy main's files to Vercel production
         env:
-          HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_jeHaUEFEe9q9CoUA71Vij1Kr
+          VERCEL_PROJECT_ID: prj_B0Jq1E2rv2wSKi9eSiyCZH9OebdH
         run: |
-          if [ -z "$HOOK_URL" ]; then
-            echo "::error::VERCEL_DEPLOY_HOOK_URL secret is not set. Create a Deploy Hook in Vercel (Settings → Git → Deploy Hooks, branch=main) and add it as a repo secret."
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN secret is not set. Create a Vercel token (Account Settings → Tokens) and add it as a repo secret."
             exit 1
           fi
-          echo "Triggering production deployment via Vercel deploy hook…"
-          curl -fsSL --retry 3 -X POST "$HOOK_URL"
-          echo "✅ Deploy hook triggered — track the build in the Vercel dashboard."
+          # No git metadata in the upload, so Vercel has no commit author to block on.
+          rm -rf .git
+          npx --yes vercel@58.7.1 deploy --prod --yes --token "$VERCEL_TOKEN"
