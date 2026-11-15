@@ -13,6 +13,8 @@ const io = vi.hoisted(() => ({
   kicked: [] as string[],
   superseded: [] as string[],
   embedding: undefined as string | undefined,
+  ensured: [] as string[],
+  missingUntilEnsured: false,
   version: 7,
   redis: [] as string[],    // first_feed:timings, newest first
   redisDown: false,
@@ -37,6 +39,9 @@ vi.mock('@/modules/engine/pipeline/precompute', () => ({
   holdQuietBuilds: async (userId: string) => { io.superseded.push(userId) },
 }))
 vi.mock('@/modules/dna/refresh-batch', () => ({ refreshLiveBatch: async (_u: string, _l: string, embedding?: string) => { io.embedding = embedding; return io.promoted } }))
+vi.mock('@/lib/ensure-fingerprint', () => ({
+  ensureFingerprint: async (userId: string) => { io.ensured.push(userId); const was = io.missingUntilEnsured; io.missingUntilEnsured = false; if (was) io.bumpOutcome = 'saved'; return was ? 'created' : 'existed' },
+}))
 vi.mock('@/modules/dna/lib/load-save', () => ({
   bumpVersion: (dna: DNASchema) => { dna.metadata.taste_version += 1 },
   withDNAUpdate: async (_u: string, mutate: (d: DNASchema) => boolean) => {
@@ -62,6 +67,8 @@ beforeEach(() => {
   io.generated = []
   io.kicked = []
   io.superseded = []
+  io.ensured = []
+  io.missingUntilEnsured = false
   io.redis = []
   io.redisDown = false
   vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -73,6 +80,10 @@ describe('kickFirstFeed', () => {
   it('builds the list the feed opens on (FEED_START_TYPE, "all"), without waiting for new plot summaries (#246: 0, cached ones only)', async () => {
     await kickFirstFeed('u1')
     expect(io.kicked).toEqual(['u1:all:0'])
+  })
+  it('makes sure the account has a fingerprint before building (a new account has none yet)', async () => {
+    await kickFirstFeed('u1')
+    expect(io.ensured).toEqual(['u1'])
   })
   it('a caller can ask for another list', async () => {
     await kickFirstFeed('u1', 'series')
@@ -117,6 +128,17 @@ describe('finishFirstFeed', () => {
     io.promoted = 8
     await finishFirstFeed('u1')
     expect(io.superseded).toEqual(['u1'])
+  })
+
+  // #246, 2026-11-15: the first real signup since the new onboarding had no
+  // fingerprint, and every "Try again" failed with "(missing)".
+  it('a brand-new account with no fingerprint: creates the blank one, then makes the feed', async () => {
+    io.bumpOutcome = 'missing'
+    io.missingUntilEnsured = true
+    const r = await finishFirstFeed('u1')
+    expect(io.ensured).toEqual(['u1'])
+    expect(r).toMatchObject({ adopted: false, taste_version: 8 })
+    expect(io.generated).toHaveLength(1)
   })
 
   it('throws when the fingerprint can\'t be bumped, so the screen shows "Try again"', async () => {

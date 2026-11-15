@@ -35,6 +35,7 @@ import { generateRecommendations } from './pipeline/generate'
 import { refreshLiveBatch } from '@/modules/dna/refresh-batch'
 import { withDNAUpdate, bumpVersion } from '@/modules/dna/lib/load-save'
 import { getRedis } from '@/lib/redis'
+import { ensureFingerprint } from '@/lib/ensure-fingerprint'
 
 /**
  * The list the first feed is built for: the one the feed opens on
@@ -68,7 +69,10 @@ export interface FirstFeedResult {
  * (a new user has none cached; 2.5 s each build made "It's Showtime" ~10 s):
  * they finish in the background, and a card without one keeps its fact line.
  */
-export function kickFirstFeed(userId: string, contentType: ContentType = FIRST_FEED_TYPE): Promise<void> {
+export async function kickFirstFeed(userId: string, contentType: ContentType = FIRST_FEED_TYPE): Promise<void> {
+  // A brand-new account has no fingerprint until something writes one, and
+  // the build has nothing to build from without it (#246, 2026-11-15).
+  await ensureFingerprint(userId)
   return precomputeNextBatch(userId, contentType, undefined, { plotWaitMs: FIRST_FEED_PLOT_WAIT_MS })
 }
 
@@ -172,7 +176,13 @@ async function finish(userId: string, contentType: ContentType, t0: number, wait
   //    failed build): bump anyway, so the feed's cache key moves past any batch
   //    built before the last answers, and generate at the new version.
   let bumped: DNASchema | null = null
-  const outcome = await withDNAUpdate(userId, dna => { bumpVersion(dna); bumped = dna; return true })
+  const bump = () => withDNAUpdate(userId, dna => { bumpVersion(dna); bumped = dna; return true })
+  let outcome = await bump()
+  // No fingerprint yet: a brand-new account whose onboarding wrote none.
+  // Create the blank one and make the feed from it (the picks and genre
+  // answers are outside the DNA and still count under v2). Before this, every
+  // "Try again" failed the same way (#246, 2026-11-15).
+  if (outcome === 'missing' && (await ensureFingerprint(userId)) !== 'failed') outcome = await bump()
   if (outcome !== 'saved' || !bumped) throw new Error(`First feed: could not bump the fingerprint (${outcome})`)
   const dna: DNASchema = bumped
   await generateRecommendations(userId, undefined, { dna, skipCacheRead: true, contentType })
