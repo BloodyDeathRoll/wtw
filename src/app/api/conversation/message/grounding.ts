@@ -293,6 +293,8 @@ export interface Checked {
   /** The sentences that passed, ready to show: no asterisks. '' when none passed. */
   kept: string;
   problems: string[];
+  /** False when the reply named titles and every sentence naming one was cut. */
+  picksLeft: boolean;
 }
 
 /**
@@ -303,13 +305,20 @@ export function checkReply(reply: string, resolution: Resolution, allowed: strin
   const facts = readFacts(`${allowed} | ${factsHaystack(resolution.rows)} | ${ALWAYS}`);
   const kept: string[] = [];
   const problems: string[] = [];
+  let named = false;
+  let keptNamed = false;
   // A title is never split: the "." of *Mr. Robot* does not end a sentence.
   const whole = reply.trim().replace(/\*[^*\n]+\*/g, (title) => title.replace(/\s/g, "\u0001"));
   for (const part of whole.split(/(?<=[.!?])\s+/).filter(Boolean)) {
     const sentence = part.replace(/\u0001/g, " ");
+    const names = namedTitles(sentence).length > 0;
+    named ||= names;
     const found = sentenceProblems(sentence, resolution.resolved, facts);
     if (found.length) problems.push(...found);
-    else kept.push(sentence.replace(/\*/g, ""));
+    else {
+      kept.push(sentence.replace(/\*/g, ""));
+      keptNamed ||= names;
+    }
   }
-  return { kept: kept.join(" "), problems: [...new Set(problems)] };
+  return { kept: kept.join(" "), problems: [...new Set(problems)], picksLeft: !named || keptNamed };
 }
