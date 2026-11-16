@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadHomeBootstrap } from '@/lib/home-bootstrap'
 import { needsOnboarding } from '@/lib/onboarding-route'
-import { onboardingV2Enabled } from '@/lib/flags'
+import { chatMode, onboardingV2Enabled } from '@/lib/flags'
 import type { AppUser } from '@/modules/session/types'
 import { withBlindCovers, withSideClues } from './lib/games'
 import type { BlindCover, GameTitle, SideClue } from './lib/scales'
@@ -57,5 +57,9 @@ export default async function PlayPage({ searchParams }: { searchParams: Promise
   // One round trip for the play state and the signal count (migration 0027).
   const { play: saved, signals } = await loadHomeBootstrap(supabase, user.id)
 
-  return <PlayApp user={appUser} existingUser={signals > 0} chatReady={!needsOnboarding(saved.state, signals)} voiceIntro={!onboardingV2Enabled() && signals === 0 && !heard} titles={titles} saved={saved} tab={tab} />
+  // The chat's way in (the lobby's Ask bubble under NAV_TABS, the menu's Ask WTW): only with the consultant chat on,
+  // like the feed (WTWApp) and the You page (loadChatReady). With CHAT_MODE=off the lobby showed the bubble alone.
+  const chatReady = chatMode() === 'consultant' && !needsOnboarding(saved.state, signals)
+
+  return <PlayApp user={appUser} existingUser={signals > 0} chatReady={chatReady} voiceIntro={!onboardingV2Enabled() && signals === 0 && !heard} titles={titles} saved={saved} tab={tab} />
 }
