@@ -75,7 +75,8 @@ async function main() {
 
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-  const ai = new GoogleGenAI({ apiKey });
+  // @google/genai 3 defaults to v1; the preview TTS/voice models exist only on v1beta.
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1beta" } });
 
   let generated = 0;
   let skipped = 0;
