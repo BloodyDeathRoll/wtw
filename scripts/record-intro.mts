@@ -17,7 +17,8 @@ const SAMPLE_RATE = 24_000; // Gemini TTS returns 16-bit mono PCM at 24 kHz
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) throw new Error("GEMINI_API_KEY not set. Run via: npm run record-intro");
 
-const ai = new GoogleGenAI({ apiKey });
+// @google/genai 3 defaults to v1; the preview TTS/voice models exist only on v1beta.
+const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1beta" } });
 // Framed as a read-aloud instruction so the model doesn't answer the question in it.
 const result = await ai.models.generateContent({
   model: MODELS.tts,
