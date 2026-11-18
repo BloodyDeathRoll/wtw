@@ -106,3 +106,65 @@ export function scoreFormulaV2(parts: V2Parts[]): V2Score[] {
     pool_size: parts.length,
   }))
 }
+
+// ─────────────────────────────────────────────
+// One title against a pool it isn't in (v3 M1)
+// ─────────────────────────────────────────────
+
+/** A part's mean and population sd over a pool, exactly as scoreFormulaV2 takes them. */
+export interface PartStats { mean: number; sd: number }
+
+/**
+ * What scoreFormulaV2 needs from a pool to place a title in it: each part's
+ * mean and sd (the taste model's with no-vector titles filled at the mean, as
+ * there), and the sd of the weighted sums. Saved per batch so one title can
+ * be scored later against the same pool (v3 M1, score-one.ts).
+ */
+export interface V2PoolStats {
+  n: number
+  creators: PartStats
+  crowd: PartStats
+  model: PartStats
+  s_sd: number
+}
+
+function partStats(xs: number[]): PartStats {
+  const m = mean(xs)
+  return { mean: m, sd: popSd(xs, m) }
+}
+
+const zIn = (x: number, p: PartStats) => (p.sd < FLAT ? 0 : (x - p.mean) / p.sd)
+
+/** The pool's stats; null for an empty pool. */
+export function v2PoolStats(parts: V2Parts[]): V2PoolStats | null {
+  if (parts.length === 0) return null
+  const known = parts.map(p => p.model).filter((m): m is number => m != null)
+  const fill = known.length > 0 ? mean(known) : 0
+  const creators = partStats(parts.map(p => p.creators))
+  const crowd = partStats(parts.map(p => p.crowd))
+  const model = partStats(parts.map(p => p.model ?? fill))
+  const s = parts.map(p =>
+    V2_WEIGHTS.creators * zIn(p.creators, creators) +
+    V2_WEIGHTS.crowd * zIn(p.crowd, crowd) +
+    V2_WEIGHTS.model * (p.model == null ? 0 : zIn(p.model, model)))
+  return { n: parts.length, creators, crowd, model, s_sd: popSd(s) }
+}
+
+/**
+ * One title scored against a pool's stats: for a title in that pool, the
+ * same numbers scoreFormulaV2 gives it (tests/unit/formula-v2-pool.test.ts).
+ * A title with no taste vector sits at the pool mean (z 0), as there.
+ */
+export function scoreAgainstPool(p: V2Parts, stats: V2PoolStats): V2Score {
+  const z_creators = zIn(p.creators, stats.creators)
+  const z_crowd = zIn(p.crowd, stats.crowd)
+  const z_model = p.model == null ? 0 : zIn(p.model, stats.model)
+  const s = V2_WEIGHTS.creators * z_creators + V2_WEIGHTS.crowd * z_crowd + V2_WEIGHTS.model * z_model
+  return {
+    z_creators, z_crowd, z_model,
+    model_score: p.model,
+    s,
+    composite: stats.s_sd < FLAT ? 0.5 : normalCdf(s / stats.s_sd),
+    pool_size: stats.n,
+  }
+}
