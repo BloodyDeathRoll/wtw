@@ -47,8 +47,11 @@ import { Emphasis } from "@/app/components/Emphasis";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import {
+  fetchFreshExplain,
+  freshKey,
   getCachedExplain,
   setCachedExplain,
+  withoutGuessedBars,
   type ExplainData,
 } from "@/lib/explain-cache";
 import {
@@ -2310,6 +2313,11 @@ function WatchlistCardPage({
  * Crew), in the sheet's own styles. The written why takes 1–3 s: three quiet
  * lines hold its place. A saved title with no breakdown (a third of today's)
  * shows the Why alone: no bars, no error line (DEC-2).
+ *
+ * The breakdown is today's (v3 M2, FOR-YOU.md DEC-9): the engine scores the
+ * title now (M1, /api/recommendations/score) instead of showing the one
+ * frozen on the day it was saved. If that can't be had, the saved snapshot,
+ * without the old guessed bars a pre-v2 one would draw; then the Why alone.
  */
 function InlineWhy({
   entry,
@@ -2321,37 +2329,31 @@ function InlineWhy({
   innerRef: RefObject<HTMLDivElement | null>;
 }) {
   const why = useWhyText(rec);
-  // This session's cache, then the snapshot taken when the card was saved,
-  // then the engine's cache (which forgets old titles: then null).
+  // Today's breakdown scored earlier this session, else ask the engine now.
   const [data, setData] = useState<ExplainData | null | "loading">(
-    () => getCachedExplain(rec.id) ?? entry.explain ?? "loading",
+    () => getCachedExplain(freshKey(rec.id)) ?? "loading",
   );
+  const snapshot = entry.explain;
   useEffect(() => {
     if (data !== "loading") return;
     let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch(
-          `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdbIdOf(rec.id))}&type=${rec.type}`,
-        );
-        if (cancelled) return;
-        if (!res.ok) {
-          setData(null);
-          return;
-        }
-        const d = (await res.json()) as ExplainData;
-        if (cancelled) return;
-        setCachedExplain(rec.id, d);
-        setData(d);
-      } catch (e) {
-        console.error("[recs] explain failed", e);
-        if (!cancelled) setData(null);
+      const fresh = await fetchFreshExplain(rec.type, tmdbIdOf(rec.id));
+      if (cancelled) return;
+      if (fresh) {
+        setCachedExplain(freshKey(rec.id), fresh);
+        setData(fresh);
+        return;
       }
+      // Not scored today (not in the catalogue, a cold-start profile, an
+      // error): the snapshot from the day it was saved, never its guessed
+      // bars; with none, the Why alone.
+      setData(snapshot ? withoutGuessedBars(snapshot) : null);
     })();
     return () => {
       cancelled = true;
     };
-  }, [data, rec.id, rec.type]);
+  }, [data, rec.id, rec.type, snapshot]);
 
   let body: ReactNode = null;
   if (data && data !== "loading") body = <WhyPanel result={toResult(data, rec)} why={why} />;
