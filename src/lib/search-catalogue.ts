@@ -51,9 +51,22 @@ export const RECENT_YEARS = 8
 export const TYPO_FAME = 0.2
 const LIMIT = 6
 
-/** The share of the type's titles with at most this many votes, 0–1. */
-export function votePercentile(cuts: number[] | undefined, votes: number): number {
-  if (!cuts?.length) return 0
+/**
+ * Without the quantiles, votes on a log scale up to a top per type (series get
+ * ~10× fewer votes than films): a film at 1,000 ~0.67, at 30,000+ 1; a series
+ * at 1,000 ~0.86, at 3,000+ 1.
+ */
+const FALLBACK_TOP_VOTES = { movie: 30_000, tv: 3_000 } as const
+
+/**
+ * The share of the type's titles with at most this many votes, 0–1. Before the
+ * quantiles are loaded (the first search, and once a day after they expire),
+ * a log scale of the votes instead: without it every title scored 0 and only
+ * the recent lift ranked them ("sl" opened on Sleeping Dog; found by R3,
+ * scripts/search-check.mts, 2026-11-19).
+ */
+export function votePercentile(cuts: number[] | undefined, votes: number, type: 'movie' | 'tv' = 'movie'): number {
+  if (!cuts?.length) return Math.min(1, Math.log10(Math.max(0, votes) + 1) / Math.log10(FALLBACK_TOP_VOTES[type] + 1))
   let lo = 0, hi = cuts.length
   while (lo < hi) { const m = (lo + hi) >> 1; if (cuts[m] <= votes) lo = m + 1; else hi = m }
   return lo / cuts.length
@@ -88,7 +101,7 @@ export function mergeSearch(
   type Ranked = { hit: TitleSearchHit; score: number; votes: number }
   const titles = new Map<string, Ranked>()
   const score = (type: 'movie' | 'tv', votes: number, year: number | null, first: boolean) =>
-    (first ? 1 : 0) + votePercentile(quantiles[type], votes) + recentLift(year, thisYear)
+    (first ? 1 : 0) + votePercentile(quantiles[type], votes, type) + recentLift(year, thisYear)
 
   for (const r of rows) {
     const hit: TitleSearchHit = { tmdb_id: r.tmdb_id, type: r.type, title: r.title, year: r.release_year, poster_path: r.poster_path, votes: r.tmdb_vote_count }
@@ -96,7 +109,7 @@ export function mergeSearch(
       // A typo match: after every word-start match; closeness first, and how
       // well known it is breaks near-ties ("intersteller": Interstellar 0.63,
       // not Interstella 5555 at 0.67).
-      ? -1 + r.similarity + TYPO_FAME * votePercentile(quantiles[r.type], r.tmdb_vote_count)
+      ? -1 + r.similarity + TYPO_FAME * votePercentile(quantiles[r.type], r.tmdb_vote_count, r.type)
       : score(r.type, r.tmdb_vote_count, r.release_year, r.first_word)
     titles.set(`${r.type}:${r.tmdb_id}`, { hit, score: s, votes: r.tmdb_vote_count })
   }
