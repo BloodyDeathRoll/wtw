@@ -455,6 +455,8 @@ export interface TitleSearchHit {
   title: string
   year: number | null
   poster_path: string | null
+  /** TMDB's vote count, only when asked for (`withVotes`): v3 Q4 ranks it against our catalogue's matches. */
+  votes?: number
 }
 
 /** A director or actor in the Search screen's list (2026-11-05). */
@@ -493,7 +495,7 @@ interface TMDBSearchRow {
 
 /** A title folded for comparing: no accents, punctuation or case, and no
  *  leading "The"/"A"/"An" — so "lowdown" is "The Lowdown" exactly. */
-function searchKey(s: string): string {
+export function searchKey(s: string): string {
   return s
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -553,8 +555,8 @@ const PERSON_FAME = 5000
  * A one-word typo ("shtisle") still finds nothing: docs/BACKLOG.md.
  */
 export async function searchTitles(query: string, limit?: number, opts?: { people?: false }): Promise<TitleSearchHit[]>
-export async function searchTitles(query: string, limit: number, opts: { people: boolean }): Promise<SearchHit[]>
-export async function searchTitles(query: string, limit = 6, { people = false } = {}): Promise<SearchHit[]> {
+export async function searchTitles(query: string, limit: number, opts: { people: boolean; withVotes?: boolean }): Promise<SearchHit[]>
+export async function searchTitles(query: string, limit = 6, { people = false, withVotes = false } = {}): Promise<SearchHit[]> {
   const q = query.trim()
   if (!q) return []
 
@@ -621,6 +623,7 @@ export async function searchTitles(query: string, limit = 6, { people = false } 
         title: name,
         year: date ? Number(date.slice(0, 4)) : null,
         poster_path: r.poster_path ?? null,
+        ...(withVotes ? { votes } : {}),
       }
       return {
         hit, like, votes,
