@@ -16,6 +16,15 @@ import { ISRAEL_SERVICES } from "@/lib/watch-providers";
 
 export type WatchlistFilter = "all" | "starred" | "movies" | "series" | "seen" | `service:${string}`;
 
+/**
+ * Service chips only while the region's known services are few (Eran,
+ * 2026-11-18, DEC-3): at most this many, and each a chip of its own. Israel has
+ * four, so chips. Above the limit (the US has 11 on one list alone) the
+ * services become one "Services" filter control that opens a picker, to be
+ * built when a second region arrives (WATCHLIST.md §+ "Region").
+ */
+export const MAX_SERVICE_CHIPS = 5;
+
 export interface WatchlistChip {
   filter: WatchlistFilter;
   label: string;
@@ -63,10 +72,14 @@ export function watchlistChips(entries: readonly WatchlistEntry[]): WatchlistChi
     { filter: "movies", label: "Movies", count: count("movies") },
     { filter: "series", label: "Series", count: count("series") },
   ];
-  for (const s of ISRAEL_SERVICES) {
-    const filter: WatchlistFilter = `service:${s.label}`;
-    const n = count(filter);
-    if (n > 0) chips.push({ filter, label: s.label, count: n });
+  // One chip per service with at least one title; none at all above the limit
+  // (a single "Services" control takes their place then; not built yet).
+  if (ISRAEL_SERVICES.length <= MAX_SERVICE_CHIPS) {
+    for (const s of ISRAEL_SERVICES) {
+      const filter: WatchlistFilter = `service:${s.label}`;
+      const n = count(filter);
+      if (n > 0) chips.push({ filter, label: s.label, count: n });
+    }
   }
   chips.push({ filter: "seen", label: "Seen", count: count("seen") });
   return chips;

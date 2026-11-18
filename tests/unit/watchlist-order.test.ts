@@ -5,7 +5,9 @@ import {
   watchlistChips,
   emptyFilterText,
   isSeen,
+  MAX_SERVICE_CHIPS,
 } from '@/modules/session/recommendations/watchlist-order'
+import { ISRAEL_SERVICES } from '@/lib/watch-providers'
 import type { WatchlistEntry } from '@/lib/watchlist'
 import type { Recommendation } from '@/types/recommendation'
 
@@ -77,6 +79,11 @@ describe('watchlistChips', () => {
   it('a service chip only while a title is on it; Movies, Series and Seen always', () => {
     expect(watchlistChips([entry('a')]).map((c) => c.label)).toEqual(['All', 'Starred', 'Movies', 'Series', 'Seen'])
     expect(watchlistChips([]).map((c) => c.label)).toEqual(['All', 'Starred', 'Movies', 'Series', 'Seen'])
+  })
+
+  it('services are chips only while the region has at most MAX_SERVICE_CHIPS of them (Israel: four)', () => {
+    expect(MAX_SERVICE_CHIPS).toBe(5)
+    expect(ISRAEL_SERVICES.length).toBeLessThanOrEqual(MAX_SERVICE_CHIPS)
   })
 
   it('services in the fixed order, never more than four', () => {
