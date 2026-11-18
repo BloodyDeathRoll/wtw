@@ -1,11 +1,11 @@
 'use client'
-/** The You tab's own cards, after the taste ones: Seen (your ratings) and Account (Sign out, Start my taste over). */
+/** The You tab's own cards, after the taste ones: Seen (your ratings), the feedback and Account rows, and the Account page's rows. */
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Bebas_Neue } from 'next/font/google'
-import { ChevronRight, LogOut, RotateCcw } from 'lucide-react'
+import { ChevronRight, LogOut, MessageSquare, RotateCcw, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { TastePageData } from '../profile/dna/lib/taste-page'
 import base from '../profile/dna/dna.module.css'
@@ -58,19 +58,67 @@ export function SeenCard({ seen, total }: { seen: TastePageData['seen']; total: 
 }
 
 /**
- * Account (Eran, 2026-11-15; docs/prototypes/games-page/7-you-account.jpg): the account's rows in the genre rows'
- * look, Sign out first, then Start my taste over. Personal details, Contact us and Delete my account join this box
- * later.
+ * Whether "Send us feedback" shows. Its page (/you/feedback) comes with v3 Y2, which needs the team's email service
+ * (YOU.md DEC-5); until then the row would lead nowhere, so You ends with Account alone. Y2 turns this on.
  */
-export function AccountCard() {
+const FEEDBACK_PAGE = false
+
+/** A row in the genre rows' look that opens a page: icon, label (and a line under it), chevron. */
+function LinkRow({ href, icon, label, says }: { href: string; icon: React.ReactNode; label: string; says?: string }) {
+  return (
+    <Link href={href} className={t.grow} style={{ textDecoration: 'none' }}>
+      <i className={t.gline} aria-hidden="true">{icon}</i>
+      <span className={t.gtext}>
+        <span className={t.glabel} style={{ display: 'block' }}>{label}</span>
+        {says && <span className={t.gsays} style={{ display: 'block' }}>{says}</span>}
+      </span>
+      <span />
+      <span className={t.chev}><ChevronRight size={16} strokeWidth={2} /></span>
+    </Link>
+  )
+}
+
+/**
+ * The bottom of You (v3 Y1, YOU.md DEC-3; you-v3/1-account-row.jpg): one card of two rows in the genre rows' look,
+ * Send us feedback out in the open so friends find it, then Account ›, which opens its own page.
+ */
+export function YouLinksCard() {
+  return (
+    <section className={base.section}>
+      <div className={t.grows}>
+        {FEEDBACK_PAGE && (
+          <LinkRow
+            href="/you/feedback"
+            icon={<MessageSquare size={24} strokeWidth={1.75} />}
+            label="Send us feedback"
+            says="Tell us what to fix, or what you’d love to see."
+          />
+        )}
+        <LinkRow href="/you/account" icon={<User size={24} strokeWidth={1.75} />} label="Account" />
+      </div>
+    </section>
+  )
+}
+
+/**
+ * The Account page's rows (v3 Y1, YOU.md DEC-3; you-v3/2-account-page.jpg): Start my taste over (today's row and
+ * sheet), then Sign out (no arrow: it acts at once). Delete my account joins last with v3 Y3.
+ */
+export function AccountRows() {
   const router = useRouter()
   const [asking, setAsking] = useState(false)
   return (
     <section className={base.section}>
-      <div className={base.sectionHead}>
-        <h2 className={`${base.sectionTitle} ${base.sectionTitleAccent}`}>Account</h2>
-      </div>
       <div className={t.grows}>
+        <button type="button" className={t.grow} onClick={() => setAsking(true)}>
+          <i className={t.gline} aria-hidden="true"><RotateCcw size={24} strokeWidth={1.75} /></i>
+          <span className={t.gtext}>
+            <span className={t.glabel} style={{ display: 'block' }}>Start my taste over</span>
+            <span className={t.gsays} style={{ display: 'block' }}>Teach WTW your taste from scratch. Your Watchlist and game scores stay.</span>
+          </span>
+          <span />
+          <span className={t.chev}><ChevronRight size={16} strokeWidth={2} /></span>
+        </button>
         <button
           type="button"
           className={t.grow}
@@ -84,15 +132,6 @@ export function AccountCard() {
           <span className={t.gtext}><span className={t.glabel} style={{ display: 'block' }}>Sign out</span></span>
           <span />
           <span />
-        </button>
-        <button type="button" className={t.grow} onClick={() => setAsking(true)}>
-          <i className={t.gline} aria-hidden="true"><RotateCcw size={24} strokeWidth={1.75} /></i>
-          <span className={t.gtext}>
-            <span className={t.glabel} style={{ display: 'block' }}>Start my taste over</span>
-            <span className={t.gsays} style={{ display: 'block' }}>Teach WTW your taste from scratch. Your Watchlist and game scores stay.</span>
-          </span>
-          <span />
-          <span className={t.chev}><ChevronRight size={16} strokeWidth={2} /></span>
         </button>
       </div>
       {asking && <StartOverSheet onClose={() => setAsking(false)} />}
