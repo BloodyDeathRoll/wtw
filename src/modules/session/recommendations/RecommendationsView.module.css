@@ -1197,11 +1197,14 @@
   color: var(--rv-white-70);
 }
 /* The star: a 44px target on the row's right (DEC-4); gold, filled, when on. */
+/* The whole right column of the row, out to the screen edge (the list's
+   16px side padding): a thumb at the edge, or above or below the star, still
+   stars. The star itself stays 24px, centred 28px in from the edge. */
 .rowStar {
   flex: none;
-  width: 44px;
-  height: 44px;
-  margin-right: -10px;
+  align-self: stretch;
+  width: 56px;
+  margin-right: -16px;
   padding: 0;
   border: 0;
   background: none;

@@ -110,6 +110,23 @@ describe('the list', () => {
     expect(rowNames()).toEqual(['Title movie:2', 'Title movie:1', 'Title tv:3'])
   })
 
+  it('a swipe follows the finger, then settles open past the threshold', () => {
+    seed(THREE)
+    view()
+    const row = screen.getByRole('button', { name: 'Title movie:1: open' })
+    fireEvent.pointerDown(row, { clientX: 300, clientY: 100, pointerId: 1 })
+    // Past the slop: the row has moved exactly as far as the finger, not to fully open.
+    fireEvent.pointerMove(row, { clientX: 270, clientY: 102, pointerId: 1 })
+    expect(row.style.transform).toBe('translateX(-30px)')
+    fireEvent.pointerMove(row, { clientX: 220, clientY: 103, pointerId: 1 })
+    expect(row.style.transform).toBe('translateX(-80px)')
+    fireEvent.pointerUp(row, { clientX: 220, clientY: 103, pointerId: 1 })
+    expect(row.style.transform).toBe('translateX(-118px)')
+    // The swipe's own click opens nothing.
+    fireEvent.click(row)
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument()
+  })
+
   it('with nothing saved: today\'s text and an orange "Go to For you"', () => {
     const browse = vi.fn()
     view({ onBrowse: browse })
