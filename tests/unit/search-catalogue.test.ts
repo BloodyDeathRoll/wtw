@@ -22,7 +22,7 @@ describe('votePercentile', () => {
     expect(votePercentile([0, 10, 20, 30], 0)).toBe(0.25)          // share of cut points at or below it
     expect(votePercentile(Q.tv, 300)).toBeLessThan(votePercentile(Q.tv, 900))
     expect(votePercentile(Q.tv, 900)).toBeGreaterThan(votePercentile(Q.movie, 900))   // 900 votes is much more for a series
-    expect(votePercentile(undefined, 500)).toBe(0)
+    expect(votePercentile(undefined, 0)).toBe(0)
   })
 })
 
@@ -95,7 +95,15 @@ describe('mergeSearch', () => {
     expect(mergeSearch('sl', [], rows, Q, 2026)).toHaveLength(6)
   })
 
-  it('without quantiles (their read failed): still a list, by first word and recency', () => {
-    expect(mergeSearch('sl', [], [row('8', 'tv', 'Slow Horses', 880, 2022, true)], {}, 2026)).toHaveLength(1)
+  it('without quantiles (not loaded yet): ranked by votes on a log scale, not by recency alone', () => {
+    const rows = [
+      row('1', 'movie', 'Slumdog Millionaire', 11000, 2008, true),
+      row('2', 'movie', 'Sleeping Dog', 40, 2024, true),
+      row('3', 'movie', 'Slumberland', 900, 2022, true),
+    ]
+    expect(names(mergeSearch('sl', [], rows, {}, 2026))[0]).toBe('Slumdog Millionaire')
+    expect(votePercentile(undefined, 30000)).toBeCloseTo(1, 2)
+    expect(votePercentile(undefined, 1000)).toBeGreaterThan(votePercentile(undefined, 40))
+    expect(votePercentile(undefined, 900, 'tv')).toBeGreaterThan(votePercentile(undefined, 900, 'movie'))   // series scale
   })
 })
