@@ -17,12 +17,14 @@
  * ahead of Slow Horses. The recent lift is what someone searching for "the
  * show everyone's talking about" needs; it's small, so the classics stay
  * ("go" → The Godfather, "sh" → The Shawshank Redemption). Typo matches only
- * come when no word starts with what was typed, and rank by closeness.
+ * come when no word starts with what was typed, and rank by closeness, with
+ * fame breaking near-ties.
  * Measured on the catalogue, 2026-11-18: see the PR for #363.
  */
 import 'server-only'
 
 import { createServiceClient } from '@/lib/supabase/service'
+import { after } from 'next/server'
 import { getRedis } from '@/lib/redis'
 import { searchKey, type SearchHit, type TitleSearchHit } from '@/lib/tmdb'
 
@@ -45,6 +47,8 @@ export type VoteQuantiles = Partial<Record<'movie' | 'tv', number[]>>
 
 export const RECENT_LIFT = 0.05
 export const RECENT_YEARS = 8
+/** How much fame counts among typo matches, next to closeness (0–1). */
+export const TYPO_FAME = 0.2
 const LIMIT = 6
 
 /** The share of the type's titles with at most this many votes, 0–1. */
@@ -89,7 +93,10 @@ export function mergeSearch(
   for (const r of rows) {
     const hit: TitleSearchHit = { tmdb_id: r.tmdb_id, type: r.type, title: r.title, year: r.release_year, poster_path: r.poster_path, votes: r.tmdb_vote_count }
     const s = r.similarity != null
-      ? -1 + r.similarity                       // a typo match: after every word-start match
+      // A typo match: after every word-start match; closeness first, and how
+      // well known it is breaks near-ties ("intersteller": Interstellar 0.63,
+      // not Interstella 5555 at 0.67).
+      ? -1 + r.similarity + TYPO_FAME * votePercentile(quantiles[r.type], r.tmdb_vote_count)
       : score(r.type, r.tmdb_vote_count, r.release_year, r.first_word)
     titles.set(`${r.type}:${r.tmdb_id}`, { hit, score: s, votes: r.tmdb_vote_count })
   }
@@ -137,27 +144,46 @@ const QUANTILES_KEY = 'search:vote_quantiles'
 const QUANTILES_TTL_SECONDS = 24 * 60 * 60
 let memo: { at: number; q: VoteQuantiles } | null = null
 
-/** The vote quantiles per type: from memory, then Redis (a day), then the database. Empty on failure (rank by first word and recency only). */
-export async function voteQuantiles(): Promise<VoteQuantiles> {
-  if (memo && Date.now() - memo.at < QUANTILES_TTL_SECONDS * 1000) return memo.q
+let filling: Promise<void> | null = null
+
+/** Reads the quantiles from the database (~1.5 s cold, measured) into Redis and memory. */
+async function fillQuantiles(): Promise<void> {
   try {
-    const redis = getRedis()
-    let q = await redis.get<VoteQuantiles>(QUANTILES_KEY).catch(() => null)
-    if (!q?.movie && !q?.tv) {
-      const { data, error } = await createServiceClient().rpc('title_vote_quantiles')
-      if (error) throw new Error(error.message)
-      q = Object.fromEntries(((data ?? []) as { type: string; cuts: number[] }[]).map(r => [r.type, r.cuts])) as VoteQuantiles
-      await redis.set(QUANTILES_KEY, q, { ex: QUANTILES_TTL_SECONDS }).catch(() => {})
-    }
+    const { data, error } = await createServiceClient().rpc('title_vote_quantiles')
+    if (error) throw new Error(error.message)
+    const q = Object.fromEntries(((data ?? []) as { type: string; cuts: number[] }[]).map(r => [r.type, r.cuts])) as VoteQuantiles
     memo = { at: Date.now(), q }
-    return q
+    await getRedis().set(QUANTILES_KEY, q, { ex: QUANTILES_TTL_SECONDS }).catch(() => {})
   } catch (err) {
     console.warn('[search] vote quantiles unavailable:', err instanceof Error ? err.message : err)
-    return {}
+  } finally {
+    filling = null
   }
+}
+
+/**
+ * The vote quantiles per type, from memory or Redis (kept a day). A search
+ * never waits for the database: on a miss it ranks without them (first word
+ * and recency only) and the quantiles are filled in the background for the
+ * next one.
+ */
+export async function voteQuantiles(): Promise<VoteQuantiles> {
+  if (memo && Date.now() - memo.at < QUANTILES_TTL_SECONDS * 1000) return memo.q
+  const cached = await getRedis().get<VoteQuantiles>(QUANTILES_KEY).catch(() => null)
+  if (cached?.movie || cached?.tv) {
+    memo = { at: Date.now(), q: cached }
+    return cached
+  }
+  if (!filling) {
+    filling = fillQuantiles()
+    const task = filling
+    try { after(() => task) } catch { void task }
+  }
+  return {}
 }
 
 /** For tests. */
 export function clearVoteQuantiles(): void {
   memo = null
+  filling = null
 }

@@ -72,6 +72,15 @@ describe('mergeSearch', () => {
     expect(names(mergeSearch('godfahter', [], rows, Q, 2026))[0]).toBe('The Godfather')
   })
 
+  it('among typo matches, fame breaks a near-tie (intersteller → Interstellar, not Interstella 5555)', () => {
+    const rows = [
+      row('1', 'movie', 'Interstella 5555: The 5tory of the 5ecret 5tar 5ystem', 400, 2003, false, 0.67),
+      row('2', 'movie', 'Interstellar', 30000, 2014, false, 0.63),
+      row('3', 'movie', 'Interstate 60', 600, 2002, false, 0.41),
+    ]
+    expect(names(mergeSearch('intersteller', [], rows, Q, 2026))[0]).toBe('Interstellar')
+  })
+
   it('people stay where TMDB put them, as today', () => {
     const tmdb = [person('1', 'Samantha Sloyan'), tmdbTitle('8', 'tv', 'Slow Horses', 880, 2022), person('2', 'Barry Sloane')]
     const out = names(mergeSearch('slo', tmdb, [row('8', 'tv', 'Slow Horses', 880, 2022, true), row('7', 'movie', 'Slow West', 800, 2015, true)], Q, 2026))

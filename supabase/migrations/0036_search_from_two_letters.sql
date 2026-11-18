@@ -7,7 +7,10 @@
 -- lookup on `titles.title` without an index scanned the whole 83 MB heap
 -- (7.3 s measured). A trigram index on lower(title) makes both cheap:
 --   - word starts: lower(title) LIKE 'sl%' OR LIKE '% sl%' (the index serves LIKE)
---   - typos: word_similarity (the <% operator), for one word of 4+ letters
+--   - typos: strict_word_similarity (the <<% operator), for one word of 4+ letters.
+--     Strict compares whole words: "breking" scores Breaking Bad 0.55 and
+--     Spring Breakers 0.26 (plain word_similarity: 0.55 and 0.63, the wrong way
+--     round). Checked in a rolled-back transaction, 2026-11-18.
 --
 -- search_catalogue_titles returns candidates only; the route ranks and merges
 -- them with TMDB's answers (src/lib/search-catalogue.ts). It returns the best-
@@ -48,8 +51,8 @@ language sql
 stable
 security invoker
 set search_path = public, extensions
--- The <% operator's cut-off: "godfahter" ~ "The Godfather" scores 0.43.
-set pg_trgm.word_similarity_threshold = 0.4
+-- The <<% operator's cut-off: "godfahter" ~ "The Godfather" scores 0.43.
+set pg_trgm.strict_word_similarity_threshold = 0.4
 as $$
   with qq as (
     -- LIKE's own wildcards in what was typed are matched literally.
@@ -75,11 +78,11 @@ as $$
     -- One word of 4+ letters that no title starts a word with: a typo, maybe.
     select t.tmdb_id, t.type, t.title, t.release_year, t.poster_path,
            coalesce(t.tmdb_vote_count, 0) as votes,
-           word_similarity(qq.l, lower(t.title)) as sim
+           strict_word_similarity(qq.l, lower(t.title)) as sim
     from public.titles t, qq
     where length(qq.l) >= 4 and qq.l !~ '\s'
       and not exists (select 1 from starts)
-      and qq.l <% lower(t.title)
+      and qq.l <<% lower(t.title)
     order by sim desc, votes desc
     limit fuzzy_lim
   )
