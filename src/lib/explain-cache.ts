@@ -53,3 +53,52 @@ export function setCachedExplain(key: string, data: ExplainData): void {
   map[key] = data;
   writeCache(map);
 }
+
+// ─────────────────────────────────────────────
+// Today's breakdown (v3 M2, FOR-YOU.md DEC-9)
+// ─────────────────────────────────────────────
+
+/** Session-cache key for a breakdown scored today, kept apart from saved snapshots. */
+export const freshKey = (id: string) => `fresh:${id}`;
+
+/**
+ * Today's breakdown for one title, from the engine (`GET
+ * /api/recommendations/score`, M1): the same shape as `/explain`. Null when
+ * the engine won't score it (not in the catalogue, a profile still on
+ * cold-start picks) or the call fails: the card page then falls back.
+ */
+export async function fetchFreshExplain(
+  type: "movie" | "tv",
+  tmdbId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ExplainData | null> {
+  try {
+    const res = await fetchImpl(
+      `/api/recommendations/score?type=${type}&tmdb_id=${encodeURIComponent(tmdbId)}`,
+    );
+    if (!res.ok) return null;
+    const d = (await res.json()) as { scored?: boolean } & Partial<ExplainData>;
+    if (!d.scored || !d.reason_payload) return null;
+    return {
+      tmdb_id: d.tmdb_id ?? tmdbId,
+      title: d.title ?? "",
+      explanation: d.explanation ?? "",
+      reason_payload: d.reason_payload,
+      is_stretch_pick: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A snapshot saved before formula v2 has no `taste`, and the breakdown then
+ * draws its old guessed bars (the match itself, × 0.88, a fixed 88%). On the
+ * card page such a snapshot shows the Why and the Crew only (WATCHLIST.md
+ * DEC-2): an empty `taste` draws no bars, and the crew still lists.
+ */
+export function withoutGuessedBars(d: ExplainData): ExplainData {
+  const p = d.reason_payload as RecommendationResult["reason_payload"] & { taste?: unknown };
+  if (p?.taste) return d;
+  return { ...d, reason_payload: { ...p, taste: { like: [] } } as RecommendationResult["reason_payload"] };
+}
