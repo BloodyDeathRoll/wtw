@@ -11,6 +11,7 @@ v3 gets the app ready for friends: For you as a set of 20 with Refresh and Hide,
 ### v3 plan
 
 - **The plan (2026-11-18, `docs/v3-plan`).** PLAN.md, FOR-YOU / YOU / SEEN / SEARCH / CHAT decisions, the evidence, and the approved mocks (`docs/prototypes/for-you-v3`, `seen-v3`, `you-v3`). The Watchlist (#345, #346) is v3's first landed part; its end card is W1.
+- **F8 added (2026-11-18, #378, Eran).** Tabs open instantly: today every tab switch shows the spinning logo, because For you refetches its list when you come back and Games / You are rebuilt by the server on every visit. Lands after F1 and Shahar's N2; flag `FAST_TABS`.
 
 ## Where we are: v2 plan (from 2026-11-09)
 

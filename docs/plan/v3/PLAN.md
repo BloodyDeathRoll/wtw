@@ -23,7 +23,8 @@ newcomer would hit (`EVIDENCE.md`):
 2. **Seen looks like the Watchlist.** You change a rating right on the row, with Undo, and hidden titles can be restored there.
 3. **Search grows up.** Every title you find opens the full WTW card, with your match where we can score it honestly. Results
    come from the second or third letter, show what you already did with each title, and your recent searches wait in the empty box.
-4. **The app behaves like an app.** The phone's Back retraces your steps, and every tab remembers where you were.
+4. **The app behaves like an app.** The phone's Back retraces your steps, every tab remembers where you were, and switching tabs
+   is instant, with no spinning logo on the way back.
 5. **You grows up.** "Send us feedback" goes straight to our inbox, and an Account page has Sign out, Start my taste over and
    Delete my account.
 6. **The Watchlist is already done** (#345, #346), all but its end card, which invites you to talk it over in the chat.
@@ -116,7 +117,7 @@ The full lists, with reasons and mocks, are in the part files. These are the one
 | DEC-7 | **Where to watch is Israel's**: Netflix, HBO Max, Apple TV or Prime Video, and nothing when a title is on none of them (`WATCHLIST.md` DEC-11, shipped in #345). |
 | DEC-8 | **"Seen" is the name.** "Saved to Ratings" becomes "Saved to Seen" everywhere; "In your ratings" becomes "In Seen" (`SEEN.md` DEC-6, `SEARCH.md` DEC-8). |
 | DEC-9 | **No blue buttons.** The orange primary (`watchlistBtnPrimary`) is the one main action style (`WATCHLIST.md` DEC-10). |
-| DEC-10 | **Back retraces your steps, then For you, then out; every tab remembers where you were** (`YOU.md` DEC-1–2). |
+| DEC-10 | **Back retraces your steps, then For you, then out; every tab remembers where you were** (`YOU.md` DEC-1–2), **and opens at once: no spinner on the way back** (F8, Eran 2026-11-18). |
 | DEC-11 | **No change to `src/types/dna.ts`.** If a WP seems to need one, stop and raise it: it's the shared contract. |
 
 ---
@@ -125,7 +126,7 @@ The full lists, with reasons and mocks, are in the part files. These are the one
 
 | Phase | Goal | Gate to leave it |
 |---|---|---|
-| **1 Steady and honest** | For you as a set of 20 with Refresh, Hide and resting. True "Why"s. Back and tabs behave. The Watchlist's end card. | P1-G (§4) |
+| **1 Steady and honest** | For you as a set of 20 with Refresh, Hide and resting. True "Why"s. Back and tabs behave, and tabs open instantly. The Watchlist's end card. | P1-G (§4) |
 | **2 Seen, Search, You** | Seen redesigned, Search opens the full card, You has feedback, Account and delete. | P2-G |
 | **Friends launch** | The launch checklist (§6), then invites. | L-G |
 
@@ -142,7 +143,7 @@ for users. What waits is only what a phase *ships to users*.
 
 | Lane | Owner | Files it owns in v3 | WPs, in order | Effort* |
 |---|---|---|---|---|
-| **F — For you** | Eran (A3) | The feed parts of `src/modules/session/recommendations/RecommendationsView.tsx` (+ `.module.css`): `FeedCard`, `CalibrateNudge`, the list, the end card; `src/lib/rec-page.ts`; `src/app/api/recommendations/removed/route.ts`; `WhyPanel` in `src/app/components/RecCard.tsx`; migration 0035 | F5 → F3 → F1 → F2 → F4 → F6 → F7 → **P1-G** | ~14 days |
+| **F — For you** | Eran (A3) | The feed parts of `src/modules/session/recommendations/RecommendationsView.tsx` (+ `.module.css`): `FeedCard`, `CalibrateNudge`, the list, the end card; `src/lib/rec-page.ts`; `src/app/api/recommendations/removed/route.ts`; `WhyPanel` in `src/app/components/RecCard.tsx`; migration 0035 | F5 → F3 → F1 → F2 → F4 → F6 → F7 → F8 → **P1-G** | ~17 days |
 | **S — Screens** | Shahar (A1) | `src/modules/session/ratings/**`, the Watchlist parts of `RecommendationsView.tsx` (end card, card page), `src/modules/session/components/WTWApp.tsx`, `src/app/components/TabBar.tsx`, `src/app/search/**` (screens) | W1 → N1 → N2 → S1 → S2 → S3 → S4 → Q1 → Q2 → Q3 → **P2-G** | ~18 days |
 | **A — Engine and server** | Alon (A2) | `src/modules/engine/**` (new: score one title), `src/app/api/recommendations/explain/route.ts`, `src/app/api/search/route.ts`, `src/app/you/**`, `src/app/api/feedback/**` (new), `src/app/api/account/**` (new), migrations 0036–0037 | M1 → Q4 → M2 → Y1 → Y2 → Y3 → Q6 → Q5 → L1 | ~16 days |
 
@@ -153,7 +154,7 @@ for users. What waits is only what a phase *ships to users*.
 ```
 week 1:  F: F5 F3 ── F1 (the 20 + Refresh)      S: W1 ── N1 Back ── N2 tabs     A: M1 score one title ── Q4 search index
 week 2:  F: F2 ── F4 resting (Alon reviews)      S: S1 ── S2 ── S3 Seen          A: M2 fresh breakdowns ── Y1 ── Y2 feedback
-week 3:  F: F6 F7 ── P1-G                        S: S4 ── Q1 ── Q2 ── Q3          A: Y3 delete ── Q6 ── Q5 ── L1
+week 3:  F: F6 F7 ── F8 fast tabs ── P1-G          S: S4 ── Q1 ── Q2 ── Q3          A: Y3 delete ── Q6 ── Q5 ── L1
 week 4:  P2-G ── launch checklist ── L-G (friends)
 ```
 
@@ -167,11 +168,11 @@ week 4:  P2-G ── launch checklist ── L-G (friends)
 
 ### 3a. Who does what (Eran, 2026-11-18)
 
-The issues are assigned to match: #347–#372, gates #373–#375, all labelled `v3`. Eran = `eran-manor` (A3), Shahar = `BloodyDeathRoll` (A1), Alon = `booster212` (A2).
+The issues are assigned to match: #347–#372 and #378, gates #373–#375, all labelled `v3`. Eran = `eran-manor` (A3), Shahar = `BloodyDeathRoll` (A1), Alon = `booster212` (A2).
 
 | | Phase 1 — in this order | Phase 2 — in this order | Launch |
 |---|---|---|---|
-| **Eran** (~14 days) | #347 F5 "Sharper picks" orange → #348 F3 Hide → #349 F1 the 20 + Refresh → #350 F2 stamps until Refresh → #351 F4 resting → #352 F6 honest Creators → #353 F7 stretch label → **drives #373 P1-G** | Reviews #368 Q6 (DNA write) | **Drives #375 L-G** |
+| **Eran** (~17 days) | #347 F5 "Sharper picks" orange → #348 F3 Hide → #349 F1 the 20 + Refresh → #350 F2 stamps until Refresh → #351 F4 resting → #352 F6 honest Creators → #353 F7 stretch label → #378 F8 tabs open instantly → **drives #373 P1-G** | Reviews #368 Q6 (DNA write) | **Drives #375 L-G** |
 | **Shahar** (~18 days) | #358 W1 Watchlist end card → #356 N1 Back → #357 N2 tabs remember | #359 S1 Seen list → #360 S2 rate on the row → #361 S3 card page from Seen → #362 S4 Hidden from For you → #364 Q1 Search opens the card page → #365 Q2 your mark on results → #366 Q3 recent searches → **drives #374 P2-G** | — |
 | **Alon** (~16 days) | #354 M1 score one title on request → #355 M2 fresh breakdowns; reviews #351 F4 | #363 Q4 results from two letters (built in week 1, behind its flag) → #369 Y1 You's bottom + Account → #370 Y2 feedback → #371 Y3 delete my account → #368 Q6 a save from Search teaches taste → #367 Q5 match on Search's card page | #372 L1 JustWatch credit |
 
@@ -179,6 +180,7 @@ The issues are assigned to match: #347–#372, gates #373–#375, all labelled `
 - Alon reviews F4 (it changes what the engine draws from).
 - Eran reviews Q6 (a DNA write, A3).
 - Shahar reviews Q5 (Alon's ring on Shahar's Search card page) and Y1 (the You page's look).
+- Shahar reviews F8 (it touches his `WTWApp.tsx` and `TabBar.tsx`; it lands after his N2).
 
 **Gates:**
 - P1-G: Eran drives; Alon supplies the "Why" numbers; Shahar walks Back on his phone.
@@ -267,6 +269,28 @@ applies.
 > not a bad match.
 
 - **Spec:** `FOR-YOU.md` DEC-10, Q-3. Reads `is_stretch_pick` (already on every result).
+
+**F8 · Tabs open instantly** — Eran · F · M · deps: F1, N2 · `FAST_TABS` · touches Shahar's `WTWApp.tsx` and `TabBar.tsx` (Shahar reviews)
+> **In plain words:** moving between For you, Watchlist, Games and You shows the screen at once, the way you left it. The
+> spinning logo shows only the first time a screen opens in a visit, never on the way back.
+
+- **Why (Eran, 2026-11-18):** every tab switch shows the spinning logo today, because nothing is kept between tabs.
+  - For you ↔ Watchlist: one page, but leaving For you unmounts its list (`RecommendationsView`); coming back empties it and
+    fetches page one again (`/api/recommendations/generate`, plus `/why-lines`), behind the `FingerprintLoader`.
+  - Games and You: separate routes (`/play`, `/you`), and every tap is a fresh server render (sign-in check, `loadHomeBootstrap`,
+    `loadTastePage`) behind `RouteLoading`. Back to For you from Games re-renders the home route, then refetches the feed: two
+    waits in a row. `next.config.ts` sets no router cache (`staleTimes`), so a page you just left is never reused.
+- **How:**
+  - **For you:** the 20 (F1) are kept on the client after the first load, and coming back paints them at once, at the same scroll
+    (N2). A quiet check behind them swaps in a new set only if the server's 20 changed (a Refresh on another device). No loader
+    unless nothing is held yet.
+  - **Games and You:** reuse a page visited in the last few minutes from the router's memory (`experimental.staleTimes.dynamic`)
+    and prefetch both tabs once the app is idle. Anything a write changes (a rating, a save, Start my taste over) refreshes the
+    page it shows on, so a reused page is never wrong.
+  - **The home route:** coming back to For you from Games or You doesn't rebuild the home route or refetch the 20.
+- **Done when:** on Eran's Android, in the browser and installed, the walk For you → Watchlist → For you → Games → You → For you,
+  twice: the second round shows no spinner at all, and a first visit to Games or You opens in under 1 s on production. A rating
+  made on For you shows on You straight away. Flag off, today's behaviour is unchanged.
 
 **M1 · Score one title on request** — Alon · A · M · deps: none · no flag (new endpoint, nothing calls it yet)
 > **In plain words:** the engine can score any catalogue title for one person on its own, outside a batch, and explain the score.
@@ -447,6 +471,7 @@ applies.
 3. **True "Why"s** (R2): 0 of 50 cards show a Creators number with nobody rated; 0 of our saved titles show old guessed bars or an
    error.
 4. **Back** (Shahar): the N1 walk passes on Android Chrome, in the browser and installed.
+   **Fast tabs** (Eran): F8's walk shows no spinner on the second round.
 5. **Screens:** Eran walks every phase 1 state on his phone against its JPEG.
 6. `npm run type-check` and `npm test` clean; today's screens walked with every flag off and on.
 
@@ -490,7 +515,7 @@ applies.
 ## 8. Conventions
 
 - **Flags** live in `src/lib/flags.ts` (add a function per flag, like `navTabsEnabled()`). v3 adds `FOR_YOU_V3`, `NAV_HISTORY`,
-  `SEEN_V3`, `SEARCH_V3`.
+  `SEEN_V3`, `SEARCH_V3`, `FAST_TABS`.
   - The default is today's behaviour.
   - Set flags in Vercel and in `.env.local`. Some flags are inlined at build, so a change needs a redeploy (v2 lesson).
   - Switching a flag on is a gate, not a WP.
@@ -540,7 +565,7 @@ applies.
 | Thing | Where |
 |---|---|
 | For you and the Watchlist (one view, two modes) | `src/modules/session/recommendations/RecommendationsView.tsx` (`FeedCard`, `CalibrateNudge`, the card page, `NUDGE_EVERY = 15`, `WATCHLIST_PAGE_SIZE = 6`) |
-| Stages and tabs | `src/modules/session/components/WTWApp.tsx`, `src/app/components/TabBar.tsx` (`navTabsEnabled()`) |
+| Stages and tabs | `src/modules/session/components/WTWApp.tsx`, `src/app/components/TabBar.tsx` (`navTabsEnabled()`); the route loader `src/app/components/RouteLoading.tsx` (`loading.tsx` in `/`, `/you`, `/profile/dna`); the router cache in `next.config.ts` |
 | The feed's pages and what was shown | `src/lib/rec-page.ts` (`record_served_titles`, the "seen 20%"), `served_titles` (migrations 0019, 0032) |
 | Hide / the X | `src/app/api/recommendations/removed/route.ts` → `removed_titles`; read only as an exclusion in `step1-candidate-gen.ts` and `cold-start.ts` (`precompute.ts` leaves it out on purpose) |
 | "Why it's a match" | `WhyPanel` in `src/app/components/RecCard.tsx`; `/api/recommendations/explain`, `/why`, `/why-lines`; engine `pipeline/step6-reason-payload.ts`, `step7-card-reason.ts`, `src/modules/engine/why/*` |
