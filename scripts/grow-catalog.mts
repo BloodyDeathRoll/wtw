@@ -138,12 +138,13 @@ const PROVIDER_RECHECK_DAYS = intEnv('PROVIDER_RECHECK_DAYS', 45)
                                                          // hence `.or()`, not a bare `.lt()`
                                                          // (SQL `NULL < x` is NULL, not true).
                                                          // 0 → no floor.
-const WATCH_REGIONS = ['US']                             // ISO-3166-1 regions to STORE. Fixed,
+const WATCH_REGIONS = ['US', 'IL']                       // ISO-3166-1 regions to STORE. Fixed,
                                                          // not env (2026-08-26): the app reads
-                                                         // WATCH_REGION = 'US' as a constant
-                                                         // (generate/route.ts), and the two must
-                                                         // agree or "Watch on …" silently never
-                                                         // renders. Change both together. TMDB
+                                                         // IL as a constant (rec-page.ts, since
+                                                         // 2026-11-18; US stored, unshown), and
+                                                         // the two must agree or "Watch on …"
+                                                         // silently never renders. Same list as
+                                                         // ensure-watch-providers.ts. TMDB
                                                          // returns ~200 regions per call at the
                                                          // same cost; storing one keeps the jsonb
                                                          // small across a five-figure catalog.

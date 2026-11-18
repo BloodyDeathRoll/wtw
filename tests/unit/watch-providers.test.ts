@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BRANDS, canonicalProvider, pickWatchProvider } from '@/lib/watch-providers'
+import { BRANDS, ISRAEL_SERVICES, canonicalProvider, pickIsraelProvider, pickWatchProvider } from '@/lib/watch-providers'
 import { primaryWatchProvider } from '@/lib/tmdb'
 import { PROVIDER_ICON_KEYS } from '@/app/components/ProviderIcon'
 
@@ -77,5 +77,32 @@ describe('primaryWatchProvider (route entry point)', () => {
     expect(primaryWatchProvider({ US: ['fuboTV', 'HBO Max Amazon Channel'] }, 'US')).toBe('HBO Max')
     expect(primaryWatchProvider({ US: [] }, 'US')).toBeNull()
     expect(primaryWatchProvider(null, 'US')).toBeNull()
+  })
+})
+
+// Where to watch, Israel (docs/plan/v3/WATCHLIST.md DEC-11): one of four
+// services, by the same preference order as BRANDS, or nothing at all.
+describe('pickIsraelProvider', () => {
+  it('names the service as Israel knows it', () => {
+    expect(pickIsraelProvider(['Apple TV'])).toBe('Apple TV')
+    expect(pickIsraelProvider(['Amazon Prime Video'])).toBe('Prime Video')
+    expect(pickIsraelProvider(['HBO Max'])).toBe('HBO Max')
+    expect(pickIsraelProvider(['Netflix Standard with Ads'])).toBe('Netflix')
+  })
+
+  it('prefers Netflix over the others whatever TMDB lists first', () => {
+    expect(pickIsraelProvider(['Amazon Prime Video', 'Netflix'])).toBe('Netflix')
+    expect(pickIsraelProvider(['Apple TV', 'HBO Max'])).toBe('HBO Max')
+  })
+
+  it('is null for a title on none of the four, and for nothing', () => {
+    expect(pickIsraelProvider(['yes+', 'Cellcom tv'])).toBeNull()
+    expect(pickIsraelProvider([])).toBeNull()
+    expect(pickIsraelProvider(undefined)).toBeNull()
+  })
+
+  it('offers exactly the four, each a known brand', () => {
+    expect(ISRAEL_SERVICES.map((s) => s.label)).toEqual(['Netflix', 'HBO Max', 'Apple TV', 'Prime Video'])
+    for (const s of ISRAEL_SERVICES) expect(BRANDS.some((b) => b.key === s.key), s.key).toBe(true)
   })
 })

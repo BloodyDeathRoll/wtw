@@ -32,10 +32,12 @@ function isSmallObject(v: unknown): v is Record<string, unknown> {
 /** A client entry → a row, or null when it's malformed. */
 export function toRow(userId: string, e: unknown) {
   if (typeof e !== "object" || e === null) return null;
-  const { rec, explain, rating, added_at } = e as Record<string, unknown>;
+  const { rec, explain, rating, added_at, starred } = e as Record<string, unknown>;
   if (!isSmallObject(rec) || !isId(rec.id)) return null;
   if (explain != null && !isSmallObject(explain)) return null;
   if (rating != null && !(typeof rating === "string" && RATINGS.has(rating))) return null;
+  // A star (DEC-4, migration 0034). Entries from before it carry none: not starred.
+  if (starred != null && typeof starred !== "boolean") return null;
   const added =
     typeof added_at === "number" && Number.isFinite(added_at) ? new Date(added_at) : new Date();
   if (Number.isNaN(added.getTime())) return null;
@@ -45,6 +47,7 @@ export function toRow(userId: string, e: unknown) {
     rec,
     explain: explain ?? null,
     rating: (rating as string | null) ?? null,
+    starred: starred === true,
     added_at: added.toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -52,8 +55,17 @@ export function toRow(userId: string, e: unknown) {
 
 export type WatchlistRow = NonNullable<ReturnType<typeof toRow>>;
 
+/** PostgREST's word for a column the table doesn't have (yet): migration 0034's `starred`. */
+export function isStarredColumnError(error: { message?: string } | null | undefined): boolean {
+  return /starred/i.test(error?.message ?? "") && /column|schema cache/i.test(error?.message ?? "");
+}
+
 /** Write the rows (a save of a title already there replaces it). Returns the error, or null. */
-export async function saveRows(supabase: SupabaseClient, userId: string, rows: WatchlistRow[]): Promise<{ message: string } | null> {
+export async function saveRows(
+  supabase: SupabaseClient,
+  userId: string,
+  rows: (WatchlistRow | Omit<WatchlistRow, "starred">)[],
+): Promise<{ message: string } | null> {
   if (rows.length === 0) return null;
   const { error } = await supabase
     .from("watchlist_entries")

@@ -12,10 +12,10 @@ import { isExcluded, type MatchableTitle } from "@/lib/exclusion-rules";
 import {
   tmdbPosterUrl,
   youtubeTrailerUrl,
-  primaryWatchProvider,
   type WatchProviderMap,
 } from "@/lib/tmdb";
 import { titleKey, recordKey, matchesKeySet, isSavedMarker } from "@/lib/title-key";
+import { pickIsraelProvider } from "@/lib/watch-providers";
 import { titleTypeFor, type ContentType } from "@/lib/content-type";
 import { displayMatch } from "@/modules/engine/match-display";
 import { servedFormula } from "@/modules/engine/live-score";
@@ -26,12 +26,13 @@ const DEFAULT_PAGE_SIZE = 6;
 
 
 // Which region's streaming availability the card's service line reports.
-// Deliberately a constant, not an env var (decided 2026-08-26): the nightly
-// script stores exactly this region (WATCH_REGIONS in grow-catalog.mts), and
-// two independently-set env vars would silently blank the line if they ever
-// drifted. Change both together, or better, make it per-user — the recs come
-// from a shared cache, so that means putting the region in the cache key.
-const WATCH_REGION = "US";
+// The card's service is Israel's (docs/plan/v3/WATCHLIST.md DEC-11, 2026-11-18;
+// `israelOf` below). The region is deliberately a constant, not an env var
+// (decided 2026-08-26): the enrichment stores exactly these regions
+// (WATCH_REGIONS in ensure-watch-providers.ts and grow-catalog.mts), and
+// independently-set env vars would silently blank the line if they drifted.
+// Change them together, or better, make it per-user (v3 §+ "Region") — the
+// recs come from a shared cache, so that means putting the region in the key.
 
 // Deterministic motif/palette fallback for titles without a poster,
 // keyed stably off tmdb_id.
@@ -109,6 +110,14 @@ async function fetchRuleFields(
   );
 }
 
+/** The card's service: Israel's, once the row has been checked for IL; `where_il` only then. */
+function israelOf(providers: WatchProviderMap | null | undefined): { where: string | null; where_il?: string | null } {
+  const il = providers?.IL;
+  if (!Array.isArray(il)) return { where: null };
+  const where = pickIsraelProvider(il);
+  return { where, where_il: where };
+}
+
 async function toUIRecommendations(
   recs: RecommendationResult[],
 ): Promise<Recommendation[]> {
@@ -147,14 +156,15 @@ async function toUIRecommendations(
       // capped at 97% (DEC-10). Display-only (src/modules/engine/match-display.ts).
       match: displayMatch(r.composite_score),
       reason: r.explanation || "Matched to your fingerprint",
-      // Flatrate streaming availability for the deployment's region
-      // (migration 0017, filled nightly by grow-catalog.mts §3c). Null when
-      // the row was never checked or the title streams nowhere here — the UI
-      // hides the line rather than guessing.
-      where: primaryWatchProvider(
-        t?.watch_providers as WatchProviderMap | null | undefined,
-        WATCH_REGION,
-      ),
+      // Where it streams in Israel (docs/plan/v3/WATCHLIST.md DEC-11,
+      // 2026-11-18: the Israeli data replaces the US everywhere a service is
+      // shown; the US list stays stored, unshown). Null when the row was never
+      // checked for IL or the title is on none of the four services there —
+      // the UI hides the line rather than guessing. `where_il` is the same
+      // answer for the Watchlist's rows, left absent until the row has been
+      // checked for IL (ensureWatchProviders stores US and IL since
+      // 2026-11-18); /api/watchlist fills it for a saved title.
+      ...israelOf(t?.watch_providers as WatchProviderMap | null | undefined),
       is_stretch_pick: r.is_stretch_pick,
       motif: MOTIFS[h % MOTIFS.length],
       palette: PALETTES[h % PALETTES.length],
