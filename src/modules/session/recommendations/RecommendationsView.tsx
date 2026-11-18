@@ -158,7 +158,7 @@ const SWIPE_W = SWIPE_PANEL_W + SWIPE_GAP;
 /** Past this the swipe settles open; short of it the row springs back. */
 const SWIPE_OPEN_PX = 52;
 /** Finger travel before a touch counts as a swipe, or as a scroll. */
-const SWIPE_SLOP = 8;
+const SWIPE_SLOP = 12;
 /** The row ↔ note fold (height), in ms. */
 const FOLD_MS = 280;
 /** A row sliding to its new place after a star or a rating, in ms. */
@@ -2043,7 +2043,10 @@ function WatchlistRow({
   const rowRef = useRef<HTMLDivElement>(null);
   const actRef = useRef<HTMLButtonElement>(null);
   const lastH = useRef<number | null>(null);
-  const drag = useRef<{ x0: number; y0: number; axis: "none" | "x"; x: number } | null>(null);
+  // `base` is where the row stood at touch-down (0, or open): the prop
+  // `swiped` flips to true as soon as the swipe starts, so measuring from
+  // it mid-drag would throw the row to fully open on the first pixel.
+  const drag = useRef<{ x0: number; y0: number; axis: "none" | "x"; base: number; x: number } | null>(null);
   // A swipe ends in a click on the same element: that click opens nothing.
   const moved = useRef(false);
   const content = ghost ? "note" : "row";
@@ -2109,7 +2112,8 @@ function WatchlistRow({
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    drag.current = { x0: e.clientX, y0: e.clientY, axis: "none", x: swiped ? -SWIPE_W : 0 };
+    const base = swiped ? -SWIPE_W : 0;
+    drag.current = { x0: e.clientX, y0: e.clientY, axis: "none", base, x: base };
     moved.current = false;
   };
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -2126,11 +2130,17 @@ function WatchlistRow({
       if (Math.abs(dx) <= SWIPE_SLOP) return;
       d.axis = "x";
       moved.current = true;
-      e.currentTarget.setPointerCapture?.(e.pointerId);
+      // Capture keeps the moves coming when the finger leaves the row. It
+      // throws for a pointer the browser no longer tracks; then the swipe
+      // just follows while the finger stays on the row.
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* no capture */
+      }
       onSwipeStart();
     }
-    const base = swiped ? -SWIPE_W : 0;
-    let x = Math.min(0, base + dx);
+    let x = Math.min(0, d.base + dx);
     // Past the panel the row resists.
     if (x < -SWIPE_W) x = -SWIPE_W - (-SWIPE_W - x) * 0.25;
     d.x = x;
