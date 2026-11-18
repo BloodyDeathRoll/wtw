@@ -38,6 +38,13 @@ export interface Recommendation {
   reason: string;
   /** Streaming provider, or null if unknown. */
   where: string | null;
+  /**
+   * Where it streams in Israel, for the Watchlist's rows (DEC-11): one of
+   * Netflix, HBO Max, Apple TV, Prime Video (src/lib/watch-providers.ts
+   * ISRAEL_SERVICES), null when TMDB lists it on none of them. Absent =
+   * not looked up yet; /api/watchlist fills it in for saved titles.
+   */
+  where_il?: string | null;
   /** True when the engine flagged this as a stretch pick — feedback on it is
    *  itself a fingerprint signal, so it rides through to the feedback API. */
   is_stretch_pick?: boolean;

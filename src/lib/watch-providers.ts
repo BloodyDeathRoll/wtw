@@ -88,3 +88,25 @@ export function pickWatchProvider(raw: readonly string[] | null | undefined): Wa
   }
   return best?.provider ?? null
 }
+
+/**
+ * Where to watch, Israel (docs/plan/v3/WATCHLIST.md DEC-11). The Watchlist
+ * names one of these four, from TMDB's Israeli flatrate list, in this order
+ * of preference (the same order as BRANDS); a title on none of them names
+ * nothing. The label is the service's name in Israel: "Apple TV", not the
+ * US card's "Apple TV+". yes, HOT, Cellcom, Partner and Disney+ are unknown
+ * to TMDB for Israel, so they can't be offered.
+ */
+export const ISRAEL_SERVICES: readonly { key: string; label: string }[] = [
+  { key: 'netflix', label: 'Netflix' },
+  { key: 'max',     label: 'HBO Max' },
+  { key: 'appletv', label: 'Apple TV' },
+  { key: 'prime',   label: 'Prime Video' },
+]
+
+/** TMDB's raw Israeli flatrate names → the one service to show, or null. */
+export function pickIsraelProvider(raw: readonly string[] | null | undefined): string | null {
+  if (!raw?.length) return null
+  const keys = new Set(raw.map(name => canonicalProvider(name).key))
+  return ISRAEL_SERVICES.find(s => keys.has(s.key))?.label ?? null
+}

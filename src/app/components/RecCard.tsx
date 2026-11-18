@@ -271,12 +271,18 @@ function storyValue(dimension: string, value: string): string {
  */
 /** Just the "Why" section, for when the score breakdown can't load but the
  *  written text could (an old Watchlist title the feed no longer holds). */
-export function WhyTextOnly({ text }: { text: string }) {
+export function WhyTextOnly({ text, pending = false }: { text: string; pending?: boolean }) {
   return (
     <div className={styles.whyPanel}>
       <div className={styles.whySection}>
         <div className={styles.whySectionLabel}>Why</div>
-        <div className={styles.whyText}><Emphasis text={text} /></div>
+        {pending ? (
+          <div className={styles.whySkeleton} aria-label="Writing why" role="status">
+            <span /><span /><span />
+          </div>
+        ) : (
+          <div className={styles.whyText}><Emphasis text={text} /></div>
+        )}
       </div>
     </div>
   )

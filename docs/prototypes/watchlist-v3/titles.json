@@ -1,0 +1,375 @@
+[
+ {
+  "type": "movie",
+  "id": 949,
+  "title": "Heat",
+  "year": "1995",
+  "meta": "2h 50m",
+  "rating": 7.9,
+  "poster": "/umSVjVdbVwtx5ryCA2QXL44Durm.jpg",
+  "il": [],
+  "us": [
+   "Netflix",
+   "Amazon Prime Video",
+   "YouTube TV",
+   "Netflix Standard with Ads",
+   "Amazon Prime Video with Ads"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 496243,
+  "title": "Parasite",
+  "year": "2019",
+  "meta": "2h 13m",
+  "rating": 8.5,
+  "poster": "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
+  "il": [],
+  "us": []
+ },
+ {
+  "type": "movie",
+  "id": 872585,
+  "title": "Oppenheimer",
+  "year": "2023",
+  "meta": "3h 1m",
+  "rating": 8.0,
+  "poster": "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+  "il": [],
+  "us": [
+   "Peacock Premium",
+   "YouTube TV",
+   "Peacock Premium Plus"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 1422,
+  "title": "The Departed",
+  "year": "2006",
+  "meta": "2h 31m",
+  "rating": 8.2,
+  "poster": "/nT97ifVT2J1yMQmeq20Qblg61T.jpg",
+  "il": [],
+  "us": []
+ },
+ {
+  "type": "movie",
+  "id": 244786,
+  "title": "Whiplash",
+  "year": "2014",
+  "meta": "1h 47m",
+  "rating": 8.4,
+  "poster": "/7fn624j5lj3xTme2SgiLCeuedmO.jpg",
+  "il": [],
+  "us": [
+   "Netflix"
+  ]
+ },
+ {
+  "type": "tv",
+  "id": 76331,
+  "title": "Succession",
+  "year": "2018",
+  "meta": "4 seasons",
+  "rating": 8.3,
+  "poster": "/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg",
+  "il": [
+   "HBO Max"
+  ],
+  "us": [
+   "HBO Max Amazon Channel",
+   "HBO Max"
+  ]
+ },
+ {
+  "type": "tv",
+  "id": 95396,
+  "title": "Severance",
+  "year": "2022",
+  "meta": "3 seasons",
+  "rating": 8.4,
+  "poster": "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+  "il": [
+   "Apple TV"
+  ],
+  "us": [
+   "Apple TV",
+   "Apple TV Amazon Channel"
+  ]
+ },
+ {
+  "type": "tv",
+  "id": 136315,
+  "title": "The Bear",
+  "year": "2022",
+  "meta": "5 seasons",
+  "rating": 8.1,
+  "poster": "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg",
+  "il": [],
+  "us": [
+   "Disney Plus",
+   "Hulu",
+   "YouTube TV"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 335984,
+  "title": "Blade Runner 2049",
+  "year": "2017",
+  "meta": "2h 44m",
+  "rating": 7.6,
+  "poster": "/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
+  "il": [],
+  "us": [
+   "Amazon Prime Video",
+   "Paramount Plus Essential",
+   "Amazon Prime Video with Ads"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 329865,
+  "title": "Arrival",
+  "year": "2016",
+  "meta": "1h 56m",
+  "rating": 7.6,
+  "poster": "/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg",
+  "il": [],
+  "us": [
+   "Apple TV",
+   "Paramount Plus Premium",
+   "Paramount Plus Essential",
+   "Paramount+ Amazon Channel",
+   "Paramount+ Roku Premium Channel",
+   "Apple TV Amazon Channel"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 6977,
+  "title": "No Country for Old Men",
+  "year": "2007",
+  "meta": "2h 2m",
+  "rating": 7.9,
+  "poster": "/6d5XOczc226jECq0LIX0siKtgHR.jpg",
+  "il": [],
+  "us": [
+   "fuboTV",
+   "Paramount Plus Premium",
+   "Paramount Plus Essential",
+   "Paramount+ Amazon Channel"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 273481,
+  "title": "Sicario",
+  "year": "2015",
+  "meta": "2h 2m",
+  "rating": 7.4,
+  "poster": "/lz8vNyXeidqqOdJW9ZjnDAMb5Vr.jpg",
+  "il": [],
+  "us": [
+   "HBO Max Amazon Channel",
+   "HBO Max"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 374720,
+  "title": "Dunkirk",
+  "year": "2017",
+  "meta": "1h 47m",
+  "rating": 7.5,
+  "poster": "/b4Oe15CGLL61Ped0RAS9JpqdmCt.jpg",
+  "il": [
+   "HBO Max"
+  ],
+  "us": [
+   "fuboTV",
+   "Paramount Plus Premium",
+   "Paramount Plus Essential",
+   "Paramount+ Amazon Channel",
+   "Paramount+ Roku Premium Channel"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 16869,
+  "title": "Inglourious Basterds",
+  "year": "2009",
+  "meta": "2h 33m",
+  "rating": 8.2,
+  "poster": "/aupnPtagH9JVBuMrGEanf4iqXEQ.jpg",
+  "il": [],
+  "us": [
+   "MovieSphere+ Amazon Channel"
+  ]
+ },
+ {
+  "type": "tv",
+  "id": 87108,
+  "title": "Chernobyl",
+  "year": "2019",
+  "meta": "1 season",
+  "rating": 8.7,
+  "poster": "/hlLXt2tOPT6RRnjiUmoxyG1LTFi.jpg",
+  "il": [
+   "HBO Max"
+  ],
+  "us": [
+   "HBO Max Amazon Channel",
+   "HBO Max"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 146233,
+  "title": "Prisoners",
+  "year": "2013",
+  "meta": "2h 33m",
+  "rating": 8.1,
+  "poster": "/uhviyknTT5cEQXbn6vWIqfM4vGm.jpg",
+  "il": [],
+  "us": [
+   "Apple TV",
+   "Apple TV Amazon Channel"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 242582,
+  "title": "Nightcrawler",
+  "year": "2014",
+  "meta": "1h 58m",
+  "rating": 7.7,
+  "poster": "/j9HrX8f7GbZQm1BrBiR40uFQZSb.jpg",
+  "il": [],
+  "us": [
+   "Peacock Premium",
+   "Sundance Now",
+   "Peacock Premium Plus",
+   "Shout! Factory Amazon Channel"
+  ]
+ },
+ {
+  "type": "tv",
+  "id": 67744,
+  "title": "MINDHUNTER",
+  "year": "2017",
+  "meta": "2 seasons",
+  "rating": 8.1,
+  "poster": "/fbKE87mojpIETWepSbD5Qt741fp.jpg",
+  "il": [
+   "Netflix"
+  ],
+  "us": [
+   "Netflix",
+   "Netflix Standard with Ads"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 466272,
+  "title": "Once Upon a Time in... Hollywood",
+  "year": "2019",
+  "meta": "2h 42m",
+  "rating": 7.4,
+  "poster": "/8j58iEBw9pOXFD2L0nt0ZXeHviB.jpg",
+  "il": [
+   "Netflix"
+  ],
+  "us": [
+   "Amazon Prime Video",
+   "MGM Plus",
+   "Amazon Prime Video with Ads"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 2567,
+  "title": "The Aviator",
+  "year": "2004",
+  "meta": "2h 50m",
+  "rating": 7.2,
+  "poster": "/lx4kWcZc3o9PaNxlQpEJZM17XUI.jpg",
+  "il": [
+   "Netflix"
+  ],
+  "us": [
+   "fuboTV",
+   "Paramount Plus Premium",
+   "Paramount Plus Essential",
+   "Paramount+ Amazon Channel",
+   "Paramount+ Roku Premium Channel"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 1124,
+  "title": "The Prestige",
+  "year": "2006",
+  "meta": "2h 11m",
+  "rating": 8.2,
+  "poster": "/Ag2B2KHKQPukjH7WutmgnnSNurZ.jpg",
+  "il": [
+   "HBO Max"
+  ],
+  "us": [
+   "Netflix",
+   "Netflix Standard with Ads"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 273248,
+  "title": "The Hateful Eight",
+  "year": "2015",
+  "meta": "3h 8m",
+  "rating": 7.8,
+  "poster": "/jIywvdPjia2t3eKYbjVTcwBQlG8.jpg",
+  "il": [],
+  "us": [
+   "MovieSphere+ Amazon Channel"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 77,
+  "title": "Memento",
+  "year": "2000",
+  "meta": "1h 53m",
+  "rating": 8.2,
+  "poster": "/nzlv62aC0octS5AklAiWpXLX9Z0.jpg",
+  "il": [
+   "Shahid VIP"
+  ],
+  "us": [
+   "Netflix",
+   "Amazon Prime Video",
+   "Hulu",
+   "Peacock Premium",
+   "Sundance Now",
+   "Netflix Standard with Ads",
+   "Amazon Prime Video with Ads",
+   "Peacock Premium Plus"
+  ]
+ },
+ {
+  "type": "movie",
+  "id": 24,
+  "title": "Kill Bill: Vol. 1",
+  "year": "2003",
+  "meta": "1h 51m",
+  "rating": 8.0,
+  "poster": "/v7TaX8kXMXs5yFFGR41guUDNcnB.jpg",
+  "il": [],
+  "us": [
+   "fuboTV",
+   "YouTube TV",
+   "MovieSphere+ Amazon Channel"
+  ]
+ }
+]

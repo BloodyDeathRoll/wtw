@@ -19,7 +19,12 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getWatchProviders, type WatchProviderMap } from '@/lib/tmdb'
 import { titleKey, type MediaType } from '@/lib/title-key'
 
-export const WATCH_REGIONS = ['US']
+// US for the card's service pill (src/lib/rec-page.ts WATCH_REGION), IL for the
+// Watchlist's rows (docs/plan/v3/WATCHLIST.md DEC-11, 2026-11-18). Both land in
+// the same `watch_providers` map, keyed by region; one TMDB call covers both.
+export const WATCH_REGIONS = ['US', 'IL']
+/** Rows checked before IL joined WATCH_REGIONS hold the US list only: ask again, once. */
+const REGIONS_SINCE = Date.parse('2026-11-18T00:00:00Z')
 const RECHECK_DAYS = 45
 const CONCURRENCY = 4
 const GAP_MS = 350
@@ -58,7 +63,7 @@ export async function ensureWatchProviders(
   const rows = ((data ?? []) as Row[]).filter(r => wanted.has(titleKey(r.type, r.tmdb_id)))
   for (const r of rows) out.set(titleKey(r.type, r.tmdb_id), r.watch_providers)
 
-  const staleBefore = Date.now() - RECHECK_DAYS * 86_400_000
+  const staleBefore = Math.max(Date.now() - RECHECK_DAYS * 86_400_000, REGIONS_SINCE)
   let toCheck = rows.filter(
     r => !r.last_provider_check || Date.parse(r.last_provider_check) < staleBefore,
   )

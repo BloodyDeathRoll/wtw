@@ -54,6 +54,8 @@ export interface WatchlistEntry {
   added_at: number // Unix timestamp (ms)
   /** Set once the user rates or removes the title; null while untouched. */
   rating: WatchlistRating | null
+  /** Starred to prioritise (DEC-4): sits at the top of the Watchlist. */
+  starred: boolean
   /**
    * "Why this pick?" breakdown captured at add time. /api/recommendations/explain
    * reads the Redis rec cache, which expires — without this snapshot the Why
@@ -70,11 +72,11 @@ function readList(): WatchlistEntry[] {
     const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]")
     if (!Array.isArray(parsed)) return []
     // Drop anything without an addressable id — a malformed entry would
-    // otherwise be un-removable from the UI. `rating` is normalised because
-    // entries saved before it existed have no such field.
+    // otherwise be un-removable from the UI. `rating` and `starred` are
+    // normalised because entries saved before they existed have no such field.
     return (parsed as WatchlistEntry[])
       .filter((e) => typeof e?.rec?.id === "string")
-      .map((e) => ({ ...e, rating: e.rating ?? null }))
+      .map((e) => ({ ...e, rating: e.rating ?? null, starred: e.starred === true }))
   } catch {
     return []
   }
@@ -129,7 +131,7 @@ export function addToWatchlist(rec: Recommendation, explain: ExplainData | null 
 
   // Newest first, then trim the oldest past the cap.
   const next = [
-    { rec, added_at: Date.now(), rating: null, explain, synced: false },
+    { rec, added_at: Date.now(), rating: null, starred: false, explain, synced: false },
     ...list,
   ]
   writeList(next.slice(0, MAX_ENTRIES))
@@ -156,6 +158,22 @@ export function removeFromWatchlist(id: string) {
   // may have, and the server-side unmark is a no-op when there's nothing to
   // clear.
   writeRemovals([...new Set([...readRemovals(), id])])
+}
+
+/**
+ * Put a removed title back exactly as it was (the Undo on the Watchlist's
+ * "Removed" note, DEC-8): its place in the order, its rating, its star, its
+ * breakdown. A no-op when the title is on the list already. The pending
+ * removal is dropped, so the fingerprint never hears of it.
+ */
+export function restoreToWatchlist(entry: WatchlistEntry) {
+  const list = readList()
+  if (list.some((e) => e.rec.id === entry.rec.id)) return
+  const next = [...list, entry].sort((a, b) => b.added_at - a.added_at)
+  writeList(next.slice(0, MAX_ENTRIES))
+  queueChange(entry.rec.id, "upsert")
+  const removals = readRemovals()
+  if (removals.includes(entry.rec.id)) writeRemovals(removals.filter((id) => id !== entry.rec.id))
 }
 
 // ── Unsave sync ───────────────────────────────────────────────
@@ -214,6 +232,20 @@ export function setWatchlistRating(id: string, rating: WatchlistRating | null) {
 }
 
 /**
+ * Star or un-star a saved title (DEC-4). Optimistic like `rating`: the cache
+ * changes at once and the server follows. A no-op when the title isn't saved.
+ */
+export function setWatchlistStarred(id: string, starred: boolean) {
+  const list = readList()
+  const at = list.findIndex((e) => e.rec.id === id)
+  if (at < 0 || list[at].starred === starred) return
+  const next = [...list]
+  next[at] = { ...next[at], starred }
+  writeList(next)
+  queueChange(id, "upsert")
+}
+
+/**
  * Ids whose "saved" intent hasn't reached the fingerprint yet. Sent on the
  * existing /api/session/end body so the intent costs no request of its own.
  */
@@ -247,7 +279,7 @@ const PENDING_KEY = "wtw_watchlist_pending"
 // The user whose list the cache holds. Unset on a device that predates server
 // sync — its local list is then uploaded once, to whoever logs in first.
 const OWNER_KEY = "wtw_watchlist_owner"
-/** Fired on window whenever this device's list is written (a save, a removal, a rating): the tab bar's count. */
+/** Fired on window whenever this device's list is written (a save, a removal, a rating, a star): the tab bar's count. */
 export const WATCHLIST_CHANGED_EVENT = "wtw:watchlist-changed"
 /** Fired on window after hydrateWatchlist() rewrites the cache. */
 export const WATCHLIST_HYDRATED_EVENT = "wtw:watchlist-hydrated"
@@ -259,6 +291,8 @@ interface WireEntry {
   rec: Recommendation
   explain: ExplainData | null
   rating: WatchlistRating | null
+  /** Absent from a server that predates migration 0034: not starred. */
+  starred?: boolean
   added_at: number
 }
 
@@ -379,7 +413,7 @@ async function pushOnce(): Promise<WireEntry[] | null> {
       ids.push(id)
       continue
     }
-    const wire = { rec: e.rec, explain: e.explain, rating: e.rating, added_at: e.added_at }
+    const wire = { rec: e.rec, explain: e.explain, rating: e.rating, starred: e.starred, added_at: e.added_at }
     const size = JSON.stringify(wire).length
     if (upsert.length > 0 && bytes + size > MAX_PUSH_BYTES) break
     ids.push(id)
@@ -502,6 +536,7 @@ export async function hydrateWatchlist(userId: string): Promise<void> {
       rec: s.rec,
       explain: s.explain ?? null,
       rating: s.rating ?? null,
+      starred: s.starred === true,
       added_at: s.added_at,
       // The fingerprint flag is per device: a title saved elsewhere was
       // reported (or will be) by the device that saved it.

@@ -3,16 +3,12 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   getMovie,
   getTV,
-  primaryWatchProvider,
   tmdbPosterUrl,
   youtubeTrailerUrl,
   type WatchProviderMap,
 } from "@/lib/tmdb";
+import { pickIsraelProvider } from "@/lib/watch-providers";
 import type { Recommendation } from "@/types/recommendation";
-
-/** The region the catalog's streaming line is stored for — the same one the feed reads
- *  (WATCH_REGION in src/app/api/recommendations/generate/route.ts). */
-const WATCH_REGION = "US";
 
 export interface SharedTitle {
   /** In the watchlist's card shape, so "Save" stores exactly what the feed would. */
@@ -73,8 +69,10 @@ export async function loadSharedTitle(key: string): Promise<SharedTitle | null> 
       // No "% match" claim: the page doesn't score the title for its viewer.
       match: 0,
       reason: "Shared by a friend",
+      // Israel's service, as on the cards (DEC-11, 2026-11-18); null until the
+      // row has been checked for IL, or when it is on none of the four.
       where: row
-        ? primaryWatchProvider(row.watch_providers as WatchProviderMap | null, WATCH_REGION)
+        ? pickIsraelProvider((row.watch_providers as WatchProviderMap | null)?.IL)
         : null,
       motif: "dot",
       palette: ["#1E1E22", "#D49B3A"],

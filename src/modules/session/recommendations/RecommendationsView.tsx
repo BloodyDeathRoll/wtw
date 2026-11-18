@@ -12,11 +12,14 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type RefObject,
   type TouchEvent as ReactTouchEvent,
 } from "react";
 import type {
@@ -31,7 +34,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Check,
   Play,
   Star,
@@ -52,11 +54,24 @@ import {
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
+  restoreToWatchlist,
   setWatchlistRating,
+  setWatchlistStarred,
+  WATCHLIST_CHANGED_EVENT,
   WATCHLIST_HYDRATED_EVENT,
   type WatchlistEntry,
   type WatchlistRating,
 } from "@/lib/watchlist";
+import {
+  emptyFilterText,
+  filterWatchlist,
+  isSeen,
+  orderWatchlist,
+  SEEN_LABEL,
+  watchlistChips,
+  type WatchlistChip,
+  type WatchlistFilter,
+} from "./watchlist-order";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
@@ -78,10 +93,12 @@ interface Props {
    *                     header label changes and the user is encouraged to
    *                     skip-without-rating.
    * "watchlist"       = the user's saved cards, read from localStorage instead
-   *                     of the API. Identical layout. Rating a card feeds the
-   *                     fingerprint through the same call the feed uses but
-   *                     LEAVES it here, tagged with the outcome; only the card's
-   *                     own "Remove from watchlist" button takes it off.
+   *                     of the API, as rows (docs/plan/v3/WATCHLIST.md, DEC-1
+   *                     to DEC-13, 2026-11-18): tap a row for the card as a
+   *                     page with the why breakdown on it. Rating a card feeds
+   *                     the fingerprint through the same call the feed uses but
+   *                     LEAVES it here, under a "Seen" line; only "Remove from
+   *                     watchlist" (or a swipe) takes it off.
    */
   mode?: Mode;
   /** The signed-in user's name: its first word rides in shared links, so the
@@ -124,7 +141,22 @@ interface Props {
 const NUDGE_EVERY = 15;
 
 const PAGE_FETCH_LIMIT = 50; // hard cap — one engine batch
-const WATCHLIST_PAGE_SIZE = 6; // matches the API's page size so scrolling feels the same
+/** Watchlist rows a page (DEC-1); more as you scroll. The old cards paged 6 too. */
+const WATCHLIST_PAGE_SIZE = 6;
+/** A removed title's place on the list while its "Removed … Undo" note shows (DEC-8). */
+interface Ghost { entry: WatchlistEntry; phase: "note" | "leaving" }
+/** How long the note stays before it folds away. */
+const NOTE_MS = 5000;
+/** The row's star just lit: the length of its scale (CSS .starPop). */
+const STAR_POP_MS = 320;
+/** How far a row slides to reveal Remove: the panel's width (DEC-8). */
+const SWIPE_W = 104;
+/** Past this the swipe settles open; short of it the row springs back. */
+const SWIPE_OPEN_PX = 52;
+/** Finger travel before a touch counts as a swipe, or as a scroll. */
+const SWIPE_SLOP = 8;
+/** The row ↔ note fold (height), in ms. */
+const FOLD_MS = 280;
 
 const HEADER_TITLE: Record<Mode, string> = {
   recommendations: "For You",
@@ -135,37 +167,6 @@ const HEADER_TITLE: Record<Mode, string> = {
 /** rec.id is "type:tmdb_id" for engine recs (a bare slug only in legacy saved entries). */
 function tmdbIdOf(id: string): string {
   return id.includes(":") ? id.split(":")[1] : id;
-}
-
-/**
- * Watchlist sort (Figma 29:4262). Client-side over the saved entries — every
- * key is already on the stored card. "Rating" is the external ★ score shown on
- * the card, not the user's own reaction. Ties keep storage order (newest
- * first) because Array.prototype.sort is stable.
- */
-type SortKey = "year" | "added" | "rating" | "name";
-
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "year", label: "Year" },
-  { key: "added", label: "Date Added" },
-  { key: "rating", label: "Rating" },
-  { key: "name", label: "Name" },
-];
-
-function sortEntries(entries: WatchlistEntry[], key: SortKey): WatchlistEntry[] {
-  const list = [...entries];
-  switch (key) {
-    case "added":
-      return list.sort((a, b) => b.added_at - a.added_at);
-    case "year":
-      return list.sort((a, b) => (b.rec.year ?? 0) - (a.rec.year ?? 0));
-    case "rating":
-      return list.sort((a, b) => (b.rec.rating ?? 0) - (a.rec.rating ?? 0));
-    case "name":
-      return list.sort((a, b) =>
-        a.rec.title.localeCompare(b.rec.title, undefined, { sensitivity: "base" }),
-      );
-  }
 }
 
 // "Both" ('all') mixes movies and series in one batch — the word the taste
@@ -320,14 +321,61 @@ export default function RecommendationsView({
       cancelled = true;
     };
   }, [mode, hydratedAt]);
-  const shown = useMemo(() => {
-    if (mode !== "watchlist" || lines.state === "keep") return recs;
-    return recs.map((r) => ({ ...r, reason: lines.byId[r.id] ?? "" }));
-  }, [recs, mode, lines]);
 
-  // Watchlist mode only — the order the saved cards are paged in.
-  const [sortKey, setSortKey] = useState<SortKey>("added");
-  const [sortOpen, setSortOpen] = useState(false);
+  // ── Watchlist mode (docs/plan/v3/WATCHLIST.md) ──
+  // The saved entries, read again on every write to the cache (a save, a
+  // rating, a star, a removal, the server's list landing): the rows, the chip
+  // counts and the header count all come from here, so they can't drift.
+  const [entries, setEntries] = useState<WatchlistEntry[]>([]);
+  useEffect(() => {
+    if (mode !== "watchlist") return;
+    const read = () => setEntries(getWatchlist());
+    read();
+    window.addEventListener(WATCHLIST_CHANGED_EVENT, read);
+    window.addEventListener(WATCHLIST_HYDRATED_EVENT, read);
+    return () => {
+      window.removeEventListener(WATCHLIST_CHANGED_EVENT, read);
+      window.removeEventListener(WATCHLIST_HYDRATED_EVENT, read);
+    };
+  }, [mode]);
+  // The lit filter chip (DEC-3). Back to All when its chip is gone (the last
+  // title on that service was removed).
+  const [pickedFilter, setFilter] = useState<WatchlistFilter>("all");
+  const chips = useMemo(() => (mode === "watchlist" ? watchlistChips(entries) : []), [mode, entries]);
+  const filter: WatchlistFilter = chips.some((c) => c.filter === pickedFilter) ? pickedFilter : "all";
+  // Removed titles whose "Removed … Undo" note is still on the list (DEC-8),
+  // in the place their row had. Gone from storage already (the counts drop at
+  // once); Undo puts the entry back as it was.
+  const [ghosts, setGhosts] = useState<Record<string, Ghost>>({});
+  const ghostTimers = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const timers = ghostTimers.current;
+    return () => Object.values(timers).forEach((t) => window.clearTimeout(t));
+  }, []);
+  // The row's star was just lit: a short scale (DEC-12).
+  const [starPop, setStarPop] = useState<string | null>(null);
+  // The card page (DEC-2): the saved title whose card is open, or null for the
+  // list. Opening adds a history entry, so the phone's back button returns to
+  // the list; the Back chevron steps back over that same entry.
+  const [page, setPage] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== "watchlist") return;
+    const onPop = () => {
+      if (!window.history.state?.wtwCard) setPage(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [mode]);
+  const openPage = useCallback((id: string) => {
+    if (!window.history.state?.wtwCard) {
+      window.history.pushState({ ...window.history.state, wtwCard: id }, "", window.location.href);
+    }
+    setPage(id);
+  }, []);
+  const closePage = useCallback(() => {
+    if (window.history.state?.wtwCard) window.history.back();
+    else setPage(null);
+  }, []);
 
   // Refs mirror loading/offset/hasMore so loadMore doesn't depend on
   // those changing via setState (which would create stale closures and
@@ -345,10 +393,6 @@ export default function RecommendationsView({
   // read-modify-write on the DNA, so requests must not overlap. Find More
   // awaits this chain so every rating is merged before regeneration.
   const feedbackQueueRef = useRef<Promise<void>>(Promise.resolve());
-  // Watchlist mode pages over a snapshot taken when the view opens, NOT over
-  // live storage: rating a card removes it from storage, which would otherwise
-  // shift the cursor and make the pager skip the next entry.
-  const watchlistRef = useRef<Recommendation[]>([]);
 
   // Append a page of cards and move the pager on. Shared by loadMore and by
   // "Find more", whose first page arrives with the session/end response.
@@ -380,26 +424,6 @@ export default function RecommendationsView({
     setLoading(true);
     setError(null);
     try {
-      // Saved cards are stored whole, so this needs no network and no type
-      // filter — the watchlist deliberately shows everything the user saved.
-      if (mode === "watchlist") {
-        const all = watchlistRef.current;
-        const items = all.slice(
-          offsetRef.current,
-          offsetRef.current + WATCHLIST_PAGE_SIZE,
-        );
-        setRecs((prev) => {
-          const seen = new Set(prev.map((r) => r.id));
-          const incoming = items.filter((r) => !seen.has(r.id));
-          return incoming.length ? [...prev, ...incoming] : prev;
-        });
-        offsetRef.current += items.length;
-        const more = offsetRef.current < all.length;
-        hasMoreRef.current = more;
-        setHasMore(more);
-        return;
-      }
-
       const v = versionRef.current == null ? "" : `&v=${versionRef.current}`;
       const res = await fetch(
         `/api/recommendations/generate?type=${contentType}&offset=${offsetRef.current}${v}`,
@@ -420,7 +444,7 @@ export default function RecommendationsView({
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [contentType, mode, applyPage]);
+  }, [contentType, applyPage]);
 
   // Initial load + reload when content type changes.
   useEffect(() => {
@@ -430,26 +454,23 @@ export default function RecommendationsView({
     versionRef.current = null;
     hasMoreRef.current = true;
     loadingRef.current = false;
-    // Seed the membership set (all modes — the feed shows saved state too), the
-    // stored outcome tags, and the watchlist pager's snapshot, before the first
-    // page is read.
-    const entries = getWatchlist();
-    setSaved(new Set(entries.map((e) => e.rec.id)));
+    // Seed the membership set (all modes — the feed shows saved state too) and
+    // the stored outcome tags before the first page is read. The Watchlist
+    // itself pages over `entries` (WatchlistList), not over this fetch.
+    const saved0 = getWatchlist();
+    setSaved(new Set(saved0.map((e) => e.rec.id)));
     setFeedbackGiven(
       Object.fromEntries(
-        entries
+        saved0
           .filter((e) => e.rating != null)
           .map((e) => [e.rec.id, e.rating as WatchlistRating]),
       ),
     );
-    watchlistRef.current = sortEntries(entries, sortKey).map((e) => e.rec);
-    if (!building) void loadMore();
-    // sortKey only changes in watchlist mode (the control renders nowhere
-    // else); re-running here re-pages the list from the top in the new order.
+    if (mode !== "watchlist" && !building) void loadMore();
     // hydratedAt bumps when the server's watchlist lands after mount.
     // building: a Picks tap empties the list now and fetches once the build
     // lands; re-seeding alongside is redundant but cheap.
-  }, [contentType, loadMore, sortKey, hydratedAt, building]);
+  }, [contentType, mode, loadMore, hydratedAt, building]);
 
   // "Find more": rebuild the fingerprint (feedback so far included) and
   // regenerate recs server-side, then APPEND the fresh batch — existing cards
@@ -481,6 +502,20 @@ export default function RecommendationsView({
   // which expires, so without a snapshot the Why button 404s on old saves.
   async function toggleWatchlist(rec: Recommendation) {
     if (saved.has(rec.id)) {
+      if (mode === "watchlist") {
+        // "Remove from watchlist" on the card page: back to the list at once,
+        // where the row folds into the same "Removed … Undo" note a swipe
+        // leaves (DEC-8, one mechanism).
+        const entry = entries.find((e) => e.rec.id === rec.id);
+        if (entry) removeEntry(entry);
+        if (page === rec.id) {
+          // The list at once (the entry is gone from it either way), and the
+          // history entry the page added goes too.
+          setPage(null);
+          if (window.history.state?.wtwCard) window.history.back();
+        }
+        return;
+      }
       removeFromWatchlist(rec.id);
       setSaved((prev) => {
         const next = new Set(prev);
@@ -495,7 +530,6 @@ export default function RecommendationsView({
         delete next[rec.id];
         return next;
       });
-      if (mode === "watchlist") dropCard(rec);
       return;
     }
 
@@ -521,10 +555,102 @@ export default function RecommendationsView({
   }
 
   // Pull a card out of the rendered list — used when a title genuinely leaves
-  // this surface: removed from the feed, or unsaved from the watchlist.
+  // the feed (the X).
   function dropCard(rec: Recommendation) {
     setRecs((prev) => prev.filter((r) => r.id !== rec.id));
   }
+
+  // ── Watchlist rows: star, remove, undo (DEC-4, DEC-8) ──
+  function toggleStar(entry: WatchlistEntry) {
+    const next = !entry.starred;
+    setWatchlistStarred(entry.rec.id, next);
+    if (next) {
+      setStarPop(entry.rec.id);
+      window.setTimeout(() => setStarPop((cur) => (cur === entry.rec.id ? null : cur)), STAR_POP_MS);
+    }
+  }
+
+  function setGhostPhase(id: string, phase: Ghost["phase"]) {
+    setGhosts((prev) => (prev[id] && prev[id].phase !== phase ? { ...prev, [id]: { ...prev[id], phase } } : prev));
+  }
+
+  // Take the title off the list. The same path as the card's "Remove from
+  // watchlist" always took (removeFromWatchlist: the cache, the server, and
+  // the fingerprint's unsave on session end), so the header count, the All
+  // chip and the tab badge drop at once; the row folds into a note with Undo
+  // that stays NOTE_MS, then folds away. A second removal closes the first
+  // note at once.
+  function removeEntry(entry: WatchlistEntry) {
+    const id = entry.rec.id;
+    removeFromWatchlist(id);
+    setSaved((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setFeedbackGiven((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setGhosts((prev) => {
+      const next: Record<string, Ghost> = {};
+      for (const [k, g] of Object.entries(prev)) next[k] = g.phase === "note" ? { ...g, phase: "leaving" } : g;
+      next[id] = { entry, phase: "note" };
+      return next;
+    });
+    window.clearTimeout(ghostTimers.current[id]);
+    ghostTimers.current[id] = window.setTimeout(() => setGhostPhase(id, "leaving"), NOTE_MS);
+  }
+
+  function undoRemove(entry: WatchlistEntry) {
+    const id = entry.rec.id;
+    window.clearTimeout(ghostTimers.current[id]);
+    delete ghostTimers.current[id];
+    restoreToWatchlist(entry);
+    setSaved((prev) => new Set(prev).add(id));
+    if (entry.rating) setFeedbackGiven((prev) => ({ ...prev, [id]: entry.rating as WatchlistRating }));
+    setGhosts((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  // A new swipe closes every note still showing, at once (DEC-8).
+  function dismissNotes() {
+    setGhosts((prev) => {
+      if (!Object.values(prev).some((g) => g.phase === "note")) return prev;
+      const next: Record<string, Ghost> = {};
+      for (const [k, g] of Object.entries(prev)) next[k] = g.phase === "note" ? { ...g, phase: "leaving" } : g;
+      return next;
+    });
+  }
+
+  // The note has folded away: forget it.
+  function ghostGone(id: string) {
+    delete ghostTimers.current[id];
+    setGhosts((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  const pageEntry = page ? entries.find((e) => e.rec.id === page) ?? null : null;
+  // The card page's short "why" line, as the old cards had it (fresh lines
+  // built from facts); the saved AI line only for a brand-new user ("keep").
+  // Its service badge is the Israeli one (DEC-11); the saved card's `where` was the US.
+  const pageRec: Recommendation | null = pageEntry
+    ? {
+        ...pageEntry.rec,
+        where: pageEntry.rec.where_il ?? null,
+        reason: lines.state === "keep" ? pageEntry.rec.reason : lines.byId[pageEntry.rec.id] ?? "",
+      }
+    : null;
 
   async function handleFeedback(rec: Recommendation, rating: FeedbackRating) {
     // Rating does NOT take a title off the watchlist — it stays, tagged with the
@@ -686,7 +812,12 @@ export default function RecommendationsView({
   return (
     <div className={styles.view}>
       <div className={styles.header}>
-        {headerLeft !== undefined ? (
+        {pageEntry ? (
+          // The card page: Back where the chat bubble was (DEC-2).
+          <button type="button" className={styles.headerBtn} onClick={closePage} aria-label="back">
+            <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
+          </button>
+        ) : headerLeft !== undefined ? (
           <div className={styles.headerLeft}>{headerLeft}</div>
         ) : (
           <button
@@ -702,7 +833,7 @@ export default function RecommendationsView({
           <TypePicker contentType={contentType} setContentType={setContentType} />
         ) : (
           <span className={styles.headerTitle}>
-            {mode === "watchlist" ? `${HEADER_TITLE[mode]} (${saved.size})` : HEADER_TITLE[mode]}
+            {pageEntry ? "" : mode === "watchlist" ? `${HEADER_TITLE[mode]} (${entries.length})` : HEADER_TITLE[mode]}
           </span>
         )}
         <div className={styles.headerRight}>
@@ -722,22 +853,41 @@ export default function RecommendationsView({
         </div>
       </div>
 
-      {mode === "watchlist" && saved.size > 0 && (
-        <div className={styles.sortBar}>
-          <span className={styles.sortLabel}>Sort by</span>
-          <SortMenu
-            value={sortKey}
-            onChange={setSortKey}
-            open={sortOpen}
-            setOpen={setSortOpen}
-          />
-        </div>
+      {mode === "watchlist" && !pageEntry && entries.length > 0 && (
+        <WatchlistChips chips={chips} active={filter} onPick={setFilter} />
       )}
 
-      <div className={`${styles.content} ${sortOpen ? styles.contentDimmed : ""}`}>
+      <div className={styles.content}>
+        {mode === "watchlist" && pageEntry && pageRec ? (
+          <WatchlistCardPage
+            key={pageEntry.rec.id}
+            entry={pageEntry}
+            rec={pageRec}
+            reasonPending={lines.state === "loading"}
+            rated={feedbackGiven[pageEntry.rec.id]}
+            onFeedback={handleFeedback}
+            onUnrate={handleUnrate}
+            onShare={(r) => void shareTitle(r, sharerName)}
+            onToggleWatchlist={toggleWatchlist}
+            onStar={() => toggleStar(pageEntry)}
+          />
+        ) : mode === "watchlist" ? (
+          <WatchlistList
+            entries={entries}
+            ghosts={ghosts}
+            filter={filter}
+            starPop={starPop}
+            onOpen={(e) => openPage(e.rec.id)}
+            onStar={toggleStar}
+            onRemove={removeEntry}
+            onUndo={undoRemove}
+            onGone={ghostGone}
+            onDismissNotes={dismissNotes}
+            onBrowse={onBrowse}
+          />
+        ) : (
         <Feed
-          recs={shown}
-          reasonsPending={mode === "watchlist" && lines.state === "loading"}
+          recs={recs}
           loading={loading || building}
           hasMore={hasMore}
           error={error}
@@ -745,7 +895,7 @@ export default function RecommendationsView({
           onLoadMore={loadMore}
           onFeedback={handleFeedback}
           onUnrate={handleUnrate}
-          onRemove={mode === "watchlist" ? undefined : handleRemove}
+          onRemove={handleRemove}
           leaving={leaving}
           onWhy={setDetail}
           onShare={(r) => void shareTitle(r, sharerName)}
@@ -753,14 +903,9 @@ export default function RecommendationsView({
           refreshing={refreshing}
           saved={saved}
           onToggleWatchlist={toggleWatchlist}
-          emptyMessage={
-            mode === "watchlist"
-              ? "Nothing saved yet. Tap “Add to Watchlist” on a recommendation to keep it here."
-              : undefined
-          }
-          onBrowse={mode === "watchlist" ? onBrowse : undefined}
           onCalibrate={mode === "recommendations" ? onCalibrate : undefined}
         />
+        )}
       </div>
 
       {detail && (
@@ -791,14 +936,9 @@ function Feed({
   refreshing = false,
   saved,
   onToggleWatchlist,
-  emptyMessage,
-  onBrowse,
   onCalibrate,
-  reasonsPending = false,
 }: {
   recs: Recommendation[];
-  /** The Watchlist's fresh "why" lines are on their way: show a placeholder. */
-  reasonsPending?: boolean;
   loading: boolean;
   hasMore: boolean;
   error: string | null;
@@ -815,9 +955,6 @@ function Feed({
   refreshing?: boolean;
   saved: Set<string>;
   onToggleWatchlist: (rec: Recommendation) => void;
-  /** Shown instead of the list when there's nothing to render (watchlist). */
-  emptyMessage?: string;
-  onBrowse?: () => void;
   onCalibrate?: () => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
@@ -864,21 +1001,6 @@ function Feed({
     );
   }
 
-  if (emptyMessage && recs.length === 0 && !loading) {
-    return (
-      <div className={styles.list}>
-        <div className={styles.emptyState}>
-          <span className={styles.muted}>{emptyMessage}</span>
-          {onBrowse && (
-            <button type="button" className={styles.browseBtn} onClick={onBrowse}>
-              Browse recommendations
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div ref={listRef} className={styles.list} {...TAB_SCROLL}>
       {recs.map((rec, i) => (
@@ -894,7 +1016,6 @@ function Feed({
             onShare={onShare}
             saved={saved.has(rec.id)}
             onToggleWatchlist={onToggleWatchlist}
-            reasonPending={reasonsPending}
           />
           {onCalibrate && (i + 1) % NUDGE_EVERY === 0 && <CalibrateNudge onClick={onCalibrate} />}
         </Fragment>
@@ -953,6 +1074,9 @@ function FeedCard({
   saved,
   onToggleWatchlist,
   reasonPending = false,
+  starred,
+  onStar,
+  whyInline,
 }: {
   rec: Recommendation;
   reasonPending?: boolean;
@@ -966,6 +1090,14 @@ function FeedCard({
   onShare: (rec: Recommendation) => void;
   saved: boolean;
   onToggleWatchlist: (rec: Recommendation) => void;
+  /** The Watchlist's card page (DEC-4): a star circle above share. Absent on the feed. */
+  starred?: boolean;
+  onStar?: () => void;
+  /**
+   * The Watchlist's card page (DEC-2): the why breakdown rendered on the card
+   * under Seen it?, in place of the "Why it's a match" link. Absent on the feed.
+   */
+  whyInline?: ReactNode;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   // The gap can only close from a measured height: pin it before the collapse
@@ -1004,6 +1136,18 @@ function FeedCard({
           {/* Share stacks on the trailer, far from "Add to Watchlist" so the
               two are never mis-tapped (docs/prototypes/share/v3). */}
           <div className={styles.heroCircles}>
+            {onStar && (
+              <button
+                type="button"
+                className={`${styles.trailerCircle} ${styles.starCircle} ${starred ? styles.starCircleOn : ""}`}
+                onClick={onStar}
+                aria-pressed={starred}
+                aria-label={starred ? `Starred: ${rec.title} (tap to un-star)` : `Star ${rec.title}`}
+                title={starred ? "Starred" : "Star"}
+              >
+                <Star size={22} strokeWidth={1.7} aria-hidden />
+              </button>
+            )}
             <button
               type="button"
               className={styles.trailerCircle}
@@ -1030,16 +1174,22 @@ function FeedCard({
             <span /><span />
           </div>
         ) : null}
-        <button
-          type="button"
-          className={styles.whyLink}
-          onClick={() => onWhy(rec)}
-          aria-label={`Why ${rec.title} is a match`}
-        >
-          {/* No score, no "match" claim (taste-game saves, cold start). */}
-          <span>{rec.match > 0 ? "Why it\u2019s a match" : "Why this pick"}</span>
-          <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
-        </button>
+        {whyInline ? (
+          // The breakdown is on the page: no link, and the button keeps the
+          // room under the why line the link used to give (DEC-13).
+          <div className={styles.whyGap} aria-hidden />
+        ) : (
+          <button
+            type="button"
+            className={styles.whyLink}
+            onClick={() => onWhy(rec)}
+            aria-label={`Why ${rec.title} is a match`}
+          >
+            {/* No score, no "match" claim (taste-game saves, cold start). */}
+            <span>{rec.match > 0 ? "Why it\u2019s a match" : "Why this pick"}</span>
+            <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
+          </button>
+        )}
         {showX ? (
           <div className={styles.wantRow}>
             <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
@@ -1057,6 +1207,7 @@ function FeedCard({
           <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
         )}
         <FeedbackRow rec={rec} rated={rated} onFeedback={onFeedback} onUnrate={onUnrate} />
+        {whyInline}
       </div>
     </article>
   );
@@ -1072,11 +1223,13 @@ function FeedCard({
  */
 function WhereBadge({ where }: { where: string | null }) {
   if (!where) return null;
-  const { key, label } = canonicalProvider(where);
+  // The name as the region knows it ("Apple TV" in Israel, DEC-11); only the
+  // icon comes from the brand table.
+  const { key } = canonicalProvider(where);
   return (
     <div className={styles.whereBadge}>
       <ProviderIcon providerKey={key} className={styles.whereIcon} />
-      <span>{label}</span>
+      <span>{where}</span>
     </div>
   );
 }
@@ -1518,7 +1671,8 @@ function PosterTile({
   size,
 }: {
   rec: Recommendation;
-  size: "hero";
+  /** hero: the card's top half. row: the Watchlist row's 82×123 (DEC-1). */
+  size: "hero" | "row";
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   // Fade the poster in once it has actually loaded, rather than letting it
@@ -1625,83 +1779,543 @@ function Motif({ kind, fg }: { kind: MotifKind; fg: string }) {
   );
 }
 
+
 // ─────────────────────────────────────────────────────────────
-// Watchlist sort dropdown (Figma 29:4262)
+// Watchlist v3 (docs/plan/v3/WATCHLIST.md, 2026-11-18): the filter chips,
+// the rows with a star and a swipe to remove, and the card as a page.
+// Mocks: docs/prototypes/watchlist-v3 (4-air, 5-tap, 6-filter, 7-seen,
+// 8-remove, 9-empty, 11-why-on-card, 13-seen).
 // ─────────────────────────────────────────────────────────────
 
-function SortMenu({
-  value,
-  onChange,
-  open,
-  setOpen,
+/** One row of chips in the card's own Seen-it chip style; one lit at a time (DEC-3). */
+function WatchlistChips({
+  chips,
+  active,
+  onPick,
 }: {
-  value: SortKey;
-  onChange: (k: SortKey) => void;
-  open: boolean;
-  setOpen: (open: boolean) => void;
+  chips: WatchlistChip[];
+  active: WatchlistFilter;
+  onPick: (f: WatchlistFilter) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const current = SORT_OPTIONS.find((o) => o.key === value)!;
+  // The row scrolls sideways: keep the lit chip in view.
+  useEffect(() => {
+    const el = ref.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    el?.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [active]);
+  return (
+    <div ref={ref} className={styles.chips} role="group" aria-label="Show">
+      {chips.map((c) => {
+        const on = c.filter === active;
+        return (
+          <button
+            key={c.filter}
+            type="button"
+            className={`${styles.seenChip} ${styles.filterChip} ${on ? styles.seenChipOn : ""}`}
+            aria-pressed={on}
+            // Tapping the lit chip again returns to All.
+            onClick={() => onPick(on && c.filter !== "all" ? "all" : c.filter)}
+          >
+            {c.label}
+            {c.count > 0 && <b>{c.count}</b>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The list: starred, then the rest newest-saved first, then a "Seen" line and
+ * the rated titles (DEC-5, DEC-7), paged WATCHLIST_PAGE_SIZE at a time as you
+ * scroll. A removed title keeps its place while its note shows.
+ */
+function WatchlistList({
+  entries,
+  ghosts,
+  filter,
+  starPop,
+  onOpen,
+  onStar,
+  onRemove,
+  onUndo,
+  onGone,
+  onDismissNotes,
+  onBrowse,
+}: {
+  entries: WatchlistEntry[];
+  ghosts: Record<string, Ghost>;
+  filter: WatchlistFilter;
+  starPop: string | null;
+  onOpen: (entry: WatchlistEntry) => void;
+  onStar: (entry: WatchlistEntry) => void;
+  onRemove: (entry: WatchlistEntry) => void;
+  onUndo: (entry: WatchlistEntry) => void;
+  onGone: (id: string) => void;
+  onDismissNotes: () => void;
+  onBrowse?: () => void;
+}) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // How many rows are shown, for the filter they were paged under: a filter
+  // change starts over at the first page.
+  const [paged, setPaged] = useState({ filter, n: WATCHLIST_PAGE_SIZE });
+  const shownN = paged.filter === filter ? paged.n : WATCHLIST_PAGE_SIZE;
+  const showMore = () => setPaged((p) => ({ filter, n: (p.filter === filter ? p.n : WATCHLIST_PAGE_SIZE) + WATCHLIST_PAGE_SIZE }));
+  // The row whose Remove panel is open, if any: a swipe on another closes it.
+  const [swiped, setSwiped] = useState<string | null>(null);
+
+  const { rows, seenFrom } = useMemo(() => {
+    const live = new Set(entries.map((e) => e.rec.id));
+    const all = [
+      ...entries,
+      ...Object.values(ghosts).map((g) => g.entry).filter((e) => !live.has(e.rec.id)),
+    ];
+    const { unseen, seen } = orderWatchlist(filterWatchlist(all, filter));
+    return { rows: [...unseen, ...seen], seenFrom: unseen.length };
+  }, [entries, ghosts, filter]);
+  const visible = rows.slice(0, shownN);
+  const hasMore = shownN < rows.length;
 
   useEffect(() => {
-    if (!open) return;
-    function onDocClick(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, setOpen]);
+    const el = sentinelRef.current;
+    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (hits) => {
+        if (hits[0]?.isIntersecting) showMore();
+      },
+      { rootMargin: "120px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+    // showMore reads the current filter; re-observing per page is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, visible.length, filter]);
+
+  if (entries.length === 0 && Object.keys(ghosts).length === 0) {
+    // Nothing saved: today's text, the app's orange primary (DEC-10).
+    return (
+      <div className={styles.list}>
+        <div className={styles.emptyState}>
+          <span className={styles.muted}>{emptyFilterText("all")}</span>
+          {onBrowse && (
+            <button
+              type="button"
+              className={`${styles.watchlistBtn} ${styles.watchlistBtnPrimary} ${styles.emptyBtn}`}
+              onClick={onBrowse}
+            >
+              Go to For you
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    // A filter with nothing behind it says so; the chip stays lit (DEC-3).
+    return (
+      <div className={styles.list}>
+        <div className={styles.emptyState}>
+          <span className={styles.muted}>{emptyFilterText(filter)}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.sortMenu} ref={ref}>
-      <button
-        type="button"
-        className={styles.sortTrigger}
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label={`Sort by: ${current.label}`}
-      >
-        <span>{current.label}</span>
-        <ChevronDown size={16} strokeWidth={1.8} aria-hidden />
-      </button>
-      {open && (
-        <div className={styles.sortPanel}>
-          <button
-            type="button"
-            className={styles.sortPanelHead}
-            onClick={() => setOpen(false)}
-            aria-label="Close sort menu"
-          >
-            <span>{current.label}</span>
-            <ChevronUp size={16} strokeWidth={1.8} aria-hidden />
-          </button>
-          <div role="menu" className={styles.sortOptions}>
-            {SORT_OPTIONS.map((o) => (
-              <button
-                key={o.key}
-                type="button"
-                role="menuitemradio"
-                aria-checked={o.key === value}
-                className={`${styles.sortOption} ${o.key === value ? styles.sortOptionActive : ""}`}
-                onClick={() => {
-                  onChange(o.key);
-                  setOpen(false);
-                }}
-              >
-                {o.label}
-              </button>
-            ))}
+    <div className={`${styles.list} ${styles.listRows}`} {...TAB_SCROLL}>
+      {/* Keyed by the filter: a change re-orders with a short fade, not a cut (DEC-12). */}
+      <div key={filter} className={styles.listFade}>
+        {visible.map((e, i) => (
+          <Fragment key={e.rec.id}>
+            {i === seenFrom && filter !== "seen" && (
+              <div className={styles.seenDivider} role="separator" aria-label={`Seen, ${rows.length - seenFrom}`}>
+                Seen <b>{rows.length - seenFrom}</b>
+              </div>
+            )}
+            <WatchlistRow
+              entry={e}
+              ghost={ghosts[e.rec.id]}
+              swiped={swiped === e.rec.id}
+              starPop={starPop === e.rec.id}
+              onSwipeStart={() => {
+                setSwiped(e.rec.id);
+                onDismissNotes();
+              }}
+              onSettle={(open) => setSwiped((cur) => (open ? e.rec.id : cur === e.rec.id ? null : cur))}
+              onOpen={onOpen}
+              onStar={onStar}
+              onRemove={onRemove}
+              onUndo={onUndo}
+              onGone={onGone}
+            />
+          </Fragment>
+        ))}
+      </div>
+      <div ref={sentinelRef} className={styles.sentinel}>
+        {!hasMore && <span className={styles.muted}>That&rsquo;s everything we found.</span>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One title: poster, name, year · length · ★, where it streams in Israel and
+ * the match (DEC-1, DEC-11); a star to prioritise (DEC-4). A rated title sits
+ * under the Seen line, dimmed, with the reaction in place of the match (DEC-5).
+ * Swipe left to reveal Remove; the row then folds into a note with Undo
+ * (DEC-8). Pointer events, so it works on Android Chrome; `touch-action:
+ * pan-y` leaves a vertical scroll to the browser.
+ */
+function WatchlistRow({
+  entry,
+  ghost,
+  swiped,
+  starPop,
+  onSwipeStart,
+  onSettle,
+  onOpen,
+  onStar,
+  onRemove,
+  onUndo,
+  onGone,
+}: {
+  entry: WatchlistEntry;
+  ghost: Ghost | undefined;
+  swiped: boolean;
+  starPop: boolean;
+  onSwipeStart: () => void;
+  onSettle: (open: boolean) => void;
+  onOpen: (entry: WatchlistEntry) => void;
+  onStar: (entry: WatchlistEntry) => void;
+  onRemove: (entry: WatchlistEntry) => void;
+  onUndo: (entry: WatchlistEntry) => void;
+  onGone: (id: string) => void;
+}) {
+  const { rec } = entry;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const actRef = useRef<HTMLButtonElement>(null);
+  const lastH = useRef<number | null>(null);
+  const drag = useRef<{ x0: number; y0: number; axis: "none" | "x"; x: number } | null>(null);
+  // A swipe ends in a click on the same element: that click opens nothing.
+  const moved = useRef(false);
+  const content = ghost ? "note" : "row";
+
+  // Row → note (Remove) and note → row (Undo): the wrapper's height goes from
+  // the one to the other, so the list never jumps (DEC-12). `lastH` is the
+  // height before this render (recorded by the effect below it).
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    const from = lastH.current;
+    if (!el || from == null) return;
+    el.style.transition = "none";
+    el.style.height = "";
+    const to = el.offsetHeight;
+    if (from === to) {
+      el.style.transition = "";
+      return;
+    }
+    el.style.height = `${from}px`;
+    void el.offsetHeight;
+    el.style.transition = `height ${FOLD_MS}ms var(--ease-out)`;
+    el.style.height = `${to}px`;
+    const t = window.setTimeout(() => {
+      el.style.height = "";
+      el.style.transition = "";
+    }, FOLD_MS + 40);
+    return () => window.clearTimeout(t);
+  }, [content]);
+  useLayoutEffect(() => {
+    lastH.current = wrapRef.current?.offsetHeight ?? null;
+  });
+
+  // The note's time is up (or another title was removed): fold away and
+  // close the gap.
+  useEffect(() => {
+    if (ghost?.phase !== "leaving") return;
+    const el = wrapRef.current;
+    if (!el) return;
+    el.style.height = `${el.offsetHeight}px`;
+    void el.offsetHeight;
+    el.style.transition = `height ${FOLD_MS}ms var(--ease-out), opacity 200ms var(--ease-out)`;
+    el.style.height = "0px";
+    el.style.opacity = "0";
+    const t = window.setTimeout(() => onGone(rec.id), FOLD_MS + 20);
+    return () => window.clearTimeout(t);
+    // onGone is stable enough: it only forgets the id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ghost?.phase, rec.id]);
+
+  // The row and its Remove panel move together; the panel waits past the
+  // right edge (the wrapper clips it).
+  const setX = (x: number, animate: boolean) => {
+    for (const el of [rowRef.current, actRef.current]) {
+      if (!el) continue;
+      el.style.transition = animate ? "transform 240ms var(--ease-out)" : "none";
+      el.style.transform = x ? `translateX(${x}px)` : "";
+    }
+  };
+  // Closed from outside: another row was swiped.
+  useEffect(() => {
+    if (!swiped) setX(0, true);
+  }, [swiped]);
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag.current = { x0: e.clientX, y0: e.clientY, axis: "none", x: swiped ? -SWIPE_W : 0 };
+    moved.current = false;
+  };
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x0;
+    const dy = e.clientY - d.y0;
+    if (d.axis === "none") {
+      // Mostly vertical: a scroll, the browser's.
+      if (Math.abs(dy) > SWIPE_SLOP && Math.abs(dy) > Math.abs(dx)) {
+        drag.current = null;
+        return;
+      }
+      if (Math.abs(dx) <= SWIPE_SLOP) return;
+      d.axis = "x";
+      moved.current = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      onSwipeStart();
+    }
+    const base = swiped ? -SWIPE_W : 0;
+    let x = Math.min(0, base + dx);
+    // Past the panel the row resists.
+    if (x < -SWIPE_W) x = -SWIPE_W - (-SWIPE_W - x) * 0.25;
+    d.x = x;
+    setX(x, false);
+  };
+  const onPointerEnd = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.axis !== "x") return;
+    const open = d.x < -SWIPE_OPEN_PX;
+    setX(open ? -SWIPE_W : 0, true);
+    onSettle(open);
+  };
+  const onRowClick = () => {
+    if (moved.current) {
+      moved.current = false;
+      return;
+    }
+    // A tap on a swiped-open row closes it; the next tap opens the card.
+    if (swiped) {
+      onSettle(false);
+      return;
+    }
+    onOpen(entry);
+  };
+
+  const seen = isSeen(entry);
+  const pct = rec.match > 0 ? Math.round(rec.match * 100) : 0;
+
+  return (
+    <div ref={wrapRef} className={styles.rowWrap}>
+      {/* Keyed: the note must not inherit the swiped row's element (and its transform). */}
+      {ghost ? (
+        <div key="note" className={styles.noteWrap}>
+          <div className={styles.note} role="status">
+            <p>
+              Removed. <b>{rec.title}</b> is off your Watchlist.
+            </p>
+            <button type="button" onClick={() => onUndo(entry)}>Undo</button>
           </div>
         </div>
+      ) : (
+        <div key="row" className={styles.swipe}>
+          <div
+            ref={rowRef}
+            className={`${styles.row} ${seen ? styles.rowSeen : ""}`}
+            role="button"
+            tabIndex={0}
+            aria-label={`${rec.title}: open`}
+            onClick={onRowClick}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen(entry);
+              }
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerEnd}
+            onPointerCancel={onPointerEnd}
+          >
+            <PosterTile rec={rec} size="row" />
+            <div className={styles.rowBody}>
+              <h3 className={styles.rowTitle}>{rec.title}</h3>
+              <MetaRow rec={rec} />
+              <span className={styles.rowLine}>
+                {seen ? (
+                  <span className={styles.rowReaction}>{SEEN_LABEL[entry.rating as keyof typeof SEEN_LABEL]}</span>
+                ) : (
+                  <>
+                    {rec.where_il && (
+                      <>
+                        <span>{rec.where_il}</span>
+                        {pct > 0 && <span className={styles.rowDot} aria-hidden>·</span>}
+                      </>
+                    )}
+                    {pct > 0 && <span className={styles.rowMatch}>{pct}% match</span>}
+                  </>
+                )}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={`${styles.rowStar} ${entry.starred ? styles.rowStarOn : ""} ${starPop ? styles.starPop : ""}`}
+              aria-pressed={entry.starred}
+              aria-label={entry.starred ? `Starred: ${rec.title} (tap to un-star)` : `Star ${rec.title}`}
+              title={entry.starred ? "Starred" : "Star"}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (moved.current) {
+                  moved.current = false;
+                  return;
+                }
+                onStar(entry);
+              }}
+            >
+              <Star size={24} strokeWidth={1.6} aria-hidden />
+            </button>
+          </div>
+          <button
+            ref={actRef}
+            type="button"
+            className={styles.swipeAct}
+            onClick={() => onRemove(entry)}
+            tabIndex={swiped ? 0 : -1}
+            aria-hidden={!swiped}
+            aria-label={`Remove ${rec.title} from watchlist`}
+          >
+            <RemoveIcon />
+            Remove
+          </button>
+        </div>
       )}
+    </div>
+  );
+}
+
+/** The Remove panel's icon: a bookmark with an X at its foot, as drawn in the mock (8-remove). */
+function RemoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m17 17 5 5" />
+      <path d="M19 7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v15l7-4 7 4V7" />
+      <path d="m22 17-5 5" />
+    </svg>
+  );
+}
+
+/**
+ * Tap a row: the card you know from For you, as its own page, with the why
+ * breakdown on it under Seen it? (DEC-2) and a star above share (DEC-4).
+ */
+function WatchlistCardPage({
+  entry,
+  rec,
+  reasonPending,
+  rated,
+  onFeedback,
+  onUnrate,
+  onShare,
+  onToggleWatchlist,
+  onStar,
+}: {
+  entry: WatchlistEntry;
+  rec: Recommendation;
+  reasonPending: boolean;
+  rated: WatchlistRating | undefined;
+  onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
+  onUnrate: (rec: Recommendation) => void;
+  onShare: (rec: Recommendation) => void;
+  onToggleWatchlist: (rec: Recommendation) => void;
+  onStar: () => void;
+}) {
+  const whyRef = useRef<HTMLDivElement>(null);
+  return (
+    <div className={styles.list} {...TAB_SCROLL}>
+      <FeedCard
+        rec={rec}
+        rated={rated}
+        onFeedback={onFeedback}
+        onUnrate={onUnrate}
+        // The short why line is the teaser; the breakdown is further down this page.
+        onWhy={() => whyRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" })}
+        onShare={onShare}
+        saved
+        onToggleWatchlist={onToggleWatchlist}
+        reasonPending={reasonPending}
+        starred={entry.starred}
+        onStar={onStar}
+        whyInline={<InlineWhy entry={entry} rec={rec} innerRef={whyRef} />}
+      />
+    </div>
+  );
+}
+
+/**
+ * The sheet's content on the card page (Why, Score breakdown, What it's like,
+ * Crew), in the sheet's own styles. The written why takes 1–3 s: three quiet
+ * lines hold its place. A saved title with no breakdown (a third of today's)
+ * shows the Why alone: no bars, no error line (DEC-2).
+ */
+function InlineWhy({
+  entry,
+  rec,
+  innerRef,
+}: {
+  entry: WatchlistEntry;
+  rec: Recommendation;
+  innerRef: RefObject<HTMLDivElement | null>;
+}) {
+  const why = useWhyText(rec);
+  // This session's cache, then the snapshot taken when the card was saved,
+  // then the engine's cache (which forgets old titles: then null).
+  const [data, setData] = useState<ExplainData | null | "loading">(
+    () => getCachedExplain(rec.id) ?? entry.explain ?? "loading",
+  );
+  useEffect(() => {
+    if (data !== "loading") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/recommendations/explain?tmdb_id=${encodeURIComponent(tmdbIdOf(rec.id))}&type=${rec.type}`,
+        );
+        if (cancelled) return;
+        if (!res.ok) {
+          setData(null);
+          return;
+        }
+        const d = (await res.json()) as ExplainData;
+        if (cancelled) return;
+        setCachedExplain(rec.id, d);
+        setData(d);
+      } catch (e) {
+        console.error("[recs] explain failed", e);
+        if (!cancelled) setData(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data, rec.id, rec.type]);
+
+  let body: ReactNode = null;
+  if (data && data !== "loading") body = <WhyPanel result={toResult(data, rec)} why={why} />;
+  else if (data === "loading" || why === "pending") body = <WhyTextOnly text="" pending />;
+  else if (typeof why === "string" && why !== "failed") body = <WhyTextOnly text={why} />;
+  if (!body) return null;
+  return (
+    <div ref={innerRef} className={styles.cardWhy}>
+      {body}
     </div>
   );
 }
