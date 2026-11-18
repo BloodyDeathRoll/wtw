@@ -2130,7 +2130,14 @@ function WatchlistRow({
       if (Math.abs(dx) <= SWIPE_SLOP) return;
       d.axis = "x";
       moved.current = true;
-      e.currentTarget.setPointerCapture?.(e.pointerId);
+      // Capture keeps the moves coming when the finger leaves the row. It
+      // throws for a pointer the browser no longer tracks; then the swipe
+      // just follows while the finger stays on the row.
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* no capture */
+      }
       onSwipeStart();
     }
     let x = Math.min(0, d.base + dx);
