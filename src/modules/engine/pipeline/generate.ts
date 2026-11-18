@@ -46,6 +46,7 @@ import { buildReasonPayloads }      from './step6-reason-payload'
 import { sheetTexts, toResults } from './step7-explanation'
 import { loadRatedByPerson } from './step7-card-reason'
 import { cardPlots } from './card-plot'
+import { poolStatsOf, savePoolStats } from '../scoring/pool-stats'
 import {
   getCachedRecommendations,
   cacheRecommendations,
@@ -165,6 +166,10 @@ async function runPipeline(
   // ── Step 2: composite scoring ─────────────────────────────
   const scored = await scoreCandidates(candidates, dna)
   t.mark('step2 scoring')
+  // v3 M1: the pool's stats, so one title can later be scored against the
+  // same pool and get the match this batch gives it (score-one.ts).
+  const stats = poolStatsOf(scored)
+  if (stats) await savePoolStats(userId, contentType ?? 'all', stats, dna.metadata.taste_version)
 
   // ── Step 3: soft modifiers ────────────────────────────────
   const modified = applySoftModifiers(scored, dna)
