@@ -1260,10 +1260,11 @@
   height: 1px;
   background: rgba(255, 255, 255, 0.12);
 }
-/* Swipe left: Remove, a 104px panel that follows the row in (DEC-8). */
+/* Swipe left: Remove, a 104px panel that follows the row in, 14px clear of
+   the star (DEC-8; SWIPE_PANEL_W + SWIPE_GAP in the view). */
 .swipeAct {
   position: absolute;
-  left: 100%;
+  left: calc(100% + 14px);
   top: 0;
   bottom: 1px;
   width: 104px;

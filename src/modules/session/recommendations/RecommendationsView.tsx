@@ -31,6 +31,7 @@ import type {
 import type { RecommendationResult } from "@/types/dna";
 import {
   Bookmark,
+  BookmarkX,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -149,14 +150,19 @@ interface Ghost { entry: WatchlistEntry; phase: "note" | "leaving" }
 const NOTE_MS = 5000;
 /** The row's star just lit: the length of its scale (CSS .starPop). */
 const STAR_POP_MS = 320;
-/** How far a row slides to reveal Remove: the panel's width (DEC-8). */
-const SWIPE_W = 104;
+/** The Remove panel's width (DEC-8) and the air between it and the row's star (Eran, 2026-11-18). */
+const SWIPE_PANEL_W = 104;
+const SWIPE_GAP = 14;
+/** How far a row slides to reveal Remove. */
+const SWIPE_W = SWIPE_PANEL_W + SWIPE_GAP;
 /** Past this the swipe settles open; short of it the row springs back. */
 const SWIPE_OPEN_PX = 52;
 /** Finger travel before a touch counts as a swipe, or as a scroll. */
 const SWIPE_SLOP = 8;
 /** The row ↔ note fold (height), in ms. */
 const FOLD_MS = 280;
+/** A row sliding to its new place after a star or a rating, in ms. */
+const REORDER_MS = 320;
 
 const HEADER_TITLE: Record<Mode, string> = {
   recommendations: "For You",
@@ -1864,6 +1870,39 @@ function WatchlistList({
   // The row whose Remove panel is open, if any: a swipe on another closes it.
   const [swiped, setSwiped] = useState<string | null>(null);
 
+  // A star or a rating re-orders the list: each row slides from where it was
+  // to where it is now (DEC-12), instead of jumping. Only for a pure
+  // re-order (the same titles in a new order); a removal, an Undo or a new
+  // page fold or fade on their own.
+  const flipRef = useRef<HTMLDivElement>(null);
+  const lastTops = useRef<{ ids: string; tops: Map<string, number> }>({ ids: "", tops: new Map() });
+  useLayoutEffect(() => {
+    const el = flipRef.current;
+    if (!el) return;
+    const nodes = [...el.querySelectorAll<HTMLElement>("[data-row-id]")];
+    const tops = new Map(nodes.map((n) => [n.dataset.rowId!, n.getBoundingClientRect().top]));
+    const prev = lastTops.current;
+    const ids = [...tops.keys()];
+    const sameSet = ids.length === prev.tops.size && ids.every((id) => prev.tops.has(id));
+    lastTops.current = { ids: ids.join("|"), tops };
+    if (!sameSet || ids.join("|") === prev.ids) return;
+    const moved = nodes
+      .map((node) => ({ node, dy: (prev.tops.get(node.dataset.rowId!) ?? 0) - tops.get(node.dataset.rowId!)! }))
+      .filter(({ dy }) => Math.abs(dy) > 1);
+    if (moved.length === 0) return;
+    for (const { node, dy } of moved) {
+      node.style.transition = "none";
+      node.style.transform = `translateY(${dy}px)`;
+    }
+    void el.offsetHeight;
+    for (const { node } of moved) {
+      node.style.transition = `transform ${REORDER_MS}ms var(--ease-out)`;
+      node.style.transform = "";
+    }
+    const t = window.setTimeout(() => moved.forEach(({ node }) => { node.style.transition = ""; }), REORDER_MS + 40);
+    return () => window.clearTimeout(t);
+  });
+
   const { rows, seenFrom } = useMemo(() => {
     const live = new Set(entries.map((e) => e.rec.id));
     const all = [
@@ -1925,7 +1964,7 @@ function WatchlistList({
   return (
     <div className={`${styles.list} ${styles.listRows}`} {...TAB_SCROLL}>
       {/* Keyed by the filter: a change re-orders with a short fade, not a cut (DEC-12). */}
-      <div key={filter} className={styles.listFade}>
+      <div key={filter} ref={flipRef} className={styles.listFade}>
         {visible.map((e, i) => (
           <Fragment key={e.rec.id}>
             {i === seenFrom && filter !== "seen" && (
@@ -2115,7 +2154,7 @@ function WatchlistRow({
   const pct = rec.match > 0 ? Math.round(rec.match * 100) : 0;
 
   return (
-    <div ref={wrapRef} className={styles.rowWrap}>
+    <div ref={wrapRef} className={styles.rowWrap} data-row-id={rec.id}>
       {/* Keyed: the note must not inherit the swiped row's element (and its transform). */}
       {ghost ? (
         <div key="note" className={styles.noteWrap}>
@@ -2193,23 +2232,12 @@ function WatchlistRow({
             aria-hidden={!swiped}
             aria-label={`Remove ${rec.title} from watchlist`}
           >
-            <RemoveIcon />
+            <BookmarkX size={24} strokeWidth={1.7} aria-hidden />
             Remove
           </button>
         </div>
       )}
     </div>
-  );
-}
-
-/** The Remove panel's icon: a bookmark with an X at its foot, as drawn in the mock (8-remove). */
-function RemoveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="m17 17 5 5" />
-      <path d="M19 7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v15l7-4 7 4V7" />
-      <path d="m22 17-5 5" />
-    </svg>
   );
 }
 
