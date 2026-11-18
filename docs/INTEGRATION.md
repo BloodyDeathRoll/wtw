@@ -6,7 +6,7 @@ Shipped history is `docs/SHIPPED.md`; it is not a to-do list.
 
 ## Where we are: v3 plan (from 2026-11-18)
 
-v3 gets the app ready for friends: For you as a set of 20 with Refresh and Hide, honest "Why"s, Back and tabs, Seen, Search and You. The spec is `docs/plan/v3/PLAN.md` (each part's decisions in `docs/plan/v3/*.md`, the numbers in `docs/plan/v3/EVIDENCE.md`), and the status lives in GitHub Issues labelled `v3`, on the [WTW v3 board](https://github.com/users/BloodyDeathRoll/projects/2). Every PR that changes a screen is built to its approved JPEG and signed off by Eran (`PLAN.md` §0). Log each landed work package here, one line under **v3 plan**.
+v3 gets the app ready for friends: For you as a set of 20 with Refresh and Hide, honest "Why"s, Back and tabs, Seen, Search and You. The spec is `docs/plan/v3/PLAN.md` (each part's decisions in `docs/plan/v3/*.md`, the numbers in `docs/plan/v3/EVIDENCE.md`), and the status lives in GitHub Issues labelled `v3`, on the [WTW v3 board](https://github.com/users/eran-manor/projects/1). Every PR that changes a screen is built to its approved JPEG and signed off by Eran (`PLAN.md` §0). Log each landed work package here, one line under **v3 plan**.
 
 ### v3 plan
 

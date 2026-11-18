@@ -44,7 +44,7 @@ Phases are about what *reaches users*. Work on phase 2 starts on day one, switch
 - **Engine and server:** Alon. Scoring one title on request, fresh breakdowns, Search from two letters, and You's feedback,
   Account and delete.
 
-Every task is a GitHub issue on the [WTW v3 board](https://github.com/users/BloodyDeathRoll/projects/2).
+Every task is a GitHub issue on the [WTW v3 board](https://github.com/users/eran-manor/projects/1).
 
 **Two promises:**
 - **Nothing that works today breaks.** Every change of behaviour ships switched off and is turned on at its gate.
@@ -61,8 +61,8 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
   - This file and the part files are the **spec**: what to build and how.
   - **GitHub Issues** hold the **status**: one issue per work package (WP), with the WP id in the title, e.g. `[v3 S2] Change a
     rating right on the row`. Don't tick boxes in this file.
-  - **The board** shows all of it at a glance: [WTW v3](https://github.com/users/BloodyDeathRoll/projects/2) (Todo / In Progress /
-    Done). With `gh`: `gh project item-list 2 --owner BloodyDeathRoll`.
+  - **The board** shows all of it at a glance: [WTW v3](https://github.com/users/eran-manor/projects/1) (Todo / In Progress /
+    Done). With `gh`: `gh project item-list 1 --owner eran-manor`.
 - **Your tasks are already assigned** (Eran, 2026-11-18). To pick the next one:
   1. Find your list, **in order**, in §3a. The same list is on GitHub: `gh issue list --assignee @me --label v3 --state open`.
   2. Take the first task whose "Depends on" issues are all closed. If it's blocked, take the next one and say so on the blocked
@@ -167,13 +167,13 @@ week 4:  P2-G ── launch checklist ── L-G (friends)
 
 ### 3a. Who does what (Eran, 2026-11-18)
 
-The issues are assigned to match. Eran = `eran-manor` (A3), Shahar = `BloodyDeathRoll` (A1), Alon = `booster212` (A2).
+The issues are assigned to match: #347–#372, gates #373–#375, all labelled `v3`. Eran = `eran-manor` (A3), Shahar = `BloodyDeathRoll` (A1), Alon = `booster212` (A2).
 
 | | Phase 1 — in this order | Phase 2 — in this order | Launch |
 |---|---|---|---|
-| **Eran** (~14 days) | F5 "Sharper picks" orange → F3 Hide → F1 the 20 + Refresh → F2 stamps until Refresh → F4 resting → F6 honest Creators → F7 stretch label → **drives P1-G** | Reviews Q6 (DNA write) | **Drives L-G** |
-| **Shahar** (~18 days) | W1 Watchlist end card → N1 Back → N2 tabs remember | S1 Seen list → S2 rate on the row → S3 card page from Seen → S4 Hidden from For you → Q1 Search opens the card page → Q2 your mark on results → Q3 recent searches → **drives P2-G** | — |
-| **Alon** (~16 days) | M1 score one title on request → M2 fresh breakdowns; reviews F4 | Q4 results from two letters (built in week 1, behind its flag) → Y1 You's bottom + Account → Y2 feedback → Y3 delete my account → Q6 a save from Search teaches taste → Q5 match on Search's card page | L1 JustWatch credit |
+| **Eran** (~14 days) | #347 F5 "Sharper picks" orange → #348 F3 Hide → #349 F1 the 20 + Refresh → #350 F2 stamps until Refresh → #351 F4 resting → #352 F6 honest Creators → #353 F7 stretch label → **drives #373 P1-G** | Reviews #368 Q6 (DNA write) | **Drives #375 L-G** |
+| **Shahar** (~18 days) | #358 W1 Watchlist end card → #356 N1 Back → #357 N2 tabs remember | #359 S1 Seen list → #360 S2 rate on the row → #361 S3 card page from Seen → #362 S4 Hidden from For you → #364 Q1 Search opens the card page → #365 Q2 your mark on results → #366 Q3 recent searches → **drives #374 P2-G** | — |
+| **Alon** (~16 days) | #354 M1 score one title on request → #355 M2 fresh breakdowns; reviews #351 F4 | #363 Q4 results from two letters (built in week 1, behind its flag) → #369 Y1 You's bottom + Account → #370 Y2 feedback → #371 Y3 delete my account → #368 Q6 a save from Search teaches taste → #367 Q5 match on Search's card page | #372 L1 JustWatch credit |
 
 **Reviews on two-domain tasks:**
 - Alon reviews F4 (it changes what the engine draws from).
