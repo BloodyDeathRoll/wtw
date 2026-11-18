@@ -1869,6 +1869,13 @@ function WatchlistList({
   const showMore = () => setPaged((p) => ({ filter, n: (p.filter === filter ? p.n : WATCHLIST_PAGE_SIZE) + WATCHLIST_PAGE_SIZE }));
   // The row whose Remove panel is open, if any: a swipe on another closes it.
   const [swiped, setSwiped] = useState<string | null>(null);
+  // A filter change shows the filtered list from its first row. The rows
+  // remount (keyed below) but this scroll container would keep its old
+  // offset, clamped to the shorter list, and open on its end.
+  const listRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [filter]);
 
   // A star or a rating re-orders the list: each row slides from where it was
   // to where it is now (DEC-12), instead of jumping. Only for a pure
@@ -1962,7 +1969,7 @@ function WatchlistList({
   }
 
   return (
-    <div className={`${styles.list} ${styles.listRows}`} {...TAB_SCROLL}>
+    <div ref={listRef} className={`${styles.list} ${styles.listRows}`} {...TAB_SCROLL}>
       {/* Keyed by the filter: a change re-orders with a short fade, not a cut (DEC-12). */}
       <div key={filter} ref={flipRef} className={styles.listFade}>
         {visible.map((e, i) => (
