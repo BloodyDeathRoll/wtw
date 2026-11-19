@@ -2,7 +2,7 @@
 
 Shahar's main account (951 ratings, taste_version 218). Measured on production, read-only, 2026-11-19.
 
-**Status (2026-11-19, evening):** cause 2 is fixed in #395 (Alon). Cause 1 is being measured before any change: Alon runs the numbers, and nothing in the model changes until Eran has seen them (Eran, on #389). See the next steps below.
+**Status (2026-11-19, evening):** cause 2 is fixed in #395 (Alon). Cause 1 is measured before any change: Alon's numbers are on #390 (step 1's pool) and #389 (`modern` at several values), and nothing in the model changes until Eran has seen them (Eran, on #389). See the next steps below.
 
 ## The call
 
@@ -10,7 +10,7 @@ MobLand (2025 crime series: Guy Ritchie, Tom Hardy, Jez Butterworth) shows a **6
 
 **Why, in one line:** the taste model docks every new title, and TV titles carry no directors, so the creators we know Shahar likes never count.
 
-Fixing both lifts MobLand to **97%** (the cap). Each alone: 93% and 87%, the counterfactuals at the end of each cause below.
+Fixing both lifts MobLand to **97%** (the cap), on Shahar's account only. Each alone: 93% and 87%, the counterfactuals at the end of each cause below.
 
 ## How the 67% is built
 
@@ -47,7 +47,7 @@ Loved 2020s series land near a coin flip: Ted Lasso 49%, The Bear 60%, Shrinking
 
 **Counterfactual:** `modern` weight set to 0 → 93%. Model retrained without `modern` → 92%.
 
-## Cause 2: TV titles have no directors on record
+## Cause 2: TV titles have no directors on record (fixed in #395)
 
 MobLand's crew record holds one writer (Ronan Bennett, the creator) and the top 5 cast. No director. TMDB's episode credits list Guy Ritchie as director (4 episodes) and Jez Butterworth as writer (20 episodes). Shahar's profile already likes both (Ritchie as director and writer, Butterworth as writer, 3 titles each).
 
@@ -67,7 +67,7 @@ Whether the `modern` weight is what keeps new titles out of step 1: Alon measure
 
 ## Proposed next steps
 
-1. **Recency in the taste model** (A3: `src/modules/dna/taste-model.ts`; shared: `src/lib/taste-scales/features.ts`): test whether `modern` should be dropped, made smaller, or learned from head-to-head picks only. Cause 1 is partly a guess (the selection effect above), so measure first, across accounts (step 5), before changing the model on one account's data. **Alon runs the numbers** (Eran, on #389): the eval harness on the three test sheets and the loved-by-era split, with `modern` at today's −0.30, at −0.15 and −0.05, and at 0. No change to the model until Eran has seen them.
+1. **Recency in the taste model** (A3: `src/modules/dna/taste-model.ts`; shared: `src/lib/taste-scales/features.ts`): test whether `modern` should be dropped, made smaller, or learned from head-to-head picks only. Cause 1 is partly a guess (the selection effect above), so measure first, across accounts (step 5), before changing the model on one account's data. **Alon runs the numbers** (Eran, on #389; his first ones are on #389): the eval harness on the three test sheets and the loved-by-era split, with `modern` at today's −0.30, at −0.15 and −0.05, and at 0. No change to the model until Eran has seen them.
 2. **Series crew** (shared: `src/lib/tmdb.ts`): read a series' directors and writers from `aggregate_credits` (top by episode count), then backfill the catalogue's series. **Done in #395 (Alon).**
 3. **A liked lead with no known director or writer** (A2: `src/modules/engine/`): decide whether the cast share should rise when the other roles are unknown, rather than count them as neutral.
 4. **Step 1's pool** (A2): rebuild Shahar's pool with `modern` at 0 and compare the share of 2020s titles. **Measured by Alon on #390.**
