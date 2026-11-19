@@ -39,6 +39,8 @@ import { logAuthFailure } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { CHAT_USER_DAILY as USER_DAILY, CHAT_ALL_DAILY as ALL_DAILY } from "@/lib/chat-budget";
+import { CHAT_OVER_USER as OVER_USER, CHAT_OVER_ALL as OVER_ALL } from "@/lib/chat-limit-lines";
 import { boundedTail } from "@/lib/bounded-tail";
 import { loadDNA } from "@/modules/dna/lib/load-save";
 import { dnaPromptContext } from "@/modules/dna/lib/prompt-context";
@@ -82,23 +84,11 @@ const MAX_HISTORY_CHARS = 24_000;
 const MAX_REPLY_TOKENS = 1200;
 const RATE_LIMIT = { scope: "conversation", perUser: 60, perIp: 120, windowSec: 10 * 60 };
 
-// The chat's share of the model's free budget (docs/plan/PLAN.md P3-4): about
-// 200k tokens a day, which the welcome line, the DNA summary and the dimension
-// notes also draw on. A turn is one model call, or two when the consultant's
-// first draft fails its check, at about 2,300 tokens a call (measured
-// 2026-11-14): 20 turns are 92k tokens at most.
-// shortcut: counts turns, not tokens, in a fixed 24 h window, so two windows' worth (184k) can fall inside one rolling day; count usage.totalTokens in hourly buckets if the chat ever runs the model dry.
-const DAY = 24 * 60 * 60;
-const USER_DAILY = { scope: "chat-day", perUser: 10, windowSec: DAY };
-const ALL_DAILY = { scope: "chat-day-all", perUser: 20, windowSec: DAY };
 // One pasted wall of text would otherwise go to the model whole: boundedTail always keeps the newest message.
 const MAX_MESSAGE_CHARS = 4_000;
 
 // Shown as the chat's own reply: the client shows every failed request as "Couldn't reach the model".
-// OVER_USER and OVER_ALL say "daily" and "within a day": they go with DAY.
 const TOO_LONG = `That message is too long for me. Please keep it under ${MAX_MESSAGE_CHARS.toLocaleString("en-US")} characters and send it again.`;
-const OVER_USER = "That's all the questions I can take from you for now: the chat has a daily limit. It opens again within a day. Your recommendations are on the home screen as always.";
-const OVER_ALL = "The chat has reached its daily limit for everyone. It opens again within a day. Your recommendations are on the home screen as always.";
 
 const SYSTEM_PROMPT = `You are WTW (What To Watch). Your job is to build a vivid, layered picture of the user's film and TV taste through light, casual conversation — not an interview.
 
