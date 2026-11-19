@@ -25,19 +25,36 @@ import {
 } from "@/lib/watchlist";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { TitleCardPage } from "@/modules/session/recommendations/RecommendationsView";
-import { deleteRating, postRating, type Reaction } from "@/modules/session/recommendations/rate";
+import { deleteRating, postRating, RATED_EVENT, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
 
-/** Your rating of each title ("type:tmdb_id" → reaction), read once a page load: Seen's own list. */
-let mine: Promise<Record<string, Reaction>> | null = null;
+/**
+ * Your rating of each title ("type:tmdb_id" → reaction): Seen's own list. Read again when it's a minute old (an
+ * installed app can stay open for days), and kept current in between by every rating that lands through rate.ts —
+ * the feed's, the Watchlist's and Search's.
+ */
+const FRESH_MS = 60_000;
+let mine: { at: number; list: Promise<Record<string, Reaction>> } | null = null;
 function myRatings(): Promise<Record<string, Reaction>> {
-  mine ??= fetch("/api/recommendations/ratings")
-    .then((r) => (r.ok ? (r.json() as Promise<RatingsSummary>) : null))
-    .then((d) => Object.fromEntries((d?.items ?? []).map((i) => [i.id, i.rating])))
-    .catch(() => {
-      mine = null; // try again on the next card
-      return {};
+  if (!mine || Date.now() - mine.at > FRESH_MS) {
+    const list = fetch("/api/recommendations/ratings")
+      .then((r) => (r.ok ? (r.json() as Promise<RatingsSummary>) : null))
+      .then((d) => Object.fromEntries((d?.items ?? []).map((i) => [i.id, i.rating])) as Record<string, Reaction>)
+      .catch(() => {
+        mine = null; // try again on the next card
+        return {} as Record<string, Reaction>;
+      });
+    mine = { at: Date.now(), list };
+  }
+  return mine.list;
+}
+if (typeof window !== "undefined") {
+  window.addEventListener(RATED_EVENT, (e) => {
+    const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
+    void mine?.list.then((m) => {
+      if (rating) m[id] = rating;
+      else delete m[id];
     });
-  return mine;
+  });
 }
 /** For the tests: forget the list read this page load. */
 export function forgetMyRatings() {
@@ -100,17 +117,19 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
 
   function onFeedback(r: Recommendation, rating: Reaction) {
     const before = rated;
+    if (rating === before) return;
+    const wasSaved = saved;
     setRated(rating);
     setWatchlistRating(r.id, rating);
-    // A saved title rated is one you watched: the 48-hour check-in, as from the Watchlist. Not for a dislike.
-    if (saved && (rating === "loved" || rating === "liked")) addToRegretQueue(r.id.split(":")[1] ?? r.id, r.title, r.type);
-    void myRatings().then((m) => (m[r.id] = rating));
     queue = queue.then(async () => {
       const ok = await postRating(r, rating, contentType()).catch(() => false);
       if (!ok) {
         setRated(before);
         setWatchlistRating(r.id, before ?? null);
+        return;
       }
+      // A saved title rated is one you watched: the 48-hour check-in, as from the Watchlist. Not for a dislike.
+      if (wasSaved && (rating === "loved" || rating === "liked")) addToRegretQueue(r.id.split(":")[1] ?? r.id, r.title, r.type);
     });
   }
 
@@ -119,14 +138,14 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
     if (!before || before === "removed") return;
     setRated(undefined);
     setWatchlistRating(r.id, null);
-    removeFromRegretQueue(r.id.split(":")[1] ?? r.id, r.type);
-    void myRatings().then((m) => delete m[r.id]);
     queue = queue.then(async () => {
       const ok = await deleteRating(r, contentType(), saved).catch(() => false);
       if (!ok) {
         setRated(before);
         setWatchlistRating(r.id, before);
+        return;
       }
+      removeFromRegretQueue(r.id.split(":")[1] ?? r.id, r.type);
     });
   }
 

@@ -3,6 +3,18 @@ import type { ContentType } from "@/lib/content-type";
 
 export type Reaction = "loved" | "liked" | "disliked";
 
+/** Fired on `window` once a rating has landed (or been cleared: `rating` null), wherever it was made. */
+export const RATED_EVENT = "wtw:rated";
+export type RatedDetail = { id: string; rating: Reaction | null };
+
+/** A write that hangs gives up, so the one-at-a-time queue behind it moves on (the caller puts the chip back). */
+const TIMEOUT_MS = 20_000;
+const timeout = () => (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(TIMEOUT_MS) : undefined);
+
+function landed(id: string, rating: Reaction | null) {
+  window.dispatchEvent(new CustomEvent<RatedDetail>(RATED_EVENT, { detail: { id, rating } }));
+}
+
 /** "type:tmdb_id" → tmdb_id (a bare slug only in legacy saved entries). */
 const tmdbIdOf = (id: string) => (id.includes(":") ? id.split(":")[1] : id);
 
@@ -24,8 +36,10 @@ export async function postRating(rec: Recommendation, rating: Reaction, contentT
       content_type: contentType,
       is_stretch_pick: rec.is_stretch_pick ?? false,
     }),
+    signal: timeout(),
   });
   if (!res.ok) console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+  else landed(rec.id, rating);
   return res.ok;
 }
 
@@ -35,7 +49,9 @@ export async function deleteRating(rec: Recommendation, contentType: ContentType
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tmdb_id: tmdbIdOf(rec.id), media_type: rec.type, content_type: contentType, saved }),
+    signal: timeout(),
   });
   if (!res.ok) console.error(`[recs] un-rate HTTP ${res.status}`, await res.text().catch(() => ""));
+  else landed(rec.id, null);
   return res.ok;
 }

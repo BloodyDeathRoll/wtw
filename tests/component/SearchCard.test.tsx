@@ -10,6 +10,8 @@ vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SearchCard, { forgetMyRatings } from '@/app/search/SearchCard'
 import { addToWatchlist, getWatchlist } from '@/lib/watchlist'
+import { getAllPendingForTesting } from '@/lib/regret-queue'
+import { RATED_EVENT } from '@/modules/session/recommendations/rate'
 
 const user = { id: 'u1', email: null, name: 'Ada', avatarUrl: null }
 const rec = (o: Partial<Recommendation> = {}): Recommendation => ({
@@ -99,6 +101,28 @@ describe('a title from Search opens the card page', () => {
     await waitFor(() => expect(feedback()).toHaveLength(2))
     expect(feedback()[1].body).toMatchObject({ action: 'skipped', reaction: 'disliked' })
     await waitFor(() => expect(screen.getByRole('button', { name: "Watched it, didn't like it" })).toHaveAttribute('aria-pressed', 'false'))
+  })
+
+  it('a rating made elsewhere (the feed, Seen) shows on the next card without reading the list again', async () => {
+    card()
+    await waitFor(() => expect(calls.filter((c) => c.url.includes('/ratings'))).toHaveLength(1))
+    cleanup()
+    window.dispatchEvent(new CustomEvent(RATED_EVENT, { detail: { id: 'movie:77', rating: 'disliked' } }))
+    card()
+    await waitFor(() => expect(screen.getByRole('button', { name: "Watched it, didn't like it (tap to clear)" })).toHaveAttribute('aria-pressed', 'true'))
+    expect(calls.filter((c) => c.url.includes('/ratings'))).toHaveLength(1)
+  })
+
+  it('a saved title: Loved queues the 48-hour check-in once it lands; a failed one queues nothing', async () => {
+    addToWatchlist(rec())
+    feedbackOk = false
+    card()
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Loved it' })).toHaveAttribute('aria-pressed', 'false'))
+    expect(getAllPendingForTesting()).toHaveLength(0)
+    feedbackOk = true
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
+    await waitFor(() => expect(getAllPendingForTesting().map((e) => e.tmdb_id)).toEqual(['77']))
   })
 
   it('Add to Watchlist saves it; rated first, it lands on the list with its reaction', async () => {
