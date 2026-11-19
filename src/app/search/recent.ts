@@ -24,8 +24,10 @@ function parse(raw: string | null): string[] {
     const seenTerms = new Set<string>();
     const list: string[] = [];
     for (const s of v) {
-      if (typeof s !== "string" || s.trim() === "" || seenTerms.has(s.toLowerCase())) continue;
-      seenTerms.add(s.toLowerCase());
+      if (typeof s !== "string" || s.trim() === "") continue;
+      const key = s.toLowerCase();
+      if (seenTerms.has(key)) continue;
+      seenTerms.add(key);
       list.push(s);
     }
     return list.slice(0, RECENT_MAX);
