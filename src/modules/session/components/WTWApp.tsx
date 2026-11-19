@@ -55,7 +55,8 @@ import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
-import { chatMode, navTabsEnabled } from "@/lib/flags";
+import { chatMode, navHistoryEnabled, navTabsEnabled } from "@/lib/flags";
+import { markInApp, stageHref, stageOfAddress } from "@/modules/session/nav-history";
 import { AskButton, TabBar, type Tab } from "@/app/components/TabBar";
 import rv from "../recommendations/RecommendationsView.module.css";
 import styles from "./WTWApp.module.css";
@@ -563,21 +564,39 @@ export default function WTWApp({
   const chatBackRef = useRef<{ stage?: Stage; href?: string } | null>(null);
   // NAV_TABS: no home screen. The app opens on For you (the feed), and the bar at the bottom is the way around.
   const tabsOn = navTabsEnabled();
+  // NAV_HISTORY (YOU.md DEC-1): the stage is in the address and every step is a history entry, so the phone's Back
+  // retraces them, then goes to For you, then leaves. Only under the tab bar.
+  const navHistory = tabsOn && navHistoryEnabled();
   const [stage, setStage] = useState<Stage>(isNewUser ? "intro" : tabsOn ? "recommendations" : "onboard");
   // A standalone route (e.g. /profile/dna) links back into a stage with
   // ?stage=… — the menu there can't call these handlers directly. Read it
   // once on mount and strip it so a refresh doesn't re-enter the stage.
+  // NAV_HISTORY: the address keeps the stage instead (it is how Back finds it again).
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const s = q.get("stage");
     // The menu on a standalone route opens the consultant with ?stage=conversation.
-    if (s && (DEEP_LINK_STAGES.includes(s as Stage) || (s === "conversation" && consultant))) setStage(s as Stage);
+    const landing = s && (DEEP_LINK_STAGES.includes(s as Stage) || (s === "conversation" && consultant)) ? (s as Stage) : null;
+    if (landing) setStage(landing);
     // The chat bubble on Games or You (NAV_TABS) says where it was tapped (&back=), so the chat's Back returns there.
     const back = q.get("back");
     if (s === "conversation" && back && CHAT_BACK.test(back)) chatBackRef.current = { href: back };
+    if (navHistory) {
+      const at = landing ?? "recommendations";
+      const href = stageHref(at) ?? window.location.pathname;
+      // Opened straight on a stage (a fresh tab, a link, the installed app): For you goes under it, so Back reaches it.
+      const fresh = !markInApp();
+      if (fresh && at !== "recommendations" && stageHref(at)) {
+        window.history.replaceState(null, "", "/");
+        window.history.pushState(null, "", href);
+      } else if (window.location.pathname + window.location.search !== href) {
+        window.history.replaceState(null, "", href);
+      }
+      return;
+    }
     // ?from=play only tells the server not to send the player back to the games.
     if (s || q.has("from")) window.history.replaceState(null, "", window.location.pathname);
-  }, [consultant]);
+  }, [consultant, navHistory]);
   const [favorites, setFavorites] = useState(conversation.favorites);
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -883,6 +902,42 @@ export default function WTWApp({
       void endSessionAndGenerate({ skipTranscript: true });
     }
   }
+
+  // NAV_HISTORY: each step to another stage is a history entry, with the stage in the address. The first stage is
+  // the address's already (the mount effect above), and a step Back made is in the address before it lands.
+  const stagedRef = useRef<Stage | null>(null);
+  useEffect(() => {
+    if (!navHistory) return;
+    const prev = stagedRef.current;
+    stagedRef.current = stage;
+    if (prev === null || prev === stage) return;
+    const href = stageHref(stage);
+    if (!href || window.location.pathname !== "/") return;
+    if (window.location.pathname + window.location.search !== href) window.history.pushState(null, "", href);
+  }, [stage, navHistory]);
+
+  // Back (the phone's, or an on-screen one calling history.back()): show the stage the address now names. Leaving
+  // the cards reports what got saved, as a tab does; For you goes through handleRecommend, as its tab does.
+  function onStagePop() {
+    const to = stageOfAddress(window.location) as Stage | null;
+    if (!to || to === stage) return;
+    if (stage === "recommendations" || stage === "watchlist") syncSaves();
+    setVoiceOpen(false);
+    if (stage === "conversation") setInput("");
+    // handleRecommend sets the stage before its first await, so the screen already matches the address.
+    if (to === "recommendations") void handleRecommend();
+    else setStage(to);
+  }
+  const stagePopRef = useRef(onStagePop);
+  useEffect(() => {
+    stagePopRef.current = onStagePop;
+  });
+  useEffect(() => {
+    if (!navHistory) return;
+    const onPop = () => stagePopRef.current();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [navHistory]);
   function leaveCards() {
     syncSaves();
     setStage("onboard");
@@ -950,6 +1005,11 @@ export default function WTWApp({
   // existing messages. Doesn't persist to DB (stage flip is local-only;
   // a reload lands them back in conversation view).
   function backToOnboard() {
+    // NAV_HISTORY: the step before the chat is the screen it was opened from (a stage, or Games or You).
+    if (navHistory) {
+      window.history.back();
+      return;
+    }
     // No home screen under the tab bar: the chat's Back returns to where it was opened (For you when unknown).
     const from = chatBackRef.current;
     chatBackRef.current = null;
@@ -1130,7 +1190,7 @@ export default function WTWApp({
       ) : stage === "learning" ? (
         <div className={styles.shell}>
           <RecommendationsView
-            onBack={() => setStage(tabsOn ? "recommendations" : "onboard")}
+            onBack={navHistory ? () => window.history.back() : () => setStage(tabsOn ? "recommendations" : "onboard")}
             contentType={contentType}
             mode="learning"
             sharerName={user.name}
@@ -1143,7 +1203,7 @@ export default function WTWApp({
         <div className={styles.shell}>
           {/* Under the tab bar this is Seen, one of You's pages: Back returns to You. */}
           <RatingsView
-            onBack={tabsOn ? () => leaveTo("/you") : () => setStage("onboard")}
+            onBack={navHistory ? () => window.history.back() : tabsOn ? () => leaveTo("/you") : () => setStage("onboard")}
             title={tabsOn ? "Seen" : undefined}
             contentType={contentType}
             headerRight={headerMenu}
