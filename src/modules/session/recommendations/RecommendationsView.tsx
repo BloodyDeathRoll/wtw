@@ -2216,7 +2216,7 @@ function WatchlistRow({
             onClick={() => onRemove(entry)}
             tabIndex={swiped ? 0 : -1}
             aria-hidden={!swiped}
-            aria-label={`Remove ${rec.title} from watchlist`}
+            aria-label={`Remove ${rec.title} from Watchlist`}
           >
             <BookmarkX size={24} strokeWidth={1.7} aria-hidden />
             Remove

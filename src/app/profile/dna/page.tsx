@@ -44,7 +44,8 @@ export default async function TastePageRoute() {
 
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
   // "updated 13 Nov" doesn't fit beside the search and menu buttons on a phone, and the page is always current.
-  const subtitle = data ? `${plural(data.ratings, 'rating')} · ${plural(data.picks, 'pick')}` : ''
+  // v3 DEC-4 (YOU.md): the ratings count only; "picks" now means For you's 20.
+  const subtitle = data ? `${plural(data.ratings, 'rating')}` : ''
 
   return (
     // Under the tab bar (NAV_TABS) My taste is one of You's pages: the bar shows You, and tapping it returns there.

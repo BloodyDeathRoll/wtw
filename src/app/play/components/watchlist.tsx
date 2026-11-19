@@ -56,7 +56,7 @@ export function WatchlistScreen({ ctl }: { ctl: Ctl }) {
                   {e.rating && RATED[e.rating] && <i className="rated">{RATED[e.rating]}</i>}
                 </div>
               </div>
-              <button type="button" className="wl-x" aria-label={`Remove ${e.rec.title} from your watchlist`} onClick={() => ctl.removeSaved(e.rec.id, e.rec.title)}>✕</button>
+              <button type="button" className="wl-x" aria-label={`Remove ${e.rec.title} from your Watchlist`} onClick={() => ctl.removeSaved(e.rec.id, e.rec.title)}>✕</button>
             </div>
           ))}
         </div>

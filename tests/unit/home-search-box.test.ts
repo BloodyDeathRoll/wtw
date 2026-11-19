@@ -53,7 +53,7 @@ describe('header search', () => {
     expect(ratings).toMatch(/\{user && <HeaderSearch btnClass=\{styles\.headerBtn\} user=\{user\} menu=\{headerRight\} scope="ratings" from="ratings" \/>\}/)
     expect(play).toMatch(/<HeaderSearch btnClass="tb-back" user=\{ctl\.user\} menu=\{menu\} from="\/play" \/>\s*\{menu\}/)
     expect(dna).toMatch(/<HeaderSearch btnClass=\{styles\.headerIconBtn\} user=\{user\} menu=\{menu\} from=\{from\} \/>\s*\{menu\}/)
-    expect(dna).toMatch(/const from: SearchFrom = you \? "\/you" : "\/profile\/dna";/)
+    expect(dna).toMatch(/const from: SearchFrom = searchFrom \?\? \(you \? "\/you" : "\/profile\/dna"\);/)
     // The home passes the user down so the two views can show the icon.
     expect(app).toMatch(/<RatingsView\s+onBack=[\s\S]*?headerRight=\{headerMenu\}\s*user=\{user\}\s*\/>/)
     // Under the tab bar (NAV_TABS) there is no ☰; without it, the same menu as before.

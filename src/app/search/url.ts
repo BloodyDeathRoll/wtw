@@ -8,7 +8,7 @@ export type SearchScope = "ratings" | "watchlist";
  * (its DEEP_LINK_STAGES) and the routes with a header search. Anything else
  * — including a crafted "//host" — is ignored and Back goes home.
  */
-export const SEARCH_FROM = ["recommendations", "watchlist", "learning", "ratings", "/play", "/profile/dna", "/you"] as const;
+export const SEARCH_FROM = ["recommendations", "watchlist", "learning", "ratings", "/play", "/profile/dna", "/you", "/you/account"] as const;
 export type SearchFrom = (typeof SEARCH_FROM)[number];
 export function safeFrom(v: string | null | undefined): SearchFrom | null {
   return (SEARCH_FROM as readonly string[]).includes(v ?? "") ? (v as SearchFrom) : null;
