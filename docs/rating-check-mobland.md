@@ -2,13 +2,15 @@
 
 Shahar's main account (951 ratings, taste_version 218). Measured on production, read-only, 2026-11-19.
 
+**Status (2026-11-19, evening):** cause 2 is fixed in #395 (Alon). Cause 1 is being measured before any change: Alon runs the numbers, and nothing in the model changes until Eran has seen them (Eran, on #389). See the next steps below.
+
 ## The call
 
 MobLand (2025 crime series: Guy Ritchie, Tom Hardy, Jez Butterworth) shows a **67% match**. Shahar's verdict: badly wrong. It should sit near the top of the feed.
 
 **Why, in one line:** the taste model docks every new title, and TV titles carry no directors, so the creators we know Shahar likes never count.
 
-Fixing both lifts MobLand to **97%** (the cap). Each alone: 93% and 87%.
+Fixing both lifts MobLand to **97%** (the cap). Each alone: 93% and 87%, the counterfactuals at the end of each cause below.
 
 ## How the 67% is built
 
@@ -21,6 +23,8 @@ Formula v2 compares MobLand to the 439 titles in Shahar's candidate pool, part b
 | Crowd rating | 20% | Well above (TMDB 8.3, OMDb 83%) | +1.12 |
 
 0.5 × 0.18 + 0.3 × (−0.24) + 0.2 × 1.12 = 0.24; divided by the pool's spread (0.56) gives Φ(0.43) = 67%. Only the crowd lifts it.
+
+The spread is the standard deviation of that same weighted sum across the 439 pool titles (`s_sd` in `src/modules/engine/scoring/formula-v2.ts`).
 
 ## Cause 1: the taste model penalises recent titles
 
@@ -53,17 +57,21 @@ So the only creator MobLand gets credit for is Tom Hardy: liked on 7 titles, but
 
 **Counterfactual:** Guy Ritchie on record as director → 87%.
 
-## Also found: MobLand never reaches the feed
+## Also found: MobLand never reached the feed
 
-MobLand is not among the 439 candidates step 1 builds for Shahar. Only 12% of that pool is from 2020 on. Step 1 uses the same taste weights (`src/modules/engine/scoring/taste-weights.ts`). Whether the `modern` weight is what keeps new titles out is not measured yet.
+MobLand was not among the 439 candidates in the 10:04 UTC pool, and it has never been served to Shahar (no `served_titles` row). Only 12% of that pool is from 2020 on. Step 1 uses the same taste weights (`src/modules/engine/scoring/taste-weights.ts`).
+
+Since 10:17 UTC, MobLand is also on Shahar's Watchlist, and For you never serves a saved title, by design (step 1's hard exclusions, `src/modules/engine/pipeline/step1-candidate-gen.ts`). So today the save alone keeps it out of the feed (Alon, #390). The 10:04 pool was built before the save, so the save does not explain that pool.
+
+Whether the `modern` weight is what keeps new titles out of step 1: Alon measured it on #390 (next step 4).
 
 ## Proposed next steps
 
-1. **Recency in the taste model** (`src/modules/dna/taste-model.ts`, `src/lib/taste-scales/features.ts`): drop `modern` as an input, or learn it from head-to-head picks only. Run the eval harness on the three test sheets before shipping; every ranking change comes with numbers.
-2. **Series crew** (`src/lib/tmdb.ts`): read a series' directors and writers from `aggregate_credits` (top by episode count), then backfill the catalogue's series.
-3. **A liked lead with no known director or writer:** decide whether the cast share should rise when the other roles are unknown, rather than count them as neutral.
-4. **Step 1's pool:** rebuild Shahar's pool with `modern` at 0 and compare the share of 2020s titles.
-5. **Other accounts:** run the loved-by-era split on the second account and the testers' sheets, to see whether the recency lean is general or Shahar's.
+1. **Recency in the taste model** (A3: `src/modules/dna/taste-model.ts`; shared: `src/lib/taste-scales/features.ts`): test whether `modern` should be dropped, made smaller, or learned from head-to-head picks only. Cause 1 is partly a guess (the selection effect above), so measure first, across accounts (step 5), before changing the model on one account's data. **Alon runs the numbers** (Eran, on #389): the eval harness on the three test sheets and the loved-by-era split, with `modern` at today's −0.30, at −0.15 and −0.05, and at 0. No change to the model until Eran has seen them.
+2. **Series crew** (shared: `src/lib/tmdb.ts`): read a series' directors and writers from `aggregate_credits` (top by episode count), then backfill the catalogue's series. **Done in #395 (Alon).**
+3. **A liked lead with no known director or writer** (A2: `src/modules/engine/`): decide whether the cast share should rise when the other roles are unknown, rather than count them as neutral.
+4. **Step 1's pool** (A2): rebuild Shahar's pool with `modern` at 0 and compare the share of 2020s titles. **Measured by Alon on #390.**
+5. **Other accounts:** run the loved-by-era split on the second account and the testers' sheets, to see whether the recency lean is general or Shahar's. Part of step 1's numbers (Alon).
 
 ## How this was measured
 
