@@ -18,9 +18,10 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, ChevronLeft, Play, Star, X } from "lucide-react";
+import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { navTabsEnabled } from "@/lib/flags";
+import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
+import { clearRecentSearches, rememberSearch, useRecentSearches } from "./recent";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -57,6 +58,13 @@ export default function SearchView({
   menu?: ReactNode;
 }) {
   const inPlace = menu !== undefined;
+  const v3 = searchV3Enabled();
+  // SEARCH_V3: your recent searches wait in the empty box (DEC-7); they live on this phone only.
+  const recent = useRecentSearches(v3);
+  /** A search made (a result opened, or the keyboard's search key): it joins the recent ones. */
+  const remember = () => {
+    if (v3) rememberSearch(q);
+  };
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const params = useSearchParams();
@@ -179,6 +187,7 @@ export default function SearchView({
   }, [query, now]);
 
   async function pick(h: TitleSearchHit) {
+    remember();
     const key = keyOf(h);
     inputRef.current?.blur();
     window.history.pushState(null, "", url(openPerson ? `p=${openPerson}&t=${key}` : `t=${key}`));
@@ -211,6 +220,7 @@ export default function SearchView({
   }
 
   async function pickPerson(h: PersonSearchHit) {
+    remember();
     const id = h.tmdb_id;
     inputRef.current?.blur();
     window.history.pushState(null, "", url(`p=${id}`));
@@ -311,6 +321,8 @@ export default function SearchView({
   const status = answer.q !== query ? "searching" : answer.hits ? "done" : "error";
   const shown = hits.filter((h) => !mineKeys.has(keyOf(h)));
   const showMine = !openKey && !openPerson && mineHits.length > 0;
+  // Nothing typed and nothing open: your recent searches, or the box alone as today when there are none (DEC-7).
+  const showRecent = v3 && query.length === 0 && !openKey && !openPerson && recent.length > 0;
   const showHits = !openKey && !openPerson && query.length >= 2 && status !== "error" && shown.length > 0;
   let note: string | null = null;
   if (openKey) {
@@ -342,6 +354,7 @@ export default function SearchView({
             onSubmit={(e) => {
               // The keyboard's search key: search now, and put the keyboard away.
               e.preventDefault();
+              remember();
               setNow((n) => n + 1);
               inputRef.current?.blur();
             }}
@@ -398,6 +411,44 @@ export default function SearchView({
         </div>
 
         <div className={styles.box}>
+          {showRecent && (
+            <>
+              <div className={styles.recentHead}>
+                <p className={styles.groupLabel}>Recent searches</p>
+                <button
+                  type="button"
+                  className={styles.recentClear}
+                  onClick={() => {
+                    clearRecentSearches();
+                    inputRef.current?.focus();
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              <div className={styles.list} role="listbox" aria-label="Recent searches">
+                {recent.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    className={styles.row}
+                    onClick={() => {
+                      // Search it again, at once.
+                      edit(s);
+                      setNow((n) => n + 1);
+                    }}
+                  >
+                    <span className={styles.recentIcon} aria-hidden>
+                      <History size={20} strokeWidth={1.75} />
+                    </span>
+                    <span className={styles.recentText}>{s}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {showMine && (
             <>
               <p className={styles.groupLabel}>{scope === "watchlist" ? "In your watchlist" : "In your ratings"}</p>
