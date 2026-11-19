@@ -107,10 +107,11 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
   useEffect(() => {
     let on = true;
     void myRatings().then((r) => {
-      if (on && r[rec.id]) {
-        setRated((cur) => cur ?? r[rec.id]);
-        // Seen's rating over the Watchlist's tag, unless a newer one landed meanwhile (here or elsewhere).
-        if (!heard.current) server.current = r[rec.id];
+      // Seen's rating over the Watchlist's tag, unless a newer one landed meanwhile (here or elsewhere). A tap
+      // here is newer than the list too: the chip keeps it, even with its write still on the way.
+      if (on && r[rec.id] && !heard.current) {
+        if (!latest.current) setRated((cur) => cur ?? r[rec.id]);
+        server.current = r[rec.id];
       }
     });
     // A rating that lands elsewhere (another tab) is what a failed write here rolls back to.

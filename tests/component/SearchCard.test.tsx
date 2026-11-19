@@ -26,6 +26,7 @@ let ratings: { id: string; rating: string }[]
 let line: string | null
 let feedbackOk: boolean
 let ratingsGate: Promise<void> | null
+let feedbackGate: Promise<void> | null
 let outcomes: boolean[]
 
 beforeEach(() => {
@@ -36,12 +37,13 @@ beforeEach(() => {
   line = 'From Christopher Nolan, who made Interstellar, which you loved.'
   feedbackOk = true
   ratingsGate = null
+  feedbackGate = null
   outcomes = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
     if (url.includes('/ratings')) return (await ratingsGate, Response.json({ counts: {}, items: ratings, removed: [] }))
     if (url.includes('why-lines')) return Response.json({ lines: line ? { 'movie:77': line } : {} })
-    if (url.includes('/feedback')) return (outcomes.length ? outcomes.shift() : feedbackOk) ? Response.json({ ok: true }) : new Response('no', { status: 500 })
+    if (url.includes('/feedback')) return (await feedbackGate, (outcomes.length ? outcomes.shift() : feedbackOk) ? Response.json({ ok: true }) : new Response('no', { status: 500 }))
     if (url.includes('/score') || url.includes('/explain')) return new Response('', { status: 404 })
     if (url.includes('/why')) return Response.json({ text: null })
     return Response.json({ entries: [] })
@@ -156,6 +158,26 @@ describe('a title from Search opens the card page', () => {
     fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it" }))
     await waitFor(() => expect(feedback()).toHaveLength(1))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
+  })
+
+  it('a late read of Seen never relights a chip cleared meanwhile, even with the clear still on its way', async () => {
+    let open = () => {}
+    ratingsGate = new Promise((r) => (open = r))
+    addToWatchlist(rec())
+    setWatchlistRating('movie:77', 'loved')
+    ratings = [{ id: 'movie:77', rating: 'loved' }]
+    let land = () => {}
+    feedbackGate = new Promise((r) => (land = r))
+    card()
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it (tap to clear)' }))
+    await waitFor(() => expect(feedback()).toHaveLength(1))
+    open() // Seen's list arrives with the clear still on its way
+    await waitFor(() => expect(calls.filter((c) => c.url.includes('/ratings'))).toHaveLength(1))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.getByRole('button', { name: 'Loved it' })).toHaveAttribute('aria-pressed', 'false')
+    land()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.getByRole('button', { name: 'Loved it' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('a rating made elsewhere (the feed, Seen) shows on the next card without reading the list again', async () => {
