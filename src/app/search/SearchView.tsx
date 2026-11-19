@@ -207,7 +207,9 @@ export default function SearchView({
     const key = keyOf(h);
     inputRef.current?.blur();
     window.history.pushState(null, "", url(`t=${key}`));
-    setPicked({ key, rec: h.rec });
+    // The service is Israel's, as on the Watchlist's rows and card page (DEC-11): the saved card's
+    // own `where` is the US one from the day it was saved (Death's Game: none, against Prime Video).
+    setPicked({ key, rec: { ...h.rec, where: h.rec.where_il ?? null } });
     setSaved(isInWatchlist(h.rec.id));
   }
 

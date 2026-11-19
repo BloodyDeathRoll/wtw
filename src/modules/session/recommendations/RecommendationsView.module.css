@@ -168,6 +168,11 @@
   margin: 16px 0 32px;
   text-align: center;
   min-height: 40px;
+  /* A flex item of the scrolling list: without this it shrank to its 40px
+     min-height, what's taller in it ("Find more" is 46px, then the JustWatch
+     credit) spilled out, and the scroll stopped before its 32px margin, so the
+     last line sat under the tab bar (v3 L1, measured at 375px). */
+  flex-shrink: 0;
 }
 /* Find more in progress: the fingerprint alone, no captions. */
 .findMoreLoading {
@@ -1346,7 +1351,8 @@
 }
 
 /* The JustWatch credit under a card page's card (v3 L1): 14px below it, as in
-   the approved mock, inside the list's 16px gap. */
+   the approved mock, inside the list's 16px gap; and the 32px the lists'
+   .sentinel leaves under their last line, so it clears the tab bar. */
 .pageCredit {
-  margin-top: -2px;
+  margin: -2px 0 32px;
 }
