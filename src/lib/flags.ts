@@ -38,6 +38,14 @@ export function navTabsEnabled(): boolean {
 }
 
 /**
+ * v3 Seen (docs/plan/v3/SEEN.md, S1–S4): Seen as the Watchlist's rows, with chips and today's two dropdowns. Off by
+ * default: today's Ratings screen. The client reads it too (next.config.ts `env`). Gate: P2-G.
+ */
+export function seenV3Enabled(): boolean {
+  return isOn(process.env.SEEN_V3)
+}
+
+/**
  * The new onboarding at /onboarding (P2-U2 … U6). Off by default; while it's off the page exists only in local
  * development, for building and checking it. Server-only. Gate: P2-G.
  */

@@ -27,7 +27,16 @@ import type { Reaction } from '@/types/dna'
 
 export type MediaType = 'movie' | 'tv'
 
-export interface RatingItem {
+/** What a Seen row shows beside the poster (docs/plan/v3/SEEN.md DEC-1): year · length · ★. Null when the title isn't in our catalogue. */
+export interface TitleFacts {
+  year: number | null
+  /** The card's length line: "2h 10m", "~45m episodes", "Film" or "Series". */
+  meta: string | null
+  /** TMDB's score, the card's ★. */
+  star: number | null
+}
+
+export interface RatingItem extends TitleFacts {
   id: string
   title: string | null
   rating: Reaction
@@ -37,12 +46,18 @@ export interface RatingItem {
   poster_url: string | null
 }
 
-export interface RemovedItem {
+export interface RemovedItem extends TitleFacts {
   title: string | null
   tmdb_id: string
   media_type: MediaType
   removed_at: string
   poster_url: string | null
+}
+
+/** The feed card's length line (toUIRecommendations in src/lib/rec-page.ts), for a Seen row. */
+function lengthLine(type: MediaType, runtime: number | null): string {
+  if (type === 'movie') return runtime ? `${Math.floor(runtime / 60)}h ${runtime % 60}m` : 'Film'
+  return runtime ? `~${runtime}m episodes` : 'Series'
 }
 
 export interface RatingsSummary {
@@ -113,17 +128,27 @@ export async function GET() {
   // to avoid attaching the wrong artwork. Legacy bare ids (media_type null) are
   // mock ids absent from titles, so they resolve to no poster.
   const posterByKey = new Map<string, string | null>()
+  const factsByKey = new Map<string, TitleFacts>()
   if (tmdbIds.length > 0) {
     const { data: titleRows } = await supabase
       .from('titles')
-      .select('tmdb_id, type, poster_path')
+      .select('tmdb_id, type, poster_path, release_year, runtime_minutes, tmdb_rating')
       .in('tmdb_id', [...new Set(tmdbIds)])
     for (const t of titleRows ?? []) {
-      posterByKey.set(`${t.tmdb_id}:${t.type}`, tmdbPosterUrl(t.poster_path as string | null))
+      const key = `${t.tmdb_id}:${t.type}`
+      posterByKey.set(key, tmdbPosterUrl(t.poster_path as string | null))
+      factsByKey.set(key, {
+        year: (t.release_year as number | null) ?? null,
+        meta: lengthLine(t.type as MediaType, (t.runtime_minutes as number | null) ?? null),
+        star: (t.tmdb_rating as number | null) ?? null,
+      })
     }
   }
   const posterFor = (tmdb_id: string, media_type: MediaType | null): string | null =>
     media_type ? posterByKey.get(`${tmdb_id}:${media_type}`) ?? null : null
+  const NO_FACTS: TitleFacts = { year: null, meta: null, star: null }
+  const factsFor = (tmdb_id: string, media_type: MediaType | null): TitleFacts =>
+    (media_type && factsByKey.get(`${tmdb_id}:${media_type}`)) || NO_FACTS
 
   const items: RatingItem[] = dedupedFeedback.map((r) => ({
     id: r.key,
@@ -133,6 +158,7 @@ export async function GET() {
     tmdb_id: r.tmdb_id,
     media_type: r.media_type,
     poster_url: posterFor(r.tmdb_id, r.media_type),
+    ...factsFor(r.tmdb_id, r.media_type),
   }))
 
   const removed: RemovedItem[] = (removedRows ?? []).map((r) => ({
@@ -141,6 +167,7 @@ export async function GET() {
     media_type: r.media_type as MediaType,
     removed_at: r.removed_at,
     poster_url: posterFor(r.tmdb_id, r.media_type as MediaType),
+    ...factsFor(r.tmdb_id, r.media_type as MediaType),
   }))
 
   const summary: RatingsSummary = { counts, items, removed }

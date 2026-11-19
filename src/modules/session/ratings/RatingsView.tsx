@@ -33,6 +33,8 @@ import { FingerprintLoader } from "../components/FingerprintLoader";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
 import styles from "./RatingsView.module.css";
+import SeenView from "./SeenView";
+import { seenV3Enabled } from "@/lib/flags";
 
 type Tab = Reaction | "removed";
 type SortKey = "newest" | "oldest" | "title";
@@ -73,7 +75,13 @@ function sortBy<T>(rows: T[], key: SortKey, date: (r: T) => string, title: (r: T
   return out;
 }
 
-export default function RatingsView({
+/** SEEN_V3: Seen as the Watchlist's rows (SeenView, docs/plan/v3/SEEN.md). Off: today's screen, unchanged. */
+export default function RatingsView(props: Parameters<typeof RatingsToday>[0] & { onBrowse?: () => void }) {
+  if (!seenV3Enabled()) return <RatingsToday {...props} />;
+  return <SeenView onBack={props.onBack} onBrowse={props.onBrowse} headerRight={props.headerRight} user={props.user} />;
+}
+
+function RatingsToday({
   onBack,
   contentType,
   headerRight,

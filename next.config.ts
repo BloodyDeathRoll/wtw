@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
   env: {
     CHAT_MODE: process.env.CHAT_MODE ?? "",
     NAV_TABS: process.env.NAV_TABS ?? "",
+    SEEN_V3: process.env.SEEN_V3 ?? "",
   },
   images: {
     remotePatterns: [
