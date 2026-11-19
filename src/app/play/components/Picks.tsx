@@ -53,7 +53,7 @@ function TrailerButton({ t, showLabel }: { t: Title; showLabel?: boolean }) {
 /** The live feed's watchlist button, same look and labels, saving into the same list (lib/watchlist.ts). */
 function WatchlistButton({ ctl, t, block }: { ctl: Ctl; t: Title; block?: boolean }) {
   const saved = ctl.isSaved(t.id)
-  const label = saved ? 'Remove from watchlist' : 'Add to watchlist'
+  const label = saved ? 'Remove from Watchlist' : 'Add to Watchlist'
   return (
     <button type="button" className={[styles.watchlistBtn, saved ? styles.watchlistBtnSaved : '', block ? styles.watchlistBtnBlock : ''].filter(Boolean).join(' ')}
       onClick={() => ctl.toggleSave(t, 'picks')} aria-pressed={saved} aria-label={`${label}: ${t.title}`} title={label}>

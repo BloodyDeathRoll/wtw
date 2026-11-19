@@ -29,7 +29,7 @@ If the user asks you to change what they are shown, to remember something, or to
 /** Shown when no sentence of the reply, or of its retry, passed the check. */
 const NOTHING_SURE = "I can't give you a sure answer to that from our catalogue. Try asking about a title by name, or tell me what you're in the mood for.";
 /** Shown when the model wanted to add a title and the person's message did not ask for it in words we know. */
-const ASK_PLAINLY = 'To put a title on your watchlist, ask me in so many words: "add Dune to my watchlist".';
+const ASK_PLAINLY = 'To put a title on your Watchlist, ask me in so many words: "add Dune to my Watchlist".';
 
 /**
  * The consultant's reply, checked (grounding.ts). A draft with a problem gets
