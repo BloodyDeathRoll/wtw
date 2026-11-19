@@ -58,13 +58,14 @@ describe('SeenView', () => {
     expect(titles()).toEqual(['Arcane', 'Memento'])
   })
 
-  it('a row: title, year · length · ★, and the reaction where the Watchlist shows the match', async () => {
+  it('a row: title, year · length · ★, and your reaction lit among ❤️ 👍 👎 (S2, DEC-4)', async () => {
     render(<SeenView onBack={() => {}} />)
     const row = (await screen.findByText('Memento')).closest('[aria-label="Memento"]')!
     expect(row).toHaveTextContent('2000')
     expect(row).toHaveTextContent('1h 53m')
     expect(row).toHaveTextContent('8.2')
-    expect(row).toHaveTextContent('❤️ Loved')
+    expect(within(row as HTMLElement).getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(row as HTMLElement).getByRole('button', { name: 'Liked it: Memento' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('the facts line shows only what we know: no "0", no "★ 0.0"', async () => {
@@ -84,7 +85,7 @@ describe('SeenView', () => {
     const noYear = screen.getByLabelText('No year')
     expect(noYear).toHaveTextContent('~40m episodes')
     expect(noYear).toHaveTextContent('8.7')
-    expect(screen.getByLabelText('Not in titles').textContent).toBe('Not in titles❤️ Loved')
+    expect(screen.getByLabelText('Not in titles').textContent).toBe('Not in titles❤️👍👎')
   })
 
   it("today's two dropdowns: type and sort", async () => {
@@ -124,5 +125,70 @@ describe('SeenView', () => {
     expect(screen.queryByLabelText('sort by')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Go to For you' }))
     expect(onBrowse).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('S2: change a rating right on the row (DEC-4, DEC-5)', () => {
+  let posts: unknown[]
+  function serveWith(ok: boolean) {
+    posts = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/feedback') {
+        posts.push(JSON.parse(String(init?.body)))
+        return new Response(null, { status: ok ? 200 : 500 })
+      }
+      return Response.json(DATA)
+    }))
+  }
+  const chipCounts = () => within(screen.getByRole('group', { name: 'Show' })).getAllByRole('button').map((c) => c.textContent)
+  const flush = () => new Promise((r) => setTimeout(r, 0))
+
+  it('tap 👍: the gold moves, the counts change, the row stays with a note; it leaves Loved when Loved opens again', async () => {
+    serveWith(true)
+    render(<SeenView onBack={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+    expect(screen.getByRole('button', { name: 'Liked it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'false')
+    expect(chipCounts()).toEqual(['Loved1', 'Liked2', 'Disliked', 'Hidden from For you1'])
+    expect(titles()).toEqual(['Arcane', 'Memento'])
+    expect(screen.getByRole('status')).toHaveTextContent('Memento will move to Liked.')
+    await flush()
+    expect(posts).toEqual([expect.objectContaining({ action: 'watched', reaction: 'liked', tmdb_id: '1', media_type: 'movie' })])
+    const chips = within(screen.getByRole('group', { name: 'Show' }))
+    fireEvent.click(chips.getByRole('button', { name: /^Liked/ }))
+    fireEvent.click(chips.getByRole('button', { name: /^Loved/ }))
+    expect(titles()).toEqual(['Arcane'])
+  })
+
+  it('Undo puts the first reaction back, even after a second tap', async () => {
+    serveWith(true)
+    render(<SeenView onBack={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+    fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it: Memento" }))
+    expect(screen.getByRole('status')).toHaveTextContent('Memento will move to Disliked.')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(chipCounts()).toEqual(['Loved2', 'Liked1', 'Disliked', 'Hidden from For you1'])
+    await flush()
+    expect((posts as { reaction: string }[]).map((p) => p.reaction)).toEqual(['liked', 'disliked', 'loved'])
+  })
+
+  it('the lit icon does nothing', async () => {
+    serveWith(true)
+    render(<SeenView onBack={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Loved it: Memento' }))
+    await flush()
+    expect(posts).toEqual([])
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('a failed write puts the reaction back and drops the note', async () => {
+    serveWith(false)
+    render(<SeenView onBack={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+    await flush(); await flush()
+    expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })
