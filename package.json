@@ -31,6 +31,7 @@
     "chat-gate": "node --env-file=.env.local --conditions=react-server --import tsx scripts/eval/chat-gate.mts",
     "budget-check": "node --env-file=.env.local --import tsx scripts/budget-check.mts",
     "search-check": "node --env-file=.env.local --conditions=react-server --import tsx scripts/search-check.mts",
+    "backfill-series-crew": "node --env-file=.env.local --conditions=react-server --import tsx scripts/backfill-series-crew.mts",
     "reset-account": "node --env-file=.env.local --conditions=react-server --import tsx scripts/reset-account.mts",
     "strip-chat-from-dna": "node --env-file=.env.local --conditions=react-server --import tsx scripts/strip-chat-from-dna.mts",
     "build-six-chains": "node --env-file=.env.local --import tsx scripts/build-six-chains.mts",
