@@ -45,6 +45,7 @@ import { FingerprintLoader } from "../components/FingerprintLoader";
 import { WhyPanel, WhyTextOnly } from "@/app/components/RecCard";
 import { Emphasis } from "@/app/components/Emphasis";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
+import JustWatchCredit from "@/app/components/JustWatchCredit";
 import { canonicalProvider } from "@/lib/watch-providers";
 import {
   fetchFreshExplain,
@@ -1050,6 +1051,8 @@ function Feed({
           )
         )}
         {error && <span className={styles.error}>{error}</span>}
+        {/* The credit for the services on the cards (v3 L1): once, at the end. */}
+        {recs.some((r) => r.where) && <JustWatchCredit />}
       </div>
     </div>
   );
@@ -1225,10 +1228,9 @@ function FeedCard({
 /**
  * Streaming service as a glass pill on the poster. Hidden when unknown.
  *
- * ⚠️ The "via JustWatch" eyebrow was removed 2026-08-29 at the user's request.
- * TMDB sources this data from JustWatch and its terms require the attribution
- * to be visible wherever availability is shown — it needs to reappear
- * somewhere (a footer or an about/legal line) before this ships publicly.
+ * TMDB sources this data from JustWatch and its terms require a visible
+ * credit wherever availability is shown. The "via JustWatch" on the pill went
+ * on 2026-08-29; the credit is now one line per screen (JustWatchCredit, v3 L1).
  */
 function WhereBadge({ where }: { where: string | null }) {
   if (!where) return null;
@@ -2003,6 +2005,8 @@ function WatchlistList({
       </div>
       <div ref={sentinelRef} className={styles.sentinel}>
         {!hasMore && <span className={styles.muted}>That&rsquo;s everything we found.</span>}
+        {/* The credit for the rows' services (v3 L1): once, at the end. Seen rows show no service. */}
+        {visible.some((e) => !isSeen(e) && e.rec.where_il) && <JustWatchCredit />}
       </div>
     </div>
   );
@@ -2304,6 +2308,8 @@ function WatchlistCardPage({
         onStar={onStar}
         whyInline={<InlineWhy entry={entry} rec={rec} innerRef={whyRef} />}
       />
+      {/* The credit for the service on the poster (v3 L1). */}
+      {rec.where && <JustWatchCredit className={styles.pageCredit} />}
     </div>
   );
 }

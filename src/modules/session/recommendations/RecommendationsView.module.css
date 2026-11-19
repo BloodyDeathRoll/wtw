@@ -1344,3 +1344,9 @@
 .whyGap {
   height: 18px;
 }
+
+/* The JustWatch credit under a card page's card (v3 L1): 14px below it, as in
+   the approved mock, inside the list's 16px gap. */
+.pageCredit {
+  margin-top: -2px;
+}

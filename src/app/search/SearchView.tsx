@@ -25,6 +25,7 @@ import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMen
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
+import JustWatchCredit from "@/app/components/JustWatchCredit";
 import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
@@ -483,6 +484,8 @@ export default function SearchView({
                 onToggle={toggleSave}
                 onShare={() => void shareTitle(card, user.name)}
               />
+              {/* The credit for the service on the poster (v3 L1). */}
+              {card.where && <JustWatchCredit className={rv.pageCredit} />}
             </div>
           </div>
         )}
