@@ -169,8 +169,9 @@ export async function GET() {
         .in('tmdb_id', ids),
     ),
   )
-  // A chunk that fails leaves its rows without a poster, as before; the list itself still loads.
-  for (const { data: titleRows } of answers) {
+  // A chunk that fails leaves its rows without a poster, as before; the list itself still loads, and the log says so.
+  for (const { data: titleRows, error } of answers) {
+    if (error) console.error('[ratings] titles chunk failed; those rows show no poster:', error.message)
     for (const t of titleRows ?? []) {
       const key = `${t.tmdb_id}:${t.type}`
       posterByKey.set(key, tmdbPosterUrl(t.poster_path as string | null))
