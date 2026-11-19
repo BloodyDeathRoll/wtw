@@ -88,6 +88,17 @@ interface TMDBCredits {
   crew: TMDBCrewMember[]
 }
 
+/**
+ * A series' credits summed over its episodes (`/tv/{id}/aggregate_credits`). A
+ * series' plain `credits` list no Director and almost no Writer: 806 of 1,000
+ * catalogue series had no director on record (docs/rating-check-mobland.md,
+ * 2026-11-19). Here each person carries their jobs with an episode count.
+ */
+interface TMDBAggregateCredits {
+  cast: { id: number; name: string; order: number }[]
+  crew: { id: number; name: string; department: string; jobs: { job: string; episode_count: number }[] }[]
+}
+
 interface TMDBExternalIds {
   imdb_id: string | null
 }
@@ -194,6 +205,50 @@ function normaliseCredits(credits: TMDBCredits, created_by?: { id: number; name:
     .map(c => ({ tmdb_person_id: String(c.id), name: c.name, order: c.order }))
 
   return { directors, writers, cinematographers, cast }
+}
+
+/** How many of each role a series keeps, by episode count: past that it's guest directors and one-off writers. */
+const SERIES_TOP = { directors: 3, writers: 4, cinematographers: 2 } as const
+const WRITER_JOBS = new Set(['Screenplay', 'Writer', 'Story', 'Script', 'Author', 'Teleplay'])
+
+/**
+ * A series' crew from its aggregate credits: the directors, writers and
+ * cinematographers with the most episodes (a director of 4 of 20 episodes
+ * counts; an assistant director doesn't), the creators first among writers,
+ * and the top 5 billed cast. Same shape as a movie's (titles.crew).
+ */
+export function normaliseAggregateCredits(
+  agg: TMDBAggregateCredits,
+  created_by?: { id: number; name: string }[],
+): TMDBCrewSnapshot {
+  const crew = agg.crew ?? []
+  const top = (dept: string, jobs: (job: string) => boolean, n: number) =>
+    crew
+      .filter(c => c.department === dept)
+      .map(c => ({ c, eps: (c.jobs ?? []).filter(j => jobs(j.job)).reduce((t, j) => t + (j.episode_count ?? 0), 0) }))
+      .filter(x => x.eps > 0)
+      .sort((a, b) => b.eps - a.eps)
+      .slice(0, n)
+      .map(x => ({ tmdb_person_id: String(x.c.id), name: x.c.name }))
+
+  const directors = top('Directing', j => j === 'Director', SERIES_TOP.directors)
+  const writers: { tmdb_person_id: string; name: string }[] = (created_by ?? []).map(c => ({ tmdb_person_id: String(c.id), name: c.name }))
+  const seen = new Set(writers.map(w => w.tmdb_person_id))
+  for (const w of top('Writing', j => WRITER_JOBS.has(j), SERIES_TOP.writers)) {
+    if (!seen.has(w.tmdb_person_id)) { writers.push(w); seen.add(w.tmdb_person_id) }
+  }
+  const cinematographers = top('Camera', j => j === 'Director of Photography', SERIES_TOP.cinematographers)
+  const cast = [...(agg.cast ?? [])]
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 5)
+    .map(c => ({ tmdb_person_id: String(c.id), name: c.name, order: c.order }))
+  return { directors, writers, cinematographers, cast }
+}
+
+/** A series' crew alone (the catalogue backfill, scripts/backfill-series-crew.mts). Null when TMDB has nothing. */
+export async function getSeriesCrew(tmdb_id: string, created_by?: { id: number; name: string }[]): Promise<TMDBCrewSnapshot | null> {
+  const agg = await tmdbFetch<TMDBAggregateCredits>(`/tv/${tmdb_id}/aggregate_credits`, {})
+  return agg ? normaliseAggregateCredits(agg, created_by) : null
 }
 
 // ─────────────────────────────────────────────
@@ -361,12 +416,12 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     vote_count: number
     poster_path: string | null
     created_by: { id: number; name: string }[]
-    credits: TMDBCredits
+    aggregate_credits: TMDBAggregateCredits
     external_ids: TMDBExternalIds
     videos: TMDBVideos
     original_language: string | null
     keywords: TMDBKeywordsBlock
-  }>(`/tv/${tmdb_id}`, { append_to_response: 'credits,external_ids,videos,keywords' })
+  }>(`/tv/${tmdb_id}`, { append_to_response: 'aggregate_credits,external_ids,videos,keywords' })
 
   if (!raw) return null
 
@@ -389,7 +444,7 @@ export async function getTV(tmdb_id: string): Promise<TMDBTVDetail | null> {
     trailer_key: pickTrailerKey(raw.videos),
     original_language: raw.original_language ?? null,
     keywords: normaliseKeywords(raw.keywords),
-    crew: normaliseCredits(raw.credits, raw.created_by),
+    crew: normaliseAggregateCredits(raw.aggregate_credits ?? { cast: [], crew: [] }, raw.created_by),
   }
 }
 
