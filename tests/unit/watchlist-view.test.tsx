@@ -190,6 +190,15 @@ describe('the JustWatch credit', () => {
     expect(screen.queryByText(CREDIT)).toBeNull()
   })
 
+  it('waits for the real end: not while more rows are still to come', () => {
+    seed(Array.from({ length: 8 }, (_, i) => (
+      { rec: rec(`movie:${i + 1}`, { where_il: 'Netflix' }), added_at: 8 - i, rating: null, starred: false, explain: null, synced: true }
+    )))
+    view()
+    expect(rowNames()).toHaveLength(6) // the first page; the rest come as you scroll
+    expect(screen.queryByText(CREDIT)).toBeNull()
+  })
+
   it('sits under the card on the card page when the title has a service, and not when it has none', () => {
     seed(THREE)
     view()

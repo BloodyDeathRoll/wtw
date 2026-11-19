@@ -1349,10 +1349,3 @@
 .whyGap {
   height: 18px;
 }
-
-/* The JustWatch credit under a card page's card (v3 L1): 14px below it, as in
-   the approved mock, inside the list's 16px gap; and the 32px the lists'
-   .sentinel leaves under their last line, so it clears the tab bar. */
-.pageCredit {
-  margin: -2px 0 32px;
-}

@@ -11,6 +11,7 @@ import styles from "./JustWatchCredit.module.css";
 
 export const JUSTWATCH_CREDIT = "Where to watch: JustWatch";
 
-export default function JustWatchCredit({ className }: { className?: string }) {
-  return <p className={`${styles.credit} ${className ?? ""}`}>{JUSTWATCH_CREDIT}</p>;
+/** `end`: the last line of a list. `underCard`: under a card page's card. */
+export default function JustWatchCredit({ at }: { at: "end" | "underCard" }) {
+  return <p className={`${styles.credit} ${styles[at]}`}>{JUSTWATCH_CREDIT}</p>;
 }

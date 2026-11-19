@@ -46,7 +46,7 @@ import { WhyPanel, WhyTextOnly } from "@/app/components/RecCard";
 import { Emphasis } from "@/app/components/Emphasis";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
 import JustWatchCredit from "@/app/components/JustWatchCredit";
-import { canonicalProvider } from "@/lib/watch-providers";
+import { canonicalProvider, withIsraelService } from "@/lib/watch-providers";
 import {
   fetchFreshExplain,
   freshKey,
@@ -656,8 +656,7 @@ export default function RecommendationsView({
   // Its service badge is the Israeli one (DEC-11); the saved card's `where` was the US.
   const pageRec: Recommendation | null = pageEntry
     ? {
-        ...pageEntry.rec,
-        where: pageEntry.rec.where_il ?? null,
+        ...withIsraelService(pageEntry.rec),
         reason: lines.state === "keep" ? pageEntry.rec.reason : lines.byId[pageEntry.rec.id] ?? "",
       }
     : null;
@@ -1052,7 +1051,7 @@ function Feed({
         )}
         {error && <span className={styles.error}>{error}</span>}
         {/* The credit for the services on the cards (v3 L1): once, at the end. */}
-        {recs.some((r) => r.where) && <JustWatchCredit />}
+        {!refreshing && !loading && !hasMore && recs.some((r) => r.where) && <JustWatchCredit at="end" />}
       </div>
     </div>
   );
@@ -2006,7 +2005,7 @@ function WatchlistList({
       <div ref={sentinelRef} className={styles.sentinel}>
         {!hasMore && <span className={styles.muted}>That&rsquo;s everything we found.</span>}
         {/* The credit for the rows' services (v3 L1): once, at the end. Seen rows show no service. */}
-        {visible.some((e) => !isSeen(e) && e.rec.where_il) && <JustWatchCredit />}
+        {!hasMore && visible.some((e) => !isSeen(e) && e.rec.where_il) && <JustWatchCredit at="end" />}
       </div>
     </div>
   );
@@ -2309,7 +2308,7 @@ function WatchlistCardPage({
         whyInline={<InlineWhy entry={entry} rec={rec} innerRef={whyRef} />}
       />
       {/* The credit for the service on the poster (v3 L1). */}
-      {rec.where && <JustWatchCredit className={styles.pageCredit} />}
+      {rec.where && <JustWatchCredit at="underCard" />}
     </div>
   );
 }
