@@ -915,6 +915,7 @@ export default function WTWApp({
     if (stage === "recommendations" || stage === "watchlist") syncSaves();
     setVoiceOpen(false);
     if (stage === "conversation") setInput("");
+    // handleRecommend sets the stage before its first await, so the screen already matches the address.
     if (to === "recommendations") void handleRecommend();
     else setStage(to);
   }
