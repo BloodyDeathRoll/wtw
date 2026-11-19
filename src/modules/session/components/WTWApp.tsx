@@ -396,6 +396,8 @@ function TypingDots() {
 // ─────────────────────────────────────────────────────────────
 /** What the consultant chat shows before the first question. */
 const CONSULTANT_HELLO = "Ask me what to watch tonight, whether a title is for you, or which of two to pick.";
+// The chat's first line when the Watchlist's end card opens it (WATCHLIST.md DEC-9; copy a placeholder, Eran approves at the PR).
+const WATCHLIST_OPENER = "Want to talk about what's on your list, or something new?";
 
 /** Routes the chat's Back may return to (&back=, the chat bubble on Games and You). Nothing else, so no open redirect. */
 const CHAT_BACK = /^\/(play\?tab=games|you)$/;
@@ -527,6 +529,7 @@ export default function WTWApp({
   welcome,
   calibrationNudge = false,
   chatReady = false,
+  chatTurnsLeft = false,
   voiceWelcome = true,
 }: {
   user: AppUser;
@@ -534,6 +537,8 @@ export default function WTWApp({
   welcome: Welcome;
   /** The onboarding is done, or was never needed: the consultant chat may be opened. */
   chatReady?: boolean;
+  /** The chat still has turns today (src/lib/chat-budget.ts): the Watchlist's end card offers it only then. */
+  chatTurnsLeft?: boolean;
   /** Skipped the taste games part-way: the feed nudges them back now and then. */
   calibrationNudge?: boolean;
   /** The v0.1 spoken welcome for an account with no chat and few ratings; off under ONBOARDING_V2. */
@@ -907,6 +912,16 @@ export default function WTWApp({
     setStage("conversation");
   }
   const onChat = consultant ? openChat : undefined;
+  // The Watchlist's end card (DEC-9): the chat opens on a line that knows where it came from. The line is part of the
+  // history the model is sent, so a reply to it reads as one. Tapped twice, it is said once.
+  function talkFromWatchlist() {
+    setMessages((prev) =>
+      textOf(prev.at(-1)) === WATCHLIST_OPENER
+        ? prev
+        : [...prev, textMessage(crypto.randomUUID(), "assistant", WATCHLIST_OPENER)],
+    );
+    openChat();
+  }
 
   // The menu's "Play" and the home screen's Games button both open the games
   // (2026-10-21). The old rating feed ("learning") stays reachable by ?stage=.
@@ -1107,6 +1122,7 @@ export default function WTWApp({
             mode="watchlist"
             sharerName={user.name}
             onBrowse={handleRecommend}
+            onTalk={consultant && chatTurnsLeft ? talkFromWatchlist : undefined}
             headerRight={headerMenu}
             user={user}
           />

@@ -170,3 +170,53 @@ describe('the card page', () => {
     expect(JSON.parse(window.localStorage.getItem('wtw_watchlist')!)).toHaveLength(3)
   })
 })
+
+describe('the end card (DEC-9)', () => {
+  const FOUR = [
+    ...THREE,
+    { rec: rec('movie:4', { where_il: null }), added_at: 0, rating: null, starred: false, explain: null, synced: true },
+  ]
+  const talk = () => screen.queryByRole('button', { name: /Let.s talk/ })
+
+  it('sits under the last unseen row, before the Seen line, and its button opens the chat', () => {
+    seed(FOUR)
+    const onTalk = vi.fn()
+    view({ onTalk })
+    expect(screen.getByText('That’s your list')).toBeInTheDocument()
+    expect(screen.getByText('Need help deciding? Let’s talk it over.')).toBeInTheDocument()
+    const card = talk()!.closest('div')!
+    const lastUnseen = screen.getByRole('button', { name: 'Title movie:4: open' })
+    const seenLine = screen.getByRole('separator', { name: 'Seen, 1' })
+    expect(lastUnseen.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(card.compareDocumentPosition(seenLine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(talk()!)
+    expect(onTalk).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the list when nothing is Seen', () => {
+    seed(FOUR.map((e) => ({ ...e, rating: null })))
+    view({ onTalk: () => {} })
+    const card = talk()!.closest('div')!
+    const last = screen.getAllByRole('button', { name: /: open$/ }).at(-1)!
+    expect(last.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('needs three unseen titles', () => {
+    seed(THREE)
+    view({ onTalk: () => {} })
+    expect(talk()).toBeNull()
+  })
+
+  it('shows under All only', () => {
+    seed(FOUR)
+    view({ onTalk: () => {} })
+    fireEvent.click(within(screen.getByRole('group', { name: 'Show' })).getByRole('button', { name: /^Movies/ }))
+    expect(talk()).toBeNull()
+  })
+
+  it('is not offered when the chat is off or out of turns (no onTalk)', () => {
+    seed(FOUR)
+    view()
+    expect(talk()).toBeNull()
+  })
+})
