@@ -38,6 +38,15 @@ export function navTabsEnabled(): boolean {
 }
 
 /**
+ * v3 N1 (docs/plan/v3/YOU.md DEC-1; N2's scroll memory joins it, PLAN.md §4): under the tab bar, the stage is in the
+ * address and every step is a history entry, so the phone's Back retraces your steps inside WTW, then goes to For you,
+ * then out. Off by default: today's Back. The client reads it too (next.config.ts `env`). Gate: P1-G.
+ */
+export function navHistoryEnabled(): boolean {
+  return isOn(process.env.NAV_HISTORY)
+}
+
+/**
  * v3 Seen (docs/plan/v3/SEEN.md, S1–S4): Seen as the Watchlist's rows, with chips and today's two dropdowns. Off by
  * default: today's Ratings screen. The client reads it too (next.config.ts `env`). Gate: P2-G.
  */

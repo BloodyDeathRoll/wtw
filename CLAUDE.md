@@ -91,6 +91,7 @@ UPSTASH_REDIS_REST_URL=            UPSTASH_REDIS_REST_TOKEN=
 MISTRAL_BATCH_API_KEY=   # optional — nightly enrichment only; falls back to MISTRAL_API_KEY
 TYPESAFE_API_KEY=        # Jev — engine step 4 filter; when it fails the batch is served in score order and the devs are told
 JEV_ENABLED=false        # skips step 4 (Jev) entirely; set in Vercel since P1-E7. Unset = on
+NAV_HISTORY=             # v3 N1: Back retraces your steps (needs NAV_TABS; client-side, redeploy to change). Unset = off; on at P1-G
 ```
 
 ## Commands

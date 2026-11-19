@@ -1078,6 +1078,10 @@
   line-height: 1.45;
   color: #fff;
 }
+/* The Watchlist's end card (DEC-9): 14px clear of the last row, as in 10-end. */
+.endCard {
+  margin-top: 14px;
+}
 
 /* ─── Watchlist v3 (docs/plan/v3/WATCHLIST.md, mocks docs/prototypes/watchlist-v3) ─── */
 
