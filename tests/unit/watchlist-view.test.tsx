@@ -184,7 +184,7 @@ describe('the end card (DEC-9)', () => {
     view({ onTalk })
     expect(screen.getByText('That’s your list')).toBeInTheDocument()
     expect(screen.getByText('Need help deciding? Let’s talk it over.')).toBeInTheDocument()
-    const card = talk()!.closest('div')!
+    const card = screen.getByRole('group', { name: 'That’s your list' })
     const lastUnseen = screen.getByRole('button', { name: 'Title movie:4: open' })
     const seenLine = screen.getByRole('separator', { name: 'Seen, 1' })
     expect(lastUnseen.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -196,7 +196,7 @@ describe('the end card (DEC-9)', () => {
   it('closes the list when nothing is Seen', () => {
     seed(FOUR.map((e) => ({ ...e, rating: null })))
     view({ onTalk: () => {} })
-    const card = talk()!.closest('div')!
+    const card = screen.getByRole('group', { name: 'That’s your list' })
     const last = screen.getAllByRole('button', { name: /: open$/ }).at(-1)!
     expect(last.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

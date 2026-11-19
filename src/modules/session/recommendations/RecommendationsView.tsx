@@ -1064,7 +1064,7 @@ function Feed({
 // one ask. Copy is a placeholder until Eran approves it at the PR.
 function WatchlistEndCard({ onTalk }: { onTalk: () => void }) {
   return (
-    <div className={`${styles.card} ${styles.nudge} ${styles.endCard}`}>
+    <div className={`${styles.card} ${styles.nudge} ${styles.endCard}`} role="group" aria-label="That’s your list">
       <span className={styles.nudgeEyebrow}>That&rsquo;s your list</span>
       <p className={styles.nudgeText}>Need help deciding? Let&rsquo;s talk it over.</p>
       <button type="button" className={`${styles.watchlistBtn} ${styles.watchlistBtnPrimary}`} onClick={onTalk}>

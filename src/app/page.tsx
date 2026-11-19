@@ -77,7 +77,8 @@ export default async function Home({
     // Jev failures since this dev last dismissed the notice; [] for everyone else.
     devJevFailures(appUser.email),
     // Whether the chat can still answer today: a screen never offers a chat that won't (WATCHLIST.md DEC-9).
-    chatMode() === "consultant" ? chatHasTurns(user.id) : false,
+    // Only for someone who can open the chat at all (chatReady below).
+    chatMode() === "consultant" && !needsOnboarding(boot.play.state, boot.signals) ? chatHasTurns(user.id) : false,
   ]);
 
   return (

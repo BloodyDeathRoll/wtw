@@ -25,6 +25,8 @@ import {
   Volume2,
 } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
+import { CHAT_LIMIT_LINES } from "@/lib/chat-limit-lines";
+import { WATCHLIST_OPENER, withOpener } from "@/modules/session/chat-opener";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { createClient } from "@/lib/supabase/client";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
@@ -396,8 +398,6 @@ function TypingDots() {
 // ─────────────────────────────────────────────────────────────
 /** What the consultant chat shows before the first question. */
 const CONSULTANT_HELLO = "Ask me what to watch tonight, whether a title is for you, or which of two to pick.";
-// The chat's first line when the Watchlist's end card opens it (WATCHLIST.md DEC-9; copy a placeholder, Eran approves at the PR).
-const WATCHLIST_OPENER = "Want to talk about what's on your list, or something new?";
 
 /** Routes the chat's Back may return to (&back=, the chat bubble on Games and You). Nothing else, so no open redirect. */
 const CHAT_BACK = /^\/(play\?tab=games|you)$/;
@@ -700,6 +700,8 @@ export default function WTWApp({
         },
       }),
   );
+  // Seeded from the server at page load; off once the chat answers with its daily-limit line.
+  const [turnsLeft, setTurnsLeft] = useState(chatTurnsLeft);
   const { messages, sendMessage, setMessages, status, error, regenerate } = useChat({
     transport,
     // The consultant is asked ad hoc: it opens empty, without the old interview's turns.
@@ -709,6 +711,8 @@ export default function WTWApp({
     // with CHAT_ADDED: take the list again, so the Watchlist screen and the cards' buttons show it.
     onFinish: ({ message, isError }) => {
       if (consultant && !isError && textOf(message).startsWith(`${CHAT_ADDED} `)) void hydrateWatchlist(user.id);
+      // The chat said it's out of turns for today: stop offering it (the Watchlist's end card, DEC-9).
+      if (consultant && !isError && CHAT_LIMIT_LINES.includes(textOf(message))) setTurnsLeft(false);
     },
   });
 
@@ -913,13 +917,9 @@ export default function WTWApp({
   }
   const onChat = consultant ? openChat : undefined;
   // The Watchlist's end card (DEC-9): the chat opens on a line that knows where it came from. The line is part of the
-  // history the model is sent, so a reply to it reads as one. Tapped twice, it is said once.
+  // history the model is sent (withOpener), so a reply to it reads as one.
   function talkFromWatchlist() {
-    setMessages((prev) =>
-      textOf(prev.at(-1)) === WATCHLIST_OPENER
-        ? prev
-        : [...prev, textMessage(crypto.randomUUID(), "assistant", WATCHLIST_OPENER)],
-    );
+    setMessages((prev) => withOpener(prev, WATCHLIST_OPENER, crypto.randomUUID()));
     openChat();
   }
 
@@ -1122,7 +1122,7 @@ export default function WTWApp({
             mode="watchlist"
             sharerName={user.name}
             onBrowse={handleRecommend}
-            onTalk={consultant && chatTurnsLeft ? talkFromWatchlist : undefined}
+            onTalk={consultant && turnsLeft ? talkFromWatchlist : undefined}
             headerRight={headerMenu}
             user={user}
           />
