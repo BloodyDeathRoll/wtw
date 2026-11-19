@@ -25,6 +25,7 @@ let calls: Call[]
 let ratings: { id: string; rating: string }[]
 let line: string | null
 let feedbackOk: boolean
+let outcomes: boolean[]
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -33,11 +34,12 @@ beforeEach(() => {
   ratings = []
   line = 'From Christopher Nolan, who made Interstellar, which you loved.'
   feedbackOk = true
+  outcomes = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
     if (url.includes('/ratings')) return Response.json({ counts: {}, items: ratings, removed: [] })
     if (url.includes('why-lines')) return Response.json({ lines: line ? { 'movie:77': line } : {} })
-    if (url.includes('/feedback')) return feedbackOk ? Response.json({ ok: true }) : new Response('no', { status: 500 })
+    if (url.includes('/feedback')) return (outcomes.length ? outcomes.shift() : feedbackOk) ? Response.json({ ok: true }) : new Response('no', { status: 500 })
     if (url.includes('/score') || url.includes('/explain')) return new Response('', { status: 404 })
     if (url.includes('/why')) return Response.json({ text: null })
     return Response.json({ entries: [] })
@@ -101,6 +103,21 @@ describe('a title from Search opens the card page', () => {
     await waitFor(() => expect(feedback()).toHaveLength(2))
     expect(feedback()[1].body).toMatchObject({ action: 'skipped', reaction: 'disliked' })
     await waitFor(() => expect(screen.getByRole('button', { name: "Watched it, didn't like it" })).toHaveAttribute('aria-pressed', 'false'))
+  })
+
+  it('quick taps: a failed write never undoes a newer tap, and rolls back to what the server holds', async () => {
+    card()
+    outcomes = [false, true]
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Liked it' }))
+    await waitFor(() => expect(feedback()).toHaveLength(2))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
+
+    outcomes = [false, false]
+    fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it" }))
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
+    await waitFor(() => expect(feedback()).toHaveLength(4))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
   })
 
   it('a rating made elsewhere (the feed, Seen) shows on the next card without reading the list again', async () => {

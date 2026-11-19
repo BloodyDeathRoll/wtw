@@ -9,7 +9,7 @@
  * Not here yet: the match ring (Q5, Alon), and a save teaching your taste (Q6).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Recommendation } from "@/types/recommendation";
 import type { AppUser } from "@/modules/session/types";
 import type { RatingsSummary } from "@/app/api/recommendations/ratings/route";
@@ -99,11 +99,17 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
   // A saved title's own tag first (the Watchlist's), then Seen's list once it's read.
   const [rated, setRated] = useState<WatchlistRating | undefined>(() => entry()?.rating ?? undefined);
   const [line, setLine] = useState<{ id: string; text: string | null } | null>(null);
+  // What the server holds, and the newest tap: a failed write rolls back to the server's rating, and only if nothing was tapped since.
+  const server = useRef(rated);
+  const latest = useRef(0);
 
   useEffect(() => {
     let on = true;
     void myRatings().then((r) => {
-      if (on && r[rec.id]) setRated((cur) => cur ?? r[rec.id]);
+      if (on && r[rec.id]) {
+        setRated((cur) => cur ?? r[rec.id]);
+        server.current ??= r[rec.id];
+      }
     });
     void whyLine(rec.id).then((text) => on && setLine({ id: rec.id, text }));
     return () => {
@@ -115,36 +121,36 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
   // The why line built from facts, as the Watchlist shows; a title we don't have keeps its synopsis.
   const shown: Recommendation = { ...rec, reason: (!reasonPending && line?.text) || rec.reason };
 
+  function rollBack(r: Recommendation, tap: number) {
+    if (tap !== latest.current) return;
+    setRated(server.current);
+    setWatchlistRating(r.id, server.current ?? null);
+  }
+
   function onFeedback(r: Recommendation, rating: Reaction) {
-    const before = rated;
-    if (rating === before) return;
+    if (rating === rated) return;
     const wasSaved = saved;
+    const tap = ++latest.current;
     setRated(rating);
     setWatchlistRating(r.id, rating);
     queue = queue.then(async () => {
       const ok = await postRating(r, rating, contentType()).catch(() => false);
-      if (!ok) {
-        setRated(before);
-        setWatchlistRating(r.id, before ?? null);
-        return;
-      }
+      if (!ok) return rollBack(r, tap);
+      server.current = rating;
       // A saved title rated is one you watched: the 48-hour check-in, as from the Watchlist. Not for a dislike.
       if (wasSaved && (rating === "loved" || rating === "liked")) addToRegretQueue(r.id.split(":")[1] ?? r.id, r.title, r.type);
     });
   }
 
   function onUnrate(r: Recommendation) {
-    const before = rated;
-    if (!before || before === "removed") return;
+    if (!rated || rated === "removed") return;
+    const tap = ++latest.current;
     setRated(undefined);
     setWatchlistRating(r.id, null);
     queue = queue.then(async () => {
       const ok = await deleteRating(r, contentType(), saved).catch(() => false);
-      if (!ok) {
-        setRated(before);
-        setWatchlistRating(r.id, before);
-        return;
-      }
+      if (!ok) return rollBack(r, tap);
+      server.current = undefined;
       removeFromRegretQueue(r.id.split(":")[1] ?? r.id, r.type);
     });
   }
