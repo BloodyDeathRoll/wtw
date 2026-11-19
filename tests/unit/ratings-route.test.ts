@@ -10,6 +10,7 @@ const db = vi.hoisted(() => ({
   removed: [] as { tmdb_id: string; media_type: string; title: string; removed_at: string }[],
   titles: [] as { tmdb_id: string; type: string; poster_path: string; release_year: number; runtime_minutes: number; tmdb_rating: number }[],
   titleRequests: 0,
+  failTitles: false,
 }))
 
 function query(table: string) {
@@ -30,6 +31,7 @@ function query(table: string) {
         rows = table === 'recommendation_feedback' ? db.feedback : db.removed
         if (f.range) rows = rows.slice(f.range[0], f.range[1] + 1)
       }
+      if (table === 'titles' && db.failTitles) return Promise.resolve({ data: null, error: { message: 'boom' } }).then(done)
       // PostgREST's cap: never more than 1,000 rows in one answer.
       return Promise.resolve({ data: rows.slice(0, CAP), error: null }).then(done)
     },
@@ -65,5 +67,20 @@ describe('GET /api/recommendations/ratings past 1,000 rows', () => {
     expect(body.removed.every((r) => r.poster_url?.includes('/r') && r.meta === '~45m episodes')).toBe(true)
     // 1,200 movie ids in chunks of 300, and one chunk for the 50 series.
     expect(db.titleRequests).toBe(5)
+  })
+
+  it('a failed titles chunk: the list still loads, without those posters, and the log says so', async () => {
+    db.feedback = [{ recommendation_id: 'movie:1', title: 'Film 1', rating: 'liked', created_at: '2026-11-01T00:00:00Z' }]
+    db.removed = []
+    db.failTitles = true
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as RatingsSummary
+    expect(body.items.map((i) => [i.title, i.poster_url, i.year])).toEqual([['Film 1', null, null]])
+    expect(log).toHaveBeenCalledTimes(1)
+    expect(String(log.mock.calls[0][0])).toContain('[ratings] titles chunk failed')
+    log.mockRestore()
+    db.failTitles = false
   })
 })
