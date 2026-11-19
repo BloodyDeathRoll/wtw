@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/supabase/auth-user'
 import { loadDNA } from '@/modules/dna/lib/load-save'
 import { loadChatReady } from '@/lib/home-bootstrap'
 import { navTabsEnabled } from '@/lib/flags'
+import { feedbackConfigured } from '@/lib/feedback'
 import AppShell from '@/modules/session/components/AppShell'
 import { TabBar } from '@/app/components/TabBar'
 import { DnaHeader } from '../profile/dna/DnaHeader'
@@ -60,12 +61,12 @@ export default async function YouRoute() {
             {data ? (
               <TastePage data={data} variant="you">
                 <SeenCard seen={data.seen} total={data.ratings} />
-                <YouLinksCard />
+                <YouLinksCard feedback={feedbackConfigured()} />
               </TastePage>
             ) : (
               <>
                 <p className={styles.note}>Couldn’t load your taste right now. Try again in a moment.</p>
-                <YouLinksCard />
+                <YouLinksCard feedback={feedbackConfigured()} />
               </>
             )}
           </div>
