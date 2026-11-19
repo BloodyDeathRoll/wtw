@@ -154,7 +154,7 @@ Since each person's first feed (Eran and Shahar over about 71 days, Alon on one 
 
 - **Paging:** 6 cards a page, so Alon's 55th title is 10 pages down.
 - **What it offers today** (code): sort by Year, Date added, Rating or Name. There is no filter by service, no search, and no movies / series split; the Movies / Series / Both control is deliberately left off the Watchlist (`docs/watchlist-plan.md` #3).
-- **Rated titles stay on it** by design, tagged with the rating, until "Remove from watchlist".
+- **Rated titles stay on it** by design, tagged with the rating, until "Remove from Watchlist".
 
 ## 5 · The app's own rules, checked on For you
 

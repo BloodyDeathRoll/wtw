@@ -219,7 +219,7 @@ applies.
 > makes it vanish.
 
 - **Spec:** `FOR-YOU.md` DEC-4. **Approved screen:** `1-during-a-visit.jpg`.
-- **Strings:** "Remove from watchlist" (yellow, as today) · "Saved to Seen" (replaces "Saved to Ratings", DEC-8).
+- **Strings:** "Remove from Watchlist" (yellow, as today) · "Saved to Seen" (replaces "Saved to Ratings", DEC-8).
 - **Done when:** save, rate, hop to Watchlist and back: both cards still there and lit; un-save and un-rate both work from the
   card; the next Refresh drops both.
 
@@ -522,6 +522,8 @@ applies.
 - **Migrations:** `0035` (F4), `0036` (Q4), `0037` (Y2) are reserved.
   - Claim any other number on your issue before writing it.
   - Run it with `SUPABASE_DB_URL` + `pg` (INTEGRATION.md) and verify it live **before** merging code that needs it.
+- **"Watchlist" always has a capital W** in anything a user reads: buttons, labels, toasts, the chat's replies (Eran,
+  2026-11-19). "Remove from Watchlist", "In your Watchlist", "on your Watchlist".
 - **Hot files: one open PR at a time, and say on the issue when you start.**
   - `src/modules/session/recommendations/RecommendationsView.tsx` (+ `.module.css`): Eran (F*), Shahar (W1, S3, Q1).
   - `src/modules/session/components/WTWApp.tsx`: Shahar (N1, N2); Eran (F1) only for the stage seam.

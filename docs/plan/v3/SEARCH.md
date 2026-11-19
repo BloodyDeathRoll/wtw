@@ -8,7 +8,7 @@ Search opens is one already decided (the card page in `WATCHLIST.md` and `SEEN.m
 ## 0 · Search today (from the code, NAV_TABS on)
 
 **Getting there.** The magnifier at the top right of every tab (`HeaderSearch`) opens `/search` over the screen, and Back
-returns to it. Opened from the Watchlist or Seen, your own matching titles come first: "In your watchlist" or "In your ratings",
+returns to it. Opened from the Watchlist or Seen, your own matching titles come first: "In your Watchlist" or "In your ratings",
 then "All titles".
 
 **Typing** (`src/app/search/SearchView.tsx`, `GET /api/search`).
@@ -52,7 +52,7 @@ card and stops. Growing up means that whatever you find gets the full WTW card, 
   Search when you're looking for a title, and to the chat when you want advice. It sets what belongs where in this round and
   the chat's next step. (Eran, 2026-11-18)
 - **DEC-2 · Every title you tap opens the live card.**
-  - That covers a title tapped from the results, from an actor's or director's page, or from "In your watchlist / In Seen".
+  - That covers a title tapped from the results, from an actor's or director's page, or from "In your Watchlist / In Seen".
   - It's the same card page as the Watchlist and Seen (`WATCHLIST.md` DEC-2, `SEEN.md` DEC-6), in whatever state that title is
     for you:
     - Add to Watchlist, or Remove from watchlist if it's saved.
@@ -88,7 +88,7 @@ card and stops. Growing up means that whatever you find gets the full WTW card, 
   - Before you type: your last few searches (about six), newest first. Tap one to search it again; a Clear link empties them.
   - They're kept on this phone only and never sent to us.
   - Nothing there yet: the box alone, as today. (Eran approved the write-up, 2026-11-18)
-- **DEC-8 · Opened from the Watchlist or Seen, your own titles still come first.** They're under "In your watchlist" or
+- **DEC-8 · Opened from the Watchlist or Seen, your own titles still come first.** They're under "In your Watchlist" or
   "In Seen" (today "In your ratings"; Seen is the page's name now). Then "All titles". (Eran approved the write-up, 2026-11-18)
 - **DEC-9 · The rest stays as today.**
   - Placeholder: "Search titles and people".
