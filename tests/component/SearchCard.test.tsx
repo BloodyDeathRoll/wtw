@@ -25,6 +25,7 @@ let calls: Call[]
 let ratings: { id: string; rating: string }[]
 let line: string | null
 let feedbackOk: boolean
+let ratingsGate: Promise<void> | null
 let outcomes: boolean[]
 
 beforeEach(() => {
@@ -34,10 +35,11 @@ beforeEach(() => {
   ratings = []
   line = 'From Christopher Nolan, who made Interstellar, which you loved.'
   feedbackOk = true
+  ratingsGate = null
   outcomes = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
-    if (url.includes('/ratings')) return Response.json({ counts: {}, items: ratings, removed: [] })
+    if (url.includes('/ratings')) return (await ratingsGate, Response.json({ counts: {}, items: ratings, removed: [] }))
     if (url.includes('why-lines')) return Response.json({ lines: line ? { 'movie:77': line } : {} })
     if (url.includes('/feedback')) return (outcomes.length ? outcomes.shift() : feedbackOk) ? Response.json({ ok: true }) : new Response('no', { status: 500 })
     if (url.includes('/score') || url.includes('/explain')) return new Response('', { status: 404 })
@@ -139,6 +141,20 @@ describe('a title from Search opens the card page', () => {
     await new Promise((r) => setTimeout(r, 0))
     fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
     await waitFor(() => expect(feedback()).toHaveLength(2))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
+  })
+
+  it('a late read of Seen never replaces a rating heard meanwhile, here or elsewhere', async () => {
+    let open = () => {}
+    ratingsGate = new Promise((r) => (open = r))
+    ratings = [{ id: 'movie:77', rating: 'loved' }]
+    card()
+    window.dispatchEvent(new CustomEvent(RATED_EVENT, { detail: { id: 'movie:77', rating: 'liked' } }))
+    open()
+    await new Promise((r) => setTimeout(r, 0))
+    feedbackOk = false
+    fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it" }))
+    await waitFor(() => expect(feedback()).toHaveLength(1))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
   })
 

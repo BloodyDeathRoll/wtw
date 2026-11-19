@@ -102,20 +102,23 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
   // What the server holds, and the newest tap: a failed write rolls back to the server's rating, and only if nothing was tapped since.
   const server = useRef(rated);
   const latest = useRef(0);
+  const heard = useRef(false); // a rating of this title landed since the card opened: newer than Seen's list
 
   useEffect(() => {
     let on = true;
     void myRatings().then((r) => {
       if (on && r[rec.id]) {
         setRated((cur) => cur ?? r[rec.id]);
-        // Seen's rating over the Watchlist's tag, until this card writes its own.
-        if (!latest.current || server.current === undefined) server.current = r[rec.id];
+        // Seen's rating over the Watchlist's tag, unless a newer one landed meanwhile (here or elsewhere).
+        if (!heard.current) server.current = r[rec.id];
       }
     });
     // A rating that lands elsewhere (another tab) is what a failed write here rolls back to.
     const onRated = (e: Event) => {
       const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
-      if (id === rec.id) server.current = rating ?? undefined;
+      if (id !== rec.id) return;
+      heard.current = true;
+      server.current = rating ?? undefined;
     };
     window.addEventListener(RATED_EVENT, onRated);
     void whyLine(rec.id).then((text) => on && setLine({ id: rec.id, text }));
