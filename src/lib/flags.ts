@@ -38,6 +38,15 @@ export function navTabsEnabled(): boolean {
 }
 
 /**
+ * v3 N1–N2 (docs/plan/v3/YOU.md DEC-1–2): under the tab bar, the stage is in the address and every step is a history
+ * entry, so the phone's Back retraces your steps inside WTW, then goes to For you, then out. Off by default: today's
+ * Back. The client reads it too (next.config.ts `env`). Gate: P1-G.
+ */
+export function navHistoryEnabled(): boolean {
+  return isOn(process.env.NAV_HISTORY)
+}
+
+/**
  * The new onboarding at /onboarding (P2-U2 … U6). Off by default; while it's off the page exists only in local
  * development, for building and checking it. Server-only. Gate: P2-G.
  */
