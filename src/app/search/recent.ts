@@ -19,7 +19,12 @@ function read(): string | null {
 function parse(raw: string | null): string[] {
   try {
     const v: unknown = JSON.parse(raw ?? "[]");
-    return Array.isArray(v) ? v.filter((s): s is string => typeof s === "string" && s.trim() !== "").slice(0, RECENT_MAX) : NONE;
+    if (!Array.isArray(v)) return NONE;
+    // Once each, whatever its case: a hand-edited or old value can't give two rows (or two React keys) for one search.
+    const seenTerms = new Set<string>();
+    return v
+      .filter((s): s is string => typeof s === "string" && s.trim() !== "" && !seenTerms.has(s.toLowerCase()) && !!seenTerms.add(s.toLowerCase()))
+      .slice(0, RECENT_MAX);
   } catch {
     return NONE;
   }

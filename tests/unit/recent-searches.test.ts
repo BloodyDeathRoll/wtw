@@ -52,6 +52,8 @@ describe('recent searches', () => {
     expect(recentSearches()).toEqual([])
     window.localStorage.setItem(KEY, JSON.stringify(['ok', 3, '', null]))
     expect(recentSearches()).toEqual(['ok'])
+    window.localStorage.setItem(KEY, JSON.stringify(['Memento', 'memento', 'heat']))
+    expect(recentSearches()).toEqual(['Memento', 'heat'])
   })
 
   it('storage that throws: no list, nothing breaks', () => {
