@@ -27,11 +27,12 @@ describe('the bottom of You', () => {
 })
 
 describe('the Account page', () => {
-  it('Start my taste over first, then Sign out', () => {
+  it('Start my taste over, then Sign out, then Delete my account last', () => {
     render(<AccountRows />)
     const rows = screen.getAllByRole('button').map(b => b.textContent ?? '')
     expect(rows[0]).toMatch(/^Start my taste over/)
     expect(rows[1]).toBe('Sign out')
+    expect(rows[2]).toMatch(/^Delete my account/)
     expect(screen.getByText('Teach WTW your taste from scratch. Your Watchlist and game scores stay.')).toBeInTheDocument()
   })
   it('Sign out acts at once (no sheet) and goes to the login page', async () => {
@@ -44,5 +45,35 @@ describe('the Account page', () => {
     render(<AccountRows />)
     await userEvent.click(screen.getByRole('button', { name: /Start my taste over/ }))
     expect(screen.getByRole('alertdialog')).toHaveTextContent('Start your taste over?')
+  })
+})
+
+describe('Delete my account (v3 Y3)', () => {
+  it('asks first, with the approved text; Cancel closes it', async () => {
+    render(<AccountRows />)
+    await userEvent.click(screen.getByRole('button', { name: /Delete my account/ }))
+    const sheet = screen.getByRole('alertdialog')
+    expect(sheet).toHaveTextContent('Delete your account?')
+    expect(sheet).toHaveTextContent('your game scores, your chats and the notes you sent us')
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+  it('it fails: the red line, and the sheet stays open', async () => {
+    globalThis.fetch = vi.fn(async () => new Response('{}', { status: 500 })) as unknown as typeof fetch
+    render(<AccountRows />)
+    await userEvent.click(screen.getByRole('button', { name: /Delete my account/ }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Delete my account' }).at(-1)!)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t delete your account just now. Try again in a moment.')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  })
+  it('deleted: signs this browser out and opens the login page', async () => {
+    globalThis.fetch = vi.fn(async () => new Response('{"ok":true}')) as unknown as typeof fetch
+    const assign = vi.fn()
+    Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+    render(<AccountRows />)
+    await userEvent.click(screen.getByRole('button', { name: /Delete my account/ }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Delete my account' }).at(-1)!)
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+    expect(nav.signOut).toHaveBeenCalled()
   })
 })
