@@ -1695,7 +1695,8 @@ function WhyDetailOverlay({
   );
 }
 
-function PosterTile({
+/** Also Seen's rows (src/modules/session/ratings/SeenView.tsx, SEEN.md DEC-1). */
+export function PosterTile({
   rec,
   size,
 }: {

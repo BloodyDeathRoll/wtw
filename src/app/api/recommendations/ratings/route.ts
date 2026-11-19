@@ -27,7 +27,16 @@ import type { Reaction } from '@/types/dna'
 
 export type MediaType = 'movie' | 'tv'
 
-export interface RatingItem {
+/** What a Seen row shows beside the poster (docs/plan/v3/SEEN.md DEC-1): year · length · ★. Null when the title isn't in our catalogue. */
+export interface TitleFacts {
+  year: number | null
+  /** The card's length line: "2h 10m", "~45m episodes", "Film" or "Series". */
+  meta: string | null
+  /** TMDB's score, the card's ★. */
+  star: number | null
+}
+
+export interface RatingItem extends TitleFacts {
   id: string
   title: string | null
   rating: Reaction
@@ -37,12 +46,34 @@ export interface RatingItem {
   poster_url: string | null
 }
 
-export interface RemovedItem {
+export interface RemovedItem extends TitleFacts {
   title: string | null
   tmdb_id: string
   media_type: MediaType
   removed_at: string
   poster_url: string | null
+}
+
+// PostgREST answers at most 1,000 rows a request: a list longer than that is read a page at a time, and the titles
+// in chunks (#359: 1,114 ids matched 1,261 rows, and 261 posters were silently dropped).
+const PAGE = 1000
+const ID_CHUNK = 300
+
+/** Every row of a query, a page at a time. `page(from, to)` is the query with `.range(from, to)` on a stable order. */
+async function readAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  const out: T[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1)
+    if (error) throw error
+    out.push(...(data ?? []))
+    if (!data || data.length < PAGE) return out
+  }
+}
+
+/** The feed card's length line (toUIRecommendations in src/lib/rec-page.ts), for a Seen row. */
+function lengthLine(type: MediaType, runtime: number | null): string {
+  if (type === 'movie') return runtime ? `${Math.floor(runtime / 60)}h ${runtime % 60}m` : 'Film'
+  return runtime ? `~${runtime}m episodes` : 'Series'
 }
 
 export interface RatingsSummary {
@@ -68,20 +99,30 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [{ data: feedback, error: fErr }, { data: removedRows, error: rErr }] = await Promise.all([
-    supabase
-      .from('recommendation_feedback')
-      .select('recommendation_id, title, rating, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('removed_titles')
-      .select('tmdb_id, media_type, title, removed_at')
-      .eq('user_id', user.id)
-      .order('removed_at', { ascending: false }),
-  ])
-
-  if (fErr || rErr) {
+  let feedback: { recommendation_id: string; title: string | null; rating: string; created_at: string }[]
+  let removedRows: { tmdb_id: string; media_type: string; title: string | null; removed_at: string }[]
+  try {
+    ;[feedback, removedRows] = await Promise.all([
+      readAll((from, to) =>
+        supabase
+          .from('recommendation_feedback')
+          .select('recommendation_id, title, rating, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .order('id')
+          .range(from, to),
+      ),
+      readAll((from, to) =>
+        supabase
+          .from('removed_titles')
+          .select('tmdb_id, media_type, title, removed_at')
+          .eq('user_id', user.id)
+          .order('removed_at', { ascending: false })
+          .order('id')
+          .range(from, to),
+      ),
+    ])
+  } catch {
     return NextResponse.json({ error: 'Failed to load ratings' }, { status: 500 })
   }
 
@@ -100,30 +141,52 @@ export async function GET() {
     const { media_type, tmdb_id } = parseRecId(key)
     dedupedFeedback.push({ key, title: row.title ?? null, rating, created_at: row.created_at, tmdb_id, media_type })
   }
-  counts.removed = removedRows?.length ?? 0
+  counts.removed = removedRows.length
 
   // Resolve posters for the tile backgrounds. poster_path is already cached on
   // the titles row (no external TMDB call); one batched lookup by tmdb_id.
-  const tmdbIds = [
-    ...dedupedFeedback.map((r) => r.tmdb_id),
-    ...(removedRows ?? []).map((r) => r.tmdb_id),
-  ]
+  // Ids by type: a movie and a series can share a numeric id, so asking per type keeps each answer to the rows we want.
+  const idsOf: Record<MediaType, Set<string>> = { movie: new Set(), tv: new Set() }
+  for (const r of dedupedFeedback) if (r.media_type) idsOf[r.media_type].add(r.tmdb_id)
+  for (const r of removedRows) idsOf[r.media_type as MediaType]?.add(r.tmdb_id)
   // titles is uniquely keyed on (tmdb_id, type) — a movie and a TV show can
   // share a numeric tmdb_id (migration 0008) — so key posters by the composite
   // to avoid attaching the wrong artwork. Legacy bare ids (media_type null) are
   // mock ids absent from titles, so they resolve to no poster.
   const posterByKey = new Map<string, string | null>()
-  if (tmdbIds.length > 0) {
-    const { data: titleRows } = await supabase
-      .from('titles')
-      .select('tmdb_id, type, poster_path')
-      .in('tmdb_id', [...new Set(tmdbIds)])
+  const factsByKey = new Map<string, TitleFacts>()
+  const chunks: { type: MediaType; ids: string[] }[] = []
+  for (const type of ['movie', 'tv'] as const) {
+    const ids = [...idsOf[type]]
+    for (let i = 0; i < ids.length; i += ID_CHUNK) chunks.push({ type, ids: ids.slice(i, i + ID_CHUNK) })
+  }
+  const answers = await Promise.all(
+    chunks.map(({ type, ids }) =>
+      supabase
+        .from('titles')
+        .select('tmdb_id, type, poster_path, release_year, runtime_minutes, tmdb_rating')
+        .eq('type', type)
+        .in('tmdb_id', ids),
+    ),
+  )
+  // A chunk that fails leaves its rows without a poster, as before; the list itself still loads, and the log says so.
+  for (const { data: titleRows, error } of answers) {
+    if (error) console.error('[ratings] titles chunk failed; those rows show no poster:', error.message)
     for (const t of titleRows ?? []) {
-      posterByKey.set(`${t.tmdb_id}:${t.type}`, tmdbPosterUrl(t.poster_path as string | null))
+      const key = `${t.tmdb_id}:${t.type}`
+      posterByKey.set(key, tmdbPosterUrl(t.poster_path as string | null))
+      factsByKey.set(key, {
+        year: (t.release_year as number | null) ?? null,
+        meta: lengthLine(t.type as MediaType, (t.runtime_minutes as number | null) ?? null),
+        star: (t.tmdb_rating as number | null) ?? null,
+      })
     }
   }
   const posterFor = (tmdb_id: string, media_type: MediaType | null): string | null =>
     media_type ? posterByKey.get(`${tmdb_id}:${media_type}`) ?? null : null
+  const NO_FACTS: TitleFacts = { year: null, meta: null, star: null }
+  const factsFor = (tmdb_id: string, media_type: MediaType | null): TitleFacts =>
+    (media_type && factsByKey.get(`${tmdb_id}:${media_type}`)) || NO_FACTS
 
   const items: RatingItem[] = dedupedFeedback.map((r) => ({
     id: r.key,
@@ -133,14 +196,16 @@ export async function GET() {
     tmdb_id: r.tmdb_id,
     media_type: r.media_type,
     poster_url: posterFor(r.tmdb_id, r.media_type),
+    ...factsFor(r.tmdb_id, r.media_type),
   }))
 
-  const removed: RemovedItem[] = (removedRows ?? []).map((r) => ({
+  const removed: RemovedItem[] = removedRows.map((r) => ({
     title: r.title ?? null,
     tmdb_id: r.tmdb_id,
     media_type: r.media_type as MediaType,
     removed_at: r.removed_at,
     poster_url: posterFor(r.tmdb_id, r.media_type as MediaType),
+    ...factsFor(r.tmdb_id, r.media_type as MediaType),
   }))
 
   const summary: RatingsSummary = { counts, items, removed }

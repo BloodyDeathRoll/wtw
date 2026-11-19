@@ -1205,6 +1205,7 @@ export default function WTWApp({
           <RatingsView
             onBack={navHistory ? () => window.history.back() : tabsOn ? () => leaveTo("/you") : () => setStage("onboard")}
             title={tabsOn ? "Seen" : undefined}
+            onBrowse={handleRecommend}
             contentType={contentType}
             headerRight={headerMenu}
             user={user}
