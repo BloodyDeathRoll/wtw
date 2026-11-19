@@ -23,8 +23,10 @@ import styles from "./dna.module.css";
 /** Same key WTWApp persists the Gemini Live voice under. */
 const VOICE_KEY = "wtw:voice";
 
-export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = false, you = false }: {
+export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = false, you = false, searchFrom }: {
   user: AppUser; subtitle: string; title?: string
+  /** Where Search's Back returns: this page. Defaults to You or My taste (v3 Y1: Account passes its own). */
+  searchFrom?: SearchFrom
   /** The onboarding is done: the menu offers the chat (Q5). */
   chatReady?: boolean
   /**
@@ -34,7 +36,7 @@ export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = fals
   you?: boolean
 }) {
   const tabsOn = navTabsEnabled();
-  const from: SearchFrom = you ? "/you" : "/profile/dna";
+  const from: SearchFrom = searchFrom ?? (you ? "/you" : "/profile/dna");
   const router = useRouter();
   const [voice, setVoice] = useState<Voice>(VOICES[0].id);
 
@@ -117,7 +119,8 @@ export function DnaHeader({ user, subtitle, title = 'My taste', chatReady = fals
 
       <div className={styles.headerTitleBlock}>
         <h1 className={styles.title}>{title}</h1>
-        <p className={styles.subtitle}>{subtitle}</p>
+        {/* A page with no subtitle (Account) centres its title, as approved (you-v3/2-account-page.jpg). */}
+        {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
       </div>
 
       <div className={styles.headerRight}>

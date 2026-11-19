@@ -31,7 +31,7 @@ export function SaveRibbon({ ctl, t, from }: { ctl: Ctl; t: Title; from: SaveSou
   const on = ctl.isSaved(t.id)
   return (
     <button type="button" className={`rib${on ? ' on' : ''}`} aria-pressed={on}
-      aria-label={on ? `Remove ${t.title} from your watchlist` : `Add ${t.title} to your watchlist`}
+      aria-label={on ? `Remove ${t.title} from your Watchlist` : `Add ${t.title} to your Watchlist`}
       onClick={e => { e.stopPropagation(); ctl.toggleSave(t, from) }}>
       <span aria-hidden="true">{on ? '✓' : '+'}</span>
     </button>
