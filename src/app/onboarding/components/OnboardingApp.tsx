@@ -180,12 +180,12 @@ export default function OnboardingApp({ user, saved, titles }: { user: AppUser; 
       if (savedSet.has(t.id)) {
         unsaveTitle(t.id)
         setSavedSet(prev => { const n = new Set(prev); n.delete(t.id); return n })
-        showToast(`Removed ${t.title} from your watchlist`)
+        showToast(`Removed ${t.title} from your Watchlist`)
         return
       }
       saveTitle(t, from)
       setSavedSet(prev => new Set(prev).add(t.id))
-      showToast(`${t.title} is on your watchlist`)
+      showToast(`${t.title} is on your Watchlist`)
     },
   } as unknown as Ctl
 

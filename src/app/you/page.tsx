@@ -10,7 +10,7 @@ import { DnaHeader } from '../profile/dna/DnaHeader'
 import { DnaFrame } from '../profile/dna/DnaFrame'
 import { TastePage } from '../profile/dna/TastePage'
 import { loadTastePage, type TastePageData } from '../profile/dna/lib/taste-page'
-import { AccountCard, SeenCard } from './YouCards'
+import { SeenCard, YouLinksCard } from './YouCards'
 import styles from '../profile/dna/dna.module.css'
 
 export const metadata = { title: 'You — WTW' }
@@ -18,7 +18,8 @@ export const metadata = { title: 'You — WTW' }
 /**
  * The You tab (NAV_TABS; docs/prototypes/nav/4-you.jpg, Eran 2026-11-15): the person, then a card for each part of
  * My taste (how WTW sees you · the people who pull you in · the genres in your feed), each with a taste of what's in
- * it and a "See all" into My taste; then Seen (today's ratings page) and Account (Sign out, Start my taste over).
+ * it and a "See all" into My taste; then Seen (today's ratings page), and last one card of two rows: Send us feedback
+ * and Account › (v3 Y1, YOU.md DEC-3, you-v3/1-account-row.jpg). Account is its own page (/you/account).
  */
 export default async function YouRoute() {
   if (!navTabsEnabled()) redirect('/profile/dna')
@@ -48,7 +49,8 @@ export default async function YouRoute() {
   }
 
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
-  const subtitle = data ? `${plural(data.ratings, 'rating')} · ${plural(data.picks, 'pick')}` : ''
+  // v3 DEC-4 (YOU.md): the ratings count only; "picks" now means For you's 20.
+  const subtitle = data ? `${plural(data.ratings, 'rating')}` : ''
 
   return (
     <AppShell tabs={<TabBar active="you" user={appUser} />}>
@@ -58,12 +60,12 @@ export default async function YouRoute() {
             {data ? (
               <TastePage data={data} variant="you">
                 <SeenCard seen={data.seen} total={data.ratings} />
-                <AccountCard />
+                <YouLinksCard />
               </TastePage>
             ) : (
               <>
                 <p className={styles.note}>Couldn’t load your taste right now. Try again in a moment.</p>
-                <AccountCard />
+                <YouLinksCard />
               </>
             )}
           </div>

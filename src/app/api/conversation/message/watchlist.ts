@@ -31,7 +31,7 @@ const MAX_OPTIONS = 4;
 /** The start of our own "which one?" line. */
 export const WHICH_ONE = "There is more than one";
 /** How our line about a title that was there already ends. */
-const ALREADY = "is already on your watchlist.";
+const ALREADY = "is already on your Watchlist.";
 
 const ASK = /\b(?:add|save|bookmark|queue)\b|\bput\b[^.?!]*\b(?:watch\s?list|list|queue)\b|\bto (?:my|the) (?:watch\s?list|list)\b/i;
 
@@ -45,7 +45,8 @@ const ASK = /\b(?:add|save|bookmark|queue)\b|\bput\b[^.?!]*\b(?:watch\s?list|lis
 export function asksToSave(lastUser: string, lastReply = "", userBefore = ""): boolean {
   if (ASK.test(lastUser)) return true;
   const reply = lastReply.trim();
-  const open = reply.includes(WHICH_ONE) || (reply.endsWith("?") && !reply.startsWith(`${CHAT_ADDED} `) && !reply.includes(ALREADY));
+  // Case-blind: replies saved before 2026-11-19 say "watchlist" with a small w.
+  const open = reply.includes(WHICH_ONE) || (reply.endsWith("?") && !reply.startsWith(`${CHAT_ADDED} `) && !reply.toLowerCase().includes(ALREADY.toLowerCase()));
   return open && ASK.test(userBefore);
 }
 
@@ -186,6 +187,6 @@ export async function addTitles(wanted: Wanted[], resolution: Resolution, add: (
       }
     }
   }
-  if (saved.length) lines.unshift(`${CHAT_ADDED} ${listed(saved)} to your watchlist.`);
+  if (saved.length) lines.unshift(`${CHAT_ADDED} ${listed(saved)} to your Watchlist.`);
   return { said: lines.join(" "), allThere };
 }

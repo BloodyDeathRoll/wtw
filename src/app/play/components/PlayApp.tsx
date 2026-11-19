@@ -147,16 +147,16 @@ export default function PlayApp({ user, existingUser, chatReady = false, voiceIn
     if (savedSet.has(t.id)) {
       unsaveTitle(t.id)
       setSaved(prev => { const n = new Set(prev); n.delete(t.id); return n })
-      note(S, `Removed ${t.title} from your watchlist`)
-      toast(`Removed ${t.title} from your watchlist`)
+      note(S, `Removed ${t.title} from your Watchlist`)
+      toast(`Removed ${t.title} from your Watchlist`)
       commit([{ kind: 'watchlist_remove', item_key: t.id, payload: { title: t.id, from: source } }])
       return
     }
     saveTitle(t, source)
     setSaved(prev => new Set(prev).add(t.id))
     learnFromRating(S, t, 0.5, 0.3)
-    note(S, `Saved ${t.title} to your watchlist (${SAVED_FROM[source].toLowerCase()})`)
-    toast(`${t.title} is on your watchlist`, () => {
+    note(S, `Saved ${t.title} to your Watchlist (${SAVED_FROM[source].toLowerCase()})`)
+    toast(`${t.title} is on your Watchlist`, () => {
       unsaveTitle(t.id)
       setSaved(prev => { const n = new Set(prev); n.delete(t.id); return n })
       note(S, `Undid saving ${t.title}`)
@@ -464,8 +464,8 @@ export default function PlayApp({ user, existingUser, chatReady = false, voiceIn
     removeSaved(id, title) {
       unsaveTitle(id)
       setSaved(prev => { const n = new Set(prev); n.delete(id); return n })
-      note(S, `Removed ${title} from your watchlist`)
-      toast(`Removed ${title} from your watchlist`)
+      note(S, `Removed ${title} from your Watchlist`)
+      toast(`Removed ${title} from your Watchlist`)
       commit([{ kind: 'watchlist_remove', item_key: id, payload: { title: id, from: 'watchlist' } }])
     },
     undoToast() {
