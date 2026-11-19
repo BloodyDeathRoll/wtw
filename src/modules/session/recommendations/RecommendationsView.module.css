@@ -1097,6 +1097,11 @@
   flex: none;
   padding: 0 14px;
 }
+/* An unlit filter chip: dimmer words, a lighter fill (Shahar, 2026-11-19). Hover and the lit chip keep theirs. */
+.filterChip:not(.seenChipOn):not(:hover) {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.5);
+}
 .filterChip b {
   font-weight: 600;
   color: #fff;
