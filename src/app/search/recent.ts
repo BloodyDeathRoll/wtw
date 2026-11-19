@@ -22,9 +22,13 @@ function parse(raw: string | null): string[] {
     if (!Array.isArray(v)) return NONE;
     // Once each, whatever its case: a hand-edited or old value can't give two rows (or two React keys) for one search.
     const seenTerms = new Set<string>();
-    return v
-      .filter((s): s is string => typeof s === "string" && s.trim() !== "" && !seenTerms.has(s.toLowerCase()) && !!seenTerms.add(s.toLowerCase()))
-      .slice(0, RECENT_MAX);
+    const list: string[] = [];
+    for (const s of v) {
+      if (typeof s !== "string" || s.trim() === "" || seenTerms.has(s.toLowerCase())) continue;
+      seenTerms.add(s.toLowerCase());
+      list.push(s);
+    }
+    return list.slice(0, RECENT_MAX);
   } catch {
     return NONE;
   }
