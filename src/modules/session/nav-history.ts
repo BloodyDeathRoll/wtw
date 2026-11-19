@@ -18,3 +18,21 @@ export function stageOfAddress(at: { pathname: string; search: string }): Addres
   if (!s || s === 'recommendations') return 'recommendations'
   return (ADDRESSED as readonly string[]).includes(s) ? (s as Addressed) : null
 }
+
+const IN_APP = 'wtw:in-app'
+
+/**
+ * Marks this browser tab as having shown a WTW tab screen, and says whether one was shown before. sessionStorage is
+ * per tab and survives reloads, so "not before" means WTW was opened straight on this screen (a fresh tab, a link, the
+ * installed app), with no screen of ours under it. `history.length` can't tell: Chrome counts the new-tab page too.
+ * When storage is blocked: true, so nothing is put under (today's Back).
+ */
+export function markInApp(): boolean {
+  try {
+    const before = sessionStorage.getItem(IN_APP) === '1'
+    sessionStorage.setItem(IN_APP, '1')
+    return before
+  } catch {
+    return true
+  }
+}

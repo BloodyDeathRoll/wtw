@@ -54,7 +54,7 @@ import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { chatMode, navHistoryEnabled, navTabsEnabled } from "@/lib/flags";
-import { stageHref, stageOfAddress } from "@/modules/session/nav-history";
+import { markInApp, stageHref, stageOfAddress } from "@/modules/session/nav-history";
 import { AskButton, TabBar, type Tab } from "@/app/components/TabBar";
 import rv from "../recommendations/RecommendationsView.module.css";
 import styles from "./WTWApp.module.css";
@@ -579,8 +579,9 @@ export default function WTWApp({
     if (navHistory) {
       const at = landing ?? "recommendations";
       const href = stageHref(at) ?? window.location.pathname;
-      // Opened straight on a stage (a fresh tab or the installed app): For you goes under it, so Back reaches it.
-      if (window.history.length === 1 && at !== "recommendations" && stageHref(at)) {
+      // Opened straight on a stage (a fresh tab, a link, the installed app): For you goes under it, so Back reaches it.
+      const fresh = !markInApp();
+      if (fresh && at !== "recommendations" && stageHref(at)) {
         window.history.replaceState(null, "", "/");
         window.history.pushState(null, "", href);
       } else if (window.location.pathname + window.location.search !== href) {
