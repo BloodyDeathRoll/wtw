@@ -20,7 +20,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bookmark, ChevronLeft, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { navTabsEnabled } from "@/lib/flags";
+import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
+import SearchCard from "./SearchCard";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -57,6 +58,7 @@ export default function SearchView({
   menu?: ReactNode;
 }) {
   const inPlace = menu !== undefined;
+  const v3 = searchV3Enabled();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const params = useSearchParams();
@@ -400,8 +402,9 @@ export default function SearchView({
         <div className={styles.box}>
           {showMine && (
             <>
-              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your watchlist" : "In your ratings"}</p>
-              <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : "Your ratings"}>
+              {/* SEARCH_V3: the page is called Seen now (SEARCH.md DEC-8). */}
+              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your watchlist" : v3 ? "In Seen" : "In your ratings"}</p>
+              <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : v3 ? "Seen" : "Your ratings"}>
                 {mineHits.map((h) => (
                   <TitleRow key={keyOf(h)} h={h} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
                 ))}
@@ -474,7 +477,13 @@ export default function SearchView({
           </div>
         )}
 
-        {card && (
+        {card && v3 && (
+          // Every title opens the same card page as the Watchlist and Seen (SEARCH.md DEC-2, v3 Q1).
+          <div className={rv.content}>
+            <SearchCard key={card.id} rec={card} user={user} />
+          </div>
+        )}
+        {card && !v3 && (
           <div className={rv.content}>
             <div className={`${rv.list} ${styles.cardList}`}>
               <TitleCard

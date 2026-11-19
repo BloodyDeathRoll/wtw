@@ -78,6 +78,7 @@ import {
 } from "./watchlist-order";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { shareTitle } from "@/lib/share";
+import { deleteRating, postRating } from "./rate";
 import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
@@ -683,30 +684,8 @@ export default function RecommendationsView({
     // time. The UI card state was already flipped above.
     feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
       try {
-        // The feedback route's contract is { tmdb_id, action, reaction, ... }.
-        // (The UI used to send { recommendation_id, rating } — every click
-        // silently 400'd and no rating ever reached the fingerprint.)
-        // rec.id is "type:tmdb_id" for engine recs (a bare slug only in legacy saved entries).
-        const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
-        const res = await fetch("/api/recommendations/feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tmdb_id,
-            media_type: rec.type,
-            title: rec.title,
-            // disliked = "watched it, didn't like it" — a negative taste
-            // signal (skipped means not-accepted); loved/liked are positive.
-            action: rating === "disliked" ? "skipped" : "watched",
-            reaction: rating,
-            // The list this rating came from — the server precomputes the
-            // next batch for the same one.
-            content_type: contentType,
-            is_stretch_pick: rec.is_stretch_pick ?? false,
-          }),
-        });
-        if (!res.ok) {
-          console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+        // The route's contract and its body live in rate.ts (Search rates through it too, v3 Q1).
+        if (!(await postRating(rec, rating, contentType))) {
           // The card was flipped optimistically before this ran, so a failure
           // leaves the user believing a rating landed that did not. Nothing
           // else records it — session end folds from the history row this
@@ -756,21 +735,8 @@ export default function RecommendationsView({
     };
     feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
       try {
-        const res = await fetch("/api/recommendations/feedback", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tmdb_id,
-            media_type: rec.type,
-            content_type: contentType,
-            // On the Watchlist the history entry goes back to "saved".
-            saved: saved.has(rec.id),
-          }),
-        });
-        if (!res.ok) {
-          console.error(`[recs] un-rate HTTP ${res.status}`, await res.text().catch(() => ""));
-          restore();
-        }
+        // On the Watchlist the history entry goes back to "saved".
+        if (!(await deleteRating(rec, contentType, saved.has(rec.id)))) restore();
       } catch (e) {
         console.error("[recs] un-rate failed", e);
         restore();
@@ -2267,14 +2233,7 @@ function WatchlistRow({
  */
 function WatchlistCardPage({
   entry,
-  rec,
-  reasonPending,
-  rated,
-  onFeedback,
-  onUnrate,
-  onShare,
-  onToggleWatchlist,
-  onStar,
+  ...rest
 }: {
   entry: WatchlistEntry;
   rec: Recommendation;
@@ -2285,6 +2244,39 @@ function WatchlistCardPage({
   onShare: (rec: Recommendation) => void;
   onToggleWatchlist: (rec: Recommendation) => void;
   onStar: () => void;
+}) {
+  return <TitleCardPage {...rest} saved starred={entry.starred} snapshot={entry.explain} />;
+}
+
+/**
+ * A title's card as its own page, in that title's state for you (WATCHLIST.md DEC-2): the Watchlist's, and every title
+ * tapped in Search (SEARCH.md DEC-2, v3 Q1). The star only on a saved title (DEC-4); the breakdown under Seen it?.
+ */
+export function TitleCardPage({
+  rec,
+  saved,
+  starred,
+  onStar,
+  snapshot,
+  reasonPending,
+  rated,
+  onFeedback,
+  onUnrate,
+  onShare,
+  onToggleWatchlist,
+}: {
+  rec: Recommendation;
+  saved: boolean;
+  starred?: boolean;
+  onStar?: () => void;
+  /** The breakdown saved with the title, shown when today's can't be had. */
+  snapshot?: ExplainData | null;
+  reasonPending: boolean;
+  rated: WatchlistRating | undefined;
+  onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
+  onUnrate: (rec: Recommendation) => void;
+  onShare: (rec: Recommendation) => void;
+  onToggleWatchlist: (rec: Recommendation) => void;
 }) {
   const whyRef = useRef<HTMLDivElement>(null);
   return (
@@ -2297,12 +2289,12 @@ function WatchlistCardPage({
         // The short why line is the teaser; the breakdown is further down this page.
         onWhy={() => whyRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" })}
         onShare={onShare}
-        saved
+        saved={saved}
         onToggleWatchlist={onToggleWatchlist}
         reasonPending={reasonPending}
-        starred={entry.starred}
-        onStar={onStar}
-        whyInline={<InlineWhy entry={entry} rec={rec} innerRef={whyRef} />}
+        starred={saved ? starred : undefined}
+        onStar={saved ? onStar : undefined}
+        whyInline={<InlineWhy snapshot={snapshot ?? null} rec={rec} innerRef={whyRef} />}
       />
     </div>
   );
@@ -2320,11 +2312,11 @@ function WatchlistCardPage({
  * without the old guessed bars a pre-v2 one would draw; then the Why alone.
  */
 function InlineWhy({
-  entry,
+  snapshot,
   rec,
   innerRef,
 }: {
-  entry: WatchlistEntry;
+  snapshot: ExplainData | null;
   rec: Recommendation;
   innerRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -2333,7 +2325,6 @@ function InlineWhy({
   const [data, setData] = useState<ExplainData | null | "loading">(
     () => getCachedExplain(freshKey(rec.id)) ?? "loading",
   );
-  const snapshot = entry.explain;
   useEffect(() => {
     if (data !== "loading") return;
     let cancelled = false;

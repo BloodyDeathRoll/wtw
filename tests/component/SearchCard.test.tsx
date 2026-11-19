@@ -1,0 +1,121 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import type { Recommendation } from '@/types/recommendation'
+
+// v3 Q1 (docs/plan/v3/SEARCH.md DEC-2, DEC-4, DEC-8): a title tapped in Search opens the same card page as the
+// Watchlist and Seen, in that title's state for you, and a rating there lands through the feedback route.
+
+vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
+
+import SearchCard, { forgetMyRatings } from '@/app/search/SearchCard'
+import { addToWatchlist, getWatchlist } from '@/lib/watchlist'
+
+const user = { id: 'u1', email: null, name: 'Ada', avatarUrl: null }
+const rec = (o: Partial<Recommendation> = {}): Recommendation => ({
+  id: 'movie:77', title: 'Memento', type: 'movie', year: 2000, poster_url: null, meta: '1h 53m', rating: 8.2,
+  match: 0, reason: 'A man with no short-term memory hunts his wife’s killer.', where: null, motif: 'dot',
+  palette: ['#16242E', '#F5C9A6'], ...o,
+})
+
+type Call = { url: string; method: string; body: Record<string, unknown> | null }
+let calls: Call[]
+let ratings: { id: string; rating: string }[]
+let line: string | null
+let feedbackOk: boolean
+
+beforeEach(() => {
+  window.localStorage.clear()
+  forgetMyRatings()
+  calls = []
+  ratings = []
+  line = 'From Christopher Nolan, who made Interstellar, which you loved.'
+  feedbackOk = true
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
+    if (url.includes('/ratings')) return Response.json({ counts: {}, items: ratings, removed: [] })
+    if (url.includes('why-lines')) return Response.json({ lines: line ? { 'movie:77': line } : {} })
+    if (url.includes('/feedback')) return feedbackOk ? Response.json({ ok: true }) : new Response('no', { status: 500 })
+    if (url.includes('/score') || url.includes('/explain')) return new Response('', { status: 404 })
+    if (url.includes('/why')) return Response.json({ text: null })
+    return Response.json({ entries: [] })
+  }))
+})
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
+
+const card = () => render(<SearchCard rec={rec()} user={user} />)
+const feedback = () => calls.filter((c) => c.url.includes('/feedback'))
+
+describe('a title from Search opens the card page', () => {
+  it('unsaved: Add to Watchlist, Seen it?, no star; the why line built from facts replaces the synopsis', async () => {
+    card()
+    expect(screen.getByRole('button', { name: 'Add to Watchlist: Memento' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Loved it' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('button', { name: /Star Memento/ })).toBeNull()
+    expect(await screen.findByText(/From Christopher Nolan/)).toBeInTheDocument()
+  })
+
+  it('a title we don\'t have keeps its synopsis', async () => {
+    line = null
+    card()
+    await waitFor(() => expect(calls.some((c) => c.url.includes('why-lines'))).toBe(true))
+    expect(await screen.findByText(/short-term memory/)).toBeInTheDocument()
+  })
+
+  it('a title you rated shows your reaction lit (from Seen)', async () => {
+    ratings = [{ id: 'movie:77', rating: 'liked' }]
+    card()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
+  })
+
+  it('saved: Remove from watchlist and the star', () => {
+    addToWatchlist(rec())
+    card()
+    expect(screen.getByRole('button', { name: 'Remove from watchlist: Memento' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Star Memento' })).toBeInTheDocument()
+  })
+
+  it('Loved lands through the feedback route (Seen and your taste), and the chip lights at once', async () => {
+    card()
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
+    expect(screen.getByRole('button', { name: 'Loved it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(feedback()).toHaveLength(1))
+    expect(feedback()[0]).toMatchObject({ method: 'POST', body: { tmdb_id: '77', media_type: 'movie', action: 'watched', reaction: 'loved', content_type: 'all' } })
+  })
+
+  it('tapping the lit chip clears the rating (DELETE); a failed write puts the chip back', async () => {
+    ratings = [{ id: 'movie:77', rating: 'loved' }]
+    card()
+    const lit = await screen.findByRole('button', { name: 'Loved it (tap to clear)' })
+    fireEvent.click(lit)
+    expect(screen.getByRole('button', { name: 'Loved it' })).toHaveAttribute('aria-pressed', 'false')
+    await waitFor(() => expect(feedback()[0]).toMatchObject({ method: 'DELETE', body: { tmdb_id: '77', saved: false } }))
+
+    feedbackOk = false
+    fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it" }))
+    await waitFor(() => expect(feedback()).toHaveLength(2))
+    expect(feedback()[1].body).toMatchObject({ action: 'skipped', reaction: 'disliked' })
+    await waitFor(() => expect(screen.getByRole('button', { name: "Watched it, didn't like it" })).toHaveAttribute('aria-pressed', 'false'))
+  })
+
+  it('Add to Watchlist saves it; rated first, it lands on the list with its reaction', async () => {
+    card()
+    fireEvent.click(screen.getByRole('button', { name: 'Liked it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Watchlist: Memento' }))
+    expect(getWatchlist().map((e) => [e.rec.id, e.rating])).toEqual([['movie:77', 'liked']])
+    expect(screen.getByRole('button', { name: 'Remove from watchlist: Memento' })).toBeInTheDocument()
+  })
+})
+
+// Source-level: SearchView needs the router and a page around it.
+describe('SearchView under SEARCH_V3', () => {
+  const view = readFileSync('src/app/search/SearchView.tsx', 'utf8')
+  it('opens SearchCard for every title, and calls the own-titles group "In Seen" (DEC-8)', () => {
+    expect(view).toContain('{card && v3 && (')
+    expect(view).toContain('<SearchCard key={card.id} rec={card} user={user} />')
+    expect(view).toContain('v3 ? "In Seen" : "In your ratings"')
+  })
+})
