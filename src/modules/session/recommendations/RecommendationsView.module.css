@@ -1097,10 +1097,17 @@
   flex: none;
   padding: 0 14px;
 }
-/* An unlit filter chip: dimmer words, a lighter fill (Shahar, 2026-11-19). Hover and the lit chip keep theirs. */
-.filterChip:not(.seenChipOn):not(:hover) {
+/* An unlit filter chip: dimmer words, a lighter fill (Shahar, 2026-11-19). The lit chip keeps its own. */
+.filterChip:not(.seenChipOn) {
   background: rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.5);
+}
+/* Hover only where there is one: on a phone, a chip tapped and let go would keep it. */
+@media (hover: hover) {
+  .filterChip:not(.seenChipOn):hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
 }
 .filterChip b {
   font-weight: 600;
