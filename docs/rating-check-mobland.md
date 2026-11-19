@@ -1,6 +1,6 @@
 # Rating check: MobLand at 67%: why, and what to fix
 
-Shahar's main account (951 ratings, taste_version 218). Measured on production, read-only, 2026-11-19.
+Shahar's main account (951 ratings, taste_version 218). Measured on production, read-only, 2026-11-19. Every number here is from before #395 (series crew) landed; Alon's numbers on #389 are from after it, so the two sets differ.
 
 **Status (2026-11-19, evening):** cause 2 is fixed in #395 (Alon). Cause 1 is measured before any change: Alon's numbers are on #390 (step 1's pool) and #389 (`modern` at several values), and nothing in the model changes until Eran has seen them (Eran, on #389). See the next steps below.
 
