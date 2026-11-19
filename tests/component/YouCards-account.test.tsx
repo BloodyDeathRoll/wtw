@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, onTestFinished } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -69,7 +69,9 @@ describe('Delete my account (v3 Y3)', () => {
   it('deleted: signs this browser out and opens the login page', async () => {
     globalThis.fetch = vi.fn(async () => new Response('{"ok":true}')) as unknown as typeof fetch
     const assign = vi.fn()
-    Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+    const original = window.location
+    Object.defineProperty(window, 'location', { value: { ...original, assign }, writable: true })
+    onTestFinished(() => { Object.defineProperty(window, 'location', { value: original, writable: true }) })
     render(<AccountRows />)
     await userEvent.click(screen.getByRole('button', { name: /Delete my account/ }))
     await userEvent.click(screen.getAllByRole('button', { name: 'Delete my account' }).at(-1)!)

@@ -7,7 +7,9 @@
  *   play_events · conversations (and their messages) · dna_snapshots · fingerprint_embeddings · feedback ·
  *   cowatch_rooms (as host or guest).
  * Outside the database, the Redis keys that hold the user id (rec caches, pool stats, rate limits, …) are deleted
- * first. A table added later with a user column must reference users on delete cascade too:
+ * first; if that fails, nothing else happens and the person can try again (the sheet's red line). A request landing
+ * between the sweep and the login delete could write a key again, so they're swept once more afterwards
+ * (best-effort: by then the login is gone, and so is any way to use them). A table added later with a user column must reference users on delete cascade too:
  * scripts/check-account-delete.mts finds every such table in the live schema and checks a deleted test account
  * leaves nothing behind.
  *
@@ -22,20 +24,26 @@ import { userRedisKeys } from '@/lib/reset-taste'
 /** The user-owned tables, each cascading from users (the PR lists them; the live check verifies them). */
 export const USER_TABLES = [
   'users', 'recommendation_feedback', 'served_titles', 'removed_titles', 'watchlist_entries', 'play_state',
-  'play_events', 'conversations', 'dna_snapshots', 'fingerprint_embeddings', 'feedback',
+  'play_events', 'conversations', 'dna_snapshots', 'fingerprint_embeddings', 'feedback', 'cowatch_rooms',
 ] as const
 
+async function sweepRedis(userId: string): Promise<number> {
+  const keys = await userRedisKeys(userId)
+  for (let i = 0; i < keys.length; i += 100) await getRedis().del(...keys.slice(i, i + 100))
+  return keys.length
+}
+
 export async function deleteAccount(userId: string): Promise<{ redisKeys: number }> {
-  // Redis first: if the login delete then fails, only caches are gone and the person can try again.
-  let redisKeys = 0
-  try {
-    const keys = await userRedisKeys(userId)
-    for (let i = 0; i < keys.length; i += 100) await getRedis().del(...keys.slice(i, i + 100))
-    redisKeys = keys.length
-  } catch (err) {
-    console.warn('[delete-account] redis keys not cleared (non-fatal):', err instanceof Error ? err.message : err)
-  }
+  // Redis first, and it must succeed: a failure here throws before anything is deleted, so the person can retry.
+  let redisKeys = await sweepRedis(userId).catch(err => {
+    throw new Error(`clear redis: ${err instanceof Error ? err.message : err}`)
+  })
   const { error } = await createServiceClient().auth.admin.deleteUser(userId)
   if (error) throw new Error(`delete login: ${error.message}`)
+  // A key written by a request that landed in between.
+  redisKeys += await sweepRedis(userId).catch(err => {
+    console.warn('[delete-account] second redis sweep failed (non-fatal):', err instanceof Error ? err.message : err)
+    return 0
+  })
   return { redisKeys }
 }

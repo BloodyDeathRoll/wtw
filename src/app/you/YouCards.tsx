@@ -63,6 +63,9 @@ export function SeenCard({ seen, total }: { seen: TastePageData['seen']; total: 
  */
 const FEEDBACK_PAGE = false
 
+/** The app's red (YOU.md DEC-3), as the sheets' error line. */
+const DANGER = '#ff8a7a'
+
 /** A row in the genre rows' look that opens a page: icon, label (and a line under it), chevron. */
 function LinkRow({ href, icon, label, says }: { href: string; icon: React.ReactNode; label: string; says?: string }) {
   return (
@@ -195,8 +198,6 @@ function StartOverSheet({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** The app's red (YOU.md DEC-3), as the sheets' error line. */
-const DANGER = '#ff8a7a'
 
 /**
  * "Delete your account?" (v3 Y3; you-v3/2-account-page.jpg right, and the states Eran approved on #371 2026-11-19):

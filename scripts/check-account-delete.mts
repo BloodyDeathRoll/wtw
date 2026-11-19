@@ -3,6 +3,7 @@
  * every user table holds zero rows for it after Delete my account, and the same email can sign up fresh.
  *
  *   node --env-file=.env.local --conditions=react-server --import tsx scripts/check-account-delete.mts
+ *   (needs SUPABASE_DB_URL in .env.local, as budget-check and the load test do)
  *
  * It creates a throwaway login (wtw-delete-check+<time>@example.com) with the admin API, gives it a row in every
  * table that references a user (found from the live schema, so a table added later is covered), plus a Redis key,
@@ -12,7 +13,7 @@
 import pg from 'pg'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getRedis } from '@/lib/redis'
-import { deleteAccount } from '@/lib/delete-account'
+import { deleteAccount, USER_TABLES } from '@/lib/delete-account'
 
 const db = createServiceClient()
 const sql = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } })
@@ -32,6 +33,10 @@ const notCascading = links.filter(l => l.del !== 'c')
 console.log(`user-linked columns: ${links.length} (${links.map(l => `${l.tbl}.${l.col}`).join(', ')})`)
 console.log(`${ok(!notCascading.length)} all delete with the user${notCascading.length ? `: NOT ${notCascading.map(l => l.tbl).join(', ')}` : ''}`)
 if (notCascading.length) failed = true
+// The documented list (delete-account.ts) against the live schema: a new user table should be added there too.
+const live = new Set(links.map(l => l.tbl)), listed = new Set<string>(USER_TABLES)
+const unlisted = [...live].filter(t => !listed.has(t)), stale = [...listed].filter(t => !live.has(t))
+console.log(`${ok(!unlisted.length && !stale.length)} USER_TABLES matches the schema${unlisted.length ? `; not listed: ${unlisted.join(', ')}` : ''}${stale.length ? `; listed but gone: ${stale.join(', ')}` : ''}`)
 
 async function newUser(email: string): Promise<string> {
   const { data, error } = await db.auth.admin.createUser({ email, email_confirm: true })
