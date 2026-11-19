@@ -1332,7 +1332,7 @@ function WatchlistButton({
   /** The feed card's look: full width, the app's orange gradient. */
   primary?: boolean;
 }) {
-  const label = saved ? "Remove from watchlist" : "Add to Watchlist";
+  const label = saved ? "Remove from Watchlist" : "Add to Watchlist";
   return (
     <button
       type="button"
@@ -2279,7 +2279,7 @@ function WatchlistRow({
             onClick={() => onRemove(entry)}
             tabIndex={swiped ? 0 : -1}
             aria-hidden={!swiped}
-            aria-label={`Remove ${rec.title} from watchlist`}
+            aria-label={`Remove ${rec.title} from Watchlist`}
           >
             <BookmarkX size={24} strokeWidth={1.7} aria-hidden />
             Remove
