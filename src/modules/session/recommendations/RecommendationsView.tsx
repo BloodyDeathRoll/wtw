@@ -1278,7 +1278,7 @@ function WatchlistButton({
   /** The feed card's look: full width, the app's orange gradient. */
   primary?: boolean;
 }) {
-  const label = saved ? "Remove from watchlist" : "Add to Watchlist";
+  const label = saved ? "Remove from Watchlist" : "Add to Watchlist";
   return (
     <button
       type="button"

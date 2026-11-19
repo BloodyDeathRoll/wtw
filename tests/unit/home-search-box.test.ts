@@ -86,7 +86,7 @@ describe('header search', () => {
     expect(search).toMatch(/getWatchlist\(\)\.map/)
     expect(search).toMatch(/fetch\("\/api\/recommendations\/ratings"\)/)
     // Listed first, then TMDB's results without the ones already shown.
-    expect(search).toMatch(/\{showMine && \([\s\S]*?In your watchlist[\s\S]*?\{showHits && <p className=\{styles\.groupLabel\}>All titles<\/p>\}/)
+    expect(search).toMatch(/\{showMine && \([\s\S]*?In your Watchlist[\s\S]*?\{showHits && <p className=\{styles\.groupLabel\}>All titles<\/p>\}/)
     expect(search).toMatch(/const shown = hits\.filter\(\(h\) => !mineKeys\.has\(keyOf\(h\)\)\)/)
     // Card and person URLs keep ?in= and ?from= so Back and reload stay in the group.
     expect(search).toMatch(/pushState\(null, "", url\(/)

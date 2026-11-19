@@ -79,10 +79,10 @@ describe('a title from Search opens the card page', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
   })
 
-  it('saved: Remove from watchlist and the star', () => {
+  it('saved: Remove from Watchlist and the star', () => {
     addToWatchlist(rec())
     card()
-    expect(screen.getByRole('button', { name: 'Remove from watchlist: Memento' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove from Watchlist: Memento' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Star Memento' })).toBeInTheDocument()
   })
 
@@ -207,7 +207,7 @@ describe('a title from Search opens the card page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Liked it' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add to Watchlist: Memento' }))
     expect(getWatchlist().map((e) => [e.rec.id, e.rating])).toEqual([['movie:77', 'liked']])
-    expect(screen.getByRole('button', { name: 'Remove from watchlist: Memento' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove from Watchlist: Memento' })).toBeInTheDocument()
   })
 })
 

@@ -403,7 +403,7 @@ export default function SearchView({
           {showMine && (
             <>
               {/* SEARCH_V3: the page is called Seen now (SEARCH.md DEC-8). */}
-              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your watchlist" : v3 ? "In Seen" : "In your ratings"}</p>
+              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your Watchlist" : v3 ? "In Seen" : "In your ratings"}</p>
               <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : v3 ? "Seen" : "Your ratings"}>
                 {mineHits.map((h) => (
                   <TitleRow key={keyOf(h)} h={h} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
@@ -555,7 +555,7 @@ function TitleCard({
   onShare: () => void;
 }) {
   const where = rec.where ? canonicalProvider(rec.where) : null;
-  const label = saved ? "Remove from watchlist" : "Add to Watchlist";
+  const label = saved ? "Remove from Watchlist" : "Add to Watchlist";
   return (
     <article className={`${rv.card} ${rv.heroCard}`}>
       <div className={rv.hero}>
