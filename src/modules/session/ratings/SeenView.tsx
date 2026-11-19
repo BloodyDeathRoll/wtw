@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, Star } from "lucide-react";
 import type { Reaction } from "@/types/dna";
 import type { ContentKind, Recommendation } from "@/types/recommendation";
 import type { AppUser } from "@/modules/session/types";
@@ -21,7 +21,7 @@ import type { RatingsSummary, RatingItem, RemovedItem } from "@/app/api/recommen
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
 import { FingerprintLoader } from "../components/FingerprintLoader";
-import { MetaRow, PosterTile } from "../recommendations/RecommendationsView";
+import { PosterTile } from "../recommendations/RecommendationsView";
 import { SEEN_LABEL } from "../recommendations/watchlist-order";
 import rv from "../recommendations/RecommendationsView.module.css";
 import rs from "./RatingsView.module.css";
@@ -103,7 +103,27 @@ export function seenCounts(data: RatingsSummary, kind: KindFilter): Record<SeenC
   return c;
 }
 
-/** A row in the shape the Watchlist's poster and meta line take. Only the poster's fallback reads the palette. */
+/**
+ * year · length · ★, in the Watchlist row's look (its MetaRow), with only the parts we know: a title missing from
+ * `titles` has none, and one with no year or score still shows the rest. Never "0" or "★ 0.0".
+ */
+function FactsLine({ row }: { row: SeenRow }) {
+  if (!row.year && !row.meta && !row.star) return null;
+  return (
+    <div className={rv.cardMeta}>
+      {row.year ? <span>{row.year}</span> : null}
+      {row.meta ? <span>{row.meta}</span> : null}
+      {row.star ? (
+        <span className={rv.metaRating}>
+          <Star size={16} className={rv.metaStar} aria-hidden />
+          {row.star.toFixed(1)}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** A row in the shape the Watchlist's poster takes. Only the poster's fallback reads the palette. */
 function asRec(r: SeenRow): Recommendation {
   return {
     id: r.key,
@@ -192,6 +212,8 @@ export default function SeenView({
       ?.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "smooth" });
   }, [chip]);
 
+  // The whole of Seen: every rated title. Hidden from For you is a different list (not seen), so the chips' counts
+  // don't add up to it (SEEN.md DEC-1, DEC-8).
   const total = data?.items.length ?? 0;
   const nothing = status === "ready" && data && data.items.length === 0 && data.removed.length === 0;
 
@@ -310,7 +332,7 @@ export default function SeenView({
                           <PosterTile rec={rec} size="row" />
                           <div className={rv.rowBody}>
                             <h3 className={rv.rowTitle}>{rec.title}</h3>
-                            {r.year ? <MetaRow rec={rec} /> : null}
+                            <FactsLine row={r} />
                             {r.reaction && (
                               <span className={rv.rowLine}>
                                 <span className={rv.rowReaction}>{SEEN_LABEL[r.reaction]}</span>

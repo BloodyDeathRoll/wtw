@@ -1260,8 +1260,7 @@ function TrailerCircle({ rec }: { rec: Recommendation }) {
 }
 
 /** Year · runtime · ★ rating — shared by every card variant. */
-/** Also Seen's rows (src/modules/session/ratings/SeenView.tsx, SEEN.md DEC-1). */
-export function MetaRow({ rec }: { rec: Recommendation }) {
+function MetaRow({ rec }: { rec: Recommendation }) {
   return (
     <div className={styles.cardMeta}>
       <span>{rec.year}</span>

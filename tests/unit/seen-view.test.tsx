@@ -67,6 +67,26 @@ describe('SeenView', () => {
     expect(row).toHaveTextContent('❤️ Loved')
   })
 
+  it('the facts line shows only what we know: no "0", no "★ 0.0"', async () => {
+    serve({
+      ...DATA,
+      items: [
+        { ...DATA.items[0], title: 'No score', year: 1999, meta: '1h 40m', star: null },
+        { ...DATA.items[1], title: 'No year', year: null, meta: '~40m episodes', star: 8.7 },
+        { ...DATA.items[0], id: 'movie:9', title: 'Not in titles', year: null, meta: null, star: null },
+      ],
+    })
+    render(<SeenView onBack={() => {}} />)
+    const noScore = await screen.findByLabelText('No score')
+    expect(noScore).toHaveTextContent('1999')
+    expect(noScore).toHaveTextContent('1h 40m')
+    expect(noScore).not.toHaveTextContent('0.0')
+    const noYear = screen.getByLabelText('No year')
+    expect(noYear).toHaveTextContent('~40m episodes')
+    expect(noYear).toHaveTextContent('8.7')
+    expect(screen.getByLabelText('Not in titles').textContent).toBe('Not in titles❤️ Loved')
+  })
+
   it("today's two dropdowns: type and sort", async () => {
     render(<SeenView onBack={() => {}} />)
     await screen.findByText('Seen (3)')
