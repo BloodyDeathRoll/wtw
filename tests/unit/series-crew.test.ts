@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { normaliseAggregateCredits } from '@/lib/tmdb'
 
-// A series' plain `credits` list no Director (806 of 1,000 catalogue series had none, docs/rating-check-mobland.md).
+// A series' plain `credits` list no Director (806 of a sample of 1,000 catalogue series had none, docs/rating-check-mobland.md).
 // Its aggregate credits do, with an episode count per job. MobLand (tv:247718), as TMDB returns it, trimmed.
 
 const crew = (id: number, name: string, department: string, jobs: [string, number][]) =>

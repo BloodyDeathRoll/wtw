@@ -90,9 +90,12 @@ interface TMDBCredits {
 
 /**
  * A series' credits summed over its episodes (`/tv/{id}/aggregate_credits`). A
- * series' plain `credits` list no Director and almost no Writer: 806 of 1,000
- * catalogue series had no director on record (docs/rating-check-mobland.md,
- * 2026-11-19). Here each person carries their jobs with an episode count.
+ * series' plain `credits` list no Director and almost no Writer: 806 of a
+ * sample of 1,000 catalogue series had no director on record
+ * (docs/rating-check-mobland.md, 2026-11-19). Here each person carries their
+ * jobs with an episode count. It's bigger than `credits` on a long run (The
+ * Simpsons: 121 KB against 6 KB gzipped, +80 ms); getTV only runs for a title
+ * not yet in the catalogue.
  */
 interface TMDBAggregateCredits {
   cast: { id: number; name: string; order: number }[]
@@ -213,9 +216,12 @@ const WRITER_JOBS = new Set(['Screenplay', 'Writer', 'Story', 'Script', 'Author'
 
 /**
  * A series' crew from its aggregate credits: the directors, writers and
- * cinematographers with the most episodes (a director of 4 of 20 episodes
- * counts; an assistant director doesn't), the creators first among writers,
- * and the top 5 billed cast. Same shape as a movie's (titles.crew).
+ * cinematographers with the most episodes, top 3 / 4 / 2 (a director of 4 of
+ * 20 episodes counts; an assistant director doesn't). There's no episode
+ * floor: a one-episode director makes the list when fewer than three directed
+ * more, since on a short series that is who directed it. The creators come
+ * first among writers, then the top 5 billed cast. Same shape as a movie's
+ * (titles.crew).
  */
 export function normaliseAggregateCredits(
   agg: TMDBAggregateCredits,
