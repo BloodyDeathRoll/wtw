@@ -108,12 +108,20 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
     void myRatings().then((r) => {
       if (on && r[rec.id]) {
         setRated((cur) => cur ?? r[rec.id]);
-        server.current ??= r[rec.id];
+        // Seen's rating over the Watchlist's tag, until this card writes its own.
+        if (!latest.current || server.current === undefined) server.current = r[rec.id];
       }
     });
+    // A rating that lands elsewhere (another tab) is what a failed write here rolls back to.
+    const onRated = (e: Event) => {
+      const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
+      if (id === rec.id) server.current = rating ?? undefined;
+    };
+    window.addEventListener(RATED_EVENT, onRated);
     void whyLine(rec.id).then((text) => on && setLine({ id: rec.id, text }));
     return () => {
       on = false;
+      window.removeEventListener(RATED_EVENT, onRated);
     };
   }, [rec.id]);
 

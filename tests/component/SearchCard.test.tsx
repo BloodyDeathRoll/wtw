@@ -9,7 +9,7 @@ import type { Recommendation } from '@/types/recommendation'
 vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SearchCard, { forgetMyRatings } from '@/app/search/SearchCard'
-import { addToWatchlist, getWatchlist } from '@/lib/watchlist'
+import { addToWatchlist, getWatchlist, setWatchlistRating } from '@/lib/watchlist'
 import { getAllPendingForTesting } from '@/lib/regret-queue'
 import { RATED_EVENT } from '@/modules/session/recommendations/rate'
 
@@ -117,6 +117,28 @@ describe('a title from Search opens the card page', () => {
     fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it" }))
     fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
     await waitFor(() => expect(feedback()).toHaveLength(4))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
+  })
+
+  it('a failed write rolls back to a rating made elsewhere meanwhile, and to Seen over a stale Watchlist tag', async () => {
+    card()
+    await waitFor(() => expect(calls.filter((c) => c.url.includes('/ratings'))).toHaveLength(1))
+    window.dispatchEvent(new CustomEvent(RATED_EVENT, { detail: { id: 'movie:77', rating: 'liked' } }))
+    feedbackOk = false
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
+    await waitFor(() => expect(feedback()).toHaveLength(1))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
+    cleanup()
+
+    forgetMyRatings()
+    addToWatchlist(rec())
+    setWatchlistRating('movie:77', 'disliked')
+    ratings = [{ id: 'movie:77', rating: 'liked' }]
+    card()
+    await waitFor(() => expect(calls.filter((c) => c.url.includes('/ratings'))).toHaveLength(2))
+    await new Promise((r) => setTimeout(r, 0))
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it' }))
+    await waitFor(() => expect(feedback()).toHaveLength(2))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Liked it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true'))
   })
 
