@@ -180,6 +180,11 @@ export default function SeenView({
   const [note, setNote] = useState<{ key: string; title: string; from: Reaction; to: Reaction } | null>(null);
   const noteTimer = useRef<number | undefined>(undefined);
   const writes = useRef<Record<string, number>>({});
+  // What the server last confirmed per row: a failed write goes back to it, not to the tap before (a burst can fail twice).
+  const confirmed = useRef<Record<string, Reaction>>({});
+  // The list as of the last render, so two taps before a re-render each see the reaction the first one set.
+  const dataRef = useRef(data);
+  dataRef.current = data;
   useEffect(() => () => window.clearTimeout(noteTimer.current), []);
 
   useEffect(() => {
@@ -232,12 +237,16 @@ export default function SeenView({
 
   /** Set a row's reaction to `to`: lit and counted at once, written through the feedback route; a failed write puts it back. */
   async function rate(key: string, to: Reaction) {
-    const item = data?.items.find((i) => i.id === key);
+    const item = dataRef.current?.items.find((i) => i.id === key);
     if (!item || item.rating === to) return;
-    const from = item.rating;
+    confirmed.current[key] ??= item.rating;
     const n = (writes.current[key] = (writes.current[key] ?? 0) + 1);
-    const apply = (r: Reaction) =>
-      setData((d) => (d ? { ...d, items: d.items.map((i) => (i.id === key ? { ...i, rating: r } : i)) } : d));
+    const apply = (r: Reaction) => {
+      const d = dataRef.current;
+      if (!d) return;
+      dataRef.current = { ...d, items: d.items.map((i) => (i.id === key ? { ...i, rating: r } : i)) };
+      setData(dataRef.current);
+    };
     apply(to);
     try {
       const res = await fetch("/api/recommendations/feedback", {
@@ -253,20 +262,21 @@ export default function SeenView({
         }),
       });
       if (!res.ok) throw new Error(String(res.status));
+      confirmed.current[key] = to;
       // The Watchlist keeps a rated title, re-tagged, as today's Ratings screen does.
       if (item.media_type) setWatchlistRating(`${item.media_type}:${item.tmdb_id}`, to);
       setWatchlistRating(item.tmdb_id, to);
     } catch {
       // Only the newest tap on this row may put it back.
       if (writes.current[key] === n) {
-        apply(from);
+        apply(confirmed.current[key]);
         setNote((cur) => (cur?.key === key ? null : cur));
       }
     }
   }
 
   function changeOnRow(row: SeenRow, to: Reaction) {
-    const from = live.get(row.key);
+    const from = dataRef.current?.items.find((i) => i.id === row.key)?.rating;
     if (!from || from === to) return; // the lit icon does nothing (DEC-5)
     void rate(row.key, to);
     window.clearTimeout(noteTimer.current);
@@ -415,6 +425,7 @@ export default function SeenView({
                                 {ICONS.map((ic) => {
                                   const on = live.get(r.key) === ic.r;
                                   return (
+                                    // S3: when the row itself opens the card page, these taps must stopPropagation.
                                     <button
                                       key={ic.r}
                                       type="button"

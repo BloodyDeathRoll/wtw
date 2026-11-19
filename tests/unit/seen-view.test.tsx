@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within, act } from '@testing-library/react'
 import type { RatingsSummary } from '@/app/api/recommendations/ratings/route'
 
 // S1 (docs/plan/v3/SEEN.md DEC-1, 2, 3, 9): Seen as the Watchlist's rows, chips with no All (opens on Loved), today's
@@ -181,6 +181,41 @@ describe('S2: change a rating right on the row (DEC-4, DEC-5)', () => {
     await flush()
     expect(posts).toEqual([])
     expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('sends the feed\'s content_type with the rating', async () => {
+    serveWith(true)
+    render(<SeenView onBack={() => {}} contentType="movies" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+    await flush()
+    expect(posts).toEqual([expect.objectContaining({ content_type: 'movies' })])
+  })
+
+  it('the note goes after 5 s', async () => {
+    serveWith(true)
+    render(<SeenView onBack={() => {}} />)
+    const liked = await screen.findByRole('button', { name: 'Liked it: Memento' })
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(liked)
+      expect(screen.getByRole('status')).toHaveTextContent('Memento will move to Liked.')
+      act(() => { vi.advanceTimersByTime(4999) })
+      expect(screen.queryByRole('status')).not.toBeNull()
+      act(() => { vi.advanceTimersByTime(1) })
+      expect(screen.queryByRole('status')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('two taps that both fail go back to what the server has, not to the first tap', async () => {
+    serveWith(false)
+    render(<SeenView onBack={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+    fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it: Memento" }))
+    await flush(); await flush()
+    expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect(chipCounts()).toEqual(['Loved2', 'Liked1', 'Disliked', 'Hidden from For you1'])
   })
 
   it('a failed write puts the reaction back and drops the note', async () => {
