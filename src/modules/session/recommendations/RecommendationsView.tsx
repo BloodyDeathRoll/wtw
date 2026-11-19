@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  MessageCircle,
   Play,
   Star,
   X,
@@ -118,6 +119,8 @@ interface Props {
   onFindMore?: () => Promise<RecPage | null | void>;
   /** Watchlist mode only — action on the empty state that opens the rec feed. */
   onBrowse?: () => void;
+  /** Watchlist mode only: the end card's "Let's talk" (DEC-9). Unset (chat off or out of turns): no end card. */
+  onTalk?: () => void;
   /**
    * Rendered at the far right of the header.
    * The app menu goes here so it sits in the same spot on every screen
@@ -260,6 +263,7 @@ export default function RecommendationsView({
   sharerName,
   onFindMore,
   onBrowse,
+  onTalk,
   headerRight,
   user,
   onCalibrate,
@@ -893,6 +897,7 @@ export default function RecommendationsView({
             onGone={ghostGone}
             onDismissNotes={dismissNotes}
             onBrowse={onBrowse}
+            onTalk={onTalk}
           />
         ) : (
         <Feed
@@ -1051,6 +1056,21 @@ function Feed({
         )}
         {error && <span className={styles.error}>{error}</span>}
       </div>
+    </div>
+  );
+}
+
+// The Watchlist's end card (WATCHLIST.md DEC-9, docs/prototypes/watchlist-v3/10-end.jpg): For you's end-card look,
+// one ask. Copy is a placeholder until Eran approves it at the PR.
+function WatchlistEndCard({ onTalk }: { onTalk: () => void }) {
+  return (
+    <div className={`${styles.card} ${styles.nudge} ${styles.endCard}`} role="group" aria-label="That’s your list">
+      <span className={styles.nudgeEyebrow}>That&rsquo;s your list</span>
+      <p className={styles.nudgeText}>Need help deciding? Let&rsquo;s talk it over.</p>
+      <button type="button" className={`${styles.watchlistBtn} ${styles.watchlistBtnPrimary}`} onClick={onTalk}>
+        <MessageCircle size={20} strokeWidth={1.6} aria-hidden />
+        Let&rsquo;s talk
+      </button>
     </div>
   );
 }
@@ -1851,6 +1871,7 @@ function WatchlistList({
   onGone,
   onDismissNotes,
   onBrowse,
+  onTalk,
 }: {
   entries: WatchlistEntry[];
   ghosts: Record<string, Ghost>;
@@ -1863,6 +1884,7 @@ function WatchlistList({
   onGone: (id: string) => void;
   onDismissNotes: () => void;
   onBrowse?: () => void;
+  onTalk?: () => void;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   // How many rows are shown, for the filter they were paged under: a filter
@@ -1924,6 +1946,10 @@ function WatchlistList({
   }, [entries, ghosts, filter]);
   const visible = rows.slice(0, shownN);
   const hasMore = shownN < rows.length;
+  // The end card (DEC-9): under the last unseen row, before the Seen line, under All only, with three or more unseen
+  // titles (a removed row waiting on its Undo no longer counts), and only when the chat can answer.
+  const unseenN = rows.slice(0, seenFrom).filter((e) => !ghosts[e.rec.id]).length;
+  const endCard = onTalk && filter === "all" && unseenN >= 3 ? <WatchlistEndCard onTalk={onTalk} /> : null;
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -1977,6 +2003,7 @@ function WatchlistList({
       <div key={filter} ref={flipRef} className={styles.listFade}>
         {visible.map((e, i) => (
           <Fragment key={e.rec.id}>
+            {i === seenFrom && endCard}
             {i === seenFrom && filter !== "seen" && (
               <div className={styles.seenDivider} role="separator" aria-label={`Seen, ${rows.length - seenFrom}`}>
                 Seen <b>{rows.length - seenFrom}</b>
@@ -2000,6 +2027,8 @@ function WatchlistList({
             />
           </Fragment>
         ))}
+        {/* No Seen rows (or none paged in yet): the card closes the unseen list. */}
+        {visible.length === seenFrom && endCard}
       </div>
       <div ref={sentinelRef} className={styles.sentinel}>
         {!hasMore && <span className={styles.muted}>That&rsquo;s everything we found.</span>}

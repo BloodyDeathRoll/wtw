@@ -35,6 +35,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { createServerClient } from '@supabase/ssr'
 import { createServiceClient } from '@/lib/supabase/service'
 import { capitalisedRuns, titleCandidates } from './names'
+import { CHAT_LIMIT_LINES } from '@/lib/chat-limit-lines'
 
 const QUESTIONS = [
   'What should I watch tonight?',
@@ -88,8 +89,8 @@ async function snapshot() {
   }
 }
 
-// The route's two limit replies (OVER_USER and OVER_ALL in route.ts, which a route file cannot export).
-const LIMIT_LINES = ['the chat has a daily limit. It opens again within a day.', 'The chat has reached its daily limit for everyone.']
+// The route's two limit replies.
+const LIMIT_LINES = CHAT_LIMIT_LINES
 
 /** One question as a chat of its own. The reply is the stream's text; `errors` are the stream's error parts. */
 async function ask(cookie: string, text: string): Promise<{ status: number; answer: string; errors: string[] }> {

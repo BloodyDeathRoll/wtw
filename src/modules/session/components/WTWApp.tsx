@@ -25,6 +25,8 @@ import {
   Volume2,
 } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
+import { CHAT_LIMIT_LINES } from "@/lib/chat-limit-lines";
+import { WATCHLIST_OPENER, withOpener } from "@/modules/session/chat-opener";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { createClient } from "@/lib/supabase/client";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
@@ -528,6 +530,7 @@ export default function WTWApp({
   welcome,
   calibrationNudge = false,
   chatReady = false,
+  chatTurnsLeft = false,
   voiceWelcome = true,
 }: {
   user: AppUser;
@@ -535,6 +538,8 @@ export default function WTWApp({
   welcome: Welcome;
   /** The onboarding is done, or was never needed: the consultant chat may be opened. */
   chatReady?: boolean;
+  /** The chat still has turns today (src/lib/chat-budget.ts): the Watchlist's end card offers it only then. */
+  chatTurnsLeft?: boolean;
   /** Skipped the taste games part-way: the feed nudges them back now and then. */
   calibrationNudge?: boolean;
   /** The v0.1 spoken welcome for an account with no chat and few ratings; off under ONBOARDING_V2. */
@@ -714,6 +719,8 @@ export default function WTWApp({
         },
       }),
   );
+  // Seeded from the server at page load; off once the chat answers with its daily-limit line.
+  const [turnsLeft, setTurnsLeft] = useState(chatTurnsLeft);
   const { messages, sendMessage, setMessages, status, error, regenerate } = useChat({
     transport,
     // The consultant is asked ad hoc: it opens empty, without the old interview's turns.
@@ -723,6 +730,8 @@ export default function WTWApp({
     // with CHAT_ADDED: take the list again, so the Watchlist screen and the cards' buttons show it.
     onFinish: ({ message, isError }) => {
       if (consultant && !isError && textOf(message).startsWith(`${CHAT_ADDED} `)) void hydrateWatchlist(user.id);
+      // The chat said it's out of turns for today: stop offering it (the Watchlist's end card, DEC-9).
+      if (consultant && !isError && CHAT_LIMIT_LINES.includes(textOf(message).trim())) setTurnsLeft(false);
     },
   });
 
@@ -962,6 +971,12 @@ export default function WTWApp({
     setStage("conversation");
   }
   const onChat = consultant ? openChat : undefined;
+  // The Watchlist's end card (DEC-9): the chat opens on a line that knows where it came from. The line is part of the
+  // history the model is sent (withOpener), so a reply to it reads as one.
+  function talkFromWatchlist() {
+    setMessages((prev) => withOpener(prev, WATCHLIST_OPENER, crypto.randomUUID()));
+    openChat();
+  }
 
   // The menu's "Play" and the home screen's Games button both open the games
   // (2026-10-21). The old rating feed ("learning") stays reachable by ?stage=.
@@ -1167,6 +1182,7 @@ export default function WTWApp({
             mode="watchlist"
             sharerName={user.name}
             onBrowse={handleRecommend}
+            onTalk={consultant && turnsLeft ? talkFromWatchlist : undefined}
             headerRight={headerMenu}
             user={user}
           />
