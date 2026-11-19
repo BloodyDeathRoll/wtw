@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import type { UIMessage } from 'ai'
 import { WATCHLIST_OPENER, withOpener } from '@/modules/session/chat-opener'
 import { CHAT_LIMIT_LINES } from '@/lib/chat-limit-lines'
@@ -30,5 +31,17 @@ describe('the limit lines', () => {
   it('are the two daily-limit replies, word for word', () => {
     expect(CHAT_LIMIT_LINES).toHaveLength(2)
     for (const line of CHAT_LIMIT_LINES) expect(line).toMatch(/daily limit.* It opens again within a day\./)
+  })
+})
+
+// Source-level, like chat-entry.test.ts: WTWApp has no render harness.
+describe('the Watchlist screen in WTWApp', () => {
+  const app = readFileSync('src/modules/session/components/WTWApp.tsx', 'utf8')
+  it('offers the end card only to the consultant with turns left, and opens the chat on the opener', () => {
+    expect(app).toContain('onTalk={consultant && turnsLeft ? talkFromWatchlist : undefined}')
+    expect(app).toContain('setMessages((prev) => withOpener(prev, WATCHLIST_OPENER, crypto.randomUUID()));')
+  })
+  it('stops offering it once the chat answers with a limit line', () => {
+    expect(app).toContain('CHAT_LIMIT_LINES.includes(textOf(message).trim())) setTurnsLeft(false)')
   })
 })

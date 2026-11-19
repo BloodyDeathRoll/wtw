@@ -712,7 +712,7 @@ export default function WTWApp({
     onFinish: ({ message, isError }) => {
       if (consultant && !isError && textOf(message).startsWith(`${CHAT_ADDED} `)) void hydrateWatchlist(user.id);
       // The chat said it's out of turns for today: stop offering it (the Watchlist's end card, DEC-9).
-      if (consultant && !isError && CHAT_LIMIT_LINES.includes(textOf(message))) setTurnsLeft(false);
+      if (consultant && !isError && CHAT_LIMIT_LINES.includes(textOf(message).trim())) setTurnsLeft(false);
     },
   });
 
