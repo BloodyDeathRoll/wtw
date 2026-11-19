@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 
 // GET /api/recommendations/ratings reads past PostgREST's 1,000-row answer (#359): the ratings a page at a time, and
 // the titles in chunks per type, so a heavy account loses neither old ratings nor posters.
@@ -46,6 +46,11 @@ import { GET } from '@/app/api/recommendations/ratings/route'
 import type { RatingsSummary } from '@/app/api/recommendations/ratings/route'
 
 describe('GET /api/recommendations/ratings past 1,000 rows', () => {
+  afterEach(() => {
+    db.failTitles = false
+    vi.restoreAllMocks()
+  })
+
   it('returns every rating and finds every poster', async () => {
     const at = (i: number) => new Date(Date.UTC(2026, 0, 1) + i * 60_000).toISOString()
     db.feedback = Array.from({ length: 1200 }, (_, i) => ({
@@ -80,7 +85,5 @@ describe('GET /api/recommendations/ratings past 1,000 rows', () => {
     expect(body.items.map((i) => [i.title, i.poster_url, i.year])).toEqual([['Film 1', null, null]])
     expect(log).toHaveBeenCalledTimes(1)
     expect(String(log.mock.calls[0][0])).toContain('[ratings] titles chunk failed')
-    log.mockRestore()
-    db.failTitles = false
   })
 })
