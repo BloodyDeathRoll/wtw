@@ -57,12 +57,6 @@ export function SeenCard({ seen, total }: { seen: TastePageData['seen']; total: 
   )
 }
 
-/**
- * Whether "Send us feedback" shows. Its page (/you/feedback) comes with v3 Y2, which needs the team's email service
- * (YOU.md DEC-5); until then the row would lead nowhere, so You ends with Account alone. Y2 turns this on.
- */
-const FEEDBACK_PAGE = false
-
 /** A row in the genre rows' look that opens a page: icon, label (and a line under it), chevron. */
 function LinkRow({ href, icon, label, says }: { href: string; icon: React.ReactNode; label: string; says?: string }) {
   return (
@@ -80,13 +74,14 @@ function LinkRow({ href, icon, label, says }: { href: string; icon: React.ReactN
 
 /**
  * The bottom of You (v3 Y1, YOU.md DEC-3; you-v3/1-account-row.jpg): one card of two rows in the genre rows' look,
- * Send us feedback out in the open so friends find it, then Account ›, which opens its own page.
+ * Send us feedback out in the open so friends find it, then Account ›, which opens its own page. `feedback`: the
+ * team's email service is set up (v3 Y2, RESEND_API_KEY + FEEDBACK_TO); without it the row would lead nowhere.
  */
-export function YouLinksCard() {
+export function YouLinksCard({ feedback = false }: { feedback?: boolean }) {
   return (
     <section className={base.section}>
       <div className={t.grows}>
-        {FEEDBACK_PAGE && (
+        {feedback && (
           <LinkRow
             href="/you/feedback"
             icon={<MessageSquare size={24} strokeWidth={1.75} />}

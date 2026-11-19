@@ -91,6 +91,8 @@ UPSTASH_REDIS_REST_URL=            UPSTASH_REDIS_REST_TOKEN=
 MISTRAL_BATCH_API_KEY=   # optional — nightly enrichment only; falls back to MISTRAL_API_KEY
 TYPESAFE_API_KEY=        # Jev — engine step 4 filter; when it fails the batch is served in score order and the devs are told
 JEV_ENABLED=false        # skips step 4 (Jev) entirely; set in Vercel since P1-E7. Unset = on
+RESEND_API_KEY=          # v3 Y2: "Send us feedback" emails (Resend, sending access only). Unset = the feedback row is hidden
+FEEDBACK_TO=             # v3 Y2: the team's feedback inbox (YOU.md DEC-5)
 ```
 
 ## Commands
