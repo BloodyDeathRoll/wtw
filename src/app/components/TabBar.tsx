@@ -15,10 +15,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Gamepad2, MessageCircle, Sparkles } from "lucide-react";
 import { watchlistCount, WATCHLIST_CHANGED_EVENT, WATCHLIST_HYDRATED_EVENT } from "@/lib/watchlist";
+import { markInApp } from "@/modules/session/nav-history";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "./RouteLoading";
 import styles from "./TabBar.module.css";
-import { markInApp } from "@/modules/session/nav-history";
 
 export type Tab = "foryou" | "watchlist" | "games" | "you";
 
