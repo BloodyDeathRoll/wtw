@@ -134,7 +134,7 @@ afterEach(() => {
 describe('a title the person asked to add', () => {
   it('is saved, once, as a watchlist row and nothing else', async () => {
     const shown = await turn(['add Heat to my watchlist'], 'ADD: *Heat*')
-    expect(shown).toBe('Added Heat (film, 1995) to your watchlist.')
+    expect(shown).toBe('Added Heat (film, 1995) to your Watchlist.')
     expect(db.writes.map(w => `${w.table}.${w.op}`)).toEqual(['watchlist_entries.upsert'])
     const [row] = db.writes[0].payload as { user_id: string; rec_id: string; rating: unknown; rec: { id: string; title: string; reason: string } }[]
     expect(row).toMatchObject({ user_id: 'u1', rec_id: 'movie:949', rating: null, rec: { id: 'movie:949', title: 'Heat', reason: 'Heat, the synopsis.' } })
@@ -142,19 +142,19 @@ describe('a title the person asked to add', () => {
 
   it('keeps the rest of the answer, and never shows the ADD line', async () => {
     const shown = await turn(['save Heat for me, and what else is like it?'], 'For the same slow tension, try *Parasite*.\nADD: *Heat*')
-    expect(shown).toBe('Added Heat (film, 1995) to your watchlist. For the same slow tension, try Parasite.')
+    expect(shown).toBe('Added Heat (film, 1995) to your Watchlist. For the same slow tension, try Parasite.')
     expect(shown).not.toContain('ADD')
   })
 
   it('adds several titles in one turn', async () => {
     const shown = await turn(['put Heat and Parasite on my list'], 'ADD: *Heat*; *Parasite*')
-    expect(shown).toBe('Added Heat (film, 1995) and Parasite (film, 2019) to your watchlist.')
+    expect(shown).toBe('Added Heat (film, 1995) and Parasite (film, 2019) to your Watchlist.')
     expect(db.writes).toHaveLength(2)
   })
 
   it('is left alone when it is already there', async () => {
     db.held = [{ rec_id: 'movie:949', rec: { id: 'movie:949', title: 'Heat', type: 'movie', year: 1995 } }]
-    expect(await turn(['add Heat to my watchlist'], 'ADD: *Heat*')).toBe('Heat (film, 1995) is already on your watchlist.')
+    expect(await turn(['add Heat to my watchlist'], 'ADD: *Heat*')).toBe('Heat (film, 1995) is already on your Watchlist.')
     expect(db.writes).toEqual([])
   })
 
@@ -169,7 +169,7 @@ describe('a title the person asked to add', () => {
     expect(db.writes).toEqual([])
     // "the 1984 one" has no word for a save in it: the ask is the message before the question.
     const shown = await turn(['add Dune to my watchlist', which, 'the 1984 one'], 'ADD: *Dune* (1984)')
-    expect(shown).toBe('Added Dune (film, 1984) to your watchlist.')
+    expect(shown).toBe('Added Dune (film, 1984) to your Watchlist.')
     expect((db.writes[0].payload as { rec_id: string }[])[0].rec_id).toBe('movie:841')
   })
 
@@ -177,7 +177,7 @@ describe('a title the person asked to add', () => {
     const THE_HEAT = title('The Heat', '136795', 2013)
     db.titles.push(THE_HEAT)
     tmdb.hits.Heat = [hit(HEAT), hit(THE_HEAT)]
-    expect(await turn(['add Heat to my watchlist'], 'ADD: *Heat*')).toBe('Added Heat (film, 1995) to your watchlist.')
+    expect(await turn(['add Heat to my watchlist'], 'ADD: *Heat*')).toBe('Added Heat (film, 1995) to your Watchlist.')
   })
 
   it('is not guessed at when the year the model gave matches neither', async () => {
@@ -190,7 +190,7 @@ describe('a title the person asked to add', () => {
     const logs = vi.spyOn(console, 'log').mockImplementation(() => {})
     const draft = 'Like it, try *Zardoz*. It is strange and slow.\nADD: *Heat*'
     const shown = await turn(['add Heat to my watchlist, and what else is like it?'], draft, draft)
-    expect(shown).toBe('Added Heat (film, 1995) to your watchlist.')
+    expect(shown).toBe('Added Heat (film, 1995) to your Watchlist.')
     logs.mockRestore()
   })
 
@@ -212,7 +212,7 @@ describe('a title the person asked to add', () => {
 describe('the answer to the chat\'s own question about an ask', () => {
   it('still counts as the ask', async () => {
     const shown = await turn(['ok add it', 'Which title would you like added: Heat or Parasite?', 'Parasite'], 'ADD: *Parasite*')
-    expect(shown).toBe('Added Parasite (film, 2019) to your watchlist.')
+    expect(shown).toBe('Added Parasite (film, 2019) to your Watchlist.')
   })
 })
 
@@ -221,7 +221,7 @@ describe('a first draft that fails the check', () => {
   const BAD = 'It was directed by Al Mann.\nADD: *Heat*'
 
   it('keeps its ADD line when the second try leaves it out', async () => {
-    expect(await turn(['add Heat to my watchlist'], BAD, 'A tense one.')).toBe('Added Heat (film, 1995) to your watchlist. A tense one.')
+    expect(await turn(['add Heat to my watchlist'], BAD, 'A tense one.')).toBe('Added Heat (film, 1995) to your Watchlist. A tense one.')
   })
 
   it('adds nothing when the second try asks the person which title they mean', async () => {
@@ -233,7 +233,7 @@ describe('a first draft that fails the check', () => {
 describe('a title the person did not ask to add', () => {
   it('is not saved because the model decided to', async () => {
     const shown = await turn(['I loved Heat. What is like it?'], 'Try *Parasite*.\nADD: *Parasite*')
-    expect(shown).toBe('Try Parasite. To put a title on your watchlist, ask me in so many words: "add Dune to my watchlist".')
+    expect(shown).toBe('Try Parasite. To put a title on your Watchlist, ask me in so many words: "add Dune to my Watchlist".')
     expect(db.writes).toEqual([])
   })
 
@@ -271,6 +271,8 @@ describe('asksToSave', () => {
 
   it('no after an ask that was carried out, even when the reply went on to a question', () => {
     expect(asksToSave('I loved Parasite, what is like it?', 'Added Heat (film, 1995) to your watchlist. Anything else?', 'add Heat to my watchlist')).toBe(false)
+    expect(asksToSave('what is like it?', 'Heat (film, 1995) is already on your Watchlist. Want something like it?', 'add Heat to my watchlist')).toBe(false)
+    // A reply saved before Watchlist took its capital W still counts as carried out.
     expect(asksToSave('what is like it?', 'Heat (film, 1995) is already on your watchlist. Want something like it?', 'add Heat to my watchlist')).toBe(false)
   })
 
