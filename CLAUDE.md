@@ -9,6 +9,7 @@ WTW is an AI-powered film and TV recommendation engine that builds a continuousl
 | Working on | Read first |
 |---|---|
 | **Anything — start here.** What's done, what's next, who drives it | `docs/INTEGRATION.md` |
+| **v3 work (ready for friends: For you, Seen, Search, You)** — work packages, lanes, gates, the screen sign-off rule; status in GitHub Issues | `docs/plan/v3/PLAN.md` · decisions per part: `docs/plan/v3/*.md` · numbers: `docs/plan/v3/EVIDENCE.md` |
 | **v2 work (new formula, first run, chat as consultant)** — work packages, lanes, gates; status in GitHub Issues | `docs/plan/PLAN.md` · numbers: `docs/plan/EVIDENCE.md` |
 | `src/types/dna.ts`, `src/modules/dna/`, any cross-module seam | `docs/DNA-CONTRACT.md` |
 | Full DNA field reference | `docs/master_dna_schema.json` |

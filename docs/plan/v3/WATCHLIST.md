@@ -14,7 +14,7 @@ titles first). No Movies / Series / Both (`docs/watchlist-plan.md` #3).
 **What gets in.** "Add to Watchlist" on a For you card, a Search result, a shared title page (`/t/…`), or the chat ("Added X to your
 watchlist"). The whole card is stored as it was served, with the "Why" breakdown of that day. Cap 200.
 
-**What goes out.** Only "Remove from watchlist" (the card's yellow button). A rating never removes: the card stays, the chip stays lit
+**What goes out.** Only "Remove from Watchlist" (the card's yellow button). A rating never removes: the card stays, the chip stays lit
 and the prompt says "Saved to Ratings". Unsaving tells the fingerprint, so the title can come back to For you.
 
 **Order and paging.** Sort by: Year, Date Added (default, newest first), Rating (the ★ score, not yours), Name. 6 cards a page,
@@ -24,7 +24,7 @@ more as you scroll. No filter, no search inside the list beyond the header searc
 
 **The card.** Identical to For you: poster with the US service pill and the match ring, title · year · length · ★, share and trailer,
 one fresh "why" line built from facts (`/api/recommendations/why-lines`; the saved AI line is not shown), "Why it's a match"
-(opens the saved breakdown: real bars for 41%, old guessed bars 25%, none 34%), "Remove from watchlist", Seen it? chips. No X.
+(opens the saved breakdown: real bars for 41%, old guessed bars 25%, none 34%), "Remove from Watchlist", Seen it? chips. No X.
 
 **Empty.** "Nothing saved yet. Tap "Add to Watchlist" on a recommendation to keep it here." plus a "Browse recommendations" button.
 
@@ -83,7 +83,7 @@ Each has a mock in `docs/prototypes/watchlist-v3/` (the JPEG named in brackets).
 - **DEC-6 · Seen never takes a title off the counter.** "Watchlist (55)", the All chip and the tab badge all count rated titles too.
 - **DEC-7 · No sort.** Today's "Sort by" bar goes and nothing replaces it; the list is newest-saved first, starred on top, Seen last.
   The design for bringing it back is parked below (§P). [5-tap]
-- **DEC-8 · Swipe a row left to remove it.** A shortcut; the card page keeps "Remove from watchlist". The row folds into a one-line
+- **DEC-8 · Swipe a row left to remove it.** A shortcut; the card page keeps "Remove from Watchlist". The row folds into a one-line
   note with Undo that stays about 5 seconds, then folds and the list closes the gap; a second swipe closes the first note at once.
   The counts (header, All chip, tab badge) drop at once. Remove on an open card page: Back to the list at once, where the row folds
   into the same note; one mechanism. [8-remove]
