@@ -15,6 +15,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Gamepad2, MessageCircle, Sparkles } from "lucide-react";
 import { watchlistCount, WATCHLIST_CHANGED_EVENT, WATCHLIST_HYDRATED_EVENT } from "@/lib/watchlist";
+import { markInApp } from "@/modules/session/nav-history";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "./RouteLoading";
 import styles from "./TabBar.module.css";
@@ -67,6 +68,12 @@ export function TabBar({
   const [count, setCount] = useState(0);
   const [typing, setTyping] = useState(false);
   const [leaving, setLeaving] = useState<Tab | null>(null);
+
+  // A tab on its own route (Games, You): WTW has a screen in this browser tab now, so the home route opened from here
+  // keeps the history under it (NAV_HISTORY, src/modules/session/nav-history.ts). The home route marks itself.
+  useEffect(() => {
+    if (!onTab) markInApp();
+  }, [onTab]);
 
   useEffect(() => {
     const read = () => setCount(watchlistCount());
