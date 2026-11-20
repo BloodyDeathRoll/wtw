@@ -129,4 +129,18 @@ describe('useTabPlace', () => {
     expect(window.sessionStorage.getItem('wtw:place:watchlist')).toBe('250')
     expect(window.sessionStorage.getItem('wtw:place:you')).toBe('1100')
   })
+
+  it('a switch while the screen is still being brought back stops that restore, and saves under the new key only', async () => {
+    window.sessionStorage.setItem('wtw:place:you', '2000')
+    const s = scroller(1200)
+    const { rerender } = render(<Screen k="you" />)
+    await frames()
+    rerender(<Screen k="games" />)
+    s.grow(4000)
+    await frames()
+    expect(s.el.scrollTop).toBe(600)
+    s.scrollTo(700)
+    expect(window.sessionStorage.getItem('wtw:place:games')).toBe('700')
+    expect(window.sessionStorage.getItem('wtw:place:you')).toBe('2000')
+  })
 })
