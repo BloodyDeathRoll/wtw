@@ -4,6 +4,15 @@
 note what you discovered. Fold the update into your task PR or a small `chore/` PR.
 Shipped history is `docs/SHIPPED.md`; it is not a to-do list.
 
+## Where we are: v3 plan (from 2026-11-18)
+
+v3 gets the app ready for friends: For you as a set of 20 with Refresh and Hide, honest "Why"s, Back and tabs, Seen, Search and You. The spec is `docs/plan/v3/PLAN.md` (each part's decisions in `docs/plan/v3/*.md`, the numbers in `docs/plan/v3/EVIDENCE.md`), and the status lives in GitHub Issues labelled `v3`, on the [WTW v3 board](https://github.com/users/eran-manor/projects/1). Every PR that changes a screen is built to its approved JPEG and signed off by Eran (`PLAN.md` §0). Log each landed work package here, one line under **v3 plan**.
+
+### v3 plan
+
+- **The plan (2026-11-18, `docs/v3-plan`).** PLAN.md, FOR-YOU / YOU / SEEN / SEARCH / CHAT decisions, the evidence, and the approved mocks (`docs/prototypes/for-you-v3`, `seen-v3`, `you-v3`). The Watchlist (#345, #346) is v3's first landed part; its end card is W1.
+- **F8 added (2026-11-18, #378, Eran).** Tabs open instantly: today every tab switch shows the spinning logo, because For you refetches its list when you come back and Games / You are rebuilt by the server on every visit. Lands after F1 and Shahar's N2; flag `FAST_TABS`.
+
 ## Where we are: v2 plan (from 2026-11-09)
 
 The team approved the v2 plan: the new formula, the scales on every title, the new first run, and chat as a read-only consultant. The spec is `docs/plan/PLAN.md`, the numbers are in `docs/plan/EVIDENCE.md`, and the status lives in GitHub Issues, one per work package. Log each landed work package here, one line under **v2 plan**, below.
