@@ -27,16 +27,16 @@ const keyFor = (props: Partial<Parameters<typeof TabBar>[0]>) => {
 afterEach(() => { flags.nav = true; flags.forYou = false })
 
 describe('TabBar: the place it keeps', () => {
-  it('each tab its own; an inner page apart from its tab', () => {
-    expect(keyFor({ active: 'watchlist' })).toBe('watchlist')
-    expect(keyFor({ active: 'games' })).toBe('games')
-    expect(keyFor({ active: 'you' })).toBe('you')
-    expect(keyFor({ active: 'watchlist', atRoot: false })).toBe('watchlist:/')
+  it('each tab its own, per user; an inner page apart from its tab', () => {
+    expect(keyFor({ active: 'watchlist' })).toBe('u:watchlist')
+    expect(keyFor({ active: 'games' })).toBe('u:games')
+    expect(keyFor({ active: 'you' })).toBe('u:you')
+    expect(keyFor({ active: 'watchlist', atRoot: false })).toBe('u:watchlist:/')
   })
   it('For you only once FOR_YOU_V3 is on', () => {
     expect(keyFor({ active: 'foryou' })).toBeNull()
     flags.forYou = true
-    expect(keyFor({ active: 'foryou' })).toBe('foryou')
+    expect(keyFor({ active: 'foryou' })).toBe('u:foryou')
   })
   it('nothing with NAV_HISTORY off, or on the copy over a loading screen', () => {
     flags.nav = false

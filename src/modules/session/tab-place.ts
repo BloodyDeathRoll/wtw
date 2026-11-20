@@ -16,6 +16,8 @@ const RESTORE_MS = 4000;
 let current: string | null = null;
 let restoring = false;
 let listening = false;
+/** The last position a restore set: its own scroll event is not a place to remember (it may land after the restore). */
+let placed: { el: HTMLElement; top: number } | null = null;
 
 function read(key: string): number {
   try {
@@ -42,6 +44,8 @@ export function tabScroller(): HTMLElement | null {
 function onScroll(e: Event): void {
   const el = e.target;
   if (!current || restoring || !(el instanceof HTMLElement) || !el.hasAttribute("data-tab-scroll")) return;
+  if (placed && placed.el === el && Math.round(el.scrollTop) === Math.round(placed.top)) return;
+  placed = null;
   write(current, el.scrollTop);
 }
 
@@ -56,10 +60,14 @@ export function useTabPlace(key: string | null): void {
       document.addEventListener("scroll", onScroll, { capture: true, passive: true });
       listening = true;
     }
-    current = key;
+    // No key (For you before FOR_YOU_V3, the copy over a loading screen): leave whatever the real bar keeps alone.
     if (!key) return;
+    current = key;
+    const forget = () => {
+      if (current === key) current = null;
+    };
     const target = read(key);
-    if (target <= 0) return;
+    if (target <= 0) return forget;
 
     let frame = 0;
     const until = Date.now() + RESTORE_MS;
@@ -80,12 +88,16 @@ export function useTabPlace(key: string | null): void {
       if (el) {
         const max = el.scrollHeight - el.clientHeight;
         el.scrollTop = Math.min(target, max);
+        placed = { el, top: el.scrollTop };
         if (max >= target) return stop();
       }
       if (Date.now() > until) return stop();
       frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
-    return stop;
+    return () => {
+      stop();
+      forget();
+    };
   }, [key]);
 }

@@ -90,4 +90,33 @@ describe('useTabPlace', () => {
     expect(window.sessionStorage.getItem('wtw:place:watchlist')).toBe('400')
     expect(window.sessionStorage.getItem('wtw:place:watchlist:/')).toBe('1500')
   })
+
+  it('a second, keyless copy (the bar over a loading screen) coming and going leaves the real one saving', async () => {
+    const a = scroller(3000)
+    const { rerender } = render(<><Screen k="watchlist" /></>)
+    rerender(<><Screen k="watchlist" /><Screen k={null} /></>)
+    rerender(<><Screen k="watchlist" /></>)
+    a.scrollTo(500)
+    expect(window.sessionStorage.getItem('wtw:place:watchlist')).toBe('500')
+  })
+
+  it('a restore that runs out of time keeps the deeper place it was going for', async () => {
+    window.sessionStorage.setItem('wtw:place:watchlist', '2000')
+    const s = scroller(1200)
+    render(<Screen k="watchlist" />)
+    await act(async () => { vi.advanceTimersByTime(4500) })
+    // The restore's own last move reports late, as a browser's scroll event does.
+    s.el.dispatchEvent(new Event('scroll'))
+    expect(s.el.scrollTop).toBe(600)
+    expect(window.sessionStorage.getItem('wtw:place:watchlist')).toBe('2000')
+  })
+
+  it('leaving the screens with a tab bar stops saving under its key', async () => {
+    const a = scroller(3000)
+    const { unmount } = render(<Screen k="watchlist" />)
+    a.scrollTo(300)
+    unmount()
+    a.scrollTo(900)
+    expect(window.sessionStorage.getItem('wtw:place:watchlist')).toBe('300')
+  })
 })

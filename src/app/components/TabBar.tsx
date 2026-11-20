@@ -71,17 +71,15 @@ export function TabBar({
 }) {
   const router = useRouter();
   const [count, setCount] = useState(0);
-  // N2 (NAV_HISTORY): each tab screen keeps its scroll place; an inner page (Seen, My taste, Account) has its own.
-  // For you keeps its place only once FOR_YOU_V3 holds its list still (Eran, #357).
+  const [typing, setTyping] = useState(false);
+  const [leaving, setLeaving] = useState<Tab | null>(null);
+  // N2 (NAV_HISTORY): each tab screen keeps its scroll place, per user; an inner page (Seen, My taste, Account) has
+  // its own. For you keeps its place only once FOR_YOU_V3 holds its list still (Eran, #357).
   const placeKey =
     !keepPlace || !navHistoryEnabled() || (active === "foryou" && !forYouV3Enabled())
       ? null
-      : atRoot
-        ? active
-        : `${active}:${typeof window === "undefined" ? "" : window.location.pathname}`;
+      : `${user.id}:${atRoot ? active : `${active}:${typeof window === "undefined" ? "" : window.location.pathname}`}`;
   useTabPlace(placeKey);
-  const [typing, setTyping] = useState(false);
-  const [leaving, setLeaving] = useState<Tab | null>(null);
 
   // A tab on its own route (Games, You): WTW has a screen in this browser tab now, so the home route opened from here
   // keeps the history under it (NAV_HISTORY, src/modules/session/nav-history.ts). The home route marks itself.
