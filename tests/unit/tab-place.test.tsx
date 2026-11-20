@@ -119,4 +119,14 @@ describe('useTabPlace', () => {
     a.scrollTo(900)
     expect(window.sessionStorage.getItem('wtw:place:watchlist')).toBe('300')
   })
+
+  it('switching from one tab to another never saves the new screen under the old key', async () => {
+    const a = scroller(3000)
+    const { rerender } = render(<Screen k="watchlist" />)
+    a.scrollTo(250)
+    rerender(<Screen k="you" />)
+    a.scrollTo(1100)
+    expect(window.sessionStorage.getItem('wtw:place:watchlist')).toBe('250')
+    expect(window.sessionStorage.getItem('wtw:place:you')).toBe('1100')
+  })
 })
