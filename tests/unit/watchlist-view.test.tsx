@@ -171,6 +171,47 @@ describe('the card page', () => {
   })
 })
 
+// v3 L1 (#372, Eran's B): one "Where to watch: JustWatch" line per screen, only where a service is shown.
+describe('the JustWatch credit', () => {
+  const CREDIT = 'Where to watch: JustWatch'
+
+  it('ends the list once when a row shows a service', () => {
+    seed(THREE)
+    view()
+    expect(screen.getAllByText(CREDIT)).toHaveLength(1)
+  })
+
+  it('is absent when no row shows one (a Seen row shows its reaction, not its service)', () => {
+    seed([
+      { rec: rec('movie:1', { where_il: null }), added_at: 2, rating: null, starred: false, explain: null, synced: true },
+      { rec: rec('movie:2', { where_il: 'Netflix' }), added_at: 1, rating: 'liked', starred: false, explain: null, synced: true },
+    ])
+    view()
+    expect(screen.queryByText(CREDIT)).toBeNull()
+  })
+
+  it('waits for the real end: not while more rows are still to come', () => {
+    seed(Array.from({ length: 8 }, (_, i) => (
+      { rec: rec(`movie:${i + 1}`, { where_il: 'Netflix' }), added_at: 8 - i, rating: null, starred: false, explain: null, synced: true }
+    )))
+    view()
+    expect(rowNames()).toHaveLength(6) // the first page; the rest come as you scroll
+    expect(screen.queryByText(CREDIT)).toBeNull()
+  })
+
+  it('sits under the card on the card page when the title has a service, and not when it has none', () => {
+    seed(THREE)
+    view()
+    fireEvent.click(screen.getByRole('button', { name: 'Title movie:1: open' }))
+    expect(screen.getAllByText(CREDIT)).toHaveLength(1)
+    cleanup()
+    seed(THREE)
+    view()
+    fireEvent.click(screen.getByRole('button', { name: 'Title tv:3: open' }))
+    expect(screen.queryByText(CREDIT)).toBeNull()
+  })
+})
+
 describe('the end card (DEC-9)', () => {
   const FOUR = [
     ...THREE,

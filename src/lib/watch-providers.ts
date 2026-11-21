@@ -104,6 +104,15 @@ export const ISRAEL_SERVICES: readonly { key: string; label: string }[] = [
   { key: 'prime',   label: 'Prime Video' },
 ]
 
+/**
+ * A saved card as shown: its service is Israel's (DEC-11). A saved card keeps
+ * the US `where` from the day it was saved; `where_il` is filled in for it
+ * later (/api/watchlist), and with none the card names no service.
+ */
+export function withIsraelService<T extends { where: string | null; where_il?: string | null }>(rec: T): T {
+  return { ...rec, where: rec.where_il ?? null }
+}
+
 /** TMDB's raw Israeli flatrate names → the one service to show, or null. */
 export function pickIsraelProvider(raw: readonly string[] | null | undefined): string | null {
   if (!raw?.length) return null

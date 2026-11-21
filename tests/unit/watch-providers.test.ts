@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BRANDS, ISRAEL_SERVICES, canonicalProvider, pickIsraelProvider, pickWatchProvider } from '@/lib/watch-providers'
+import { BRANDS, ISRAEL_SERVICES, canonicalProvider, pickIsraelProvider, pickWatchProvider, withIsraelService } from '@/lib/watch-providers'
 import { primaryWatchProvider } from '@/lib/tmdb'
 import { PROVIDER_ICON_KEYS } from '@/app/components/ProviderIcon'
 
@@ -104,5 +104,16 @@ describe('pickIsraelProvider', () => {
   it('offers exactly the four, each a known brand', () => {
     expect(ISRAEL_SERVICES.map((s) => s.label)).toEqual(['Netflix', 'HBO Max', 'Apple TV', 'Prime Video'])
     for (const s of ISRAEL_SERVICES) expect(BRANDS.some((b) => b.key === s.key), s.key).toBe(true)
+  })
+})
+
+describe('withIsraelService (DEC-11)', () => {
+  it("shows a saved card with Israel's service, not the US one it was saved with", () => {
+    const rec = { id: 'tv:1', where: 'Hulu', where_il: 'Prime Video' }
+    expect(withIsraelService(rec)).toEqual({ id: 'tv:1', where: 'Prime Video', where_il: 'Prime Video' })
+  })
+  it('names no service when Israel has none, or none was filled in yet', () => {
+    expect(withIsraelService({ where: 'Hulu', where_il: null }).where).toBeNull()
+    expect(withIsraelService({ where: 'Hulu' }).where).toBeNull()
   })
 })
