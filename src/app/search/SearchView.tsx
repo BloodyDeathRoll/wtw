@@ -22,7 +22,7 @@ import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
 import { clearRecentSearches, rememberSearch, useRecentSearches } from "./recent";
-import SearchCard from "./SearchCard";
+import SearchCard, { applyHidden, myRatings } from "./SearchCard";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -30,7 +30,8 @@ import { ProviderIcon } from "@/app/components/ProviderIcon";
 import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
-import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
+import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist, type WatchlistRating } from "@/lib/watchlist";
+import { HIDDEN_EVENT, RATED_EVENT, type HiddenDetail, type RatedDetail } from "@/modules/session/recommendations/rate";
 import { safeFrom, searchUrl, type SearchScope } from "@/app/search/url";
 import type { PersonPage, PersonSearchHit, PersonTitle, SearchHit, TitleSearchHit } from "@/lib/tmdb";
 import type { Recommendation } from "@/types/recommendation";
@@ -77,6 +78,8 @@ export default function SearchView({
   // "Michael Douglas, Benicio del Toro" per result, filled in just after the list shows.
   const [cast, setCast] = useState<Record<string, string>>({});
   const [now, setNow] = useState(0); // bumps to search without waiting for the pause
+  // SEARCH_V3: your rating of each title, and what you hid from For you, to mark the rows (SEARCH.md DEC-5).
+  const [marks, setMarks] = useState<Record<string, WatchlistRating>>({});
 
   // The open card lives in the URL (/search?t=movie-1900): opening one pushes a
   // history entry, so Back (the arrow, or Android's back gesture) closes the
@@ -151,6 +154,42 @@ export default function SearchView({
   useEffect(() => {
     void hydrateWatchlist(user.id);
   }, [user.id]);
+
+  // SEARCH_V3: Seen's list once, then each rating as it lands (a card opened from here, or anywhere else).
+  useEffect(() => {
+    if (!v3) return;
+    let on = true;
+    // A copy: the list is SearchCard's shared cache, which its own listeners keep current.
+    void myRatings().then((m) => on && setMarks({ ...m }));
+    const onRated = (e: Event) => {
+      const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
+      setMarks((m) => {
+        const next = { ...m };
+        if (rating) next[id] = rating;
+        else delete next[id];
+        return next;
+      });
+    };
+    // A title hidden from For you, or restored, anywhere: its mark follows.
+    const onHidden = (e: Event) => {
+      const { id, hidden } = (e as CustomEvent<HiddenDetail>).detail;
+      setMarks((m) => {
+        const next = { ...m };
+        applyHidden(next, id, hidden);
+        return next;
+      });
+    };
+    window.addEventListener(RATED_EVENT, onRated);
+    window.addEventListener(HIDDEN_EVENT, onHidden);
+    return () => {
+      on = false;
+      window.removeEventListener(RATED_EVENT, onRated);
+      window.removeEventListener(HIDDEN_EVENT, onHidden);
+    };
+  }, [v3]);
+  // Read each render, like the card's own "saved": a title added or removed on its card shows on the way back.
+  const savedIds = v3 ? new Set(getWatchlist().map((e) => e.rec.id)) : null;
+  const markOf = (h: TitleSearchHit) => (savedIds ? markFor(marks[`${h.type}:${h.tmdb_id}`], savedIds.has(`${h.type}:${h.tmdb_id}`)) : undefined);
 
   // A reload on /search?t=… or ?p=… has no list behind it to go back to: start clean.
   useEffect(() => {
@@ -456,7 +495,7 @@ export default function SearchView({
               <p className={styles.groupLabel}>{scope === "watchlist" ? "In your Watchlist" : v3 ? "In Seen" : "In your ratings"}</p>
               <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : v3 ? "Seen" : "Your ratings"}>
                 {mineHits.map((h) => (
-                  <TitleRow key={keyOf(h)} h={h} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
+                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
                 ))}
               </div>
               {showHits && <p className={styles.groupLabel}>All titles</p>}
@@ -488,7 +527,7 @@ export default function SearchView({
                   </button>
                 ) : (
                   // Held open until the actors arrive, so nothing moves under a finger.
-                  <TitleRow key={keyOf(h)} h={h} line={cast[keyOf(h)]} onPick={() => void pick(h)} />
+                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} line={cast[keyOf(h)]} onPick={() => void pick(h)} />
                 ),
               )}
             </div>
@@ -518,6 +557,7 @@ export default function SearchView({
                   <TitleRow
                     key={keyOf(t)}
                     h={t}
+                    mark={markOf(t)}
                     line={person.page!.role === "Actor" ? (t.character ? `as ${t.character}` : "") : cast[keyOf(t)]}
                     onPick={() => void pick(t)}
                   />
@@ -563,10 +603,23 @@ function countOf(titles: PersonTitle[]) {
   return `${n} ${word}`;
 }
 
-/** One title in a list: poster, name, year (· series), and a third line —
- *  the lead actors, or who a person played. The line's space is held while
- *  it's still on its way, so rows don't move. */
-function TitleRow({ h, line, onPick }: { h: LocalHit; line: string | undefined; onPick: () => void }) {
+/** Where a title stands with you (SEARCH_V3, SEARCH.md DEC-5): your rating first, then saved, then hidden from For you. */
+const MARKS: Record<WatchlistRating, string> = {
+  loved: "❤️ Loved",
+  liked: "👍 Liked",
+  disliked: "👎 Disliked",
+  removed: "Hidden from For you",
+};
+export function markFor(rating: WatchlistRating | undefined, saved: boolean): string | undefined {
+  if (rating && rating !== "removed") return MARKS[rating];
+  if (saved) return "In your Watchlist";
+  return rating && MARKS[rating];
+}
+
+/** One title in a list: poster, name, year (· series · your mark in white,
+ *  SEARCH_V3), and a third line — the lead actors, or who a person played. The
+ *  line's space is held while it's still on its way, so rows don't move. */
+function TitleRow({ h, mark, line, onPick }: { h: LocalHit; mark?: string; line: string | undefined; onPick: () => void }) {
   const poster = h.poster_url ?? (h.poster_path ? `${IMG}w154${h.poster_path}` : null);
   return (
     <button type="button" role="option" aria-selected="false" className={styles.row} onClick={onPick}>
@@ -581,6 +634,12 @@ function TitleRow({ h, line, onPick }: { h: LocalHit; line: string | undefined; 
         <small>
           {h.year ?? ""}
           {h.type === "tv" ? `${h.year ? " · " : ""}series` : ""}
+          {mark ? (
+            <>
+              {h.year || h.type === "tv" ? " · " : ""}
+              <span className={styles.mark}>{mark}</span>
+            </>
+          ) : null}
         </small>
         <small className={styles.cast}>{line || "\u00a0"}</small>
       </span>

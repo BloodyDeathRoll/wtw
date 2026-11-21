@@ -25,23 +25,30 @@ import {
 } from "@/lib/watchlist";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { TitleCardPage } from "@/modules/session/recommendations/RecommendationsView";
-import { deleteRating, postRating, RATED_EVENT, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
+import { deleteRating, HIDDEN_EVENT, postRating, RATED_EVENT, type HiddenDetail, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
 
 /**
- * Your rating of each title ("type:tmdb_id" → reaction): Seen's own list. Read again when it's a minute old (an
- * installed app can stay open for days), and kept current in between by every rating that lands through rate.ts —
- * the feed's, the Watchlist's and Search's.
+ * Your rating of each title ("type:tmdb_id" → reaction, or "removed" for one hidden from For you): Seen's own list.
+ * Read again when it's a minute old (an installed app can stay open for days), and kept current in between by every
+ * rating that lands through rate.ts — the feed's, the Watchlist's and Search's. Search's rows mark each title from it
+ * (SEARCH_V3, SEARCH.md DEC-5).
  */
 const FRESH_MS = 60_000;
-let mine: { at: number; list: Promise<Record<string, Reaction>> } | null = null;
-function myRatings(): Promise<Record<string, Reaction>> {
+let mine: { at: number; list: Promise<Record<string, WatchlistRating>> } | null = null;
+export function myRatings(): Promise<Record<string, WatchlistRating>> {
   if (!mine || Date.now() - mine.at > FRESH_MS) {
     const list = fetch("/api/recommendations/ratings")
       .then((r) => (r.ok ? (r.json() as Promise<RatingsSummary>) : null))
-      .then((d) => Object.fromEntries((d?.items ?? []).map((i) => [i.id, i.rating])) as Record<string, Reaction>)
+      .then(
+        (d) =>
+          Object.fromEntries([
+            ...(d?.removed ?? []).map((i) => [`${i.media_type}:${i.tmdb_id}`, "removed"]),
+            ...(d?.items ?? []).map((i) => [i.id, i.rating]),
+          ]) as Record<string, WatchlistRating>,
+      )
       .catch(() => {
         mine = null; // try again on the next card
-        return {} as Record<string, Reaction>;
+        return {} as Record<string, WatchlistRating>;
       });
     mine = { at: Date.now(), list };
   }
@@ -55,6 +62,15 @@ if (typeof window !== "undefined") {
       else delete m[id];
     });
   });
+  window.addEventListener(HIDDEN_EVENT, (e) => {
+    const { id, hidden } = (e as CustomEvent<HiddenDetail>).detail;
+    void mine?.list.then((m) => applyHidden(m, id, hidden));
+  });
+}
+/** A title hidden or restored: "removed" marks it only while no rating does (a rating outranks hidden). */
+export function applyHidden(m: Record<string, WatchlistRating>, id: string, hidden: boolean) {
+  if (hidden) m[id] ??= "removed";
+  else if (m[id] === "removed") delete m[id];
 }
 /** For the tests: forget the list read this page load. */
 export function forgetMyRatings() {
@@ -108,8 +124,9 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
     let on = true;
     void myRatings().then((r) => {
       // Seen's rating over the Watchlist's tag, unless a newer one landed meanwhile (here or elsewhere). A tap
-      // here is newer than the list too: the chip keeps it, even with its write still on the way.
-      if (on && r[rec.id] && !heard.current) {
+      // here is newer than the list too: the chip keeps it, even with its write still on the way. A title hidden
+      // from For you lights no chip here.
+      if (on && r[rec.id] && r[rec.id] !== "removed" && !heard.current) {
         if (!latest.current) setRated((cur) => cur ?? r[rec.id]);
         server.current = r[rec.id];
       }
