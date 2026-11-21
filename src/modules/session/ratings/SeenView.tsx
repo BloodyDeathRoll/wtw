@@ -8,11 +8,17 @@
  * Approved screens: docs/prototypes/seen-v3/7-icons.jpg (the chips, the
  * dropdowns), 2-filter.jpg left (a row's reaction), 6-empty.jpg.
  *
- * Not yet: the reaction icons on a row (S2), the card page on a tap (S3),
- * Restore on Hidden (S4).
+ * S2 (DEC-4, DEC-5): each rated row carries ❤️ 👍 👎, yours lit. Tap another and
+ * the gold moves at once, the counts change, and the row stays put with a note and
+ * Undo; it leaves its chip the next time that chip opens. The lit icon does nothing.
+ * Approved screen: 7-icons.jpg right.
+ *
+ * Not yet: the card page on a tap (S3), Restore on Hidden (S4).
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { ContentType } from "@/lib/content-type";
+import { setWatchlistRating } from "@/lib/watchlist";
 import { ChevronDown, ChevronLeft, Star } from "lucide-react";
 import type { Reaction } from "@/types/dna";
 import type { ContentKind, Recommendation } from "@/types/recommendation";
@@ -22,7 +28,6 @@ import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
 import { FingerprintLoader } from "../components/FingerprintLoader";
 import { PosterTile } from "../recommendations/RecommendationsView";
-import { SEEN_LABEL } from "../recommendations/watchlist-order";
 import rv from "../recommendations/RecommendationsView.module.css";
 import rs from "./RatingsView.module.css";
 import styles from "./SeenView.module.css";
@@ -46,6 +51,14 @@ const EMPTY_CHIP: Record<SeenChip, string> = {
   disliked: "Nothing disliked yet.",
   hidden: "Nothing hidden yet.",
 };
+// The card's reactions as icons only (DEC-4), with the card's own accessible names.
+const ICONS: { r: Reaction; emoji: string; aria: string; label: string }[] = [
+  { r: "loved", emoji: "❤️", aria: "Loved it", label: "Loved" },
+  { r: "liked", emoji: "👍", aria: "Liked it", label: "Liked" },
+  { r: "disliked", emoji: "👎", aria: "Watched it, didn't like it", label: "Disliked" },
+];
+/** How long a row's "will move" note stays, as the Watchlist's Undo note (its NOTE_MS). */
+const NOTE_MS = 5000;
 /** Rows shown at first and added per scroll: Seen grows to hundreds, and each row is a poster. */
 const PAGE = 20;
 
@@ -146,8 +159,11 @@ export default function SeenView({
   onBrowse,
   headerRight,
   user,
+  contentType,
 }: {
   onBack: () => void;
+  /** The feed the rating's rebuild is for, as every other rating write sends it. */
+  contentType?: ContentType;
   /** The empty state's "Go to For you" (DEC-9). */
   onBrowse?: () => void;
   headerRight?: ReactNode;
@@ -159,6 +175,17 @@ export default function SeenView({
   const [sort, setSort] = useState<SortKey>("newest");
   const [kind, setKind] = useState<KindFilter>("all");
   const [shown, setShown] = useState(PAGE);
+  // Which rows a chip shows is fixed when the chip (type, sort) opens: a re-rated row stays put until then (DEC-4).
+  const [frozen, setFrozen] = useState<RatingsSummary | null>(null);
+  const [note, setNote] = useState<{ key: string; title: string; from: Reaction; to: Reaction } | null>(null);
+  const noteTimer = useRef<number | undefined>(undefined);
+  const writes = useRef<Record<string, number>>({});
+  // What the server last confirmed per row: a failed write goes back to it, not to the tap before (a burst can fail twice).
+  const confirmed = useRef<Record<string, Reaction>>({});
+  // The list as of the last render, so two taps before a re-render each see the reaction the first one set.
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  useEffect(() => () => window.clearTimeout(noteTimer.current), []);
 
   useEffect(() => {
     let alive = true;
@@ -169,6 +196,7 @@ export default function SeenView({
         const json = (await res.json()) as RatingsSummary;
         if (alive) {
           setData(json);
+          setFrozen(json);
           setStatus("ready");
         }
       } catch {
@@ -180,7 +208,9 @@ export default function SeenView({
     };
   }, []);
 
-  const rows = useMemo(() => (data ? seenRows(data, chip, kind, sort) : []), [data, chip, kind, sort]);
+  const rows = useMemo(() => (frozen ? seenRows(frozen, chip, kind, sort) : []), [frozen, chip, kind, sort]);
+  // Each row's reaction as it is now, which may differ from the chip it still sits under.
+  const live = useMemo(() => new Map((data?.items ?? []).map((i) => [i.id, i.rating])), [data]);
   const counts = useMemo(() => (data ? seenCounts(data, kind) : null), [data, kind]);
   const visible = rows.slice(0, shown);
   const hasMore = shown < rows.length;
@@ -189,6 +219,7 @@ export default function SeenView({
   const listRef = useRef<HTMLDivElement>(null);
   function pick(next: () => void) {
     next();
+    setFrozen(data);
     setShown(PAGE);
     if (listRef.current) listRef.current.scrollTop = 0;
   }
@@ -203,6 +234,62 @@ export default function SeenView({
     io.observe(el);
     return () => io.disconnect();
   }, [hasMore, visible.length]);
+
+  /** Set a row's reaction to `to`: lit and counted at once, written through the feedback route; a failed write puts it back. */
+  async function rate(key: string, to: Reaction) {
+    const item = dataRef.current?.items.find((i) => i.id === key);
+    if (!item || item.rating === to) return;
+    confirmed.current[key] ??= item.rating;
+    const n = (writes.current[key] = (writes.current[key] ?? 0) + 1);
+    const apply = (r: Reaction) => {
+      const d = dataRef.current;
+      if (!d) return;
+      dataRef.current = { ...d, items: d.items.map((i) => (i.id === key ? { ...i, rating: r } : i)) };
+      setData(dataRef.current);
+    };
+    apply(to);
+    try {
+      const res = await fetch("/api/recommendations/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "watched",
+          reaction: to,
+          tmdb_id: item.tmdb_id,
+          media_type: item.media_type ?? undefined,
+          title: item.title ?? undefined,
+          content_type: contentType,
+        }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      confirmed.current[key] = to;
+      // The Watchlist keeps a rated title, re-tagged, as today's Ratings screen does.
+      if (item.media_type) setWatchlistRating(`${item.media_type}:${item.tmdb_id}`, to);
+      setWatchlistRating(item.tmdb_id, to);
+    } catch {
+      // Only the newest tap on this row may put it back.
+      if (writes.current[key] === n) {
+        apply(confirmed.current[key]);
+        setNote((cur) => (cur?.key === key ? null : cur));
+      }
+    }
+  }
+
+  function changeOnRow(row: SeenRow, to: Reaction) {
+    const from = dataRef.current?.items.find((i) => i.id === row.key)?.rating;
+    if (!from || from === to) return; // the lit icon does nothing (DEC-5)
+    void rate(row.key, to);
+    window.clearTimeout(noteTimer.current);
+    setNote({ key: row.key, title: row.title ?? "Untitled", from: note?.key === row.key ? note.from : from, to });
+    noteTimer.current = window.setTimeout(() => setNote(null), NOTE_MS);
+  }
+
+  function undo() {
+    if (!note) return;
+    window.clearTimeout(noteTimer.current);
+    void rate(note.key, note.from);
+    setNote(null);
+  }
 
   // The lit chip stays in view: Hidden sits off to the right on a phone (DEC-2).
   const chipsRef = useRef<HTMLDivElement>(null);
@@ -334,12 +421,38 @@ export default function SeenView({
                             <h3 className={rv.rowTitle}>{rec.title}</h3>
                             <FactsLine row={r} />
                             {r.reaction && (
-                              <span className={rv.rowLine}>
-                                <span className={rv.rowReaction}>{SEEN_LABEL[r.reaction]}</span>
-                              </span>
+                              <div className={styles.icons}>
+                                {ICONS.map((ic) => {
+                                  const on = live.get(r.key) === ic.r;
+                                  return (
+                                    // S3: when the row itself opens the card page, these taps must stopPropagation.
+                                    <button
+                                      key={ic.r}
+                                      type="button"
+                                      className={`${rv.seenChip} ${styles.icon} ${on ? rv.seenChipOn : styles.iconDim}`}
+                                      onClick={() => changeOnRow(r, ic.r)}
+                                      aria-pressed={on}
+                                      aria-label={`${ic.aria}: ${rec.title}`}
+                                      title={ic.label}
+                                    >
+                                      <span className={rv.chipEmoji} aria-hidden>{ic.emoji}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
                         </div>
+                        {note?.key === r.key && (
+                          <div className={rv.noteWrap}>
+                            <div className={rv.note} role="status">
+                              <p>
+                                <b>{note.title}</b> will move to {ICONS.find((ic) => ic.r === note.to)!.label}.
+                              </p>
+                              <button type="button" onClick={undo}>Undo</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

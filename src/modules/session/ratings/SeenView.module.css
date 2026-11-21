@@ -28,3 +28,18 @@
 .row {
   cursor: default;
 }
+
+/* S2 (DEC-4, 7-icons right): the card's reaction chips as icons only, under the facts line. */
+.icons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.icon {
+  flex: 0 0 52px;
+  height: 36px;
+}
+/* The two you didn't pick, dimmed a little (about 55%). */
+.iconDim > span {
+  opacity: 0.55;
+}
