@@ -22,6 +22,7 @@ import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
 import { clearRecentSearches, rememberSearch, useRecentSearches } from "./recent";
+import SearchCard from "./SearchCard";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -451,8 +452,9 @@ export default function SearchView({
           )}
           {showMine && (
             <>
-              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your watchlist" : "In your ratings"}</p>
-              <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : "Your ratings"}>
+              {/* SEARCH_V3: the page is called Seen now (SEARCH.md DEC-8). */}
+              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your Watchlist" : v3 ? "In Seen" : "In your ratings"}</p>
+              <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : v3 ? "Seen" : "Your ratings"}>
                 {mineHits.map((h) => (
                   <TitleRow key={keyOf(h)} h={h} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
                 ))}
@@ -525,7 +527,13 @@ export default function SearchView({
           </div>
         )}
 
-        {card && (
+        {card && v3 && (
+          // Every title opens the same card page as the Watchlist and Seen (SEARCH.md DEC-2, v3 Q1).
+          <div className={rv.content}>
+            <SearchCard key={card.id} rec={card} user={user} />
+          </div>
+        )}
+        {card && !v3 && (
           <div className={rv.content}>
             <div className={`${rv.list} ${styles.cardList}`}>
               <TitleCard
@@ -597,7 +605,7 @@ function TitleCard({
   onShare: () => void;
 }) {
   const where = rec.where ? canonicalProvider(rec.where) : null;
-  const label = saved ? "Remove from watchlist" : "Add to Watchlist";
+  const label = saved ? "Remove from Watchlist" : "Add to Watchlist";
   return (
     <article className={`${rv.card} ${rv.heroCard}`}>
       <div className={rv.hero}>

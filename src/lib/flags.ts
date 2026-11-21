@@ -65,8 +65,9 @@ export function onboardingV2Enabled(): boolean {
 /**
  * v3 Search (docs/plan/v3/SEARCH.md, PLAN.md §8): results from the second
  * letter and through a one-word typo, from our catalogue merged with TMDB
- * (Q4); more Search work joins it. Off by default: today's TMDB-only search.
- * Server-only so far. Gate: P2-G.
+ * (Q4); every title opening the card page (Q1); more Search work joins it.
+ * Off by default: today's search. The client reads it too (next.config.ts
+ * `env`), so a change needs a redeploy. Gate: P2-G.
  */
 export function searchV3Enabled(): boolean {
   return isOn(process.env.SEARCH_V3)
