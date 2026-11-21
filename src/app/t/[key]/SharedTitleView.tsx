@@ -11,6 +11,7 @@
  * Saving goes through the same watchlist as the feed, so it syncs and reaches
  * the fingerprint like any other save.
  */
+import JustWatchCredit from "@/app/components/JustWatchCredit";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Play, Star } from "lucide-react";
@@ -211,6 +212,8 @@ export default function SharedTitleView({
             )}
           </div>
         </article>
+        {/* The credit for the service named on the card (v3 L1, Eran on #396): once, under the card. */}
+        {rec.where && <JustWatchCredit at="end" />}
       </div>
     </AppShell>
   );
