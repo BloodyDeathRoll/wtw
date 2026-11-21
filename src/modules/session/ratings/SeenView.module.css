@@ -24,7 +24,7 @@
   flex-shrink: 0;
 }
 
-/* A row opens nothing yet: the card page comes with S3. */
+/* A row that opens nothing: a hidden title, or a legacy row with no type (S3). */
 .row {
   cursor: default;
 }
@@ -42,4 +42,28 @@
 /* The two you didn't pick, dimmed a little (about 55%). */
 .iconDim > span {
   opacity: 0.55;
+}
+
+/* S3: under the card page the list stays mounted (its place kept), out of sight. */
+.here {
+  display: contents;
+}
+.away {
+  display: none;
+}
+
+/* The type and sort pills fit their word, as in 7-icons ("All ⌄"): the native select lies over the pill, unseen,
+   since a select is as wide as its longest option in every browser. */
+.pill {
+  position: relative;
+}
+.pillText {
+  font-size: var(--rv-small);
+  color: var(--rv-white);
+}
+.pillSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
 }
