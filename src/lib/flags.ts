@@ -47,6 +47,15 @@ export function navHistoryEnabled(): boolean {
 }
 
 /**
+ * v3 For you (docs/plan/v3/FOR-YOU.md, F1): the 20 that stay put until Refresh. Read here first by N2, which keeps
+ * For you's scroll place only once this is on (Eran, #357). Off by default. The client reads it too (next.config.ts
+ * `env`). F1 builds the rest.
+ */
+export function forYouV3Enabled(): boolean {
+  return isOn(process.env.FOR_YOU_V3)
+}
+
+/**
  * v3 Seen (docs/plan/v3/SEEN.md, S1–S4): Seen as the Watchlist's rows, with chips and today's two dropdowns. Off by
  * default: today's Ratings screen. The client reads it too (next.config.ts `env`). Gate: P2-G.
  */
