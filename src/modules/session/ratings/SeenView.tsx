@@ -20,7 +20,7 @@
  * Not yet: Restore on Hidden (S4).
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ContentType } from "@/lib/content-type";
 import { setWatchlistRating } from "@/lib/watchlist";
 import { ChevronDown, ChevronLeft, Star } from "lucide-react";
@@ -250,6 +250,7 @@ export default function SeenView({
   }, [hasMore, visible.length]);
 
   // A rating that lands anywhere (the card page above all): Seen follows it. A clear takes the row out of Seen.
+  // The event's id is the card's rec.id, "type:tmdb_id", the same string as a rating row's id (pinned by the S3 tests).
   useEffect(() => {
     const onRated = (e: Event) => {
       const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
@@ -274,16 +275,33 @@ export default function SeenView({
     return () => window.removeEventListener(RATED_EVENT, onRated);
   }, []);
 
+  /** Show a note for 5 s. A "Rating cleared" note keeps its row's snapshot for Undo only while it shows. */
+  function showNote(next: NonNullable<typeof note>) {
+    window.clearTimeout(noteTimer.current);
+    setNote((cur) => {
+      if (cur && !cur.to && cur.key !== next.key) delete cleared.current[cur.key];
+      return next;
+    });
+    noteTimer.current = window.setTimeout(() => {
+      setNote(null);
+      if (!next.to) delete cleared.current[next.key];
+    }, NOTE_MS);
+  }
+
   /** Back on Seen from a card: a rating cleared there folds its row into the note (DEC-7). */
   function closeLocal() {
     const was = pageRef.current?.row;
     setPage(null);
     const gone = was && cleared.current[was.key];
-    if (!gone) return;
-    window.clearTimeout(noteTimer.current);
-    setNote({ key: was.key, title: was.title ?? "Untitled", from: gone.rating });
-    noteTimer.current = window.setTimeout(() => setNote(null), NOTE_MS);
+    if (gone) showNote({ key: was.key, title: was.title ?? "Untitled", from: gone.rating });
   }
+  // The list's place under the card page, put back when the card closes (display: none can drop a scroll offset).
+  const listTop = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (page || listTop.current === null) return;
+    if (listRef.current) listRef.current.scrollTop = listTop.current;
+    listTop.current = null;
+  }, [page]);
   // As the Watchlist's card page: opening adds a history entry, so the phone's Back returns to the list.
   useEffect(() => {
     const onPop = () => {
@@ -298,6 +316,7 @@ export default function SeenView({
   }
   async function openPage(row: SeenRow) {
     if (!row.reaction || !row.type) return; // a hidden title, or a legacy row we can't look up
+    if (!pageRef.current) listTop.current = listRef.current?.scrollTop ?? null;
     if (!window.history.state?.wtwCard) {
       window.history.pushState({ ...window.history.state, wtwCard: row.key }, "", window.location.href);
     }
@@ -363,9 +382,7 @@ export default function SeenView({
     const from = dataRef.current?.items.find((i) => i.id === row.key)?.rating;
     if (!from || from === to) return; // the lit icon does nothing (DEC-5)
     void rate(row.key, to);
-    window.clearTimeout(noteTimer.current);
-    setNote({ key: row.key, title: row.title ?? "Untitled", from: note?.key === row.key ? note.from : from, to });
-    noteTimer.current = window.setTimeout(() => setNote(null), NOTE_MS);
+    showNote({ key: row.key, title: row.title ?? "Untitled", from: note?.key === row.key && note.to ? note.from : from, to });
   }
 
   function undo() {
@@ -376,7 +393,7 @@ export default function SeenView({
     else void unclear(note.key);
   }
 
-  /** Undo a clear: the row is back at once, with its rating, and written again; a failed write takes it out again. */
+  /** Undo a clear: the row is back at once, with its rating, and written again; a failed write takes it out again, note and all. */
   async function unclear(key: string) {
     const item = cleared.current[key];
     const d = dataRef.current;
@@ -393,6 +410,7 @@ export default function SeenView({
       cleared.current[key] = item;
       dataRef.current = { ...now, items: now.items.filter((i) => i.id !== key) };
       setData(dataRef.current);
+      showNote({ key, title: item.title ?? "Untitled", from: item.rating });
     }
   }
 
@@ -560,20 +578,16 @@ export default function SeenView({
                     const opens = !!user && r.reaction !== null && r.type !== null;
                     return (
                       <div key={r.key} className={rv.rowWrap}>
-                        <div
-                          className={`${rv.row} ${opens ? "" : styles.row}`}
-                          aria-label={rec.title}
-                          {...(opens && {
-                            role: "button",
-                            tabIndex: 0,
-                            onClick: () => void openPage(r),
-                            onKeyDown: (e: React.KeyboardEvent) => {
-                              if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
-                              e.preventDefault();
-                              void openPage(r);
-                            },
-                          })}
-                        >
+                        <div className={`${rv.row} ${styles.row}`} aria-label={rec.title}>
+                          {opens && (
+                            // The whole row opens the card page; the icons sit above it as their own buttons.
+                            <button
+                              type="button"
+                              className={styles.open}
+                              aria-label={`${rec.title}: open`}
+                              onClick={() => void openPage(r)}
+                            />
+                          )}
                           <PosterTile rec={rec} size="row" />
                           <div className={rv.rowBody}>
                             <h3 className={rv.rowTitle}>{rec.title}</h3>
@@ -583,15 +597,11 @@ export default function SeenView({
                                 {ICONS.map((ic) => {
                                   const on = live.get(r.key) === ic.r;
                                   return (
-                                    // A tap on an icon changes the rating; it doesn't open the card page.
                                     <button
                                       key={ic.r}
                                       type="button"
                                       className={`${rv.seenChip} ${styles.icon} ${on ? rv.seenChipOn : styles.iconDim}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        changeOnRow(r, ic.r);
-                                      }}
+                                      onClick={() => changeOnRow(r, ic.r)}
                                       aria-pressed={on}
                                       aria-label={`${ic.aria}: ${rec.title}`}
                                       title={ic.label}

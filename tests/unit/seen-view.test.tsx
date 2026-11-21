@@ -9,6 +9,7 @@ vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SeenView, { seenCounts, seenRows } from '@/modules/session/ratings/SeenView'
 import { forgetMyRatings } from '@/app/search/SearchCard'
+import { announceRated } from '@/modules/session/recommendations/rate'
 
 const facts = { year: 2000, meta: '1h 53m', star: 8.2 }
 const DATA: RatingsSummary = {
@@ -261,7 +262,7 @@ describe('S3: the card page from Seen, and clearing a rating (DEC-6, DEC-7)', ()
 
   async function openMemento() {
     render(<SeenView onBack={() => {}} user={user} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Memento' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Memento: open' }))
     await screen.findByRole('button', { name: 'Add to Watchlist: Memento' })
     await flush()
   }
@@ -335,5 +336,37 @@ describe('S3: the card page from Seen, and clearing a rating (DEC-6, DEC-7)', ()
     await flush(); await flush()
     expect(screen.getByText('Seen (2)')).toBeInTheDocument()
     expect(titles()).toEqual(['Arcane'])
+    expect(screen.getByRole('status')).toHaveTextContent('Rating cleared. Memento is out of Seen')
+  })
+
+  it('once the note has gone, a rating made elsewhere does not bring back the old row', async () => {
+    await openMemento()
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it (tap to clear)' }))
+    await flush(); await flush()
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'back' }))
+      await act(async () => { await vi.advanceTimersByTimeAsync(100) })
+      expect(screen.getByRole('status')).toHaveTextContent('Rating cleared.')
+      act(() => { vi.advanceTimersByTime(5000) })
+      expect(screen.queryByRole('status')).toBeNull()
+      act(() => { announceRated('movie:1', 'liked') })
+      expect(screen.getByText('Seen (2)')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('the list is back at its place when the card closes', async () => {
+    render(<SeenView onBack={() => {}} user={user} />)
+    const open = await screen.findByRole('button', { name: 'Memento: open' })
+    const list = open.closest('[data-tab-scroll]') as HTMLElement
+    list.scrollTop = 420
+    fireEvent.click(open)
+    await screen.findByRole('button', { name: 'Add to Watchlist: Memento' })
+    list.scrollTop = 0
+    fireEvent.click(screen.getByRole('button', { name: 'back' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to Watchlist: Memento' })).toBeNull())
+    expect(list.scrollTop).toBe(420)
   })
 })

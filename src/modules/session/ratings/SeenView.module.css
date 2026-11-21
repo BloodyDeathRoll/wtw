@@ -24,13 +24,28 @@
   flex-shrink: 0;
 }
 
-/* A row that opens nothing: a hidden title, or a legacy row with no type (S3). */
+/* S3: a row that opens the card page carries a button over all of it; the icons sit above that button. */
 .row {
+  position: relative;
   cursor: default;
+}
+.open {
+  position: absolute;
+  inset: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: inherit;
+}
+.open:focus-visible {
+  outline: 1px solid var(--rv-gold);
 }
 
 /* S2 (DEC-4, 7-icons right): the card's reaction chips as icons only, under the facts line. */
 .icons {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 8px;
   margin-top: 8px;
