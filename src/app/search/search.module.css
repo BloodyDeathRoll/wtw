@@ -78,6 +78,41 @@
   color: #8a8a8e;
 }
 
+/* v3 Q3 (SEARCH.md DEC-7): "Recent searches" with Clear at its right, then one row per search: a clock in the
+   poster's 40px column, the words in the title's size. Mock first: Eran approves the look. */
+.recentHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.recentClear {
+  margin: 8px 4px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffa900;
+  cursor: pointer;
+}
+.recentIcon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a8a8e;
+}
+.recentText {
+  min-width: 0;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .field {
   position: relative;
 }
