@@ -186,6 +186,8 @@ export default function SeenView({
   // A row's note: "will move" after a change on the row (S2), or "Rating cleared" (no `to`) after a clear on its card (S3).
   const [note, setNote] = useState<{ key: string; title: string; from: Reaction; to?: Reaction } | null>(null);
   const noteTimer = useRef<number | undefined>(undefined);
+  const noteRef = useRef(note);
+  noteRef.current = note;
   const writes = useRef<Record<string, number>>({});
   // What the server last confirmed per row: a failed write goes back to it, not to the tap before (a burst can fail twice).
   const confirmed = useRef<Record<string, Reaction>>({});
@@ -278,10 +280,9 @@ export default function SeenView({
   /** Show a note for 5 s. A "Rating cleared" note keeps its row's snapshot for Undo only while it shows. */
   function showNote(next: NonNullable<typeof note>) {
     window.clearTimeout(noteTimer.current);
-    setNote((cur) => {
-      if (cur && !cur.to && cur.key !== next.key) delete cleared.current[cur.key];
-      return next;
-    });
+    const cur = noteRef.current;
+    if (cur && !cur.to && cur.key !== next.key) delete cleared.current[cur.key];
+    setNote(next);
     noteTimer.current = window.setTimeout(() => {
       setNote(null);
       if (!next.to) delete cleared.current[next.key];
