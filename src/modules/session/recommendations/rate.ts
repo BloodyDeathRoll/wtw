@@ -11,7 +11,7 @@ export type RatedDetail = { id: string; rating: Reaction | null };
 const TIMEOUT_MS = 20_000;
 const timeout = () => (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(TIMEOUT_MS) : undefined);
 
-/** Fired on `window` once a title is hidden from For you (`hidden` true) or restored (false), wherever it was done. */
+/** Fired on `window` once a title is hidden from For you (`hidden` true) or restored (false). Every hide and restore must call announceHidden, or Search's marks miss it. */
 export const HIDDEN_EVENT = "wtw:hidden";
 export type HiddenDetail = { id: string; hidden: boolean };
 export function announceHidden(id: string, hidden: boolean) {
