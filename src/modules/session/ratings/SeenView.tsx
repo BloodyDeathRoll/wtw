@@ -282,6 +282,7 @@ export default function SeenView({
     window.clearTimeout(noteTimer.current);
     const cur = noteRef.current;
     if (cur && !cur.to && cur.key !== next.key) delete cleared.current[cur.key];
+    noteRef.current = next; // a second call before the next render sees this one
     setNote(next);
     noteTimer.current = window.setTimeout(() => {
       setNote(null);
