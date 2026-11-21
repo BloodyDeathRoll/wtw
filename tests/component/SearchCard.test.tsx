@@ -8,7 +8,8 @@ import type { Recommendation } from '@/types/recommendation'
 
 vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
-import SearchCard, { forgetMyRatings } from '@/app/search/SearchCard'
+import SearchCard, { forgetMyRatings, myRatings } from '@/app/search/SearchCard'
+import { markFor } from '@/app/search/SearchView'
 import { addToWatchlist, getWatchlist, setWatchlistRating } from '@/lib/watchlist'
 import { getAllPendingForTesting } from '@/lib/regret-queue'
 import { RATED_EVENT } from '@/modules/session/recommendations/rate'
@@ -23,6 +24,7 @@ const rec = (o: Partial<Recommendation> = {}): Recommendation => ({
 type Call = { url: string; method: string; body: Record<string, unknown> | null }
 let calls: Call[]
 let ratings: { id: string; rating: string }[]
+let hidden: { tmdb_id: string; media_type: string }[]
 let line: string | null
 let feedbackOk: boolean
 let ratingsGate: Promise<void> | null
@@ -34,6 +36,7 @@ beforeEach(() => {
   forgetMyRatings()
   calls = []
   ratings = []
+  hidden = []
   line = 'From Christopher Nolan, who made Interstellar, which you loved.'
   feedbackOk = true
   ratingsGate = null
@@ -41,7 +44,7 @@ beforeEach(() => {
   outcomes = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
-    if (url.includes('/ratings')) return (await ratingsGate, Response.json({ counts: {}, items: ratings, removed: [] }))
+    if (url.includes('/ratings')) return (await ratingsGate, Response.json({ counts: {}, items: ratings, removed: hidden }))
     if (url.includes('why-lines')) return Response.json({ lines: line ? { 'movie:77': line } : {} })
     if (url.includes('/feedback')) return (await feedbackGate, (outcomes.length ? outcomes.shift() : feedbackOk) ? Response.json({ ok: true }) : new Response('no', { status: 500 }))
     if (url.includes('/score') || url.includes('/explain')) return new Response('', { status: 404 })
@@ -211,6 +214,28 @@ describe('a title from Search opens the card page', () => {
   })
 })
 
+describe('where a title stands with you (SEARCH_V3, SEARCH.md DEC-5)', () => {
+  it('your rating first, then saved, then hidden from For you; no mark otherwise', () => {
+    expect(markFor('loved', true)).toBe('❤️ Loved')
+    expect(markFor('liked', false)).toBe('👍 Liked')
+    expect(markFor('disliked', false)).toBe('👎 Disliked')
+    expect(markFor('removed', true)).toBe('In your Watchlist')
+    expect(markFor(undefined, true)).toBe('In your Watchlist')
+    expect(markFor('removed', false)).toBe('Hidden from For you')
+    expect(markFor(undefined, false)).toBeUndefined()
+  })
+
+  it('Seen\'s list carries what you hid, and the card lights no chip for it', async () => {
+    hidden = [{ tmdb_id: '77', media_type: 'movie' }]
+    ratings = [{ id: 'tv:9', rating: 'liked' }]
+    expect(await myRatings()).toEqual({ 'movie:77': 'removed', 'tv:9': 'liked' })
+    card()
+    await new Promise((r) => setTimeout(r, 0))
+    for (const name of ['Loved it', 'Liked it', "Watched it, didn't like it"])
+      expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
 // Source-level: SearchView needs the router and a page around it.
 describe('SearchView under SEARCH_V3', () => {
   const view = readFileSync('src/app/search/SearchView.tsx', 'utf8')
@@ -218,5 +243,12 @@ describe('SearchView under SEARCH_V3', () => {
     expect(view).toContain('{card && v3 && (')
     expect(view).toContain('<SearchCard key={card.id} rec={card} user={user} />')
     expect(view).toContain('v3 ? "In Seen" : "In your ratings"')
+  })
+  it('marks every title row: the results, your own group and a person\'s titles (DEC-5)', () => {
+    expect(view.match(/<TitleRow[^>]*\bmark=\{markOf\(/g)).toHaveLength(3)
+  })
+  it('the mark follows the year on the second line, in white; the third line is the actors or the character alone (Eran, #365)', () => {
+    expect(view).toMatch(/\{h\.year \?\? ""\}[\s\S]*?series[\s\S]*?<span className=\{styles\.mark\}>\{mark\}<\/span>[\s\S]*?<\/small>\s*<small className=\{styles\.cast\}>\{line \|\| "\\u00a0"\}<\/small>/)
+    expect(readFileSync('src/app/search/search.module.css', 'utf8')).toMatch(/\.row \.mark \{[^}]*color: #fff;/)
   })
 })
