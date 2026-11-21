@@ -79,7 +79,7 @@ import {
 } from "./watchlist-order";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { shareTitle } from "@/lib/share";
-import { deleteRating, postRating } from "./rate";
+import { announceHidden, deleteRating, postRating } from "./rate";
 import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
@@ -781,6 +781,8 @@ export default function RecommendationsView({
         });
         if (!res.ok) {
           console.error(`[recs] remove HTTP ${res.status}`, await res.text().catch(() => ""));
+        } else {
+          announceHidden(`${rec.type}:${tmdb_id}`, true);
         }
       } catch (e) {
         console.error("[recs] remove failed", e);

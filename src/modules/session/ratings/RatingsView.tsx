@@ -35,6 +35,7 @@ import { TAB_SCROLL } from "@/app/components/TabBar";
 import styles from "./RatingsView.module.css";
 import SeenView from "./SeenView";
 import { seenV3Enabled } from "@/lib/flags";
+import { announceHidden } from "@/modules/session/recommendations/rate";
 
 type Tab = Reaction | "removed";
 type SortKey = "newest" | "oldest" | "title";
@@ -188,6 +189,7 @@ function RatingsToday({
         body: JSON.stringify({ tmdb_id: rem.tmdb_id, media_type: rem.media_type }),
       });
       if (!res.ok) throw new Error(String(res.status));
+      announceHidden(`${rem.media_type}:${rem.tmdb_id}`, false);
       setData((d) => {
         if (!d) return d;
         return {

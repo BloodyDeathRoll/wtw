@@ -25,7 +25,7 @@ import {
 } from "@/lib/watchlist";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { TitleCardPage } from "@/modules/session/recommendations/RecommendationsView";
-import { deleteRating, postRating, RATED_EVENT, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
+import { deleteRating, HIDDEN_EVENT, postRating, RATED_EVENT, type HiddenDetail, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
 
 /**
  * Your rating of each title ("type:tmdb_id" → reaction, or "removed" for one hidden from For you): Seen's own list.
@@ -62,6 +62,15 @@ if (typeof window !== "undefined") {
       else delete m[id];
     });
   });
+  window.addEventListener(HIDDEN_EVENT, (e) => {
+    const { id, hidden } = (e as CustomEvent<HiddenDetail>).detail;
+    void mine?.list.then((m) => applyHidden(m, id, hidden));
+  });
+}
+/** A title hidden or restored: "removed" marks it only while no rating does (a rating outranks hidden). */
+export function applyHidden(m: Record<string, WatchlistRating>, id: string, hidden: boolean) {
+  if (hidden) m[id] ??= "removed";
+  else if (m[id] === "removed") delete m[id];
 }
 /** For the tests: forget the list read this page load. */
 export function forgetMyRatings() {

@@ -12,7 +12,7 @@ import SearchCard, { forgetMyRatings, myRatings } from '@/app/search/SearchCard'
 import { markFor } from '@/app/search/SearchView'
 import { addToWatchlist, getWatchlist, setWatchlistRating } from '@/lib/watchlist'
 import { getAllPendingForTesting } from '@/lib/regret-queue'
-import { RATED_EVENT } from '@/modules/session/recommendations/rate'
+import { announceHidden, RATED_EVENT } from '@/modules/session/recommendations/rate'
 
 const user = { id: 'u1', email: null, name: 'Ada', avatarUrl: null }
 const rec = (o: Partial<Recommendation> = {}): Recommendation => ({
@@ -233,6 +233,17 @@ describe('where a title stands with you (SEARCH_V3, SEARCH.md DEC-5)', () => {
     await new Promise((r) => setTimeout(r, 0))
     for (const name of ['Loved it', 'Liked it', "Watched it, didn't like it"])
       expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('a title hidden or restored anywhere updates Seen\'s list; a rating outranks hidden', async () => {
+    ratings = [{ id: 'tv:9', rating: 'liked' }]
+    await myRatings()
+    announceHidden('movie:5', true)
+    announceHidden('tv:9', true)
+    expect(await myRatings()).toEqual({ 'movie:5': 'removed', 'tv:9': 'liked' })
+    announceHidden('movie:5', false)
+    announceHidden('tv:9', false)
+    expect(await myRatings()).toEqual({ 'tv:9': 'liked' })
   })
 })
 

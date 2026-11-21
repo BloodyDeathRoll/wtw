@@ -22,7 +22,7 @@ import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
 import { clearRecentSearches, rememberSearch, useRecentSearches } from "./recent";
-import SearchCard, { myRatings } from "./SearchCard";
+import SearchCard, { applyHidden, myRatings } from "./SearchCard";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -31,7 +31,7 @@ import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
 import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist, type WatchlistRating } from "@/lib/watchlist";
-import { RATED_EVENT, type RatedDetail } from "@/modules/session/recommendations/rate";
+import { HIDDEN_EVENT, RATED_EVENT, type HiddenDetail, type RatedDetail } from "@/modules/session/recommendations/rate";
 import { safeFrom, searchUrl, type SearchScope } from "@/app/search/url";
 import type { PersonPage, PersonSearchHit, PersonTitle, SearchHit, TitleSearchHit } from "@/lib/tmdb";
 import type { Recommendation } from "@/types/recommendation";
@@ -159,6 +159,7 @@ export default function SearchView({
   useEffect(() => {
     if (!v3) return;
     let on = true;
+    // A copy: the list is SearchCard's shared cache, which its own listeners keep current.
     void myRatings().then((m) => on && setMarks({ ...m }));
     const onRated = (e: Event) => {
       const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
@@ -169,10 +170,21 @@ export default function SearchView({
         return next;
       });
     };
+    // A title hidden from For you, or restored, anywhere: its mark follows.
+    const onHidden = (e: Event) => {
+      const { id, hidden } = (e as CustomEvent<HiddenDetail>).detail;
+      setMarks((m) => {
+        const next = { ...m };
+        applyHidden(next, id, hidden);
+        return next;
+      });
+    };
     window.addEventListener(RATED_EVENT, onRated);
+    window.addEventListener(HIDDEN_EVENT, onHidden);
     return () => {
       on = false;
       window.removeEventListener(RATED_EVENT, onRated);
+      window.removeEventListener(HIDDEN_EVENT, onHidden);
     };
   }, [v3]);
   // Read each render, like the card's own "saved": a title added or removed on its card shows on the way back.
