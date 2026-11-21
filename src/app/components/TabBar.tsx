@@ -15,6 +15,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Gamepad2, MessageCircle, Sparkles } from "lucide-react";
 import { watchlistCount, WATCHLIST_CHANGED_EVENT, WATCHLIST_HYDRATED_EVENT } from "@/lib/watchlist";
+import { forYouV3Enabled, navHistoryEnabled } from "@/lib/flags";
+import { markInApp } from "@/modules/session/nav-history";
+import { useTabPlace } from "@/modules/session/tab-place";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "./RouteLoading";
 import styles from "./TabBar.module.css";
@@ -52,6 +55,7 @@ export function TabBar({
   user,
   onTab,
   atRoot = true,
+  keepPlace = true,
 }: {
   active: Tab;
   user: AppUser;
@@ -62,11 +66,26 @@ export function TabBar({
    * anything else is a route change, with the loading screen the app shows on every other one.
    */
   onTab?: (tab: Tab) => boolean | void;
+  /** False for the copy drawn over a loading screen: only the real bar keeps the screen's place (N2). */
+  keepPlace?: boolean;
 }) {
   const router = useRouter();
   const [count, setCount] = useState(0);
   const [typing, setTyping] = useState(false);
   const [leaving, setLeaving] = useState<Tab | null>(null);
+  // N2 (NAV_HISTORY): each tab screen keeps its scroll place, per user; an inner page (Seen, My taste, Account) has
+  // its own. For you keeps its place only once FOR_YOU_V3 holds its list still (Eran, #357).
+  const placeKey =
+    !keepPlace || !navHistoryEnabled() || (active === "foryou" && !forYouV3Enabled())
+      ? null
+      : `${user.id}:${atRoot ? active : `${active}:${typeof window === "undefined" ? "" : window.location.pathname}`}`;
+  useTabPlace(placeKey);
+
+  // A tab on its own route (Games, You): WTW has a screen in this browser tab now, so the home route opened from here
+  // keeps the history under it (NAV_HISTORY, src/modules/session/nav-history.ts). The home route marks itself.
+  useEffect(() => {
+    if (!onTab) markInApp();
+  }, [onTab]);
 
   useEffect(() => {
     const read = () => setCount(watchlistCount());
@@ -164,7 +183,7 @@ export function TabBar({
           );
         })}
       </nav>
-      {leaving && <RouteLoading label="Loading" overlay tabs={<TabBar active={leaving} user={user} onTab={() => true} />} />}
+      {leaving && <RouteLoading label="Loading" overlay tabs={<TabBar active={leaving} user={user} onTab={() => true} keepPlace={false} />} />}
     </>
   );
 }

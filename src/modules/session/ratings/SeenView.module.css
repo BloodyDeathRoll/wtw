@@ -1,0 +1,45 @@
+/* Seen v3 (docs/plan/v3/SEEN.md, S1). The look is the Watchlist's
+   (RecommendationsView.module.css) and today's dropdowns (RatingsView.module.css);
+   this file only carries the tokens and layout those two need together. */
+
+/* Today's Ratings tokens the Watchlist's root doesn't define (RatingsView.module.css .view). */
+.tokens {
+  --rv-white: #fff;
+  --rv-gold: #f4b940;
+  --rv-dark-50-70: rgba(22, 22, 20, 0.7);
+  --rv-labels: 16px;
+  --rv-menus: 20px;
+  --rv-small: 13.5px;
+  --rv-pad: 16px;
+  --rv-pad-2: 6.5px;
+  --rv-pad-small: 10px;
+}
+
+/* Today's two dropdowns, under the chips, on the chips' left edge (DEC-3, 7-icons). */
+.dropdowns {
+  display: flex;
+  align-items: center;
+  gap: var(--rv-pad-2);
+  padding: 0 16px 8px;
+  flex-shrink: 0;
+}
+
+/* A row opens nothing yet: the card page comes with S3. */
+.row {
+  cursor: default;
+}
+
+/* S2 (DEC-4, 7-icons right): the card's reaction chips as icons only, under the facts line. */
+.icons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.icon {
+  flex: 0 0 52px;
+  height: 36px;
+}
+/* The two you didn't pick, dimmed a little (about 55%). */
+.iconDim > span {
+  opacity: 0.55;
+}

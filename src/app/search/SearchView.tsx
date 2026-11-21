@@ -18,9 +18,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, ChevronLeft, Play, Star, X } from "lucide-react";
+import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { navTabsEnabled } from "@/lib/flags";
+import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
+import { clearRecentSearches, rememberSearch, useRecentSearches } from "./recent";
+import SearchCard, { applyHidden, myRatings } from "./SearchCard";
 import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMenu";
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
@@ -29,7 +31,8 @@ import JustWatchCredit from "@/app/components/JustWatchCredit";
 import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider, withIsraelService } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
-import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
+import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist, type WatchlistRating } from "@/lib/watchlist";
+import { HIDDEN_EVENT, RATED_EVENT, type HiddenDetail, type RatedDetail } from "@/modules/session/recommendations/rate";
 import { safeFrom, searchUrl, type SearchScope } from "@/app/search/url";
 import type { PersonPage, PersonSearchHit, PersonTitle, SearchHit, TitleSearchHit } from "@/lib/tmdb";
 import type { Recommendation } from "@/types/recommendation";
@@ -58,6 +61,13 @@ export default function SearchView({
   menu?: ReactNode;
 }) {
   const inPlace = menu !== undefined;
+  const v3 = searchV3Enabled();
+  // SEARCH_V3: your recent searches wait in the empty box (DEC-7); they live on this phone only.
+  const recent = useRecentSearches(v3);
+  /** A search made (a result opened, or the keyboard's search key): it joins the recent ones. */
+  const remember = () => {
+    if (v3) rememberSearch(q);
+  };
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const params = useSearchParams();
@@ -69,6 +79,8 @@ export default function SearchView({
   // "Michael Douglas, Benicio del Toro" per result, filled in just after the list shows.
   const [cast, setCast] = useState<Record<string, string>>({});
   const [now, setNow] = useState(0); // bumps to search without waiting for the pause
+  // SEARCH_V3: your rating of each title, and what you hid from For you, to mark the rows (SEARCH.md DEC-5).
+  const [marks, setMarks] = useState<Record<string, WatchlistRating>>({});
 
   // The open card lives in the URL (/search?t=movie-1900): opening one pushes a
   // history entry, so Back (the arrow, or Android's back gesture) closes the
@@ -144,6 +156,42 @@ export default function SearchView({
     void hydrateWatchlist(user.id);
   }, [user.id]);
 
+  // SEARCH_V3: Seen's list once, then each rating as it lands (a card opened from here, or anywhere else).
+  useEffect(() => {
+    if (!v3) return;
+    let on = true;
+    // A copy: the list is SearchCard's shared cache, which its own listeners keep current.
+    void myRatings().then((m) => on && setMarks({ ...m }));
+    const onRated = (e: Event) => {
+      const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
+      setMarks((m) => {
+        const next = { ...m };
+        if (rating) next[id] = rating;
+        else delete next[id];
+        return next;
+      });
+    };
+    // A title hidden from For you, or restored, anywhere: its mark follows.
+    const onHidden = (e: Event) => {
+      const { id, hidden } = (e as CustomEvent<HiddenDetail>).detail;
+      setMarks((m) => {
+        const next = { ...m };
+        applyHidden(next, id, hidden);
+        return next;
+      });
+    };
+    window.addEventListener(RATED_EVENT, onRated);
+    window.addEventListener(HIDDEN_EVENT, onHidden);
+    return () => {
+      on = false;
+      window.removeEventListener(RATED_EVENT, onRated);
+      window.removeEventListener(HIDDEN_EVENT, onHidden);
+    };
+  }, [v3]);
+  // Read each render, like the card's own "saved": a title added or removed on its card shows on the way back.
+  const savedIds = v3 ? new Set(getWatchlist().map((e) => e.rec.id)) : null;
+  const markOf = (h: TitleSearchHit) => (savedIds ? markFor(marks[`${h.type}:${h.tmdb_id}`], savedIds.has(`${h.type}:${h.tmdb_id}`)) : undefined);
+
   // A reload on /search?t=… or ?p=… has no list behind it to go back to: start clean.
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
@@ -180,6 +228,7 @@ export default function SearchView({
   }, [query, now]);
 
   async function pick(h: TitleSearchHit) {
+    remember();
     const key = keyOf(h);
     inputRef.current?.blur();
     window.history.pushState(null, "", url(openPerson ? `p=${openPerson}&t=${key}` : `t=${key}`));
@@ -214,6 +263,7 @@ export default function SearchView({
   }
 
   async function pickPerson(h: PersonSearchHit) {
+    remember();
     const id = h.tmdb_id;
     inputRef.current?.blur();
     window.history.pushState(null, "", url(`p=${id}`));
@@ -314,6 +364,8 @@ export default function SearchView({
   const status = answer.q !== query ? "searching" : answer.hits ? "done" : "error";
   const shown = hits.filter((h) => !mineKeys.has(keyOf(h)));
   const showMine = !openKey && !openPerson && mineHits.length > 0;
+  // Nothing typed and nothing open: your recent searches, or the box alone as today when there are none (DEC-7).
+  const showRecent = v3 && query.length === 0 && !openKey && !openPerson && recent.length > 0;
   const showHits = !openKey && !openPerson && query.length >= 2 && status !== "error" && shown.length > 0;
   let note: string | null = null;
   if (openKey) {
@@ -345,6 +397,7 @@ export default function SearchView({
             onSubmit={(e) => {
               // The keyboard's search key: search now, and put the keyboard away.
               e.preventDefault();
+              remember();
               setNow((n) => n + 1);
               inputRef.current?.blur();
             }}
@@ -401,12 +454,51 @@ export default function SearchView({
         </div>
 
         <div className={styles.box}>
+          {showRecent && (
+            <>
+              <div className={styles.recentHead}>
+                <p className={styles.groupLabel}>Recent searches</p>
+                <button
+                  type="button"
+                  className={styles.recentClear}
+                  onClick={() => {
+                    clearRecentSearches();
+                    inputRef.current?.focus();
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              <div className={styles.list} role="listbox" aria-label="Recent searches">
+                {recent.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    className={styles.row}
+                    onClick={() => {
+                      // Search it again, at once.
+                      edit(s);
+                      setNow((n) => n + 1);
+                    }}
+                  >
+                    <span className={styles.recentIcon} aria-hidden>
+                      <History size={20} strokeWidth={1.75} />
+                    </span>
+                    <span className={styles.recentText}>{s}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {showMine && (
             <>
-              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your watchlist" : "In your ratings"}</p>
-              <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : "Your ratings"}>
+              {/* SEARCH_V3: the page is called Seen now (SEARCH.md DEC-8). */}
+              <p className={styles.groupLabel}>{scope === "watchlist" ? "In your Watchlist" : v3 ? "In Seen" : "In your ratings"}</p>
+              <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : v3 ? "Seen" : "Your ratings"}>
                 {mineHits.map((h) => (
-                  <TitleRow key={keyOf(h)} h={h} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
+                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
                 ))}
               </div>
               {showHits && <p className={styles.groupLabel}>All titles</p>}
@@ -438,7 +530,7 @@ export default function SearchView({
                   </button>
                 ) : (
                   // Held open until the actors arrive, so nothing moves under a finger.
-                  <TitleRow key={keyOf(h)} h={h} line={cast[keyOf(h)]} onPick={() => void pick(h)} />
+                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} line={cast[keyOf(h)]} onPick={() => void pick(h)} />
                 ),
               )}
             </div>
@@ -468,6 +560,7 @@ export default function SearchView({
                   <TitleRow
                     key={keyOf(t)}
                     h={t}
+                    mark={markOf(t)}
                     line={person.page!.role === "Actor" ? (t.character ? `as ${t.character}` : "") : cast[keyOf(t)]}
                     onPick={() => void pick(t)}
                   />
@@ -477,7 +570,13 @@ export default function SearchView({
           </div>
         )}
 
-        {card && (
+        {card && v3 && (
+          // Every title opens the same card page as the Watchlist and Seen (SEARCH.md DEC-2, v3 Q1).
+          <div className={rv.content}>
+            <SearchCard key={card.id} rec={card} user={user} />
+          </div>
+        )}
+        {card && !v3 && (
           <div className={rv.content}>
             <div className={`${rv.list} ${styles.cardList}`}>
               <TitleCard
@@ -509,10 +608,23 @@ function countOf(titles: PersonTitle[]) {
   return `${n} ${word}`;
 }
 
-/** One title in a list: poster, name, year (· series), and a third line —
- *  the lead actors, or who a person played. The line's space is held while
- *  it's still on its way, so rows don't move. */
-function TitleRow({ h, line, onPick }: { h: LocalHit; line: string | undefined; onPick: () => void }) {
+/** Where a title stands with you (SEARCH_V3, SEARCH.md DEC-5): your rating first, then saved, then hidden from For you. */
+const MARKS: Record<WatchlistRating, string> = {
+  loved: "❤️ Loved",
+  liked: "👍 Liked",
+  disliked: "👎 Disliked",
+  removed: "Hidden from For you",
+};
+export function markFor(rating: WatchlistRating | undefined, saved: boolean): string | undefined {
+  if (rating && rating !== "removed") return MARKS[rating];
+  if (saved) return "In your Watchlist";
+  return rating && MARKS[rating];
+}
+
+/** One title in a list: poster, name, year (· series · your mark in white,
+ *  SEARCH_V3), and a third line — the lead actors, or who a person played. The
+ *  line's space is held while it's still on its way, so rows don't move. */
+function TitleRow({ h, mark, line, onPick }: { h: LocalHit; mark?: string; line: string | undefined; onPick: () => void }) {
   const poster = h.poster_url ?? (h.poster_path ? `${IMG}w154${h.poster_path}` : null);
   return (
     <button type="button" role="option" aria-selected="false" className={styles.row} onClick={onPick}>
@@ -527,6 +639,12 @@ function TitleRow({ h, line, onPick }: { h: LocalHit; line: string | undefined; 
         <small>
           {h.year ?? ""}
           {h.type === "tv" ? `${h.year ? " · " : ""}series` : ""}
+          {mark ? (
+            <>
+              {h.year || h.type === "tv" ? " · " : ""}
+              <span className={styles.mark}>{mark}</span>
+            </>
+          ) : null}
         </small>
         <small className={styles.cast}>{line || "\u00a0"}</small>
       </span>
@@ -551,7 +669,7 @@ function TitleCard({
   onShare: () => void;
 }) {
   const where = rec.where ? canonicalProvider(rec.where) : null;
-  const label = saved ? "Remove from watchlist" : "Add to Watchlist";
+  const label = saved ? "Remove from Watchlist" : "Add to Watchlist";
   return (
     <article className={`${rv.card} ${rv.heroCard}`}>
       <div className={rv.hero}>

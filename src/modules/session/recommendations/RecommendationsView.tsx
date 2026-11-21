@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  MessageCircle,
   Play,
   Star,
   X,
@@ -79,6 +80,7 @@ import {
 } from "./watchlist-order";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { shareTitle } from "@/lib/share";
+import { announceHidden, deleteRating, postRating } from "./rate";
 import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
@@ -119,6 +121,8 @@ interface Props {
   onFindMore?: () => Promise<RecPage | null | void>;
   /** Watchlist mode only — action on the empty state that opens the rec feed. */
   onBrowse?: () => void;
+  /** Watchlist mode only: the end card's "Let's talk" (DEC-9). Unset (chat off or out of turns): no end card. */
+  onTalk?: () => void;
   /**
    * Rendered at the far right of the header.
    * The app menu goes here so it sits in the same spot on every screen
@@ -261,6 +265,7 @@ export default function RecommendationsView({
   sharerName,
   onFindMore,
   onBrowse,
+  onTalk,
   headerRight,
   user,
   onCalibrate,
@@ -683,30 +688,8 @@ export default function RecommendationsView({
     // time. The UI card state was already flipped above.
     feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
       try {
-        // The feedback route's contract is { tmdb_id, action, reaction, ... }.
-        // (The UI used to send { recommendation_id, rating } — every click
-        // silently 400'd and no rating ever reached the fingerprint.)
-        // rec.id is "type:tmdb_id" for engine recs (a bare slug only in legacy saved entries).
-        const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
-        const res = await fetch("/api/recommendations/feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tmdb_id,
-            media_type: rec.type,
-            title: rec.title,
-            // disliked = "watched it, didn't like it" — a negative taste
-            // signal (skipped means not-accepted); loved/liked are positive.
-            action: rating === "disliked" ? "skipped" : "watched",
-            reaction: rating,
-            // The list this rating came from — the server precomputes the
-            // next batch for the same one.
-            content_type: contentType,
-            is_stretch_pick: rec.is_stretch_pick ?? false,
-          }),
-        });
-        if (!res.ok) {
-          console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
+        // The route's contract and its body live in rate.ts (Search rates through it too, v3 Q1).
+        if (!(await postRating(rec, rating, contentType))) {
           // The card was flipped optimistically before this ran, so a failure
           // leaves the user believing a rating landed that did not. Nothing
           // else records it — session end folds from the history row this
@@ -756,21 +739,8 @@ export default function RecommendationsView({
     };
     feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
       try {
-        const res = await fetch("/api/recommendations/feedback", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tmdb_id,
-            media_type: rec.type,
-            content_type: contentType,
-            // On the Watchlist the history entry goes back to "saved".
-            saved: saved.has(rec.id),
-          }),
-        });
-        if (!res.ok) {
-          console.error(`[recs] un-rate HTTP ${res.status}`, await res.text().catch(() => ""));
-          restore();
-        }
+        // On the Watchlist the history entry goes back to "saved".
+        if (!(await deleteRating(rec, contentType, saved.has(rec.id)))) restore();
       } catch (e) {
         console.error("[recs] un-rate failed", e);
         restore();
@@ -811,6 +781,8 @@ export default function RecommendationsView({
         });
         if (!res.ok) {
           console.error(`[recs] remove HTTP ${res.status}`, await res.text().catch(() => ""));
+        } else {
+          announceHidden(`${rec.type}:${tmdb_id}`, true);
         }
       } catch (e) {
         console.error("[recs] remove failed", e);
@@ -893,6 +865,7 @@ export default function RecommendationsView({
             onGone={ghostGone}
             onDismissNotes={dismissNotes}
             onBrowse={onBrowse}
+            onTalk={onTalk}
           />
         ) : (
         <Feed
@@ -1053,6 +1026,21 @@ function Feed({
         {/* The credit for the services on the cards (v3 L1): once, at the end. */}
         {!refreshing && !loading && !hasMore && recs.some((r) => r.where) && <JustWatchCredit at="end" />}
       </div>
+    </div>
+  );
+}
+
+// The Watchlist's end card (WATCHLIST.md DEC-9, docs/prototypes/watchlist-v3/10-end.jpg): For you's end-card look,
+// one ask. Copy is a placeholder until Eran approves it at the PR.
+function WatchlistEndCard({ onTalk }: { onTalk: () => void }) {
+  return (
+    <div className={`${styles.card} ${styles.nudge} ${styles.endCard}`} role="group" aria-label="That’s your list">
+      <span className={styles.nudgeEyebrow}>That&rsquo;s your list</span>
+      <p className={styles.nudgeText}>Need help deciding? Let&rsquo;s talk it over.</p>
+      <button type="button" className={`${styles.watchlistBtn} ${styles.watchlistBtnPrimary}`} onClick={onTalk}>
+        <MessageCircle size={20} strokeWidth={1.6} aria-hidden />
+        Let&rsquo;s talk
+      </button>
     </div>
   );
 }
@@ -1676,7 +1664,8 @@ function WhyDetailOverlay({
   );
 }
 
-function PosterTile({
+/** Also Seen's rows (src/modules/session/ratings/SeenView.tsx, SEEN.md DEC-1). */
+export function PosterTile({
   rec,
   size,
 }: {
@@ -1852,6 +1841,7 @@ function WatchlistList({
   onGone,
   onDismissNotes,
   onBrowse,
+  onTalk,
 }: {
   entries: WatchlistEntry[];
   ghosts: Record<string, Ghost>;
@@ -1864,6 +1854,7 @@ function WatchlistList({
   onGone: (id: string) => void;
   onDismissNotes: () => void;
   onBrowse?: () => void;
+  onTalk?: () => void;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   // How many rows are shown, for the filter they were paged under: a filter
@@ -1925,6 +1916,10 @@ function WatchlistList({
   }, [entries, ghosts, filter]);
   const visible = rows.slice(0, shownN);
   const hasMore = shownN < rows.length;
+  // The end card (DEC-9): under the last unseen row, before the Seen line, under All only, with three or more unseen
+  // titles (a removed row waiting on its Undo no longer counts), and only when the chat can answer.
+  const unseenN = rows.slice(0, seenFrom).filter((e) => !ghosts[e.rec.id]).length;
+  const endCard = onTalk && filter === "all" && unseenN >= 3 ? <WatchlistEndCard onTalk={onTalk} /> : null;
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -1978,6 +1973,7 @@ function WatchlistList({
       <div key={filter} ref={flipRef} className={styles.listFade}>
         {visible.map((e, i) => (
           <Fragment key={e.rec.id}>
+            {i === seenFrom && endCard}
             {i === seenFrom && filter !== "seen" && (
               <div className={styles.seenDivider} role="separator" aria-label={`Seen, ${rows.length - seenFrom}`}>
                 Seen <b>{rows.length - seenFrom}</b>
@@ -2001,6 +1997,8 @@ function WatchlistList({
             />
           </Fragment>
         ))}
+        {/* No Seen rows (or none paged in yet): the card closes the unseen list. */}
+        {visible.length === seenFrom && endCard}
       </div>
       <div ref={sentinelRef} className={styles.sentinel}>
         {!hasMore && <span className={styles.muted}>That&rsquo;s everything we found.</span>}
@@ -2270,14 +2268,7 @@ function WatchlistRow({
  */
 function WatchlistCardPage({
   entry,
-  rec,
-  reasonPending,
-  rated,
-  onFeedback,
-  onUnrate,
-  onShare,
-  onToggleWatchlist,
-  onStar,
+  ...rest
 }: {
   entry: WatchlistEntry;
   rec: Recommendation;
@@ -2288,6 +2279,39 @@ function WatchlistCardPage({
   onShare: (rec: Recommendation) => void;
   onToggleWatchlist: (rec: Recommendation) => void;
   onStar: () => void;
+}) {
+  return <TitleCardPage {...rest} saved starred={entry.starred} snapshot={entry.explain} />;
+}
+
+/**
+ * A title's card as its own page, in that title's state for you (WATCHLIST.md DEC-2): the Watchlist's, and every title
+ * tapped in Search (SEARCH.md DEC-2, v3 Q1). The star only on a saved title (DEC-4); the breakdown under Seen it?.
+ */
+export function TitleCardPage({
+  rec,
+  saved,
+  starred,
+  onStar,
+  snapshot,
+  reasonPending,
+  rated,
+  onFeedback,
+  onUnrate,
+  onShare,
+  onToggleWatchlist,
+}: {
+  rec: Recommendation;
+  saved: boolean;
+  starred?: boolean;
+  onStar?: () => void;
+  /** The breakdown saved with the title, shown when today's can't be had. */
+  snapshot?: ExplainData | null;
+  reasonPending: boolean;
+  rated: WatchlistRating | undefined;
+  onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
+  onUnrate: (rec: Recommendation) => void;
+  onShare: (rec: Recommendation) => void;
+  onToggleWatchlist: (rec: Recommendation) => void;
 }) {
   const whyRef = useRef<HTMLDivElement>(null);
   return (
@@ -2300,12 +2324,12 @@ function WatchlistCardPage({
         // The short why line is the teaser; the breakdown is further down this page.
         onWhy={() => whyRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" })}
         onShare={onShare}
-        saved
+        saved={saved}
         onToggleWatchlist={onToggleWatchlist}
         reasonPending={reasonPending}
-        starred={entry.starred}
-        onStar={onStar}
-        whyInline={<InlineWhy entry={entry} rec={rec} innerRef={whyRef} />}
+        starred={saved ? starred : undefined}
+        onStar={saved ? onStar : undefined}
+        whyInline={<InlineWhy snapshot={snapshot ?? null} rec={rec} innerRef={whyRef} />}
       />
       {/* The credit for the service on the poster (v3 L1). */}
       {rec.where && <JustWatchCredit at="underCard" />}
@@ -2325,11 +2349,11 @@ function WatchlistCardPage({
  * without the old guessed bars a pre-v2 one would draw; then the Why alone.
  */
 function InlineWhy({
-  entry,
+  snapshot,
   rec,
   innerRef,
 }: {
-  entry: WatchlistEntry;
+  snapshot: ExplainData | null;
   rec: Recommendation;
   innerRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -2338,7 +2362,6 @@ function InlineWhy({
   const [data, setData] = useState<ExplainData | null | "loading">(
     () => getCachedExplain(freshKey(rec.id)) ?? "loading",
   );
-  const snapshot = entry.explain;
   useEffect(() => {
     if (data !== "loading") return;
     let cancelled = false;

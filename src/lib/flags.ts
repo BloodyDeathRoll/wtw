@@ -38,6 +38,32 @@ export function navTabsEnabled(): boolean {
 }
 
 /**
+ * v3 N1 (docs/plan/v3/YOU.md DEC-1; N2's scroll memory joins it, PLAN.md §4): under the tab bar, the stage is in the
+ * address and every step is a history entry, so the phone's Back retraces your steps inside WTW, then goes to For you,
+ * then out. Off by default: today's Back. The client reads it too (next.config.ts `env`). Gate: P1-G.
+ */
+export function navHistoryEnabled(): boolean {
+  return isOn(process.env.NAV_HISTORY)
+}
+
+/**
+ * v3 For you (docs/plan/v3/FOR-YOU.md, F1): the 20 that stay put until Refresh. Read here first by N2, which keeps
+ * For you's scroll place only once this is on (Eran, #357). Off by default. The client reads it too (next.config.ts
+ * `env`). F1 builds the rest.
+ */
+export function forYouV3Enabled(): boolean {
+  return isOn(process.env.FOR_YOU_V3)
+}
+
+/**
+ * v3 Seen (docs/plan/v3/SEEN.md, S1–S4): Seen as the Watchlist's rows, with chips and today's two dropdowns. Off by
+ * default: today's Ratings screen. The client reads it too (next.config.ts `env`). Gate: P2-G.
+ */
+export function seenV3Enabled(): boolean {
+  return isOn(process.env.SEEN_V3)
+}
+
+/**
  * The new onboarding at /onboarding (P2-U2 … U6). Off by default; while it's off the page exists only in local
  * development, for building and checking it. Server-only. Gate: P2-G.
  */
@@ -48,8 +74,9 @@ export function onboardingV2Enabled(): boolean {
 /**
  * v3 Search (docs/plan/v3/SEARCH.md, PLAN.md §8): results from the second
  * letter and through a one-word typo, from our catalogue merged with TMDB
- * (Q4); more Search work joins it. Off by default: today's TMDB-only search.
- * Server-only so far. Gate: P2-G.
+ * (Q4); every title opening the card page (Q1); more Search work joins it.
+ * Off by default: today's search. The client reads it too (next.config.ts
+ * `env`), so a change needs a redeploy. Gate: P2-G.
  */
 export function searchV3Enabled(): boolean {
   return isOn(process.env.SEARCH_V3)
