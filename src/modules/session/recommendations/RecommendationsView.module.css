@@ -499,7 +499,7 @@
 .seenChip:active {
   transform: scale(0.96);
 }
-/* "Saved to Ratings" — takes the prompt's place once rated. */
+/* "Saved to Seen" — takes the prompt's place once rated. */
 .seenItSaved {
   display: inline-flex;
   align-items: center;

@@ -85,6 +85,7 @@ import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
 import type { ContentType } from "@/lib/content-type";
+import { seenV3Enabled } from "@/lib/flags";
 import type { AppUser } from "@/modules/session/types";
 
 type Mode = "recommendations" | "learning" | "watchlist";
@@ -1349,7 +1350,7 @@ function FeedbackRow({
       {current ? (
         <span className={`${styles.seenItPrompt} ${styles.seenItSaved}`} role="status">
           <Check size={14} strokeWidth={2.6} aria-hidden />
-          {SAVED_NOTE}
+          {savedNote()}
         </span>
       ) : (
         <span className={styles.seenItPrompt}>{SEEN_PROMPT}</span>
@@ -1379,8 +1380,8 @@ function FeedbackRow({
 
 /** The prompt over the chips — says what a rating is for (Eran, 2026-11-06). */
 const SEEN_PROMPT = "Seen it? Tell me, and your picks get sharper";
-/** Replaces the prompt once rated. "Seen" when that page ships. */
-const SAVED_NOTE = "Saved to Ratings";
+/** Replaces the prompt once rated: "Seen" is the page's name under SEEN_V3 (v3 PLAN DEC-8, S3). */
+const savedNote = () => (seenV3Enabled() ? "Saved to Seen" : "Saved to Ratings");
 /** X: the slide away plus the gap closing, in ms (Eran, 2026-11-06). Matches .cardLeaving. */
 const CARD_LEAVE_MS = 750;
 
