@@ -498,6 +498,27 @@ describe('S4: Hidden from For you, with Restore (DEC-8)', () => {
     expect(screen.getByRole('button', { name: 'Restore The Hunger Games' })).toBeInTheDocument()
   })
 
+  it('Restore, Undo, Restore again, then the first Restore fails: the row stays restored', async () => {
+    let fail!: () => void
+    const held = new Promise<void>((r) => (fail = r))
+    let deletes = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/removed') {
+        if (init?.method === 'DELETE' && ++deletes === 1) return (await held, new Response('no', { status: 500 }))
+        return Response.json({ ok: true })
+      }
+      return Response.json(DATA)
+    }))
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    fail()
+    await flush(); await flush(); await flush(); await flush()
+    expect(hiddenCount()).toBe('Hidden from For you')
+    expect(screen.getByRole('status')).toHaveTextContent('Restored. The Hunger Games can show up on For you again.')
+  })
+
   it('Search hears both: restored, then hidden again', async () => {
     const heard: unknown[] = []
     const on = (e: Event) => heard.push((e as CustomEvent).detail)

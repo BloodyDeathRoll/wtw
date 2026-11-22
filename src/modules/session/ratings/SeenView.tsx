@@ -194,8 +194,9 @@ export default function SeenView({
   const restoredRows = useRef<Record<string, RemovedItem>>({});
   // A title's Restore and Undo writes go one after the other, so the server ends where the screen does.
   const hiddenWrites = useRef<Record<string, Promise<void>>>({});
-  // Titles whose Restore was undone: a late failure of that Restore must leave the row where Undo put it.
-  const undone = useRef<Set<string>>(new Set());
+  // Each Restore or Undo of a title bumps its count: a late failure of an older Restore leaves the row where the newer
+  // tap put it.
+  const hiddenTaps = useRef<Record<string, number>>({});
   function inOrder(key: string, write: () => Promise<void>): Promise<void> {
     const next = (hiddenWrites.current[key] ?? Promise.resolve()).then(write);
     hiddenWrites.current[key] = next.catch(() => {});
@@ -439,7 +440,7 @@ export default function SeenView({
     const item = dataRef.current?.removed.find((r) => `${r.media_type}:${r.tmdb_id}` === row.key);
     if (!item) return;
     restoredRows.current[row.key] = item;
-    undone.current.delete(row.key);
+    const tap = (hiddenTaps.current[row.key] = (hiddenTaps.current[row.key] ?? 0) + 1);
     setHidden(item, false);
     // The name is never empty: nameless rows are filtered out on load (#406).
     showNote({ key: row.key, title: row.title ?? "", restored: true });
@@ -454,8 +455,9 @@ export default function SeenView({
         announceHidden(row.key, false);
       });
     } catch {
-      // An Undo already tapped has put it back; otherwise put it back here, and drop the note and its timer.
-      if (undone.current.has(row.key)) return;
+      // A newer tap (Undo, or Restore again) decides where the row is; otherwise put it back here, and drop the note
+      // and its timer.
+      if (hiddenTaps.current[row.key] !== tap) return;
       delete restoredRows.current[row.key];
       setHidden(item, true);
       if (noteRef.current?.key === row.key) {
@@ -471,7 +473,7 @@ export default function SeenView({
     const item = restoredRows.current[key];
     if (!item) return;
     delete restoredRows.current[key];
-    undone.current.add(key);
+    hiddenTaps.current[key] = (hiddenTaps.current[key] ?? 0) + 1;
     setHidden(item, true);
     try {
       await inOrder(key, async () => {
@@ -485,7 +487,6 @@ export default function SeenView({
       });
     } catch {
       restoredRows.current[key] = item;
-      undone.current.delete(key);
       setHidden(item, false);
       showNote({ key, title: item.title ?? "", restored: true });
     }
