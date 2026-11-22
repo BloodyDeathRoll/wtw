@@ -8,13 +8,15 @@
 // Read: the stored engine results, rebuilt into cards. What the person did since (rated, saved, hid) drops out on the
 // way, as on today's feed; F2 changes that to "stays on the card, lit, until Refresh".
 //
-// For what comes next: F4 (resting) reads the outgoing set at Refresh (`previous` below) and adds what it needs to
-// served_titles; F8 keeps the 20 on the phone and checks this set behind them.
+// F4 (resting, FOR-YOU.md DEC-6, #351): at Refresh, the outgoing cards you stopped on and left alone rest, then retire;
+// every new 20 leaves out the resting and retired ones and keeps a returning one out of the top five (`restBook`
+// below, rules in src/lib/resting.ts). F8 keeps the 20 on the phone and checks this set behind them.
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { ofContentType, servableFilter, toCards } from "@/lib/rec-page";
 import { titleKey } from "@/lib/title-key";
 import { startTimer } from "@/lib/timing";
+import { NO_REST, placeReturning, restPlan, restSeconds, type RestPlan, type RestRow } from "@/lib/resting";
 import type { ContentType } from "@/lib/content-type";
 import type { DNASchema, RecommendationResult } from "@/types/dna";
 import type { RecPage } from "@/types/recommendation";
@@ -94,25 +96,77 @@ async function watchlistKeys(userId: string): Promise<Set<string>> {
  * The next 20 from a batch: the best servable titles in the batch's order, leaving out the outgoing 20 so Refresh
  * brings new picks (FOR-YOU.md DEC-3). When the batch can't fill 20 without them, the outgoing ones still servable
  * top it up, so a set is never short just because the pool is.
+ *
+ * `rest` (F4, DEC-6): resting and retired titles are left out altogether, even as a top-up; a title back from its rest
+ * is never in the top five. Without it (FOR_YOU_V3's F1 alone, or the rest state unread), the 20 are as F1 made them.
  */
 export function pickTheTwenty(
   batch: RecommendationResult[],
   servable: (r: RecommendationResult) => boolean,
   previous: RecommendationResult[] = [],
+  rest: RestPlan = NO_REST,
 ): RecommendationResult[] {
   const before = new Set(previous.map((r) => titleKey(r.type, r.tmdb_id)));
   const picked: RecommendationResult[] = [];
   const taken = new Set<string>();
   const take = (r: RecommendationResult) => {
     const k = titleKey(r.type, r.tmdb_id);
-    if (picked.length >= SET_SIZE || taken.has(k) || !servable(r)) return;
+    if (picked.length >= SET_SIZE || taken.has(k) || rest.blocked.has(k) || !servable(r)) return;
     taken.add(k);
     picked.push(r);
   };
   for (const r of batch) if (!before.has(titleKey(r.type, r.tmdb_id))) take(r);
   for (const r of batch) if (before.has(titleKey(r.type, r.tmdb_id))) take(r);
   for (const r of previous) take(r);
-  return picked;
+  return rest.returning.size > 0 ? placeReturning(picked, (r) => rest.returning.has(titleKey(r.type, r.tmdb_id))) : picked;
+}
+
+/**
+ * F4 (FOR-YOU.md DEC-6): the rest state the next 20 is drawn with. At a Refresh (`skippable` = the outgoing 20 minus
+ * what was added, rated or hidden), first count the skips: each of those stopped on since that 20 was made gets one more
+ * skip and its rest (migration 0035's `rest_skipped_titles`). Then read every title with a skip.
+ *
+ * Never fails a Refresh: when the state can't be read (or migration 0035 isn't there), the 20 are drawn as F1 draws them.
+ */
+export async function restBook(
+  userId: string,
+  contentType: ContentType,
+  skippable: RecommendationResult[] = [],
+): Promise<RestPlan> {
+  try {
+    const db = createServiceClient();
+    if (skippable.length > 0) {
+      const { data: setRow, error: madeError } = await db
+        .from(TABLE)
+        .select("made_at")
+        .eq("user_id", userId)
+        .eq("content_type", contentType)
+        .maybeSingle<{ made_at: string | null }>();
+      if (madeError) throw new Error(`the outgoing 20's time: ${madeError.message}`);
+      if (setRow?.made_at) {
+        const { error } = await db.rpc("rest_skipped_titles", {
+          p_user_id: userId,
+          p_keys: skippable.map((r) => titleKey(r.type, r.tmdb_id)),
+          p_since: setRow.made_at,
+          p_rest_secs: restSeconds(),
+        });
+        // The skips not counted this time stay marked; the read below still keeps resting titles out.
+        if (error) console.warn("[for-you-set] counting the skips failed (non-fatal):", error.message);
+      }
+    }
+    const { data, error } = await db
+      .from("served_titles")
+      .select("tmdb_id, media_type, skips, rest_until")
+      .eq("user_id", userId)
+      .gt("skips", 0);
+    if (error) throw new Error(error.message);
+    const rows: RestRow[] = ((data ?? []) as { tmdb_id: string; media_type: "movie" | "tv"; skips: number; rest_until: string | null }[])
+      .map((r) => ({ key: titleKey(r.media_type, r.tmdb_id), skips: r.skips, rest_until: r.rest_until }));
+    return restPlan(rows);
+  } catch (err) {
+    console.warn("[for-you-set] rest state unread, drawing the 20 without it:", err instanceof Error ? err.message : err);
+    return NO_REST;
+  }
 }
 
 /** The stored 20 as a page: every card still servable, in the set's order. No paging: `has_more` is false. */
@@ -159,7 +213,10 @@ export async function makeTheTwenty(opts: {
   const [removed, saved] = await Promise.all([opts.removed, watchlistKeys(userId)]);
   const pool = ofContentType(opts.batch, contentType);
   const servable = await servableFilter(dna, removed, [...pool, ...(opts.previous ?? [])]);
-  const set = pickTheTwenty(pool, (r) => servable(r) && !saved.has(titleKey(r.type, r.tmdb_id)), opts.previous);
+  const open = (r: RecommendationResult) => servable(r) && !saved.has(titleKey(r.type, r.tmdb_id));
+  // F4: the outgoing cards still open (not added, rated or hidden) are the ones that can count as skipped.
+  const rest = await restBook(userId, contentType, (opts.previous ?? []).filter(open));
+  const set = pickTheTwenty(pool, open, opts.previous, rest);
   try {
     if (set.length > 0) await saveForYouSet(userId, contentType, set, dna?.metadata.taste_version ?? null);
   } catch (err) {
