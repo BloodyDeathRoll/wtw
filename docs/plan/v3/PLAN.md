@@ -174,7 +174,7 @@ The issues are assigned to match: #347–#372 and #378, gates #373–#375, all l
 |---|---|---|---|
 | **Eran** (~17 days) | #347 F5 "Sharper picks" orange → #348 F3 Hide → #349 F1 the 20 + Refresh → #350 F2 stamps until Refresh → #351 F4 resting → #352 F6 honest Creators → #353 F7 stretch label → #378 F8 tabs open instantly → **drives #373 P1-G** | Reviews #368 Q6 (DNA write) | **Drives #375 L-G** |
 | **Shahar** (~18 days) | #358 W1 Watchlist end card → #356 N1 Back → #357 N2 tabs remember | #359 S1 Seen list → #360 S2 rate on the row → #361 S3 card page from Seen → #362 S4 Hidden from For you → #364 Q1 Search opens the card page → #365 Q2 your mark on results → #366 Q3 recent searches → **drives #374 P2-G** | — |
-| **Alon** (~16 days) | #354 M1 score one title on request → #355 M2 fresh breakdowns; reviews #351 F4 | #363 Q4 results from two letters (built in week 1, behind its flag) → #369 Y1 You's bottom + Account → #370 Y2 feedback → #371 Y3 delete my account → #368 Q6 a save from Search teaches taste → #367 Q5 match on Search's card page | #372 L1 JustWatch credit |
+| **Alon** (~16 days) | #354 M1 score one title on request → #355 M2 fresh breakdowns; reviews #351 F4 | #363 Q4 results from two letters (built in week 1, behind its flag) → #369 Y1 You's bottom + Account → #370 Y2 feedback → #371 Y3 delete my account → #368 Q6 a save from Search counts right away → #367 Q5 match on Search's card page | #372 L1 JustWatch credit |
 
 **Reviews on two-domain tasks:**
 - Alon reviews F4 (it changes what the engine draws from).
@@ -412,11 +412,13 @@ applies.
 
 - **Spec:** `SEARCH.md` DEC-3; plan DEC-5. The card shows at once, and the ring fills in when M1 answers.
 
-**Q6 · Saving from Search teaches your taste** — Alon · A · S · deps: Q1 · `SEARCH_V3` · Eran reviews (A3)
+**Q6 · A save from Search counts right away** — Alon · A · S · deps: Q1 · `SEARCH_V3` · Eran reviews (A3)
 > **In plain words:** adding to the Watchlist from Search counts the same as a save from For you.
 
-- **Spec:** `SEARCH.md` DEC-4 (Eran, 2026-11-04). Use the same path the For you save uses; DNA rules apply (patch, bump
-  `taste_version`, `docs/DNA-CONTRACT.md`).
+- **Spec:** `SEARCH.md` DEC-4. Use the same path the For you save uses: the title is marked saved in the fingerprint right
+  away (`accepted: true, rating: null`), so the feed doesn't serve it again. Like a For you save, it doesn't change the taste
+  model or bump `taste_version`. Making saves teach taste (from For you and Search alike) is its own decision, with harness
+  numbers before and after. (Eran, 2026-11-20 and 2026-11-22, #368)
 
 **Y1 · You's bottom, and the Account page** — Alon · A · S · deps: none · no flag · 🖼 · Shahar reviews
 > **In plain words:** You ends with "Send us feedback" and "Account ›". Account is its own page with Start my taste over, Sign
@@ -479,7 +481,8 @@ applies.
 1. **Seen:** move a rating on the row, Undo, clear from the card page, Restore a hidden title: counts right every time.
 2. **Search** (R3): "sl" finds Slow Horses; "godfahter" finds The Godfather; every tapped title opens the card page; the ring only
    on catalogue titles, under 1 s.
-3. **Taste:** a rating or a save from Search reaches the profile (`taste_version` goes up).
+3. **Taste:** a rating from Search reaches the profile (`taste_version` goes up); a save from Search is marked saved at once,
+   like a For you save.
 4. **Feedback:** a note from the live app is in the inbox within a minute; Reply reaches the sender; a sixth note in an hour is
    refused.
 5. **Delete:** Y3's "done" on a truly new account.

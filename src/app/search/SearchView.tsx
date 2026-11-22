@@ -16,7 +16,7 @@
 // The header, list and card reuse the feed's styles (RecommendationsView.module.css)
 // so the card looks exactly like a recommendation; search.module.css holds the rest.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +31,7 @@ import JustWatchCredit from "@/app/components/JustWatchCredit";
 import ShareIcon from "@/app/components/ShareIcon";
 import { canonicalProvider, withIsraelService } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
+import { fetchMatches } from "@/lib/explain-cache";
 import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist, type WatchlistRating } from "@/lib/watchlist";
 import { HIDDEN_EVENT, RATED_EVENT, type HiddenDetail, type RatedDetail } from "@/modules/session/recommendations/rate";
 import { safeFrom, searchUrl, type SearchScope } from "@/app/search/url";
@@ -43,6 +44,8 @@ import styles from "./search.module.css";
 const VOICE_KEY = "wtw:voice";
 /** How long typing must pause before TMDB is asked. */
 const PAUSE_MS = 250;
+/** Keys /api/search/cast answers in one call (its MAX_KEYS). */
+const CAST_KEYS = 8;
 const IMG = "https://image.tmdb.org/t/p/";
 
 export default function SearchView({
@@ -81,6 +84,9 @@ export default function SearchView({
   const [now, setNow] = useState(0); // bumps to search without waiting for the pause
   // SEARCH_V3: your rating of each title, and what you hid from For you, to mark the rows (SEARCH.md DEC-5).
   const [marks, setMarks] = useState<Record<string, WatchlistRating>>({});
+  // SEARCH_V3: your match on each title row, by "type:tmdb_id" (v3 Q7); each title asked once a visit.
+  const [matches, setMatches] = useState<Record<string, number>>({});
+  const askedMatch = useRef(new Set<string>());
 
   // The open card lives in the URL (/search?t=movie-1900): opening one pushes a
   // history entry, so Back (the arrow, or Android's back gesture) closes the
@@ -110,6 +116,8 @@ export default function SearchView({
   const base = searchUrl(scope ?? undefined, from ?? undefined);
   const url = (extra: string) => `${base}${base.includes("?") ? "&" : "?"}${extra}`;
   const [mine, setMine] = useState<LocalHit[]>([]);
+  const mineRef = useRef(mine);
+  mineRef.current = mine;
   useEffect(() => {
     if (!scope) return;
     let on = true;
@@ -132,13 +140,13 @@ export default function SearchView({
         const res = await fetch("/api/recommendations/ratings");
         if (!res.ok || !on) return;
         const { items } = (await res.json()) as {
-          items: { title: string | null; tmdb_id: string; media_type: "movie" | "tv" | null; poster_url: string | null }[];
+          items: { title: string | null; tmdb_id: string; media_type: "movie" | "tv" | null; poster_url: string | null; year: number | null }[];
         };
         if (!on) return;
         setMine(
           items.flatMap((i) =>
             i.title && i.media_type
-              ? [{ tmdb_id: i.tmdb_id, type: i.media_type, title: i.title, year: null, poster_path: null, poster_url: i.poster_url }]
+              ? [{ tmdb_id: i.tmdb_id, type: i.media_type, title: i.title, year: i.year, poster_path: null, poster_url: i.poster_url }]
               : [],
           ),
         );
@@ -208,15 +216,24 @@ export default function SearchView({
         const { results } = (await res.json()) as { results: SearchHit[] };
         setHits(results);
         setAnswer({ q: query, hits: results });
-        // Then the actors, without holding the list up for them.
-        const keys = results.filter(isTitle).map(keyOf);
-        if (keys.length) {
-          const r = await fetch(`/api/search/cast?keys=${keys.join(",")}`, { signal: ctl.signal });
-          if (r.ok) {
-            const { cast: got } = (await r.json()) as { cast: Record<string, string> };
-            setCast((c) => ({ ...c, ...got }));
-          }
-        }
+        // Then the actors, without holding the list up for them. Your own group's titles get theirs in a call of
+        // their own (the route takes 8 keys), so their rows read like the others: the year line, then the actors.
+        const q = query.toLowerCase();
+        const fromResults = results.filter(isTitle).map(keyOf);
+        const asked = new Set(fromResults);
+        const own = mineRef.current.filter((t) => t.title.toLowerCase().includes(q)).map(keyOf).filter((k) => !asked.has(k));
+        const batches = [fromResults];
+        for (let i = 0; i < own.length; i += CAST_KEYS) batches.push(own.slice(i, i + CAST_KEYS));
+        await Promise.all(
+          batches.map(async (keys) => {
+            if (!keys.length) return;
+            const r = await fetch(`/api/search/cast?keys=${keys.join(",")}`, { signal: ctl.signal });
+            if (r.ok) {
+              const { cast: got } = (await r.json()) as { cast: Record<string, string> };
+              setCast((c) => ({ ...c, ...got }));
+            }
+          }),
+        );
       } catch (e) {
         if ((e as Error).name !== "AbortError") setAnswer((a) => (a.q === query ? a : { q: query, hits: null }));
       }
@@ -367,6 +384,23 @@ export default function SearchView({
   // Nothing typed and nothing open: your recent searches, or the box alone as today when there are none (DEC-7).
   const showRecent = v3 && query.length === 0 && !openKey && !openPerson && recent.length > 0;
   const showHits = !openKey && !openPerson && query.length >= 2 && status !== "error" && shown.length > 0;
+  // SEARCH_V3: the match on every title row we can score honestly (v3 Q7, SEARCH.md DEC-3). A title
+  // outside the catalogue gets none, and nothing takes its place; the row shows at once either way.
+  const rowKeys = v3
+    ? [...mineHits, ...shown.filter(isTitle), ...(person?.page?.titles ?? [])].map((h) => `${h.type}:${h.tmdb_id}`).join(",")
+    : "";
+  useEffect(() => {
+    const ks = rowKeys ? [...new Set(rowKeys.split(","))].filter((k) => !askedMatch.current.has(k)) : [];
+    ks.forEach((k) => askedMatch.current.add(k));
+    for (let i = 0; i < ks.length; i += 60) {
+      const chunk = ks.slice(i, i + 60);
+      void fetchMatches(chunk.map((k) => ({ type: k.split(":")[0] as "movie" | "tv", tmdb_id: k.split(":")[1] }))).then((m) => {
+        if (!m) chunk.forEach((k) => askedMatch.current.delete(k)); // failed: asked again with the next list
+        else if (Object.keys(m).length) setMatches((cur) => ({ ...cur, ...m }));
+      });
+    }
+  }, [rowKeys]);
+  const matchOf = (h: TitleSearchHit) => matches[`${h.type}:${h.tmdb_id}`];
   let note: string | null = null;
   if (openKey) {
     if (loadingKey === openKey) note = "Loading…";
@@ -498,7 +532,7 @@ export default function SearchView({
               <p className={styles.groupLabel}>{scope === "watchlist" ? "In your Watchlist" : v3 ? "In Seen" : "In your ratings"}</p>
               <div className={styles.list} role="listbox" aria-label={scope === "watchlist" ? "Your watchlist" : v3 ? "Seen" : "Your ratings"}>
                 {mineHits.map((h) => (
-                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} line={h.year ? String(h.year) : undefined} onPick={() => void pickMine(h)} />
+                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} match={matchOf(h)} line={cast[keyOf(h)]} onPick={() => void pickMine(h)} />
                 ))}
               </div>
               {showHits && <p className={styles.groupLabel}>All titles</p>}
@@ -530,7 +564,7 @@ export default function SearchView({
                   </button>
                 ) : (
                   // Held open until the actors arrive, so nothing moves under a finger.
-                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} line={cast[keyOf(h)]} onPick={() => void pick(h)} />
+                  <TitleRow key={keyOf(h)} h={h} mark={markOf(h)} match={matchOf(h)} line={cast[keyOf(h)]} onPick={() => void pick(h)} />
                 ),
               )}
             </div>
@@ -561,6 +595,7 @@ export default function SearchView({
                     key={keyOf(t)}
                     h={t}
                     mark={markOf(t)}
+                    match={matchOf(t)}
                     line={person.page!.role === "Actor" ? (t.character ? `as ${t.character}` : "") : cast[keyOf(t)]}
                     onPick={() => void pick(t)}
                   />
@@ -621,11 +656,71 @@ export function markFor(rating: WatchlistRating | undefined, saved: boolean): st
   return rating && MARKS[rating];
 }
 
-/** One title in a list: poster, name, year (· series · your mark in white,
- *  SEARCH_V3), and a third line — the lead actors, or who a person played. The
- *  line's space is held while it's still on its way, so rows don't move. */
-function TitleRow({ h, mark, line, onPick }: { h: LocalHit; mark?: string; line: string | undefined; onPick: () => void }) {
+/** One title in a list: poster, name, year (· series · your mark in white ·
+ *  your match, SEARCH_V3), and a third line — the lead actors, or who a person
+ *  played. That line's space is held while it's still on its way, so rows
+ *  don't move. */
+export function TitleRow({
+  h,
+  mark,
+  match,
+  line,
+  onPick,
+}: {
+  h: LocalHit;
+  mark?: string;
+  match?: number;
+  line: string | undefined;
+  onPick: () => void;
+}) {
   const poster = h.poster_url ?? (h.poster_path ? `${IMG}w154${h.poster_path}` : null);
+  // A year line too long for one line (a rated or saved series with a match) drops the word "match" rather than
+  // wrapping it onto a line of its own: "97%" alone (Eran, #365). Measured after layout, and again on a resize.
+  const yearRef = useRef<HTMLElement>(null);
+  const [short, setShort] = useState(false);
+  // Bumped when the row's width changes (a rotation, a resize) or a late font lands: measure again from the long form.
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = yearRef.current;
+    if (!el || !match || short) return;
+    const style = getComputedStyle(el);
+    // "normal" line-height reads as NaN: take the usual 1.2 × the font size.
+    const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+    if (line > 0 && el.getBoundingClientRect().height > line * 1.5) setShort(true);
+  }, [match, mark, h.year, h.type, short, width]);
+  useEffect(() => {
+    // The row itself: the line and its text box are as wide as their words, so they don't widen with the screen.
+    const el = yearRef.current?.closest<HTMLElement>('[role="option"]');
+    if (!el || !match) return;
+    const again = () => {
+      setShort(false);
+      setWidth((n) => n + 1);
+    };
+    // A web font landing late changes the words' width, not the row's: measure once more then.
+    let live = true;
+    void document.fonts?.ready.then(() => live && again());
+    if (typeof ResizeObserver === "undefined") {
+      // An old browser: the window's resize, as before.
+      window.addEventListener("resize", again);
+      return () => {
+        live = false;
+        window.removeEventListener("resize", again);
+      };
+    }
+    // Width only: dropping the word changes the height, and that must not start it over.
+    let last = el.getBoundingClientRect().width;
+    const ro = new ResizeObserver(() => {
+      const w = el.getBoundingClientRect().width;
+      if (Math.abs(w - last) < 1) return;
+      last = w;
+      again();
+    });
+    ro.observe(el);
+    return () => {
+      live = false;
+      ro.disconnect();
+    };
+  }, [match]);
   return (
     <button type="button" role="option" aria-selected="false" className={styles.row} onClick={onPick}>
       {poster ? (
@@ -636,13 +731,21 @@ function TitleRow({ h, mark, line, onPick }: { h: LocalHit; mark?: string; line:
       )}
       <span className={styles.rowText}>
         <b>{h.title}</b>
-        <small>
+        <small ref={yearRef}>
           {h.year ?? ""}
           {h.type === "tv" ? `${h.year ? " · " : ""}series` : ""}
           {mark ? (
             <>
               {h.year || h.type === "tv" ? " · " : ""}
               <span className={styles.mark}>{mark}</span>
+            </>
+          ) : null}
+          {match ? (
+            <>
+              {h.year || h.type === "tv" || mark ? " · " : ""}
+              <span className={rv.rowMatch}>
+                {Math.round(match * 100)}%{short ? null : <span className={styles.matchWord}> match</span>}
+              </span>
             </>
           ) : null}
         </small>

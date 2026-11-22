@@ -122,3 +122,28 @@ export function withoutGuessedBars(d: ExplainData): ExplainData {
   if (p?.taste) return d;
   return { ...d, reason_payload: { ...p, taste: { like: [] } } as RecommendationResult["reason_payload"] };
 }
+
+/**
+ * Today's match for several titles (v3 Q7, `POST /api/recommendations/score`),
+ * keyed "type:tmdb_id". A title the engine won't score is absent; a failed
+ * call gives null, so the caller can ask again later. Either way it shows
+ * what it has (the saved match on a Watchlist row, nothing on a Search result).
+ */
+export async function fetchMatches(
+  titles: { type: "movie" | "tv"; tmdb_id: string }[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<Record<string, number> | null> {
+  if (!titles.length) return {};
+  try {
+    const res = await fetchImpl("/api/recommendations/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titles }),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { matches?: Record<string, number> };
+    return d.matches ?? {};
+  } catch {
+    return null;
+  }
+}
