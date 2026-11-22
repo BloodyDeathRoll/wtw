@@ -5,8 +5,8 @@
 // `for_you_sets` (migration 0038), so leaving and coming back, a new day or another device shows the same 20.
 //
 // Made from a batch of 50 (the engine's), the first time For you opens with FOR_YOU_V3 on, and again at every Refresh.
-// Read: the stored engine results, rebuilt into cards. What the person did since (rated, saved, hid) drops out on the
-// way, as on today's feed; F2 changes that to "stays on the card, lit, until Refresh".
+// Read: the stored engine results, rebuilt into cards. What the person hid since drops out on the way; what they rated
+// or saved stays on the card, lit, until Refresh (F2, FOR-YOU.md DEC-4). A new 20 leaves all three out.
 //
 // F4 (resting, FOR-YOU.md DEC-6, #351): at Refresh, the outgoing cards you stopped on and left alone rest, then retire;
 // every new 20 leaves out the resting and retired ones and keeps a returning one out of the top five (`restBook`
@@ -18,7 +18,7 @@ import { titleKey } from "@/lib/title-key";
 import { startTimer } from "@/lib/timing";
 import { NO_REST, placeReturning, restPlan, restSeconds, type RestPlan, type RestRow } from "@/lib/resting";
 import type { ContentType } from "@/lib/content-type";
-import type { DNASchema, RecommendationResult } from "@/types/dna";
+import type { DNASchema, Reaction, RecommendationResult } from "@/types/dna";
 import type { RecPage } from "@/types/recommendation";
 
 /** "Your 20 picks". */
@@ -169,7 +169,20 @@ export async function restBook(
   }
 }
 
-/** The stored 20 as a page: every card still servable, in the set's order. No paging: `has_more` is false. */
+/**
+ * This person's rating of each title they rated, by `type:tmdb_id` (the latest, should there be two). F2: a card in the
+ * 20 that was rated comes back with its chip lit.
+ */
+export function ratingsByTitle(dna: DNASchema | null): Map<string, Reaction> {
+  const out = new Map<string, Reaction>();
+  for (const s of dna?.signals ?? []) out.set(titleKey(s.type, s.tmdb_id), s.reaction);
+  return out;
+}
+
+/**
+ * The stored 20 as a page, in the set's order. No paging: `has_more` is false. A title hidden since, or caught by a
+ * standing rule, drops out; one rated or saved since stays, and a rated one carries its rating (F2).
+ */
 export async function serveTheTwenty(opts: {
   userId: string;
   dna: DNASchema | null;
@@ -181,9 +194,14 @@ export async function serveTheTwenty(opts: {
 }): Promise<RecPage> {
   const { userId, dna, set, source, fresh } = opts;
   const timer = startTimer("for-you-set");
-  const servable = await servableFilter(dna, await opts.removed, set);
+  const servable = await servableFilter(dna, await opts.removed, set, { keepJudged: true });
   const items = set.filter(servable);
-  const recommendations = await toCards(userId, items, { record: fresh, timer });
+  const ratings = ratingsByTitle(dna);
+  // A card's id is its title key (`type:tmdb_id`).
+  const recommendations = (await toCards(userId, items, { record: fresh, timer })).map((card) => {
+    const rated = ratings.get(card.id);
+    return rated ? { ...card, rated } : card;
+  });
   return {
     recommendations,
     next_offset: set.length,

@@ -465,7 +465,9 @@ export default function RecommendationsView({
 
   // Append a page of cards and move the pager on. Shared by loadMore and by
   // "Find more", whose first page arrives with the session/end response.
-  const applyPage = useCallback((data: Omit<RecPage, "source">) => {
+  // `keepDone` (v3 F2, FOR-YOU.md DEC-4): the stored 20 coming back after a tab hop keep the cards you saved or
+  // rated, lit, until Refresh. A new 20 (Refresh) still drops a save the server may not have heard of yet.
+  const applyPage = useCallback((data: Omit<RecPage, "source">, keepDone = false) => {
     if (data.taste_version != null) versionRef.current = data.taste_version;
     // Dedup by id — in case the same page slips through twice we don't
     // create duplicate React keys. Also drop titles already on the watchlist:
@@ -477,7 +479,12 @@ export default function RecommendationsView({
     if (data.set) {
       // The 20: the whole list, in its order, replacing what was there. Nothing pages on from it.
       setIsSet(true);
-      setRecs(data.recommendations.filter((r) => !onWatchlist.has(r.id)));
+      setRecs(keepDone ? data.recommendations : data.recommendations.filter((r) => !onWatchlist.has(r.id)));
+      // A card rated since the 20 were made comes back with its chip lit (the server says which: `rated`).
+      const ratedNow = data.recommendations.filter((r) => r.rated);
+      if (ratedNow.length) {
+        setFeedbackGiven((prev) => ({ ...prev, ...Object.fromEntries(ratedNow.map((r) => [r.id, r.rated!])) }));
+      }
       hasMoreRef.current = false;
       setHasMore(false);
       return;
@@ -506,7 +513,7 @@ export default function RecommendationsView({
         `/api/recommendations/generate?type=${contentType}&offset=${offsetRef.current}${v}`,
       );
       if (!res.ok) throw new Error(`${res.status}`);
-      applyPage((await res.json()) as Omit<RecPage, "source">);
+      applyPage((await res.json()) as Omit<RecPage, "source">, true);
     } catch (e) {
       console.error("[recs] load failed", e);
       // Stop paginating on failure: leaving hasMore true kept the sentinel
@@ -627,8 +634,9 @@ export default function RecommendationsView({
         return next;
       });
       // Drop the stored tag too, so re-saving the title later offers the
-      // reactions again instead of the old outcome.
-      setFeedbackGiven((prev) => {
+      // reactions again instead of the old outcome. Not in the 20 (v3 F2): the
+      // rating is in Seen whatever the Watchlist says, so its chip stays lit.
+      if (!isSet) setFeedbackGiven((prev) => {
         if (!(rec.id in prev)) return prev;
         const next = { ...prev };
         delete next[rec.id];
@@ -1155,6 +1163,7 @@ function Feed({
               saved={saved.has(rec.id)}
               onToggleWatchlist={onToggleWatchlist}
               stretch={!!rec.is_stretch_pick}
+              seenNote={isSet}
             />
           )}
           {onCalibrate && (i + 1) % NUDGE_EVERY === 0 && <CalibrateNudge onClick={onCalibrate} />}
@@ -1286,6 +1295,7 @@ function FeedCard({
   onStar,
   whyInline,
   stretch = false,
+  seenNote = false,
 }: {
   rec: Recommendation;
   reasonPending?: boolean;
@@ -1315,6 +1325,8 @@ function FeedCard({
    * claims no match. Only the feed passes it; a card page re-scores the title.
    */
   stretch?: boolean;
+  /** v3 F2 (plan DEC-8): the 20 say "Saved to Seen" once rated, whatever SEEN_V3 says. */
+  seenNote?: boolean;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   // The gap can only close from a measured height: pin it before the collapse
@@ -1440,7 +1452,7 @@ function FeedCard({
         ) : (
           <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
         )}
-        <FeedbackRow rec={rec} rated={rated} onFeedback={onFeedback} onUnrate={onUnrate} />
+        <FeedbackRow rec={rec} rated={rated} onFeedback={onFeedback} onUnrate={onUnrate} seenNote={seenNote} />
         {whyInline}
       </div>
     </article>
@@ -1627,11 +1639,13 @@ function FeedbackRow({
   rated,
   onFeedback,
   onUnrate,
+  seenNote = false,
 }: {
   rec: Recommendation;
   rated: WatchlistRating | undefined;
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onUnrate: (rec: Recommendation) => void;
+  seenNote?: boolean;
 }) {
   // "removed" is a tag from the Watchlist's old X, not a rating.
   const current = rated && rated !== "removed" ? rated : null;
@@ -1640,7 +1654,7 @@ function FeedbackRow({
       {current ? (
         <span className={`${styles.seenItPrompt} ${styles.seenItSaved}`} role="status">
           <Check size={14} strokeWidth={2.6} aria-hidden />
-          {savedNote()}
+          {seenNote ? "Saved to Seen" : savedNote()}
         </span>
       ) : (
         <span className={styles.seenItPrompt}>{SEEN_PROMPT}</span>
