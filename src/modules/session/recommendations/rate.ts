@@ -18,7 +18,8 @@ export function announceHidden(id: string, hidden: boolean) {
   window.dispatchEvent(new CustomEvent<HiddenDetail>(HIDDEN_EVENT, { detail: { id, hidden } }));
 }
 
-function landed(id: string, rating: Reaction | null) {
+/** Tell every listener a rating landed or was cleared; a write that bypasses postRating/deleteRating calls this itself. */
+export function announceRated(id: string, rating: Reaction | null) {
   window.dispatchEvent(new CustomEvent<RatedDetail>(RATED_EVENT, { detail: { id, rating } }));
 }
 
@@ -46,7 +47,7 @@ export async function postRating(rec: Recommendation, rating: Reaction, contentT
     signal: timeout(),
   });
   if (!res.ok) console.error(`[recs] feedback HTTP ${res.status}`, await res.text().catch(() => ""));
-  else landed(rec.id, rating);
+  else announceRated(rec.id, rating);
   return res.ok;
 }
 
@@ -59,6 +60,6 @@ export async function deleteRating(rec: Recommendation, contentType: ContentType
     signal: timeout(),
   });
   if (!res.ok) console.error(`[recs] un-rate HTTP ${res.status}`, await res.text().catch(() => ""));
-  else landed(rec.id, null);
+  else announceRated(rec.id, null);
   return res.ok;
 }

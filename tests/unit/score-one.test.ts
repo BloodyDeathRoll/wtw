@@ -14,6 +14,8 @@ const io = vi.hoisted(() => ({
   savedCalls: [] as string[],
   candidates: 0,
   alone: null as unknown,
+  byId: {} as Record<string, unknown>,
+  poolLists: [] as string[][],
 }))
 vi.mock('@/lib/flags', async (orig) => ({ ...(await orig<typeof import('@/lib/flags')>()), formulaV2Enabled: () => io.v2 }))
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }) }) }))
@@ -21,11 +23,12 @@ vi.mock('@/modules/engine/why/score-titles', () => ({ loadTitleRows: async () =>
 vi.mock('@/modules/engine/pipeline/step7-card-reason', async (orig) => ({ ...(await orig<object>()), loadRatedByPerson: async () => new Map() }))
 vi.mock('@/modules/engine/pipeline/step1-candidate-gen', () => ({ getCandidates: async () => { io.candidates++; return POOL_ROWS } }))
 vi.mock('@/modules/engine/pipeline/step2-composite-score', () => ({
-  scoreCandidates: async (rows: TitleRow[]) => rows.length === 1 ? [structuredClone(io.alone)] : POOL_SCORED,
+  scoreCandidates: async (rows: TitleRow[]) =>
+    rows === POOL_ROWS ? POOL_SCORED : rows.map(r => structuredClone(io.byId[r.tmdb_id] ?? io.alone)),
 }))
 vi.mock('@/modules/engine/scoring/pool-stats', async (orig) => ({
   ...(await orig<typeof import('@/modules/engine/scoring/pool-stats')>()),
-  readPoolStats: async () => io.saved,
+  readPoolStats: async (_u: string, lists: string[]) => { io.poolLists.push(lists); return io.saved },
   savePoolStats: async (_u: string, list: string) => { io.savedCalls.push(list) },
 }))
 
@@ -56,7 +59,7 @@ function readyDNA(): DNASchema {
   return d
 }
 
-const { scoreOneTitle } = await import('@/modules/engine/score-one')
+const { scoreOneTitle, scoreMatches } = await import('@/modules/engine/score-one')
 const KEY = { type: 'movie' as const, tmdb_id: '603' }
 
 beforeEach(() => {
@@ -66,6 +69,8 @@ beforeEach(() => {
   io.savedCalls = []
   io.candidates = 0
   io.alone = scored('603', { creators: 0.8, crowd: 0.9, model: 1.2 })
+  io.byId = {}
+  io.poolLists = []
 })
 
 describe('scoreOneTitle', () => {
@@ -113,5 +118,64 @@ describe('scoreOneTitle', () => {
 
   it('no profile: "not scored"', async () => {
     expect(await scoreOneTitle('u1', KEY)).toEqual({ scored: false, reason: 'no_profile' })
+  })
+})
+
+// v3 Q7: the match alone for several titles at once (Search's rows, the Watchlist's rows).
+describe('scoreMatches', () => {
+  const PARTS: Record<string, V2Parts> = {
+    '603': { creators: 0.8, crowd: 0.9, model: 1.2 },
+    '680': { creators: 0.1, crowd: 0.4, model: -0.6 },
+    '1396': { creators: 0.4, crowd: 0.95, model: 0.3 },
+  }
+  const tvRow = (id: string) => ({ ...row(id), type: 'tv' }) as TitleRow
+  const tvScored = (id: string, p: V2Parts) => ({ ...scored(id, p), title: tvRow(id) }) as ScoredTitle
+  const KEYS = [
+    { type: 'movie' as const, tmdb_id: '603' },
+    { type: 'movie' as const, tmdb_id: '680' },
+    { type: 'tv' as const, tmdb_id: '1396' },
+  ]
+
+  beforeEach(() => {
+    io.rows = [row('603'), row('680'), tvRow('1396')]
+    io.byId = { '603': scored('603', PARTS['603']), '680': scored('680', PARTS['680']), '1396': tvScored('1396', PARTS['1396']) }
+  })
+
+  it('gives each title the match scoreOneTitle gives it alone', async () => {
+    const m = await scoreMatches('u1', KEYS, { dna: readyDNA() })
+    for (const k of KEYS) {
+      io.rows = [k.type === 'tv' ? tvRow(k.tmdb_id) : row(k.tmdb_id)]
+      io.alone = io.byId[k.tmdb_id]
+      const one = await scoreOneTitle('u1', k, { dna: readyDNA() })
+      if (!one.scored) throw new Error('not scored')
+      expect(m[`${k.type}:${k.tmdb_id}`]).toBeCloseTo(one.match, 12)
+    }
+  })
+
+  it("places each type against its own list's pool, then Both", async () => {
+    await scoreMatches('u1', KEYS, { dna: readyDNA() })
+    expect(io.poolLists).toEqual([['movies', 'all'], ['series', 'all']])
+  })
+
+  it('leaves out a title outside the catalogue: never a guess', async () => {
+    io.rows = [row('603')]
+    const m = await scoreMatches('u1', [...KEYS, { type: 'tv', tmdb_id: '64010' }], { dna: readyDNA() })
+    expect(Object.keys(m)).toEqual(['movie:603'])
+  })
+
+  it('with no saved pool, builds it once for all the titles', async () => {
+    io.saved = null
+    const m = await scoreMatches('u1', KEYS, { dna: readyDNA() })
+    expect(Object.keys(m).sort()).toEqual(['movie:603', 'movie:680', 'tv:1396'])
+    expect(io.candidates).toBe(1)
+    expect(io.savedCalls).toEqual(['all'])
+  })
+
+  it('cold start, formula v1, no profile or no titles: nothing', async () => {
+    expect(await scoreMatches('u1', KEYS, { dna: createBlankDNA('u1') })).toEqual({})
+    expect(await scoreMatches('u1', KEYS)).toEqual({})
+    expect(await scoreMatches('u1', [], { dna: readyDNA() })).toEqual({})
+    io.v2 = false
+    expect(await scoreMatches('u1', KEYS, { dna: readyDNA() })).toEqual({})
   })
 })
