@@ -17,6 +17,12 @@
  *          same popular titles the user had already scrolled past.
  *   SEEN   titles served before but never rated (served_titles), marked
  *          `previously_served` so step3b can hold them to 20% of the batch.
+ *          With FOR_YOU_V3 on (v3 F4, FOR-YOU.md DEC-6, #351) resting rules
+ *          replace that 20% share: a title resting or retired is left out, and
+ *          the rest compete on score like fresh ones (`previously_served:
+ *          false`): flicked past means "as if never shown", and a title back
+ *          from its rest is kept out of the top five where the 20 are made
+ *          (src/lib/for-you-set.ts).
  *
  * Hard exclusions, applied to both pools in SQL on the composite
  * `${type}:${tmdb_id}` key (TMDB movie/TV ids collide — src/lib/title-key.ts):
@@ -45,7 +51,8 @@ import type { DNASchema, SessionContext } from '@/types/dna'
 import type { TitleRow } from '../types'
 import { getUserEmbedding } from '../scoring/narrative-match'
 import { userTasteWeights } from '../scoring/taste-weights'
-import { formulaV2Enabled } from '@/lib/flags'
+import { formulaV2Enabled, forYouV3Enabled } from '@/lib/flags'
+import { restPlan } from '@/lib/resting'
 import { TASTE_FEATURE_VERSION } from '@/lib/taste-scales/features'
 import { capGenreShare, NARRATIVE_OVERFETCH } from './genre-cap'
 
@@ -96,6 +103,8 @@ export async function getCandidates(
   // No unhandled rejection if step 1 throws first: userTasteWeights already catches its own promise.
   const v2 = formulaV2Enabled()
   const weights = v2 ? userTasteWeights(dna) : null
+  // v3 F4: resting replaces the 20% "seen" share. Flag off: today's pools, untouched.
+  const resting = forYouV3Enabled()
 
   // ── Hard exclusions ───────────────────────────────────────
   const excluded = new Set<string>()
@@ -103,13 +112,19 @@ export async function getCandidates(
   for (const h of dna.learning_loop.recommendation_history) {
     if (isSavedMarker(h)) excluded.add(recordKey(h))
   }
-  const [{ data: removedRows, error: removedError }, { data: servedRows, error: servedError }] =
+  // F4 needs skips + rest_until (migration 0035); '*' so a database without them still reads (no rest, then).
+  const servedColumns: string = resting ? '*' : 'tmdb_id, media_type, times_served, last_served_at'
+  const [{ data: removedRows, error: removedError }, { data: servedData, error: servedError }] =
     await Promise.all([
       supabase.from('removed_titles').select('tmdb_id, media_type').eq('user_id', userId),
-      supabase.from('served_titles').select('tmdb_id, media_type, times_served, last_served_at').eq('user_id', userId),
+      supabase.from('served_titles').select(servedColumns).eq('user_id', userId),
     ])
   if (removedError) throw new Error(`Candidate generation failed (removed_titles): ${removedError.message}`)
   if (servedError)  throw new Error(`Candidate generation failed (served_titles): ${servedError.message}`)
+  const servedRows = (servedData ?? []) as unknown as {
+    tmdb_id: string; media_type: MediaType; times_served: number; last_served_at: string | null
+    skips?: number; rest_until?: string | null
+  }[]
   for (const r of removedRows ?? []) excluded.add(titleKey(r.media_type as MediaType, r.tmdb_id))
   const excludeKeys = toRpcKeys(excluded)
 
@@ -128,10 +143,13 @@ export async function getCandidates(
   const seenCutoff = Date.now() - SEEN_COOLDOWN_MS
   const timesServed = new Map<string, number>()
   const allServed: string[] = []
-  for (const r of servedRows ?? []) {
-    const k = titleKey(r.media_type as MediaType, r.tmdb_id)
+  const blocked = resting
+    ? restPlan(servedRows.map(r => ({ key: titleKey(r.media_type, r.tmdb_id), skips: r.skips ?? 0, rest_until: r.rest_until ?? null }))).blocked
+    : null
+  for (const r of servedRows) {
+    const k = titleKey(r.media_type, r.tmdb_id)
     allServed.push(k)
-    if (excluded.has(k)) continue
+    if (excluded.has(k) || blocked?.has(k)) continue
     const at = r.last_served_at ? Date.parse(r.last_served_at as string) : 0
     if (at < seenCutoff) timesServed.set(k, r.times_served as number)
   }
@@ -267,7 +285,7 @@ export async function getCandidates(
     ...[...fresh.values()].map(t => ({ ...t, previously_served: false })),
     ...((seenRes.data ?? []) as TitleRow[]).map(t => ({
       ...t,
-      previously_served: true,
+      previously_served: !resting,
       times_served: timesServed.get(titleKey(t.type, t.tmdb_id)) ?? 1,
     })),
   ]

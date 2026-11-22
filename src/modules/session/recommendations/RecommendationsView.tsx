@@ -85,6 +85,7 @@ import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { forYouV3Enabled } from "@/lib/flags";
 import { shareTitle } from "@/lib/share";
 import { announceHidden, deleteRating, postRating } from "./rate";
+import { useStoppedOn } from "./use-stopped-on";
 import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
@@ -295,6 +296,8 @@ export default function RecommendationsView({
   const [isSet, setIsSet] = useState(false);
   // The last Refresh failed: the same 20 stay, and the top line says so.
   const [refreshFailed, setRefreshFailed] = useState(false);
+  // v3 F4 (FOR-YOU.md DEC-6): the cards of the 20 the person stopped on, reported for resting (use-stopped-on.ts).
+  const contentRef = useRef<HTMLDivElement>(null);
   // The card whose "Why this?" detail overlay is open (null = closed).
   const [detail, setDetail] = useState<Recommendation | null>(null);
   // Once a card has been judged we swap its buttons for the outcome tag.
@@ -311,6 +314,13 @@ export default function RecommendationsView({
   // v3 F3 (FOR-YOU.md DEC-5): cards folded into their "Hidden … Undo" note, by rec.id, with the card's height at the
   // tap (the note folds from it). The note keeps the card's place for as long as this list is on screen.
   const [hidden, setHidden] = useState<Record<string, number>>({});
+  const setKey = recs.map((r) => r.id).join(",");
+  const flushStops = useStoppedOn(
+    contentRef,
+    mode === "recommendations" && isSet && !refreshing && forYouV3Enabled(),
+    `${setKey}|${Object.keys(hidden).join(",")}`,
+    setKey,
+  );
   // When the server's watchlist lands after mount (hydrateWatchlist): the
   // watchlist view re-pages from it; the feed only refreshes its saved marks,
   // since re-paging there would throw away the cards on screen.
@@ -574,7 +584,7 @@ export default function RecommendationsView({
     setRefreshFailed(false);
     setError(null);
     try {
-      await feedbackQueueRef.current;
+      await Promise.all([feedbackQueueRef.current, flushStops()]);
       const page = await onRefresh();
       if (page && page.set) {
         setHidden({});
@@ -952,7 +962,7 @@ export default function RecommendationsView({
         <WatchlistChips chips={chips} active={filter} onPick={setFilter} />
       )}
 
-      <div className={styles.content}>
+      <div ref={contentRef} className={styles.content}>
         {mode === "watchlist" && pageEntry && pageRec ? (
           <WatchlistCardPage
             key={pageEntry.rec.id}
@@ -1328,6 +1338,7 @@ function FeedCard({
       ref={cardRef}
       className={`${styles.card} ${styles.heroCard} ${leaving ? styles.cardLeaving : ""}`}
       aria-hidden={leaving || undefined}
+      data-rec-id={rec.id}
     >
       {/* The poster is the card's top half (2026-10-26, Eran picked layout C,
           docs/prototypes/rec-card/g-final-*.jpg): where to watch and the
