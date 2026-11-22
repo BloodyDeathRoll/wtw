@@ -91,6 +91,7 @@ describe('GET /api/recommendations/ratings past 1,000 rows', () => {
     db.feedback = [
       { recommendation_id: 'movie:278', title: null, rating: 'loved', created_at: '2026-11-02T00:00:00Z' },
       { recommendation_id: 'tv:9', title: 'My name', rating: 'liked', created_at: '2026-11-01T00:00:00Z' },
+      { recommendation_id: 'movie:7', title: '  Padded  ', rating: 'liked', created_at: '2026-11-01T00:00:00Z' },
       { recommendation_id: 'movie:404', title: null, rating: 'liked', created_at: '2026-11-01T00:00:00Z' },
     ]
     db.removed = [{ tmdb_id: '1396', media_type: 'tv', title: null, removed_at: '2026-11-01T00:00:00Z' }]
@@ -100,7 +101,7 @@ describe('GET /api/recommendations/ratings past 1,000 rows', () => {
       { tmdb_id: '1396', type: 'tv', title: 'Breaking Bad', poster_path: '/b.jpg', release_year: 2008, runtime_minutes: 47, tmdb_rating: 9 },
     ]
     const body = (await (await GET()).json()) as RatingsSummary
-    expect(body.items.map((i) => [i.id, i.title])).toEqual([['movie:278', 'The Shawshank Redemption'], ['tv:9', 'My name'], ['movie:404', null]])
+    expect(body.items.map((i) => [i.id, i.title])).toEqual([['movie:278', 'The Shawshank Redemption'], ['tv:9', 'My name'], ['movie:7', 'Padded'], ['movie:404', null]])
     expect(body.removed.map((r) => r.title)).toEqual(['Breaking Bad'])
   })
 })
