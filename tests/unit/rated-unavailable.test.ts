@@ -65,6 +65,7 @@ describe('rated_creators when your ratings are unknown', () => {
   })
 
   it('still says nobody when you have rated nothing (a true empty)', async () => {
+    // No loved or liked signals returns before any read, so `fail` doesn't matter here.
     const rated = await loadRatedByPerson({ signals: [] } as unknown as DNASchema)
     expect(ratedUnavailable(rated)).toBe(false)
     expect(creatorsOf(rated)).toEqual([])

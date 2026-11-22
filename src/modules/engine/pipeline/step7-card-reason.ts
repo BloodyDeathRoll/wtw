@@ -180,7 +180,9 @@ const MAX_RATED = 400
 /**
  * One read per batch: the crew of every title the user loved or liked, keyed
  * by person. Best-effort — on any failure the cards fall back to "X directed
- * it, and you love their work", with no title named.
+ * it, and you love their work", with no title named, and the empty map comes
+ * back marked (`ratedUnavailable`), so the sheet doesn't say "Nobody you've
+ * rated" (toResults leaves rated_creators out).
  */
 export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> {
   const out: RatedByPerson = new Map()
