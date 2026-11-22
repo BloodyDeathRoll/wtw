@@ -39,6 +39,7 @@ import {
   EyeOff,
   MessageCircle,
   Play,
+  RefreshCw,
   Star,
   X,
 } from "lucide-react";
@@ -123,9 +124,17 @@ interface Props {
    * batch's first page and is shown as is, with no fetch.
    */
   onFindMore?: () => Promise<RecPage | null | void>;
+  /**
+   * v3 F1 (FOR_YOU_V3): For you's Refresh, at the top of the 20 and on their end card. Resolves with the new 20 (a
+   * page with `set`), or nothing when the Refresh failed: the 20 on screen then stay.
+   */
+  onRefresh?: () => Promise<RecPage | null | void>;
   /** Watchlist mode only — action on the empty state that opens the rec feed. */
   onBrowse?: () => void;
-  /** Watchlist mode only: the end card's "Let's talk" (DEC-9). Unset (chat off or out of turns): no end card. */
+  /**
+   * Opens the chat. The Watchlist's end card "Let's talk" (DEC-9; unset: no end card), and For you's end card
+   * "Tell me what you want" (v3 F1; unset: Refresh alone). Unset whenever the chat is off or out of turns today.
+   */
   onTalk?: () => void;
   /**
    * Rendered at the far right of the header.
@@ -268,6 +277,7 @@ export default function RecommendationsView({
   mode = "recommendations",
   sharerName,
   onFindMore,
+  onRefresh,
   onBrowse,
   onTalk,
   headerRight,
@@ -280,6 +290,11 @@ export default function RecommendationsView({
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // v3 F1: the list on screen is the 20 (the server said so), kept until Refresh: no paging, the top line and the
+  // end card. False: today's paged feed, which is also what a failure to read the 20 serves.
+  const [isSet, setIsSet] = useState(false);
+  // The last Refresh failed: the same 20 stay, and the top line says so.
+  const [refreshFailed, setRefreshFailed] = useState(false);
   // The card whose "Why this?" detail overlay is open (null = closed).
   const [detail, setDetail] = useState<Recommendation | null>(null);
   // Once a card has been judged we swap its buttons for the outcome tag.
@@ -449,6 +464,14 @@ export default function RecommendationsView({
     // title resurfacing as "new" reads as a repeat. Read storage directly —
     // `saved` state would be a stale closure here.
     const onWatchlist = new Set(getWatchlist().map((e) => e.rec.id));
+    if (data.set) {
+      // The 20: the whole list, in its order, replacing what was there. Nothing pages on from it.
+      setIsSet(true);
+      setRecs(data.recommendations.filter((r) => !onWatchlist.has(r.id)));
+      hasMoreRef.current = false;
+      setHasMore(false);
+      return;
+    }
     setRecs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const incoming = data.recommendations.filter(
@@ -493,6 +516,8 @@ export default function RecommendationsView({
   // Initial load + reload when content type changes.
   useEffect(() => {
     setRecs([]);
+    setIsSet(false);
+    setRefreshFailed(false);
     setHasMore(true);
     offsetRef.current = 0;
     versionRef.current = null;
@@ -535,6 +560,31 @@ export default function RecommendationsView({
     } catch (e) {
       console.error("[recs] find-more failed", e);
       setError("Couldn't refresh right now");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  // v3 F1 (FOR-YOU.md DEC-2, DEC-3): a new 20, built with every rating so far (the ratings queued here land first),
+  // in place of the old. While it's built the list gives way to the first-load state; when it fails, the same 20
+  // come back and the top line says so. Hide's notes last until here (DEC-5).
+  async function handleRefresh() {
+    if (!onRefresh || refreshing) return;
+    setRefreshing(true);
+    setRefreshFailed(false);
+    setError(null);
+    try {
+      await feedbackQueueRef.current;
+      const page = await onRefresh();
+      if (page && page.set) {
+        setHidden({});
+        applyPage(page);
+      } else {
+        setRefreshFailed(true);
+      }
+    } catch (e) {
+      console.error("[recs] refresh failed", e);
+      setRefreshFailed(true);
     } finally {
       setRefreshing(false);
     }
@@ -951,6 +1001,10 @@ export default function RecommendationsView({
           onShare={(r) => void shareTitle(r, sharerName)}
           onFindMore={onFindMore ? handleFindMore : undefined}
           refreshing={refreshing}
+          isSet={isSet}
+          onRefresh={onRefresh ? handleRefresh : undefined}
+          refreshFailed={refreshFailed}
+          onTalk={onTalk}
           saved={saved}
           onToggleWatchlist={toggleWatchlist}
           onCalibrate={mode === "recommendations" ? onCalibrate : undefined}
@@ -987,6 +1041,10 @@ function Feed({
   onShare,
   onFindMore,
   refreshing = false,
+  isSet = false,
+  onRefresh,
+  refreshFailed = false,
+  onTalk,
   saved,
   onToggleWatchlist,
   onCalibrate,
@@ -1011,6 +1069,12 @@ function Feed({
   onShare: (rec: Recommendation) => void;
   onFindMore?: () => void;
   refreshing?: boolean;
+  /** v3 F1: the list is the 20 — the top line and the end card, no paging, no "Find more". */
+  isSet?: boolean;
+  onRefresh?: () => void;
+  refreshFailed?: boolean;
+  /** The end card's "Tell me what you want"; unset: Refresh alone. */
+  onTalk?: () => void;
   saved: Set<string>;
   onToggleWatchlist: (rec: Recommendation) => void;
   onCalibrate?: () => void;
@@ -1038,18 +1102,19 @@ function Feed({
   // view (not cut off under the frame edge). Deferred to the next frame so the
   // taller loader has been laid out before we measure scrollHeight.
   useEffect(() => {
-    if (!refreshing) return;
+    if (!refreshing || isSet) return;
     const list = listRef.current;
     if (!list) return;
     const id = requestAnimationFrame(() => {
       list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
     });
     return () => cancelAnimationFrame(id);
-  }, [refreshing]);
+  }, [refreshing, isSet]);
 
   // First page still loading (or the recs still being built) — a centred
-  // state, not a bare "Loading more…".
-  if (recs.length === 0 && loading && !refreshing) {
+  // state, not a bare "Loading more…". And the 20 being refreshed (v3 F1): the
+  // same state in the list's place; the new 20 then open at the top.
+  if ((recs.length === 0 && loading && !refreshing) || (isSet && refreshing)) {
     return (
       <div className={styles.initialLoading}>
         <span className={styles.loadingEyebrow}>Reading your fingerprint</span>
@@ -1061,6 +1126,7 @@ function Feed({
 
   return (
     <div ref={listRef} className={styles.list} {...TAB_SCROLL}>
+      {isSet && onRefresh && <SetTopLine failed={refreshFailed} onRefresh={onRefresh} />}
       {recs.map((rec, i) => (
         <Fragment key={rec.id}>
           {rec.id in hidden ? (
@@ -1083,8 +1149,9 @@ function Feed({
           {onCalibrate && (i + 1) % NUDGE_EVERY === 0 && <CalibrateNudge onClick={onCalibrate} />}
         </Fragment>
       ))}
+      {isSet && onRefresh && !loading && <SetEndCard onRefresh={onRefresh} onTalk={onTalk} />}
       <div ref={sentinelRef} className={styles.sentinel}>
-        {refreshing && (
+        {refreshing && !isSet && (
           // Just the fingerprint: the user asked for more and knows why
           // they're waiting, so the captions were noise.
           <div className={styles.findMoreLoading}>
@@ -1092,7 +1159,7 @@ function Feed({
           </div>
         )}
         {!refreshing && loading && <span className={styles.muted}>Loading more…</span>}
-        {!refreshing && !loading && !hasMore && recs.length > 0 && (
+        {!refreshing && !loading && !hasMore && recs.length > 0 && !isSet && (
           onFindMore ? (
             // Every like/dislike above fed the fingerprint — this rebuilds it
             // and generates a fresh batch that reflects those choices.
@@ -1106,6 +1173,55 @@ function Feed({
         {error && <span className={styles.error}>{error}</span>}
         {/* The credit for the services on the cards (v3 L1): once, at the end. */}
         {!refreshing && !loading && !hasMore && recs.some((r) => r.where) && <JustWatchCredit at="end" />}
+      </div>
+    </div>
+  );
+}
+
+// v3 F1 (FOR-YOU.md DEC-2, docs/prototypes/for-you-v3/10-refresh-at-the-top.jpg): the 20's top line. The list's
+// first row, so it scrolls away with the cards and never covers one. After a failed Refresh its words say so
+// (docs/prototypes/for-you-v3/f1/3-refresh-failed.jpg) and Refresh stays beside them to try again.
+function SetTopLine({ failed, onRefresh }: { failed: boolean; onRefresh: () => void }) {
+  return (
+    <div className={styles.setTop}>
+      {failed ? (
+        <span className={`${styles.setTopLabel} ${styles.setTopLabelError}`} role="status">
+          Couldn&rsquo;t refresh right now
+        </span>
+      ) : (
+        <span className={styles.setTopLabel}>Your 20 picks</span>
+      )}
+      <button type="button" className={styles.setTopRefresh} onClick={onRefresh}>
+        <RefreshCw size={16} strokeWidth={2.2} aria-hidden />
+        Refresh
+      </button>
+    </div>
+  );
+}
+
+// v3 F1 (FOR-YOU.md DEC-2, docs/prototypes/for-you-v3/9-refresh-at-the-end.jpg): after the last of the 20, in the
+// "Sharper picks" card's look. With the chat off or out of turns today it never offers what won't answer: Refresh
+// alone, and the text's first sentence alone (docs/prototypes/for-you-v3/f1/1-end-card-without-chat.jpg).
+function SetEndCard({ onRefresh, onTalk }: { onRefresh: () => void; onTalk?: () => void }) {
+  return (
+    <div className={`${styles.card} ${styles.nudge}`} role="group" aria-label="That’s your 20 picks">
+      <span className={styles.nudgeEyebrow}>That&rsquo;s your 20 picks</span>
+      <p className={styles.nudgeText}>
+        {onTalk
+          ? "Want 20 fresh ones? Or tell me what you\u2019re in the mood for, and I\u2019ll look for it."
+          : "Want 20 fresh ones?"}
+      </p>
+      <div className={styles.setEndBtns}>
+        <button type="button" className={`${styles.watchlistBtn} ${styles.watchlistBtnPrimary}`} onClick={onRefresh}>
+          <RefreshCw size={18} strokeWidth={2} aria-hidden />
+          Refresh
+        </button>
+        {onTalk && (
+          <button type="button" className={styles.setEndChat} onClick={onTalk}>
+            <MessageCircle size={20} strokeWidth={1.5} aria-hidden />
+            Tell me what you want
+          </button>
+        )}
       </div>
     </div>
   );
