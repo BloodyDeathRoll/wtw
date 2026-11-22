@@ -133,3 +133,21 @@ describe('FAST_TABS on', () => {
     expect(heldTwenty('u1', 'movies')?.recs[0].id).toBe('movie:201')
   })
 })
+
+describe('Refresh opens the new 20 at the top (v3 F1, found by Eran 2026-11-22)', () => {
+  it('a new list in place of the old (not the old one scrolled), which tells the tab memory it is at the top', async () => {
+    const onRefresh = vi.fn(async () => setOf(range(101)))
+    render(<RecommendationsView onBack={() => {}} contentType="all" onRefresh={onRefresh} user={user} />)
+    await screen.findByText('Title 20')
+    const before = document.querySelector('[data-tab-scroll]') as HTMLElement
+    before.scrollTop = 4000
+    const scrolls: number[] = []
+    document.addEventListener('scroll', (e) => { if ((e.target as HTMLElement).hasAttribute?.('data-tab-scroll')) scrolls.push((e.target as HTMLElement).scrollTop) }, true)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Refresh' })[1])
+    await screen.findByText('Title 101')
+    const after = document.querySelector('[data-tab-scroll]') as HTMLElement
+    expect(after).not.toBe(before)
+    expect(after.scrollTop).toBe(0)
+    expect(scrolls).toEqual([0])
+  })
+})

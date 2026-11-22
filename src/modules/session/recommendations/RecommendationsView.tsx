@@ -1208,12 +1208,26 @@ function Feed({
     return () => cancelAnimationFrame(id);
   }, [refreshing, isSet]);
 
+  // A Refresh has landed (v3 F1): the new 20 open at the top, and that's the place For you remembers now (N2's
+  // tab-place stores a scroller's place from its scroll events, so the new list tells it it's at 0).
+  const wasRefreshing = useRef(refreshing);
+  useEffect(() => {
+    const ended = wasRefreshing.current && !refreshing;
+    wasRefreshing.current = refreshing;
+    const list = listRef.current;
+    if (!ended || !isSet || !list) return;
+    list.scrollTop = 0;
+    list.dispatchEvent(new Event("scroll"));
+  }, [refreshing, isSet]);
+
   // First page still loading (or the recs still being built) — a centred
   // state, not a bare "Loading more…". And the 20 being refreshed (v3 F1): the
   // same state in the list's place; the new 20 then open at the top.
   if ((recs.length === 0 && loading && !refreshing) || (isSet && refreshing)) {
     return (
-      <div className={styles.initialLoading}>
+      // Keyed apart from the list: the same <div> reused across a Refresh kept the old list's scroll place, so the
+      // new 20 opened where the old ones were left (at the bottom, by the end card's Refresh).
+      <div key="loading" className={styles.initialLoading}>
         <span className={styles.loadingEyebrow}>Reading your fingerprint</span>
         <span className={styles.loadingTitle}>Finding matches</span>
         <FingerprintLoader size={66} />
@@ -1222,7 +1236,7 @@ function Feed({
   }
 
   return (
-    <div ref={listRef} className={styles.list} {...TAB_SCROLL}>
+    <div key="list" ref={listRef} className={styles.list} {...TAB_SCROLL}>
       {isSet && onRefresh && <SetTopLine failed={refreshFailed} onRefresh={onRefresh} />}
       {recs.map((rec, i) => (
         <Fragment key={rec.id}>
