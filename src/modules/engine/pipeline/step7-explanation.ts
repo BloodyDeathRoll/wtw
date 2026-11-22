@@ -18,8 +18,9 @@
  */
 
 import type { RecommendationResult } from '@/types/dna'
+import type { ReasonPayloadWithTaste } from '../types'
 import type { ScoredTitleWithPayload } from './step6-reason-payload'
-import { cardReason, sheetReason, type RatedByPerson } from './step7-card-reason'
+import { cardReason, ratedCreators, sheetReason, type RatedByPerson } from './step7-card-reason'
 
 export { STRONG_CREW_AFFINITY } from './step7-card-reason'
 
@@ -37,7 +38,9 @@ export function toResults(
     tmdb_id:            item.title.tmdb_id,
     type:               item.title.type,
     composite_score:    item.match_score ?? item.composite_score,
-    reason_payload:     item.reason_payload,
+    // + the people you rated, named under the Creators bar (v3 F6). The feed
+    // (generate.ts) and one title on request (score-one.ts) both pass here.
+    reason_payload:     { ...item.reason_payload, rated_creators: ratedCreators(item, rated) } as ReasonPayloadWithTaste,
     explanation:        cardReason(item, rated, plots),
     is_stretch_pick:    item.is_stretch_pick,
     generated_at:       now,
