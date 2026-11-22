@@ -284,7 +284,7 @@ export default function SeenView({
     void rate(row.key, to);
     window.clearTimeout(noteTimer.current);
     // The name is never empty: nameless rows are filtered out on load (#406).
-    setNote({ key: row.key, title: row.title ?? "",from: note?.key === row.key ? note.from : from, to });
+    setNote({ key: row.key, title: row.title ?? "", from: note?.key === row.key ? note.from : from, to });
     noteTimer.current = window.setTimeout(() => setNote(null), NOTE_MS);
   }
 

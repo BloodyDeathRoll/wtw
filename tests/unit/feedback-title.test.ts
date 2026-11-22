@@ -54,6 +54,11 @@ describe('POST /api/recommendations/feedback: the rating row always carries a na
     expect((await rate()).status).toBe(200)
     expect(db.inserts).toEqual([expect.objectContaining({ recommendation_id: 'movie:278', title: 'The Shawshank Redemption', rating: 'loved' })])
   })
+  it('the catalogue\'s name is saved trimmed', async () => {
+    db.catalogue = '  The Shawshank Redemption  '
+    await rate()
+    expect(db.inserts[0]).toMatchObject({ title: 'The Shawshank Redemption' })
+  })
   it('a blank title counts as none', async () => {
     await rate('  ')
     expect(db.inserts[0]).toMatchObject({ title: 'The Shawshank Redemption' })
