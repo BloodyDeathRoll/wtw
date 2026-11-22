@@ -174,7 +174,7 @@ async function toUIRecommendations(
 
 /**
  * Which titles of `recs` may be shown: not removed (Hide / the X), not judged
- * (rated, or on the Watchlist), not caught by the user's standing rules. Shared
+ * (rated, or on the Watchlist; unless `keepJudged`), not caught by the user's standing rules. Shared
  * by the paged feed and the 20 (src/lib/for-you-set.ts), so their handling
  * can't drift apart.
  */
@@ -182,6 +182,11 @@ export async function servableFilter(
   dna: DNASchema | null,
   removed: Set<string>,
   recs: RecommendationResult[],
+  /**
+   * v3 F2 (FOR-YOU.md DEC-4): the stored 20 keep what you rated or saved, lit, until Refresh. Hidden titles and your
+   * standing rules still drop out.
+   */
+  opts: { keepJudged?: boolean } = {},
 ): Promise<(r: RecommendationResult) => boolean> {
   /**
    * Titles the user has already judged, as `${type}:${tmdb_id}` keys.
@@ -201,12 +206,12 @@ export async function servableFilter(
    * genuinely brings it back — unless it was also rated, which is its own,
    * stronger judgement.
    */
-  const judged = new Set((dna?.signals ?? []).map((s) => titleKey(s.type, s.tmdb_id)))
+  const judged = new Set(opts.keepJudged ? [] : (dna?.signals ?? []).map((s) => titleKey(s.type, s.tmdb_id)))
   // Watchlisted titles are excluded too (decided 2026-08-28): a saved title
   // resurfacing as a "new" recommendation reads as a repeat. The marker lives
   // in recommendation_history (see watchlist-intent.ts); legacy markers with
   // no type match on the bare id — see matchesKeySet.
-  for (const h of dna?.learning_loop.recommendation_history ?? []) {
+  for (const h of opts.keepJudged ? [] : dna?.learning_loop.recommendation_history ?? []) {
     if (isSavedMarker(h)) judged.add(recordKey(h))
   }
 

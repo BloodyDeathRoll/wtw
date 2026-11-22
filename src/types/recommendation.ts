@@ -48,6 +48,9 @@ export interface Recommendation {
   /** True when the engine flagged this as a stretch pick — feedback on it is
    *  itself a fingerprint signal, so it rides through to the feedback API. */
   is_stretch_pick?: boolean;
+  /** v3 F2 (FOR_YOU_V3): in the 20, the person's rating of this title, so the card comes back with its chip lit
+   *  until Refresh. Absent: not rated (or not a card of the 20). */
+  rated?: "loved" | "liked" | "disliked";
   /** Motif + palette used when poster_url is null or fails to load. */
   motif: MotifKind;
   palette: [string, string];
