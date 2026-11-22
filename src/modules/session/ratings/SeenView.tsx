@@ -140,7 +140,7 @@ function FactsLine({ row }: { row: SeenRow }) {
 function asRec(r: SeenRow): Recommendation {
   return {
     id: r.key,
-    title: r.title ?? "",
+    title: r.title ?? "", // never empty: nameless rows are filtered out on load (#406)
     type: r.type ?? "movie",
     year: r.year ?? 0,
     poster_url: r.poster_url,
@@ -194,7 +194,8 @@ export default function SeenView({
         const res = await fetch("/api/recommendations/ratings");
         if (!res.ok) throw new Error(String(res.status));
         const all = (await res.json()) as RatingsSummary;
-        // A title we can't name stays out of Seen rather than show unnamed (#406); the route names what it can.
+        // A title we can't name stays out of Seen rather than show unnamed (#406); the route names what it can. A
+        // hidden title left out this way has no Restore here: only one outside the catalogue, accepted on #406.
         const json = { ...all, items: all.items.filter((i) => i.title), removed: all.removed.filter((r) => r.title) };
         if (alive) {
           setData(json);
