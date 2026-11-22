@@ -130,6 +130,21 @@ describe('SeenView', () => {
   })
 })
 
+describe('#406: Seen never shows "Untitled"', () => {
+  it('a title with no name stays out: not a row, not counted', async () => {
+    serve({
+      ...DATA,
+      items: [...DATA.items, { ...DATA.items[0], id: 'movie:9', tmdb_id: '9', title: null }],
+      removed: [...DATA.removed, { ...DATA.removed[0], tmdb_id: '10', title: null }],
+    })
+    render(<SeenView onBack={() => {}} />)
+    expect(await screen.findByText('Seen (3)')).toBeInTheDocument()
+    expect(titles()).toEqual(['Arcane', 'Memento'])
+    expect(screen.queryByText('Untitled')).toBeNull()
+    expect(within(screen.getByRole('group', { name: 'Show' })).getAllByRole('button').map((c) => c.textContent)).toEqual(['Loved2', 'Liked1', 'Disliked', 'Hidden from For you1'])
+  })
+})
+
 describe('S2: change a rating right on the row (DEC-4, DEC-5)', () => {
   let posts: unknown[]
   function serveWith(ok: boolean) {
