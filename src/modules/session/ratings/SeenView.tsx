@@ -146,7 +146,7 @@ function FactsLine({ row }: { row: SeenRow }) {
 function asRec(r: SeenRow): Recommendation {
   return {
     id: r.key,
-    title: r.title ?? "Untitled",
+    title: r.title ?? "", // never empty: nameless rows are filtered out on load (#406)
     type: r.type ?? "movie",
     year: r.year ?? 0,
     poster_url: r.poster_url,
@@ -209,7 +209,10 @@ export default function SeenView({
       try {
         const res = await fetch("/api/recommendations/ratings");
         if (!res.ok) throw new Error(String(res.status));
-        const json = (await res.json()) as RatingsSummary;
+        const all = (await res.json()) as RatingsSummary;
+        // A title we can't name stays out of Seen rather than show unnamed (#406); the route names what it can. A
+        // hidden title left out this way has no Restore here: only one outside the catalogue, accepted on #406.
+        const json = { ...all, items: all.items.filter((i) => i.title), removed: all.removed.filter((r) => r.title) };
         if (alive) {
           setData(json);
           setFrozen(json);
@@ -295,7 +298,8 @@ export default function SeenView({
     const was = pageRef.current?.row;
     setPage(null);
     const gone = was && cleared.current[was.key];
-    if (gone) showNote({ key: was.key, title: was.title ?? "Untitled", from: gone.rating });
+    // The name is never empty: nameless rows are filtered out on load (#406).
+    if (gone) showNote({ key: was.key, title: was.title ?? "", from: gone.rating });
   }
   // The list's place under the card page, put back when the card closes (display: none can drop a scroll offset).
   const listTop = useRef<number | null>(null);
@@ -384,7 +388,8 @@ export default function SeenView({
     const from = dataRef.current?.items.find((i) => i.id === row.key)?.rating;
     if (!from || from === to) return; // the lit icon does nothing (DEC-5)
     void rate(row.key, to);
-    showNote({ key: row.key, title: row.title ?? "Untitled", from: note?.key === row.key && note.to ? note.from : from, to });
+    // The name is never empty: nameless rows are filtered out on load (#406).
+    showNote({ key: row.key, title: row.title ?? "", from: note?.key === row.key && note.to ? note.from : from, to });
   }
 
   function undo() {
@@ -412,7 +417,8 @@ export default function SeenView({
       cleared.current[key] = item;
       dataRef.current = { ...now, items: now.items.filter((i) => i.id !== key) };
       setData(dataRef.current);
-      showNote({ key, title: item.title ?? "Untitled", from: item.rating });
+      // The name is never empty: nameless rows are filtered out on load (#406).
+      showNote({ key, title: item.title ?? "", from: item.rating });
     }
   }
 

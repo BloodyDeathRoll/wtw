@@ -6,9 +6,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 
 const CAP = 1000
 const db = vi.hoisted(() => ({
-  feedback: [] as { recommendation_id: string; title: string; rating: string; created_at: string }[],
-  removed: [] as { tmdb_id: string; media_type: string; title: string; removed_at: string }[],
-  titles: [] as { tmdb_id: string; type: string; poster_path: string; release_year: number; runtime_minutes: number; tmdb_rating: number }[],
+  feedback: [] as { recommendation_id: string; title: string | null; rating: string; created_at: string }[],
+  removed: [] as { tmdb_id: string; media_type: string; title: string | null; removed_at: string }[],
+  titles: [] as { tmdb_id: string; type: string; title?: string; poster_path: string; release_year: number; runtime_minutes: number; tmdb_rating: number }[],
   titleRequests: 0,
   failTitles: false,
 }))
@@ -85,5 +85,23 @@ describe('GET /api/recommendations/ratings past 1,000 rows', () => {
     expect(body.items.map((i) => [i.title, i.poster_url, i.year])).toEqual([['Film 1', null, null]])
     expect(log).toHaveBeenCalledTimes(1)
     expect(String(log.mock.calls[0][0])).toContain('[ratings] titles chunk failed')
+  })
+
+  it('a rating or hidden title saved with no name gets the catalogue\'s (#406); a real name stays', async () => {
+    db.feedback = [
+      { recommendation_id: 'movie:278', title: null, rating: 'loved', created_at: '2026-11-02T00:00:00Z' },
+      { recommendation_id: 'tv:9', title: 'My name', rating: 'liked', created_at: '2026-11-01T00:00:00Z' },
+      { recommendation_id: 'movie:7', title: '  Padded  ', rating: 'liked', created_at: '2026-11-01T00:00:00Z' },
+      { recommendation_id: 'movie:404', title: null, rating: 'liked', created_at: '2026-11-01T00:00:00Z' },
+    ]
+    db.removed = [{ tmdb_id: '1396', media_type: 'tv', title: null, removed_at: '2026-11-01T00:00:00Z' }]
+    db.titles = [
+      { tmdb_id: '278', type: 'movie', title: 'The Shawshank Redemption', poster_path: '/s.jpg', release_year: 1994, runtime_minutes: 142, tmdb_rating: 8.7 },
+      { tmdb_id: '9', type: 'tv', title: 'Catalogue name', poster_path: '/n.jpg', release_year: 2020, runtime_minutes: 40, tmdb_rating: 7 },
+      { tmdb_id: '1396', type: 'tv', title: 'Breaking Bad', poster_path: '/b.jpg', release_year: 2008, runtime_minutes: 47, tmdb_rating: 9 },
+    ]
+    const body = (await (await GET()).json()) as RatingsSummary
+    expect(body.items.map((i) => [i.id, i.title])).toEqual([['movie:278', 'The Shawshank Redemption'], ['tv:9', 'My name'], ['movie:7', 'Padded'], ['movie:404', null]])
+    expect(body.removed.map((r) => r.title)).toEqual(['Breaking Bad'])
   })
 })
