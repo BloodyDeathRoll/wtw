@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, cleanup } from '@testing-library/react'
 import RecommendationsView from '@/modules/session/recommendations/RecommendationsView'
 import type { Recommendation, RecPage } from '@/types/recommendation'
 
@@ -24,7 +24,8 @@ beforeEach(() => {
     card(2, { title: 'La La Land', match: 0.4, is_stretch_pick: true }),
   ])))))
 })
-afterEach(() => vi.unstubAllGlobals())
+// Unmount before the IntersectionObserver stub goes (a late effect crashed RecommendationsView-hide in CI, 2026-11-22).
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 const cardOf = (title: string) => screen.getByRole('heading', { name: title }).closest('article') as HTMLElement
 
