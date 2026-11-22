@@ -12,7 +12,7 @@ GROUPS = [
  ('1-one-person', [('a-today-one', 'Today'), ('a-new-one', 'Proposed')],
   'Tenet, on For you’s “Why it’s a match” sheet. Today the Creators bar has no words, and the person sits at the bottom under Crew. '
   'Proposed: the Crew section goes; the person is named right under the Creators bar, with what you rated of theirs. '
-  'Christopher Nolan made Interstellar, Inception and Oppenheimer, and the test account loved all three. Bar lengths are a sample.'),
+  'Christopher Nolan made Interstellar, Inception and Oppenheimer, and the test account loved all three: two are named, the third is \u201cand 1 more\u201d. Bar lengths are a sample.'),
  ('2-two-or-more', [('b-new-two', 'Two people'), ('b-new-four', 'Four people')],
   'Everyone you rated is named, strongest first, each on their own line, never cut short. Free Guy: Shawn Levy and Ryan Reynolds, '
   'both from Deadpool & Wolverine, which the test account loved. Avatar: Fire and Ash: James Cameron and three of its stars, all from Avatar, '
@@ -24,13 +24,9 @@ GROUPS = [
  ('4-card-page', [('d-card-one', 'One person'), ('d-card-two', 'Two people'), ('d-card-nobody', 'Nobody')],
   'The same three cases on a title’s card page (Watchlist, Seen, Search), which shows the breakdown on the page itself. It’s the same piece '
   'of the app, so it changes in the same way, in the same words. Scrolled down to the Score breakdown; the title’s poster is above.'),
- ('5-loved-and-liked', [('e-mixed', 'A \u00b7 Name the titles'), ('e-mixed-count', 'B \u00b7 Count them')],
-  'If you loved two of a person\u2019s titles and liked two: loved comes first, then liked, in one line. '
-  'These four ratings are made up to show the case (the test account has no one like this); the credits are real, Nolan made all four. '
-  'With many titles, A would name three in each half and add \u201cand 2 more\u201d.'),
- ('0-naming-words', [('a-new-one', 'A · Name the titles'), ('a-new-one-count', 'B · Count them')],
-  'Two ways to say it. A names what you rated (“you loved Interstellar, Inception and Oppenheimer”). B counts it (“you loved 3 of their titles”). '
-  '“His” or “her” isn’t possible: the app doesn’t know it, so B says “their”. With many titles, A would list three and add “and 2 more”.'),
+ ('5-loved-and-liked', [('e-mixed', 'Loved 2, liked 2'), ('e-many', 'Loved 3, liked 3')],
+  'Loved first, then liked, in one line, at most two titles in each, the best known first; the rest is \u201cand 1 more\u201d. '
+  'These ratings are made up to show the cases (the test account has no one like this); the credits are real, Nolan made all six.'),
 ]
 
 for name, phones, caption in GROUPS:
