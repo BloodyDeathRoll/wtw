@@ -166,6 +166,14 @@ export function linkRole(r: RatedTitle, roleHere: string): RatedTitle['role'] {
 /** tmdb_person_id → the loved/liked titles they directed, wrote or starred in. */
 export type RatedByPerson = Map<string, RatedTitle[]>
 
+/** What loadRatedByPerson returns after a failed read: empty, but not "you rated nobody". */
+const unavailable = new WeakSet<RatedByPerson>()
+
+/** True when the ratings couldn't be read, so no one can be said to be unrated (v3 F6). */
+export function ratedUnavailable(rated: RatedByPerson): boolean {
+  return unavailable.has(rated)
+}
+
 /** Newest-first cap on the signals read — a long history only adds older links. */
 const MAX_RATED = 400
 
@@ -208,7 +216,9 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
     }
   } catch (err) {
     console.warn('[card-reason] rated titles unavailable (cards name no titles):', err instanceof Error ? err.message : err)
-    return new Map()
+    const none: RatedByPerson = new Map()
+    unavailable.add(none)
+    return none
   }
   return out
 }
