@@ -37,7 +37,14 @@ TITLES = {
        'that will unfold in something beyond real time.',
    genre='action, thriller, science fiction', bars=(78, 64, 88),
    # MADE-UP RATINGS for this one case (Eran asked: loved 2, liked 2). The credits are real: Nolan directed and wrote all four.
-   people=[('Christopher Nolan', 'Director, writer', 'loved', ['Interstellar', 'Inception'], ['Oppenheimer', 'Dunkirk'])]),
+   people=[('Christopher Nolan', 'Director, writer', 'loved', ['Interstellar', 'Inception'], ['Dunkirk', 'Oppenheimer'])]),
+ 'Tenet-many': dict(heading='Tenet', year=2020, meta='2h 30m', rating='7.2',
+   why='From Christopher Nolan, who made *Interstellar*, which you loved. Armed with only one word - Tenet - and fighting for the '
+       'survival of the entire world, the Protagonist journeys through a twilight world of international espionage on a mission '
+       'that will unfold in something beyond real time.',
+   genre='action, thriller, science fiction', bars=(78, 64, 88),
+   # MADE-UP RATINGS (loved 3, liked 3), most-known first by TMDB votes. Real credits: Nolan made all six.
+   people=[('Christopher Nolan', 'Director, writer', 'loved', ['Interstellar', 'Inception', 'Oppenheimer'], ['The Prestige', 'Dunkirk', 'Memento'])]),
  'Free Guy': dict(year=2021, meta='1h 55m', rating='7.4',
    why='From Shawn Levy, who made *Deadpool & Wolverine*, which you loved. With Ryan Reynolds, who you loved in *Deadpool & '
        'Wolverine*. A bank teller discovers he is actually a background player in an open-world video game, and decides to become '
@@ -77,8 +84,9 @@ const emph=s=>s.replace(/\*([^*]+)\*/g,'<em>$1</em>');
 const sec2=(l,b)=>'<div class="'+R+'whySection"><div class="'+R+'whySectionLabel">'+l+'</div>'+b+'</div>';
 const barRow=(l,w)=>'<div class="'+R+'scoreRow"><div class="'+R+'scoreLabel">'+l+'</div><div class="'+R+'scoreTrack"><div class="'+R+'scoreFill" style="width:'+w+'%"></div></div></div>';
 const list=a=>a.length<2?a[0]:a.slice(0,-1).join(', ')+' and '+a[a.length-1];
-const titlesOf=a=>list(a.map(t=>'<em>'+t+'</em>'));
-// A: name the titles. B: count them.
+// Eran 2026-11-22: wording A, at most two titles per half, most-known first; the rest is "and N more"
+const titlesOf=a=>{const named=a.slice(0,2).map(t=>'<em>'+t+'</em>');return a.length>2?named.join(', ')+' and '+(a.length-2)+' more':list(named);};
+// A (chosen) names the titles; B counted them (kept for the record).
 function whoLine(p,style){const [name,role,how,ts,also]=p;const liked=also||[];
   // loved first, then liked; "and" joins the two halves
   const what=style==='count'
@@ -119,9 +127,8 @@ STATES = {
   # (tab, js)
   'a-today-one':     ('foryou', "sheet('Tenet','today');"),
   'a-new-one':       ('foryou', "sheet('Tenet','new');"),
-  'a-new-one-count': ('foryou', "sheet('Tenet','new','count');"),
   'e-mixed':         ('foryou', "sheet('Tenet-mixed','new');"),
-  'e-mixed-count':   ('foryou', "sheet('Tenet-mixed','new','count');"),
+  'e-many':          ('foryou', "sheet('Tenet-many','new');"),
   'b-new-two':       ('foryou', "sheet('Free Guy','new');"),
   'b-new-four':      ('foryou', "sheet('Avatar: Fire and Ash','new');"),
   'c-today-nobody':  ('foryou', "sheet('Weapons','today');"),
