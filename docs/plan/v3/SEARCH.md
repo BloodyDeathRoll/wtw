@@ -71,8 +71,9 @@ card and stops. Growing up means that whatever you find gets the full WTW card, 
     2026-11-18)
 - **DEC-4 · What you do in Search counts, like anywhere else.**
   - A rating lands in Seen and your taste (`SEEN.md`).
-  - Adding to the Watchlist teaches your taste, as a save from For you does. Eran decided that on 2026-11-04 (backlog); it
-    needs the DNA writer (A3) to take a save from Search. (Eran, 2026-11-18)
+  - Adding to the Watchlist counts the same as a save from For you: the title is marked saved right away. A save doesn't
+    change the taste model today, from For you or Search; making it do so is its own decision, with harness numbers before
+    and after. (Eran, 2026-11-18; corrected 2026-11-20 and 2026-11-22, #368)
 - **DEC-5 · Each result shows where it stands with you.**
   - The row's third line (today the lead actors) starts with your mark when there is one: ❤️ Loved, 👍 Liked, 👎 Disliked,
     In your Watchlist, or Hidden from For you. You can see it without opening anything.

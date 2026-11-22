@@ -1046,7 +1046,7 @@ function WatchlistEndCard({ onTalk }: { onTalk: () => void }) {
 }
 
 // Shown to players who skipped the taste games: the picks get better once
-// the calibration is done.
+// the calibration is done. The button is the app's one orange primary (FOR-YOU.md DEC-7).
 function CalibrateNudge({ onClick }: { onClick: () => void }) {
   return (
     <div className={`${styles.card} ${styles.nudge}`}>
@@ -1054,7 +1054,7 @@ function CalibrateNudge({ onClick }: { onClick: () => void }) {
       <p className={styles.nudgeText}>
         Finish your taste calibration so I get to know you better. Your recommendations get more accurate with every game.
       </p>
-      <button type="button" className={styles.browseBtn} onClick={onClick}>
+      <button type="button" className={`${styles.watchlistBtn} ${styles.watchlistBtnPrimary}`} onClick={onClick}>
         Finish calibration
       </button>
     </div>
