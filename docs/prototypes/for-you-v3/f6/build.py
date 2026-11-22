@@ -31,6 +31,13 @@ TITLES = {
        'that will unfold in something beyond real time.',
    genre='action, thriller, science fiction', bars=(78, 64, 88),
    people=[('Christopher Nolan', 'Director, writer', 'loved', ['Interstellar', 'Inception', 'Oppenheimer'], [])]),
+ 'Tenet-mixed': dict(heading='Tenet', year=2020, meta='2h 30m', rating='7.2',
+   why='From Christopher Nolan, who made *Interstellar*, which you loved. Armed with only one word - Tenet - and fighting for the '
+       'survival of the entire world, the Protagonist journeys through a twilight world of international espionage on a mission '
+       'that will unfold in something beyond real time.',
+   genre='action, thriller, science fiction', bars=(78, 64, 88),
+   # MADE-UP RATINGS for this one case (Eran asked: loved 2, liked 2). The credits are real: Nolan directed and wrote all four.
+   people=[('Christopher Nolan', 'Director, writer', 'loved', ['Interstellar', 'Inception'], ['Oppenheimer', 'Dunkirk'])]),
  'Free Guy': dict(year=2021, meta='1h 55m', rating='7.4',
    why='From Shawn Levy, who made *Deadpool & Wolverine*, which you loved. With Ryan Reynolds, who you loved in *Deadpool & '
        'Wolverine*. A bank teller discovers he is actually a background player in an open-world video game, and decides to become '
@@ -72,8 +79,11 @@ const barRow=(l,w)=>'<div class="'+R+'scoreRow"><div class="'+R+'scoreLabel">'+l
 const list=a=>a.length<2?a[0]:a.slice(0,-1).join(', ')+' and '+a[a.length-1];
 const titlesOf=a=>list(a.map(t=>'<em>'+t+'</em>'));
 // A: name the titles. B: count them.
-function whoLine(p,style){const [name,role,how,ts]=p;
-  const what=style==='count'?how+' '+ts.length+' of their '+(ts.length===1?'titles':'titles'):how+' '+titlesOf(ts);
+function whoLine(p,style){const [name,role,how,ts,also]=p;const liked=also||[];
+  // loved first, then liked; "and" joins the two halves
+  const what=style==='count'
+    ?(liked.length?how+' '+ts.length+' and liked '+liked.length+' of their titles':how+' '+ts.length+' of their titles')
+    :(liked.length?how+' '+titlesOf(ts)+', and liked '+titlesOf(liked):how+' '+titlesOf(ts));
   return '<div class="'+R+'crewInfo"><span class="'+R+'crewName">'+name+'</span><span class="'+R+'crewRole f6-who">'+role+' · you '+what+'</span></div>';}
 // today: three bars; the people, if any, in a Crew section at the bottom
 function panelToday(t){const d=TITLES[t];const [a,b,c]=d.bars;
@@ -95,7 +105,7 @@ function sheet(t,kind,style){const d=TITLES[t];const v=document.querySelector('.
   // the sheet's layer (z-index 100) sits over the tab bar (z-index 20) in the app; the mock's bar is fixed on top, so it steps aside
   document.querySelector('.tb').style.display='none';
   const layer=document.createElement('div');layer.className=P+'whyLayer';
-  layer.innerHTML='<div class="'+P+'whyScrim"></div><div class="'+P+'whySheet"><div class="'+P+'whyGrab"></div><div class="'+P+'whySheetHead '+P+'whySheetHeadScrolled"><div class="'+P+'cardTitleBlock"><h2 class="'+P+'heroTitle">'+t+'</h2>'+metaRow(d)+'</div><button type="button" class="'+P+'headerBtn" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">%(x)s</svg></button></div><div class="'+P+'whySheetBody"></div></div>';
+  layer.innerHTML='<div class="'+P+'whyScrim"></div><div class="'+P+'whySheet"><div class="'+P+'whyGrab"></div><div class="'+P+'whySheetHead '+P+'whySheetHeadScrolled"><div class="'+P+'cardTitleBlock"><h2 class="'+P+'heroTitle">'+(d.heading||t)+'</h2>'+metaRow(d)+'</div><button type="button" class="'+P+'headerBtn" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">%(x)s</svg></button></div><div class="'+P+'whySheetBody"></div></div>';
   v.appendChild(layer);const body=layer.querySelector('.'+P+'whySheetBody');const pn=panel(t,kind,style);body.appendChild(pn);
   const s=pn.querySelectorAll('.'+R+'whySection')[1];body.scrollTop=body.scrollTop+s.getBoundingClientRect().top-body.getBoundingClientRect().top-34;}
 // the card page (Watchlist, Seen, Search), scrolled to the breakdown; the page's own title is above, off screen
@@ -110,6 +120,8 @@ STATES = {
   'a-today-one':     ('foryou', "sheet('Tenet','today');"),
   'a-new-one':       ('foryou', "sheet('Tenet','new');"),
   'a-new-one-count': ('foryou', "sheet('Tenet','new','count');"),
+  'e-mixed':         ('foryou', "sheet('Tenet-mixed','new');"),
+  'e-mixed-count':   ('foryou', "sheet('Tenet-mixed','new','count');"),
   'b-new-two':       ('foryou', "sheet('Free Guy','new');"),
   'b-new-four':      ('foryou', "sheet('Avatar: Fire and Ash','new');"),
   'c-today-nobody':  ('foryou', "sheet('Weapons','today');"),
