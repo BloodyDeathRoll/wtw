@@ -24,7 +24,7 @@ import { userRedisKeys } from '@/lib/reset-taste'
 /** The user-owned tables, each cascading from users (the PR lists them; the live check verifies them). */
 export const USER_TABLES = [
   'users', 'recommendation_feedback', 'served_titles', 'removed_titles', 'watchlist_entries', 'play_state',
-  'play_events', 'conversations', 'dna_snapshots', 'fingerprint_embeddings', 'feedback', 'cowatch_rooms',
+  'play_events', 'conversations', 'dna_snapshots', 'fingerprint_embeddings', 'feedback', 'cowatch_rooms', 'for_you_sets',
 ] as const
 
 async function sweepRedis(userId: string): Promise<number> {

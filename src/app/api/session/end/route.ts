@@ -17,6 +17,10 @@
  *         watchlist_added?: string[] }   // "type:tmdb_id" — see step 2b
  * Response: { ok, taste_version, signal_count, rec_count, watchlist_recorded, watchlist_synced }
  *           + `page` (the first page of cards) when `more` built a batch
+ *
+ * v3 F1 (FOR_YOU_V3): `more` + `refresh` is For you's Refresh. The batch is built exactly as for "Find more", then
+ * the new 20 are made from it and kept (src/lib/for-you-set.ts), and `page` is the whole 20. No `page` = the Refresh
+ * failed, and the client keeps the 20 it has.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -28,6 +32,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { endConversation } from '@/lib/conversations'
 import { startTimer, type StepTimer } from '@/lib/timing'
 import { buildRecPage, getRemovedKeys } from '@/lib/rec-page'
+import { makeTheTwenty, readForYouSet } from '@/lib/for-you-set'
+import { forYouV3Enabled } from '@/lib/flags'
 import { isContentType, type ContentType } from '@/lib/content-type'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { updateSchemaFromSession } from '@/modules/dna/update-from-session'
@@ -57,9 +63,23 @@ async function firstPage(
   recs: RecommendationResult[],
   contentType: ContentType,
   t: StepTimer,
+  refresh: boolean,
 ): Promise<RecPage | undefined> {
   if (recs.length === 0) return undefined
   try {
+    if (refresh) {
+      // The new 20 leave out the outgoing 20 (FOR-YOU.md DEC-3). Not knowing them is no reason to fail the Refresh.
+      const previous = await readForYouSet(userId, contentType).catch((err) => {
+        console.warn('[session/end] the outgoing 20 unread (non-fatal):', err instanceof Error ? err.message : err)
+        return null
+      })
+      const page = await makeTheTwenty({
+        userId, dna, batch: recs, removed: getRemovedKeys(userId), contentType,
+        previous: previous ?? [], source: 'refresh', mustKeep: true,
+      })
+      t.mark('the 20 made')
+      return page
+    }
     return await buildRecPage({ userId, dna, recs, removed: getRemovedKeys(userId), start: 0, contentType, source: 'find-more' })
   } catch (err) {
     console.warn('[session/end] first page failed (the client fetches it):', err instanceof Error ? err.message : err)
@@ -87,6 +107,8 @@ export async function POST(req: NextRequest) {
   // next one. Only that button sends it (the warm-up and leave-cards calls
   // share skip_transcript but must stay no-ops).
   const wantMore: boolean = body.more === true
+  // For you's Refresh (v3 F1): the next batch, as for "Find more", made into the new 20. Only with FOR_YOU_V3 on.
+  const wantRefresh: boolean = wantMore && body.refresh === true && forYouV3Enabled()
   // Watchlist adds the client hasn't reported yet, piggybacked on this request
   // so saving a card costs no round-trip of its own. Ids are "type:tmdb_id".
   const watchlistAdded: string[] = Array.isArray(body.watchlist_added)
@@ -288,7 +310,7 @@ export async function POST(req: NextRequest) {
         rec_count = recs.length
         if (rec_count === 0) warning = 'Next batch came back empty'
         t.mark(adopted ? 'batch adopted' : 'batch built')
-        page = await firstPage(user.id, dna, recs, contentType, t)
+        page = await firstPage(user.id, dna, recs, contentType, t, wantRefresh)
         t.done(adopted ? 'total (next batch, adopted precomputed)' : 'total (next batch)')
       } catch (err) {
         console.error('[session/end] next batch failed:', err)
@@ -339,7 +361,7 @@ export async function POST(req: NextRequest) {
     const adopted = await adoptPendingBatch(user.id, updated, contentType)
     const recs = adopted ?? await generateRecommendations(user.id, undefined, { dna: updated, skipCacheRead: true, contentType })
     rec_count = recs.length
-    if (wantMore) page = await firstPage(user.id, updated, recs, contentType, t)
+    if (wantMore) page = await firstPage(user.id, updated, recs, contentType, t, wantRefresh)
     t.done(adopted ? 'total (adopted precomputed batch)' : 'total (regenerated)')
   } catch (err) {
     // Fingerprint is saved; recs can be regenerated on next visit.

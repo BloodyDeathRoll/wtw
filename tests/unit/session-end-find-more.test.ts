@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // POST /api/session/end with nothing new to merge and a warm, clean cache:
 //   - a plain call (warm-up, leave-cards) is the no-op `unchanged`;
@@ -40,6 +40,11 @@ vi.mock('@/modules/engine/pipeline/step8-cache', () => ({
 const firstPage = { recommendations: [{ id: 'movie:9' }], next_offset: 6, has_more: true, source: 'find-more', taste_version: 7 }
 const buildRecPage = vi.fn(async () => firstPage)
 vi.mock('@/lib/rec-page', () => ({ buildRecPage, getRemovedKeys: async () => new Set<string>() }))
+const twenty = { recommendations: [{ id: 'movie:9' }], next_offset: 2, has_more: false, source: 'refresh', taste_version: 7, set: true }
+const outgoing = [{ tmdb_id: '1', type: 'movie' }]
+const makeTheTwenty = vi.fn(async (_opts: Record<string, unknown>) => twenty)
+const readForYouSet = vi.fn(async () => outgoing)
+vi.mock('@/lib/for-you-set', () => ({ makeTheTwenty, readForYouSet }))
 
 const { POST } = await import('@/app/api/session/end/route')
 const { NextRequest } = await import('next/server')
@@ -161,5 +166,42 @@ describe('session/end never reads the chat (P1-C1)', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.extraction_failed).toBeUndefined()
+  })
+})
+
+// v3 F1: For you's Refresh is "Find more"'s batch, made into the new 20 (src/lib/for-you-set.ts).
+describe('session/end `refresh` (For you\'s Refresh)', () => {
+  afterEach(() => { vi.unstubAllEnvs() })
+
+  it('flag on: the new 20 come back as the page, made without the outgoing 20, and must be kept', async () => {
+    vi.stubEnv('FOR_YOU_V3', 'true')
+    const body = await (await post({ more: true, refresh: true, content_type: 'movies' })).json()
+    expect(body.page).toEqual(twenty)
+    expect(buildRecPage).not.toHaveBeenCalled()
+    expect(readForYouSet).toHaveBeenCalledWith('u1', 'movies')
+    expect(makeTheTwenty).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1', contentType: 'movies', previous: outgoing, mustKeep: true }))
+    expect(makeTheTwenty.mock.calls[0][0].batch).toEqual([{ tmdb_id: 9, type: 'movie' }, { tmdb_id: 10, type: 'movie' }])
+  })
+
+  it('flag on: a 20 that can\'t be made or kept is no page, so the client keeps the 20 it has', async () => {
+    vi.stubEnv('FOR_YOU_V3', 'true')
+    makeTheTwenty.mockRejectedValueOnce(new Error('for_you_sets write failed'))
+    const body = await (await post({ more: true, refresh: true })).json()
+    expect(body).toMatchObject({ ok: true, rec_count: 2 })
+    expect(body.page).toBeUndefined()
+  })
+
+  it('flag on: the outgoing 20 unread is no reason to fail', async () => {
+    vi.stubEnv('FOR_YOU_V3', 'true')
+    readForYouSet.mockRejectedValueOnce(new Error('boom'))
+    const body = await (await post({ more: true, refresh: true })).json()
+    expect(body.page).toEqual(twenty)
+    expect(makeTheTwenty).toHaveBeenCalledWith(expect.objectContaining({ previous: [] }))
+  })
+
+  it('flag off: `refresh` is ignored, and it is today\'s "Find more"', async () => {
+    const body = await (await post({ more: true, refresh: true })).json()
+    expect(body.page).toEqual(firstPage)
+    expect(makeTheTwenty).not.toHaveBeenCalled()
   })
 })
