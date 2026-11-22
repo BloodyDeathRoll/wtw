@@ -55,7 +55,7 @@ import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
-import { chatMode, navHistoryEnabled, navTabsEnabled } from "@/lib/flags";
+import { chatMode, forYouV3Enabled, navHistoryEnabled, navTabsEnabled } from "@/lib/flags";
 import { markInApp, stageHref, stageOfAddress } from "@/modules/session/nav-history";
 import { AskButton, TabBar, type Tab } from "@/app/components/TabBar";
 import rv from "../recommendations/RecommendationsView.module.css";
@@ -792,7 +792,7 @@ export default function WTWApp({
   // (cached server-side at the new taste_version). Shared by the initial
   // "Recommend" entry and the in-list "Find More" refresh.
   // Resolves with the new batch's first page when the server sent one ("Find more").
-  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean; more?: boolean }): Promise<RecPage | null> {
+  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean; more?: boolean; refresh?: boolean }): Promise<RecPage | null> {
     // Watchlist saves ride along on this request rather than posting their own —
     // saving a card is supposed to cost zero extra calls.
     const savedIds = getUnsyncedIds();
@@ -810,6 +810,8 @@ export default function WTWApp({
           skip_transcript: opts?.skipTranscript ?? false,
           // "Find more": the batch was read to its end — build the next one.
           more: opts?.more === true,
+          // v3 F1: For you's Refresh — the next batch, made into the new 20 and kept.
+          refresh: opts?.refresh === true,
           // Which list to regenerate — batches are built per content type.
           content_type: contentType,
           watchlist_added: savedIds,
@@ -1163,6 +1165,8 @@ export default function WTWApp({
             sharerName={user.name}
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true, more: true })}
+            onRefresh={forYouV3Enabled() ? () => endSessionAndGenerate({ skipTranscript: true, more: true, refresh: true }) : undefined}
+            onTalk={consultant && turnsLeft ? openChat : undefined}
             headerRight={headerMenu}
             user={user}
             building={buildingRecs}
