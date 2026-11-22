@@ -279,6 +279,8 @@ describe('S3: the card page from Seen, and clearing a rating (DEC-6, DEC-7)', ()
     render(<SeenView onBack={() => {}} user={user} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Memento: open' }))
     await screen.findByRole('button', { name: 'Add to Watchlist: Memento' })
+    // The lit chip waits for Seen's list (myRatings), which can land after the card on a slow machine.
+    await screen.findByRole('button', { name: 'Loved it (tap to clear)' })
     await flush()
   }
 
@@ -472,6 +474,28 @@ describe('S4: Hidden from For you, with Restore (DEC-8)', () => {
     } finally {
       window.removeEventListener('wtw:hidden', on)
     }
+  })
+
+  it('a slow Restore that fails after another row\'s Restore still puts its row back', async () => {
+    let fail!: () => void
+    const held = new Promise<void>((r) => (fail = r))
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/removed') {
+        const body = JSON.parse(String(init?.body))
+        if (body.tmdb_id === '4') return (await held, new Response('no', { status: 500 }))
+        return Response.json({ ok: true })
+      }
+      return Response.json({ ...DATA, removed: [...DATA.removed, { ...DATA.removed[0], tmdb_id: '5', title: 'Dune', removed_at: '2026-10-01T00:00:00Z' }] })
+    }))
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore Dune' }))
+    await flush()
+    expect(hiddenCount()).toBe('Hidden from For you')
+    fail()
+    await flush(); await flush()
+    expect(hiddenCount()).toBe('Hidden from For you1')
+    expect(screen.getByRole('button', { name: 'Restore The Hunger Games' })).toBeInTheDocument()
   })
 
   it('Search hears both: restored, then hidden again', async () => {

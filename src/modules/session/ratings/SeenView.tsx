@@ -194,6 +194,8 @@ export default function SeenView({
   const restoredRows = useRef<Record<string, RemovedItem>>({});
   // A title's Restore and Undo writes go one after the other, so the server ends where the screen does.
   const hiddenWrites = useRef<Record<string, Promise<void>>>({});
+  // Titles whose Restore was undone: a late failure of that Restore must leave the row where Undo put it.
+  const undone = useRef<Set<string>>(new Set());
   function inOrder(key: string, write: () => Promise<void>): Promise<void> {
     const next = (hiddenWrites.current[key] ?? Promise.resolve()).then(write);
     hiddenWrites.current[key] = next.catch(() => {});
@@ -437,6 +439,7 @@ export default function SeenView({
     const item = dataRef.current?.removed.find((r) => `${r.media_type}:${r.tmdb_id}` === row.key);
     if (!item) return;
     restoredRows.current[row.key] = item;
+    undone.current.delete(row.key);
     setHidden(item, false);
     // The name is never empty: nameless rows are filtered out on load (#406).
     showNote({ key: row.key, title: row.title ?? "", restored: true });
@@ -452,7 +455,7 @@ export default function SeenView({
       });
     } catch {
       // An Undo already tapped has put it back; otherwise put it back here, and drop the note and its timer.
-      if (!restoredRows.current[row.key]) return;
+      if (undone.current.has(row.key)) return;
       delete restoredRows.current[row.key];
       setHidden(item, true);
       if (noteRef.current?.key === row.key) {
@@ -468,6 +471,7 @@ export default function SeenView({
     const item = restoredRows.current[key];
     if (!item) return;
     delete restoredRows.current[key];
+    undone.current.add(key);
     setHidden(item, true);
     try {
       await inOrder(key, async () => {
@@ -481,6 +485,7 @@ export default function SeenView({
       });
     } catch {
       restoredRows.current[key] = item;
+      undone.current.delete(key);
       setHidden(item, false);
       showNote({ key, title: item.title ?? "", restored: true });
     }
