@@ -289,10 +289,11 @@ describe('where a title stands with you (SEARCH_V3, SEARCH.md DEC-5)', () => {
   })
 
   // Source-level: both views need a whole page around them.
+  // For you's X, Hide and Undo share one write (v3 F3); RecommendationsView-hide.test.tsx checks what it announces.
   it('For you\'s Remove and Seen\'s Restore announce it once the write lands', () => {
     const feed = readFileSync('src/modules/session/recommendations/RecommendationsView.tsx', 'utf8')
     const seen = readFileSync('src/modules/session/ratings/RatingsView.tsx', 'utf8')
-    expect(feed).toMatch(/if \(!res\.ok\) \{[\s\S]{0,200}\} else \{\s*announceHidden\(`\$\{rec\.type\}:\$\{tmdb_id\}`, true\);/)
+    expect(feed).toMatch(/if \(!res\.ok\) \{[\s\S]{0,200}\} else \{\s*announceHidden\(`\$\{rec\.type\}:\$\{tmdb_id\}`, hide\);/)
     expect(seen).toMatch(/if \(!res\.ok\) throw new Error\(String\(res\.status\)\);\s*announceHidden\(`\$\{rem\.media_type\}:\$\{rem\.tmdb_id\}`, false\);/)
   })
 })

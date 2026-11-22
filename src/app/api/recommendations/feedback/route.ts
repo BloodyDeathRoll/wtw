@@ -56,6 +56,13 @@ import { VALID_ACTIONS, VALID_REACTIONS, HISTORY_WRITE_ATTEMPTS, applyFeedbackTo
 // after() waits for a pause in rating (QUIET_MS) and then builds a batch: make the budget explicit.
 export const maxDuration = 60
 
+/** The catalogue's name for a title, or null (not in `titles`, or the lookup failed). */
+async function catalogueTitle(db: ReturnType<typeof createServiceClient>, type: MediaType, tmdbId: string): Promise<string | null> {
+  const { data, error } = await db.from('titles').select('title').eq('type', type).eq('tmdb_id', tmdbId).maybeSingle()
+  if (error) console.warn('[feedback] title lookup failed (row saved with no name):', error.message)
+  return (data?.title as string | null | undefined)?.trim() || null
+}
+
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────
   const supabase = await createClient()
@@ -198,10 +205,12 @@ export async function POST(req: NextRequest) {
   // Migration 0013 narrowed the rating constraint to loved / liked / disliked
   // (the "mixed" level was dropped; see the Reaction enum in src/types/dna.ts).
   if (reaction) {
+    // Seen lists these rows by name (#406): a caller that sends none gets the catalogue's.
+    const name = title?.trim() || (media_type ? await catalogueTitle(serviceClient, media_type, tmdb_id) : null)
     await serviceClient.from('recommendation_feedback').insert({
       user_id: user.id,
       recommendation_id: recKey,
-      title: title ?? null,
+      title: name,
       rating: reaction,
     }).then(({ error }) => {
       if (error) console.warn('[feedback] recommendation_feedback insert failed (non-fatal):', error.message)

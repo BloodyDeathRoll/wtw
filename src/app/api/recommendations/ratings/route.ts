@@ -154,6 +154,8 @@ export async function GET() {
   // to avoid attaching the wrong artwork. Legacy bare ids (media_type null) are
   // mock ids absent from titles, so they resolve to no poster.
   const posterByKey = new Map<string, string | null>()
+  // A rating saved with no name (#406) shows the catalogue's.
+  const nameByKey = new Map<string, string>()
   const factsByKey = new Map<string, TitleFacts>()
   const chunks: { type: MediaType; ids: string[] }[] = []
   for (const type of ['movie', 'tv'] as const) {
@@ -164,7 +166,7 @@ export async function GET() {
     chunks.map(({ type, ids }) =>
       supabase
         .from('titles')
-        .select('tmdb_id, type, poster_path, release_year, runtime_minutes, tmdb_rating')
+        .select('tmdb_id, type, title, poster_path, release_year, runtime_minutes, tmdb_rating')
         .eq('type', type)
         .in('tmdb_id', ids),
     ),
@@ -175,6 +177,8 @@ export async function GET() {
     for (const t of titleRows ?? []) {
       const key = `${t.tmdb_id}:${t.type}`
       posterByKey.set(key, tmdbPosterUrl(t.poster_path as string | null))
+      const name = (t.title as string | null)?.trim()
+      if (name) nameByKey.set(key, name)
       factsByKey.set(key, {
         year: (t.release_year as number | null) ?? null,
         meta: lengthLine(t.type as MediaType, (t.runtime_minutes as number | null) ?? null),
@@ -184,13 +188,15 @@ export async function GET() {
   }
   const posterFor = (tmdb_id: string, media_type: MediaType | null): string | null =>
     media_type ? posterByKey.get(`${tmdb_id}:${media_type}`) ?? null : null
+  const nameFor = (title: string | null, tmdb_id: string, media_type: MediaType | null): string | null =>
+    title?.trim() || (media_type ? nameByKey.get(`${tmdb_id}:${media_type}`) ?? null : null)
   const NO_FACTS: TitleFacts = { year: null, meta: null, star: null }
   const factsFor = (tmdb_id: string, media_type: MediaType | null): TitleFacts =>
     (media_type && factsByKey.get(`${tmdb_id}:${media_type}`)) || NO_FACTS
 
   const items: RatingItem[] = dedupedFeedback.map((r) => ({
     id: r.key,
-    title: r.title,
+    title: nameFor(r.title, r.tmdb_id, r.media_type),
     rating: r.rating,
     created_at: r.created_at,
     tmdb_id: r.tmdb_id,
@@ -200,7 +206,7 @@ export async function GET() {
   }))
 
   const removed: RemovedItem[] = removedRows.map((r) => ({
-    title: r.title ?? null,
+    title: nameFor(r.title, r.tmdb_id, r.media_type as MediaType),
     tmdb_id: r.tmdb_id,
     media_type: r.media_type as MediaType,
     removed_at: r.removed_at,
