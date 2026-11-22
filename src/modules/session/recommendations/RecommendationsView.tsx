@@ -50,6 +50,7 @@ import JustWatchCredit from "@/app/components/JustWatchCredit";
 import { canonicalProvider, withIsraelService } from "@/lib/watch-providers";
 import {
   fetchFreshExplain,
+  fetchMatches,
   freshKey,
   getCachedExplain,
   setCachedExplain,
@@ -354,6 +355,28 @@ export default function RecommendationsView({
       window.removeEventListener(WATCHLIST_HYDRATED_EVENT, read);
     };
   }, [mode]);
+  // Today's match for each unseen row (v3 Q7, plan DEC-3): the saved one is
+  // frozen at save time, and a title saved from Search or the games has none.
+  // Each title is asked for once a visit (again on the next list change if
+  // the call failed); meanwhile, or with no answer, the saved match shows.
+  const [todayMatch, setTodayMatch] = useState<Record<string, number>>({});
+  const askedMatch = useRef(new Set<string>());
+  useEffect(() => {
+    if (mode !== "watchlist") return;
+    // Only "movie:123" / "tv:123": a legacy id would make the route refuse the whole call.
+    const ids = entries
+      .filter((e) => !isSeen(e))
+      .map((e) => e.rec.id)
+      .filter((id) => /^(movie|tv):\d+$/.test(id) && !askedMatch.current.has(id));
+    ids.forEach((id) => askedMatch.current.add(id));
+    for (let i = 0; i < ids.length; i += 60) {
+      const chunk = ids.slice(i, i + 60);
+      void fetchMatches(chunk.map((id) => ({ type: id.split(":")[0] as "movie" | "tv", tmdb_id: tmdbIdOf(id) }))).then((m) => {
+        if (!m) chunk.forEach((id) => askedMatch.current.delete(id));
+        else if (Object.keys(m).length) setTodayMatch((cur) => ({ ...cur, ...m }));
+      });
+    }
+  }, [mode, entries]);
   // The lit filter chip (DEC-3). Back to All when its chip is gone (the last
   // title on that service was removed).
   const [pickedFilter, setFilter] = useState<WatchlistFilter>("all");
@@ -663,6 +686,7 @@ export default function RecommendationsView({
   const pageRec: Recommendation | null = pageEntry
     ? {
         ...withIsraelService(pageEntry.rec),
+        match: todayMatch[pageEntry.rec.id] ?? pageEntry.rec.match,
         reason: lines.state === "keep" ? pageEntry.rec.reason : lines.byId[pageEntry.rec.id] ?? "",
       }
     : null;
@@ -856,6 +880,7 @@ export default function RecommendationsView({
         ) : mode === "watchlist" ? (
           <WatchlistList
             entries={entries}
+            matches={todayMatch}
             ghosts={ghosts}
             filter={filter}
             starPop={starPop}
@@ -1047,7 +1072,7 @@ function WatchlistEndCard({ onTalk }: { onTalk: () => void }) {
 }
 
 // Shown to players who skipped the taste games: the picks get better once
-// the calibration is done.
+// the calibration is done. The button is the app's one orange primary (FOR-YOU.md DEC-7).
 function CalibrateNudge({ onClick }: { onClick: () => void }) {
   return (
     <div className={`${styles.card} ${styles.nudge}`}>
@@ -1055,7 +1080,7 @@ function CalibrateNudge({ onClick }: { onClick: () => void }) {
       <p className={styles.nudgeText}>
         Finish your taste calibration so I get to know you better. Your recommendations get more accurate with every game.
       </p>
-      <button type="button" className={styles.browseBtn} onClick={onClick}>
+      <button type="button" className={`${styles.watchlistBtn} ${styles.watchlistBtnPrimary}`} onClick={onClick}>
         Finish calibration
       </button>
     </div>
@@ -1832,6 +1857,7 @@ function WatchlistChips({
  */
 function WatchlistList({
   entries,
+  matches,
   ghosts,
   filter,
   starPop,
@@ -1845,6 +1871,8 @@ function WatchlistList({
   onTalk,
 }: {
   entries: WatchlistEntry[];
+  /** Today's match by rec id (Q7); a row without one shows its saved match. */
+  matches: Record<string, number>;
   ghosts: Record<string, Ghost>;
   filter: WatchlistFilter;
   starPop: string | null;
@@ -1982,6 +2010,7 @@ function WatchlistList({
             )}
             <WatchlistRow
               entry={e}
+              match={matches[e.rec.id] ?? e.rec.match}
               ghost={ghosts[e.rec.id]}
               swiped={swiped === e.rec.id}
               starPop={starPop === e.rec.id}
@@ -2020,6 +2049,7 @@ function WatchlistList({
  */
 function WatchlistRow({
   entry,
+  match,
   ghost,
   swiped,
   starPop,
@@ -2032,6 +2062,7 @@ function WatchlistRow({
   onGone,
 }: {
   entry: WatchlistEntry;
+  match: number;
   ghost: Ghost | undefined;
   swiped: boolean;
   starPop: boolean;
@@ -2173,7 +2204,7 @@ function WatchlistRow({
   };
 
   const seen = isSeen(entry);
-  const pct = rec.match > 0 ? Math.round(rec.match * 100) : 0;
+  const pct = match > 0 ? Math.round(match * 100) : 0;
 
   return (
     <div ref={wrapRef} className={styles.rowWrap} data-row-id={rec.id}>
