@@ -66,9 +66,15 @@ describe('card line — reasons for only', () => {
     expect(text).not.toMatch(/critics|audiences|warm|funny/i)
   })
 
-  it('keeps a stretch pick\'s own rationale', () => {
-    expect(cardReason(item({ p: { is_stretch_pick: true, stretch_rationale: 'Outside your usual — a slow Danish drama.' } })))
-      .toBe('Outside your usual — a slow Danish drama.')
+  // v3 F7 (Eran, 2026-11-22): the card's label says it's a stretch, so the line is the title's usual one, and the
+  // engine's note ("Intentional stretch: … High critical rating. Accept or reject …") is left out of card and sheet.
+  it('gives a stretch pick the title\'s usual line, never its rationale', () => {
+    const NOTE = 'Intentional stretch: this title scores lower on your usual narrative complexity preferences. High critical rating. Accept or reject — both are useful signals.'
+    const stretch = item({ p: { is_stretch_pick: true, stretch_rationale: NOTE } })
+    expect(cardReason(stretch, rated)).toBe(cardReason(item(), rated))
+    expect(cardReason(stretch, rated)).toBe('A crime film.')
+    expect(sheetReason(stretch, rated)).toBe(sheetReason(item(), rated))
+    expect(sheetReason(stretch, rated)).not.toMatch(/stretch|signals|critical/i)
   })
 })
 
