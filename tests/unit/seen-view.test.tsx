@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, cleanup, within, act } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within, act, waitFor } from '@testing-library/react'
 import type { RatingsSummary } from '@/app/api/recommendations/ratings/route'
 
 // S1 (docs/plan/v3/SEEN.md DEC-1, 2, 3, 9): Seen as the Watchlist's rows, chips with no All (opens on Loved), today's
@@ -8,6 +8,8 @@ import type { RatingsSummary } from '@/app/api/recommendations/ratings/route'
 vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SeenView, { seenCounts, seenRows } from '@/modules/session/ratings/SeenView'
+import { forgetMyRatings } from '@/app/search/SearchCard'
+import { announceRated } from '@/modules/session/recommendations/rate'
 
 const facts = { year: 2000, meta: '1h 53m', star: 8.2 }
 const DATA: RatingsSummary = {
@@ -240,5 +242,146 @@ describe('S2: change a rating right on the row (DEC-4, DEC-5)', () => {
     await flush(); await flush()
     expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+
+describe('S3: the card page from Seen, and clearing a rating (DEC-6, DEC-7)', () => {
+  const user = { id: 'u1', email: null, name: 'Ada', avatarUrl: null }
+  let calls: { url: string; method: string; body: Record<string, unknown> | null }[]
+  let feedbackOk: boolean
+  beforeEach(() => {
+    forgetMyRatings()
+    window.localStorage.clear()
+    vi.stubEnv('SEEN_V3', 'true')
+    calls = []
+    feedbackOk = true
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
+      if (url.includes('/api/search/title')) {
+        return Response.json({
+          rec: { id: 'movie:1', title: 'Memento', type: 'movie', year: 2000, poster_url: null, meta: '1h 53m', rating: 8.2, match: 0, reason: '', where: null, motif: 'dot', palette: ['#16242E', '#F5C9A6'] },
+          synopsis: 'Leonard Shelby is tracking down the man who raped and murdered his wife.',
+        })
+      }
+      if (url.includes('/feedback')) return feedbackOk ? Response.json({ ok: true }) : new Response('no', { status: 500 })
+      if (url.includes('why-lines')) return Response.json({ lines: {} })
+      if (url.includes('/score') || url.includes('/explain')) return new Response('', { status: 404 })
+      if (url.includes('/why')) return Response.json({ text: null })
+      if (url.includes('/ratings')) return Response.json(DATA)
+      return Response.json({ entries: [] })
+    }))
+  })
+  afterEach(() => vi.unstubAllEnvs())
+  const flush = () => new Promise((r) => setTimeout(r, 0))
+  const chipCounts = () => within(screen.getByRole('group', { name: 'Show' })).getAllByRole('button').map((c) => c.textContent)
+
+  async function openMemento() {
+    render(<SeenView onBack={() => {}} user={user} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Memento: open' }))
+    await screen.findByRole('button', { name: 'Add to Watchlist: Memento' })
+    await flush()
+  }
+
+  it('a tap on a row opens its card page: your reaction lit, "Saved to Seen", Add to Watchlist, no Hide', async () => {
+    await openMemento()
+    expect(calls.some((c) => c.url === '/api/search/title?key=movie-1')).toBe(true)
+    expect(await screen.findByText('Saved to Seen')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Loved it (tap to clear)' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: /^Hide/ })).toBeNull()
+    expect(screen.queryByText('Seen (3)')).toBeNull()
+  })
+
+  it('a tap on a row\'s icon changes the rating and opens nothing', async () => {
+    render(<SeenView onBack={() => {}} user={user} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+    await flush()
+    expect(calls.some((c) => c.url.includes('/api/search/title'))).toBe(false)
+    expect(screen.getByRole('status')).toHaveTextContent('Memento will move to Liked.')
+  })
+
+  it('a hidden title opens nothing', async () => {
+    render(<SeenView onBack={() => {}} user={user} />)
+    await screen.findByText('Seen (3)')
+    fireEvent.click(screen.getByRole('button', { name: /^Hidden from For you/ }))
+    fireEvent.click(screen.getByLabelText('The Hunger Games'))
+    await flush()
+    expect(calls.some((c) => c.url.includes('/api/search/title'))).toBe(false)
+  })
+
+  it('tap the lit reaction to clear it; back on Seen the row is a note with Undo and the counts drop', async () => {
+    await openMemento()
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it (tap to clear)' }))
+    expect(screen.getByRole('button', { name: 'Loved it' })).toHaveAttribute('aria-pressed', 'false')
+    await flush(); await flush()
+    expect(calls.some((c) => c.url.includes('/feedback') && c.method === 'DELETE')).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'back' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to Watchlist: Memento' })).toBeNull())
+    expect(screen.getByText('Seen (2)')).toBeInTheDocument()
+    expect(chipCounts()).toEqual(['Loved1', 'Liked1', 'Disliked', 'Hidden from For you1'])
+    expect(screen.getByRole('status')).toHaveTextContent('Rating cleared. Memento is out of Seen, and your taste forgets it.')
+    expect(titles()).toEqual(['Arcane'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(screen.getByText('Seen (3)')).toBeInTheDocument()
+    expect(chipCounts()).toEqual(['Loved2', 'Liked1', 'Disliked', 'Hidden from For you1'])
+    expect(titles()).toEqual(['Arcane', 'Memento'])
+    await flush()
+    expect(calls.filter((c) => c.url.includes('/feedback') && c.method === 'POST').map((c) => c.body?.reaction)).toEqual(['loved'])
+  })
+
+  it('a reaction moved on the card shows on the row back on Seen, with no note', async () => {
+    await openMemento()
+    fireEvent.click(screen.getByRole('button', { name: 'Liked it' }))
+    await flush(); await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'back' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to Watchlist: Memento' })).toBeNull())
+    expect(screen.getByRole('button', { name: 'Liked it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect(chipCounts()).toEqual(['Loved1', 'Liked2', 'Disliked', 'Hidden from For you1'])
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('an Undo whose write fails takes the row out again', async () => {
+    await openMemento()
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it (tap to clear)' }))
+    await flush(); await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'back' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to Watchlist: Memento' })).toBeNull())
+    feedbackOk = false
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    await flush(); await flush()
+    expect(screen.getByText('Seen (2)')).toBeInTheDocument()
+    expect(titles()).toEqual(['Arcane'])
+    expect(screen.getByRole('status')).toHaveTextContent('Rating cleared. Memento is out of Seen')
+  })
+
+  it('once the note has gone, a rating made elsewhere does not bring back the old row', async () => {
+    await openMemento()
+    fireEvent.click(screen.getByRole('button', { name: 'Loved it (tap to clear)' }))
+    await flush(); await flush()
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'back' }))
+      await act(async () => { await vi.advanceTimersByTimeAsync(100) })
+      expect(screen.getByRole('status')).toHaveTextContent('Rating cleared.')
+      act(() => { vi.advanceTimersByTime(5000) })
+      expect(screen.queryByRole('status')).toBeNull()
+      act(() => { announceRated('movie:1', 'liked') })
+      expect(screen.getByText('Seen (2)')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('the list is back at its place when the card closes', async () => {
+    render(<SeenView onBack={() => {}} user={user} />)
+    const open = await screen.findByRole('button', { name: 'Memento: open' })
+    const list = open.closest('[data-tab-scroll]') as HTMLElement
+    list.scrollTop = 420
+    fireEvent.click(open)
+    await screen.findByRole('button', { name: 'Add to Watchlist: Memento' })
+    list.scrollTop = 0
+    fireEvent.click(screen.getByRole('button', { name: 'back' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to Watchlist: Memento' })).toBeNull())
+    expect(list.scrollTop).toBe(420)
   })
 })

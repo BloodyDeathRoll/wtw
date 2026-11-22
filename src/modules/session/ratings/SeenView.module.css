@@ -24,13 +24,28 @@
   flex-shrink: 0;
 }
 
-/* A row opens nothing yet: the card page comes with S3. */
+/* S3: a row that opens the card page carries a button over all of it; the icons sit above that button. */
 .row {
+  position: relative;
   cursor: default;
+}
+.open {
+  position: absolute;
+  inset: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: inherit;
+}
+.open:focus-visible {
+  outline: 1px solid var(--rv-gold);
 }
 
 /* S2 (DEC-4, 7-icons right): the card's reaction chips as icons only, under the facts line. */
 .icons {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 8px;
   margin-top: 8px;
@@ -42,4 +57,28 @@
 /* The two you didn't pick, dimmed a little (about 55%). */
 .iconDim > span {
   opacity: 0.55;
+}
+
+/* S3: under the card page the list stays mounted (its place kept), out of sight. */
+.here {
+  display: contents;
+}
+.away {
+  display: none;
+}
+
+/* The type and sort pills fit their word, as in 7-icons ("All ⌄"): the native select lies over the pill, unseen,
+   since a select is as wide as its longest option in every browser. */
+.pill {
+  position: relative;
+}
+.pillText {
+  font-size: var(--rv-small);
+  color: var(--rv-white);
+}
+.pillSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
 }

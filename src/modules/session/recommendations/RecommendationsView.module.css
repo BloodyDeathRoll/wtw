@@ -224,27 +224,6 @@
   border-color: rgba(255, 255, 255, 0.28);
 }
 
-/* Empty-state CTA into the feed — the app's one primary button: the games'
-   orange pill (play.css --cta-grad, 56px tall, 18px bold text). */
-.browseBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 56px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #ffa900 0%, #ff7a00 55%, #ff4400 100%);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.1;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
 /* Empty list (watchlist with nothing saved yet). */
 .emptyState {
   flex: 1;
@@ -499,7 +478,7 @@
 .seenChip:active {
   transform: scale(0.96);
 }
-/* "Saved to Ratings" — takes the prompt's place once rated. */
+/* "Saved to Seen" — takes the prompt's place once rated. */
 .seenItSaved {
   display: inline-flex;
   align-items: center;
