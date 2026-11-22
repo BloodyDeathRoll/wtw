@@ -31,6 +31,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getCachedRecommendations, getWhyText } from '@/modules/engine'
 import type { DNASchema, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
+import { findInForYouSets } from '@/lib/for-you-set'
+import { forYouV3Enabled } from '@/lib/flags'
 
 export async function GET(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────
@@ -97,6 +99,16 @@ export async function GET(req: NextRequest) {
     }
     recommendation = type ? matches.find(r => r.type === type) : matches[0]
     if (recommendation) break
+  }
+
+  // v3 F1: the 20 stay until Refresh, longer than the 6-hour batch they came from, and a rating refresh replaces that
+  // batch under them. A card in the 20 keeps its breakdown from the stored set.
+  if (!recommendation && forYouV3Enabled()) {
+    const kept = await findInForYouSets(user.id, tmdb_id, type)
+    if (kept) {
+      recommendation = kept
+      anyCache = true
+    }
   }
 
   if (!anyCache) {

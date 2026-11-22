@@ -61,6 +61,9 @@ export interface RecPage {
   has_more: boolean;
   source: string;
   taste_version: number | null;
+  /** v3 F1 (FOR_YOU_V3): this page is the whole 20 (src/lib/for-you-set.ts), kept until Refresh. Absent: a page of
+   *  today's feed, which pages on with `next_offset`. */
+  set?: boolean;
 }
 
 /** The three taste reactions the recommendation cards offer — identical to the
