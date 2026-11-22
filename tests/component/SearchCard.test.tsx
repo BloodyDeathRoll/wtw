@@ -10,7 +10,8 @@ vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SearchCard, { forgetMyRatings, myRatings } from '@/app/search/SearchCard'
 import { markFor } from '@/app/search/SearchView'
-import { addToWatchlist, getWatchlist, setWatchlistRating } from '@/lib/watchlist'
+import { addToWatchlist, getUnsyncedIds, getUnsyncedRemovals, getWatchlist, setWatchlistRating } from '@/lib/watchlist'
+import { resetReportSaves } from '@/lib/report-saves'
 import { getAllPendingForTesting } from '@/lib/regret-queue'
 import { announceHidden, RATED_EVENT } from '@/modules/session/recommendations/rate'
 
@@ -34,6 +35,7 @@ let outcomes: boolean[]
 beforeEach(() => {
   window.localStorage.clear()
   forgetMyRatings()
+  resetReportSaves()
   calls = []
   ratings = []
   hidden = []
@@ -211,6 +213,26 @@ describe('a title from Search opens the card page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to Watchlist: Memento' }))
     expect(getWatchlist().map((e) => [e.rec.id, e.rating])).toEqual([['movie:77', 'liked']])
     expect(screen.getByRole('button', { name: 'Remove from Watchlist: Memento' })).toBeInTheDocument()
+  })
+})
+
+describe('a save from Search counts at once (v3 Q6, SEARCH.md DEC-4)', () => {
+  const saves = () => calls.filter((c) => c.url === '/api/watchlist/saved')
+
+  it('Add to Watchlist records it in your profile now, and marks it reported', async () => {
+    card()
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Watchlist: Memento' }))
+    await waitFor(() => expect(saves()).toHaveLength(1))
+    expect(saves()[0]).toMatchObject({ method: 'POST', body: { added: ['movie:77'], removed: [] } })
+    await waitFor(() => expect(getUnsyncedIds()).toEqual([]))
+  })
+
+  it('Remove clears it the same way', async () => {
+    addToWatchlist(rec())
+    card()
+    fireEvent.click(screen.getByRole('button', { name: /Remove from Watchlist: Memento/i }))
+    await waitFor(() => expect(saves().at(-1)?.body).toMatchObject({ removed: ['movie:77'] }))
+    await waitFor(() => expect(getUnsyncedRemovals()).toEqual([]))
   })
 })
 

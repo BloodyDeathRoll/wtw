@@ -6,7 +6,10 @@
  * Disliked lit if you rated it, today's breakdown under them, where to watch in Israel, share and the trailer. A
  * rating lands in Seen and your taste through the same route a card uses anywhere else (DEC-4).
  *
- * Not here yet: the match ring (Q5, Alon), and a save teaching your taste (Q6).
+ * A save or a removal here reaches your profile at once (v3 Q6, SEARCH.md DEC-4): the same "saved" mark a save from
+ * For you gets, so For you stops serving the title. A save is interest, not taste: it doesn't move your matches.
+ *
+ * Not here yet: the match ring (Q5, Alon).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +27,7 @@ import {
   type WatchlistRating,
 } from "@/lib/watchlist";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
+import { reportSavesNow } from "@/lib/report-saves";
 import { TitleCardPage } from "@/modules/session/recommendations/RecommendationsView";
 import { deleteRating, HIDDEN_EVENT, postRating, RATED_EVENT, type HiddenDetail, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
 
@@ -194,6 +198,8 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
       if (rated && rated !== "removed") setWatchlistRating(r.id, rated);
     }
     setSaved(!saved);
+    // Recorded in your profile now, not at the next session end (Q6); a failure leaves it queued for that.
+    void reportSavesNow();
   }
 
   return (
