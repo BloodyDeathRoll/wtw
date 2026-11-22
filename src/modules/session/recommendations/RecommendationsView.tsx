@@ -46,7 +46,8 @@ import { FingerprintLoader } from "../components/FingerprintLoader";
 import { WhyPanel, WhyTextOnly } from "@/app/components/RecCard";
 import { Emphasis } from "@/app/components/Emphasis";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
-import { canonicalProvider } from "@/lib/watch-providers";
+import JustWatchCredit from "@/app/components/JustWatchCredit";
+import { canonicalProvider, withIsraelService } from "@/lib/watch-providers";
 import {
   fetchFreshExplain,
   fetchMatches,
@@ -683,9 +684,8 @@ export default function RecommendationsView({
   // Its service badge is the Israeli one (DEC-11); the saved card's `where` was the US.
   const pageRec: Recommendation | null = pageEntry
     ? {
-        ...pageEntry.rec,
+        ...withIsraelService(pageEntry.rec),
         match: todayMatch[pageEntry.rec.id] ?? pageEntry.rec.match,
-        where: pageEntry.rec.where_il ?? null,
         reason: lines.state === "keep" ? pageEntry.rec.reason : lines.byId[pageEntry.rec.id] ?? "",
       }
     : null;
@@ -1048,6 +1048,8 @@ function Feed({
           )
         )}
         {error && <span className={styles.error}>{error}</span>}
+        {/* The credit for the services on the cards (v3 L1): once, at the end. */}
+        {!refreshing && !loading && !hasMore && recs.some((r) => r.where) && <JustWatchCredit at="end" />}
       </div>
     </div>
   );
@@ -1238,10 +1240,9 @@ function FeedCard({
 /**
  * Streaming service as a glass pill on the poster. Hidden when unknown.
  *
- * ⚠️ The "via JustWatch" eyebrow was removed 2026-08-29 at the user's request.
- * TMDB sources this data from JustWatch and its terms require the attribution
- * to be visible wherever availability is shown — it needs to reappear
- * somewhere (a footer or an about/legal line) before this ships publicly.
+ * TMDB sources this data from JustWatch and its terms require a visible
+ * credit wherever availability is shown. The "via JustWatch" on the pill went
+ * on 2026-08-29; the credit is now one line per screen (JustWatchCredit, v3 L1).
  */
 function WhereBadge({ where }: { where: string | null }) {
   if (!where) return null;
@@ -2030,6 +2031,8 @@ function WatchlistList({
       </div>
       <div ref={sentinelRef} className={styles.sentinel}>
         {!hasMore && <span className={styles.muted}>That&rsquo;s everything we found.</span>}
+        {/* The credit for the rows' services (v3 L1): once, at the end. Seen rows show no service. */}
+        {!hasMore && visible.some((e) => !isSeen(e) && e.rec.where_il) && <JustWatchCredit at="end" />}
       </div>
     </div>
   );
@@ -2359,6 +2362,8 @@ export function TitleCardPage({
         onStar={saved ? onStar : undefined}
         whyInline={<InlineWhy snapshot={snapshot ?? null} rec={rec} innerRef={whyRef} />}
       />
+      {/* The credit for the service on the poster (v3 L1). */}
+      {rec.where && <JustWatchCredit at="underCard" />}
     </div>
   );
 }

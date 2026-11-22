@@ -27,8 +27,9 @@ import { AppMenu, VOICES, type Voice } from "@/modules/session/components/AppMen
 import type { AppUser } from "@/modules/session/types";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { ProviderIcon } from "@/app/components/ProviderIcon";
+import JustWatchCredit from "@/app/components/JustWatchCredit";
 import ShareIcon from "@/app/components/ShareIcon";
-import { canonicalProvider } from "@/lib/watch-providers";
+import { canonicalProvider, withIsraelService } from "@/lib/watch-providers";
 import { shareTitle } from "@/lib/share";
 import { fetchMatches } from "@/lib/explain-cache";
 import { addToWatchlist, getWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist, type WatchlistRating } from "@/lib/watchlist";
@@ -272,7 +273,9 @@ export default function SearchView({
     const key = keyOf(h);
     inputRef.current?.blur();
     window.history.pushState(null, "", url(`t=${key}`));
-    setPicked({ key, rec: h.rec });
+    // The service is Israel's, as on the Watchlist's rows and card page (DEC-11): the saved card's
+    // own `where` is the US one from the day it was saved (Death's Game: none, against Prime Video).
+    setPicked({ key, rec: withIsraelService(h.rec) });
     setSaved(isInWatchlist(h.rec.id));
   }
 
@@ -617,6 +620,8 @@ export default function SearchView({
                 onToggle={toggleSave}
                 onShare={() => void shareTitle(card, user.name)}
               />
+              {/* The credit for the service on the poster (v3 L1). */}
+              {card.where && <JustWatchCredit at="underCard" />}
             </div>
           </div>
         )}

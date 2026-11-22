@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- v3 L1 mock (Alon, 2026-11-19): the JustWatch credit, two ways. The pill and row use the app's own CSS values
+     (RecommendationsView.module.css .whereBadge/.whereIcon/.row*; the old credit .whereSource from before 7362b0d).
+     The card and list around them are simplified. Render: see render.sh. -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#f4f1ea;font-family:Inter,system-ui,sans-serif;color:#151515;width:860px}
+  .wrap{display:flex;gap:28px;padding:20px 28px 10px}
+  .col{width:375px}
+  .label{font:600 22px/1.2 Inter;margin:0 0 12px}
+  .phone{width:375px;background:#000;border-radius:22px;overflow:hidden;padding:16px 0 18px;color:#fff}
+  .sect{font:500 12px/1 Inter;letter-spacing:.06em;color:#ffa900;margin:4px 20px 10px;text-transform:uppercase}
+  /* a For you card's poster, simplified */
+  .poster{position:relative;margin:0 16px;height:300px;border-radius:24px;overflow:hidden;background:#222 center/cover}
+  .poster::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25),transparent 30%,transparent 60%,rgba(0,0,0,.6))}
+  .ring{position:absolute;top:12px;right:12px;z-index:2;width:52px;height:52px;border-radius:50%;background:rgba(0,0,0,.5);
+    display:grid;place-items:center;font:700 15px Inter;box-shadow:inset 0 0 0 3px #ffa900}
+  /* .whereBadge, .whereIcon, .whereSource: as in the app */
+  .whereBadge{position:absolute;top:16px;left:16px;z-index:2;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 110px);
+    height:30px;padding:0 10px;border-radius:999px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);font-size:13px;color:#fff;white-space:nowrap}
+  .whereIcon{flex:0 0 auto;width:16px;height:16px;border-radius:4px;background:#5c5c61}
+  .whereSource{font-size:10px;font-weight:400;letter-spacing:.02em;opacity:.6}
+  .ptitle{position:absolute;left:18px;bottom:16px;z-index:2;font:700 24px/1.1 Inter}
+  /* Watchlist rows: .row, .rowBody, .rowTitle, .rowLine, .rowMatch, .rowDot as in the app */
+  .list{margin:18px 20px 0}
+  .row{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+  .row img{width:58px;height:87px;border-radius:8px;object-fit:cover;flex:none}
+  .rowBody{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .rowTitle{margin:0;font-size:17px;font-weight:600;line-height:1.2;letter-spacing:-.01em}
+  .meta{font-size:13px;color:rgba(255,255,255,.6)}
+  .rowLine{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;line-height:1;white-space:nowrap}
+  .rowMatch{color:#ffa900;font-weight:600}.rowDot{color:rgba(255,255,255,.35)}
+  /* Proposal B: one quiet line per screen, in the app's quiet-note style */
+  .credit{margin:14px 20px 0;font-size:12px;line-height:1.3;color:rgba(255,255,255,.45);text-align:center}
+  .cap{font:400 17px/1.45 Inter;margin:12px 28px 22px;width:778px}
+</style></head><body>
+<div class="wrap">
+ <div class="col"><p class="label">A · On each one: “via JustWatch”</p>
+  <div class="phone">
+   <p class="sect">For you</p>
+   <div class="poster" style="background-image:url(https://image.tmdb.org/t/p/w500/5RuZZIouptatjV96BdPmKmRsnGg.jpg)">
+    <div class="whereBadge"><span class="whereIcon"></span><span>Apple TV</span><span class="whereSource">via JustWatch</span></div>
+    <div class="ring">94%</div><div class="ptitle">Slow Horses</div></div>
+   <p class="sect" style="margin-top:22px">Watchlist</p>
+   <div class="list">
+    <div class="row"><img src="https://image.tmdb.org/t/p/w185/Ag2B2KHKQPukjH7WutmgnnSNurZ.jpg"><div class="rowBody"><p class="rowTitle">The Prestige</p><span class="meta">2006 · 2h 10m · ★ 8.2</span>
+      <span class="rowLine"><span>Netflix</span><span class="whereSource">via JustWatch</span><span class="rowDot">·</span><span class="rowMatch">91% match</span></span></div></div>
+    <div class="row"><img src="https://image.tmdb.org/t/p/w185/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg"><div class="rowBody"><p class="rowTitle">Interstellar</p><span class="meta">2014 · 2h 49m · ★ 8.5</span>
+      <span class="rowLine"><span>Prime Video</span><span class="whereSource">via JustWatch</span><span class="rowDot">·</span><span class="rowMatch">88% match</span></span></div></div>
+   </div></div></div>
+ <div class="col"><p class="label">B · Once per screen, at the end</p>
+  <div class="phone">
+   <p class="sect">For you</p>
+   <div class="poster" style="background-image:url(https://image.tmdb.org/t/p/w500/5RuZZIouptatjV96BdPmKmRsnGg.jpg)">
+    <div class="whereBadge"><span class="whereIcon"></span><span>Apple TV</span></div>
+    <div class="ring">94%</div><div class="ptitle">Slow Horses</div></div>
+   <p class="credit">Where to watch: JustWatch</p>
+   <p class="sect" style="margin-top:22px">Watchlist</p>
+   <div class="list">
+    <div class="row"><img src="https://image.tmdb.org/t/p/w185/Ag2B2KHKQPukjH7WutmgnnSNurZ.jpg"><div class="rowBody"><p class="rowTitle">The Prestige</p><span class="meta">2006 · 2h 10m · ★ 8.2</span>
+      <span class="rowLine"><span>Netflix</span><span class="rowDot">·</span><span class="rowMatch">91% match</span></span></div></div>
+    <div class="row" style="border-bottom:0"><img src="https://image.tmdb.org/t/p/w185/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg"><div class="rowBody"><p class="rowTitle">Interstellar</p><span class="meta">2014 · 2h 49m · ★ 8.5</span>
+      <span class="rowLine"><span>Prime Video</span><span class="rowDot">·</span><span class="rowMatch">88% match</span></span></div></div>
+   </div>
+   <p class="credit">Where to watch: JustWatch</p></div></div>
+</div>
+<p class="cap">TMDB’s terms: credit JustWatch wherever we show where to watch. <b>A</b> puts the old “via JustWatch” (removed 29 Aug) on every
+service: the card’s pill and each Watchlist row. <b>B</b> leaves the pill and rows as today and adds one quiet line at the end of For you,
+of the Watchlist, and under the service on the card page. B is the smallest; A is the hardest to miss. Pill and rows from the app’s CSS;
+card and list simplified; the service icon is a stand-in.</p>
+</body></html>

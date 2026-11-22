@@ -168,6 +168,11 @@
   margin: 16px 0 32px;
   text-align: center;
   min-height: 40px;
+  /* A flex item of the scrolling list: without this it shrank to its 40px
+     min-height, what's taller in it ("Find more" is 46px, then the JustWatch
+     credit) spilled out, and the scroll stopped before its 32px margin, so the
+     last line sat under the tab bar (v3 L1, measured at 375px). */
+  flex-shrink: 0;
 }
 /* Find more in progress: the fingerprint alone, no captions. */
 .findMoreLoading {
