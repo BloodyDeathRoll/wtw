@@ -140,7 +140,7 @@ function FactsLine({ row }: { row: SeenRow }) {
 function asRec(r: SeenRow): Recommendation {
   return {
     id: r.key,
-    title: r.title ?? "Untitled",
+    title: r.title ?? "",
     type: r.type ?? "movie",
     year: r.year ?? 0,
     poster_url: r.poster_url,
@@ -193,7 +193,9 @@ export default function SeenView({
       try {
         const res = await fetch("/api/recommendations/ratings");
         if (!res.ok) throw new Error(String(res.status));
-        const json = (await res.json()) as RatingsSummary;
+        const all = (await res.json()) as RatingsSummary;
+        // A title we can't name stays out of Seen rather than show unnamed (#406); the route names what it can.
+        const json = { ...all, items: all.items.filter((i) => i.title), removed: all.removed.filter((r) => r.title) };
         if (alive) {
           setData(json);
           setFrozen(json);
@@ -280,7 +282,7 @@ export default function SeenView({
     if (!from || from === to) return; // the lit icon does nothing (DEC-5)
     void rate(row.key, to);
     window.clearTimeout(noteTimer.current);
-    setNote({ key: row.key, title: row.title ?? "Untitled", from: note?.key === row.key ? note.from : from, to });
+    setNote({ key: row.key, title: row.title ?? "", from: note?.key === row.key ? note.from : from, to });
     noteTimer.current = window.setTimeout(() => setNote(null), NOTE_MS);
   }
 
