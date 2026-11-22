@@ -385,3 +385,75 @@ describe('S3: the card page from Seen, and clearing a rating (DEC-6, DEC-7)', ()
     expect(list.scrollTop).toBe(420)
   })
 })
+
+describe('S4: Hidden from For you, with Restore (DEC-8)', () => {
+  let calls: { url: string; method: string; body: Record<string, unknown> | null }[]
+  let ok: boolean
+  beforeEach(() => {
+    calls = []
+    ok = true
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
+      if (url === '/api/recommendations/removed') return ok ? Response.json({ ok: true }) : new Response('no', { status: 500 })
+      return Response.json(DATA)
+    }))
+  })
+  const flush = () => new Promise((r) => setTimeout(r, 0))
+  const hiddenCount = () => within(screen.getByRole('group', { name: 'Show' })).getByRole('button', { name: /^Hidden from For you/ }).textContent
+  async function openHidden() {
+    render(<SeenView onBack={() => {}} />)
+    await screen.findByText('Seen (3)')
+    fireEvent.click(screen.getByRole('button', { name: /^Hidden from For you/ }))
+  }
+
+  it('the line on top, and a Restore on each hidden row; rated rows have none', async () => {
+    await openHidden()
+    expect(screen.getByText('You hid these on For you, so they never come back there. Restore one and it can.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Restore The Hunger Games' })).toHaveTextContent('Restore')
+    fireEvent.click(screen.getByRole('button', { name: /^Loved/ }))
+    expect(screen.queryByRole('button', { name: /^Restore/ })).toBeNull()
+    expect(screen.queryByText(/You hid these on For you/)).toBeNull()
+  })
+
+  it('Restore: the row folds into the note, the count drops, the server is told; Undo hides it again', async () => {
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Restored. The Hunger Games can show up on For you again.')
+    expect(hiddenCount()).toBe('Hidden from For you')
+    await flush()
+    expect(calls.filter((c) => c.url.includes('/removed')).map((c) => [c.method, c.body])).toEqual([['DELETE', { tmdb_id: '4', media_type: 'movie' }]])
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(titles()).toEqual(['The Hunger Games'])
+    expect(hiddenCount()).toBe('Hidden from For you1')
+    await flush()
+    expect(calls.filter((c) => c.url.includes('/removed')).map((c) => c.method)).toEqual(['DELETE', 'POST'])
+    expect(calls.at(-1)?.body).toEqual({ tmdb_id: '4', media_type: 'movie', title: 'The Hunger Games' })
+  })
+
+  it('a failed Restore puts the row back and drops the note', async () => {
+    ok = false
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    await flush(); await flush()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(titles()).toEqual(['The Hunger Games'])
+    expect(hiddenCount()).toBe('Hidden from For you1')
+  })
+
+  it('Search hears both: restored, then hidden again', async () => {
+    const heard: unknown[] = []
+    const on = (e: Event) => heard.push((e as CustomEvent).detail)
+    window.addEventListener('wtw:hidden', on)
+    try {
+      await openHidden()
+      fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+      await flush()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      await flush()
+      expect(heard).toEqual([{ id: 'movie:4', hidden: false }, { id: 'movie:4', hidden: true }])
+    } finally {
+      window.removeEventListener('wtw:hidden', on)
+    }
+  })
+})
