@@ -22,7 +22,9 @@
  *
  * Order among those (#416): the least served first, so the pick changes from
  * one Refresh to the next; then one that also clashes with the user's
- * strand_b on a major dimension; then the best rated. The clash used to be
+ * strand_b on a major dimension; then the best rated. Serve count outranks
+ * quality on purpose: a 0.70 title never shown beats a 0.95 one shown twice,
+ * and the 0.7 floor bounds what that costs. The clash used to be
  * required, but it counts only where strand_b's confidence is 0.4+, and
  * formula v2 doesn't score on strand_b, so for most people nothing passed.
  */
@@ -106,6 +108,8 @@ export function injectStretchPick(
       candidate.external_rating_score >= MIN_EXTERNAL_RATING)
     .map(candidate => ({ candidate, clash: hasDimensionMismatch(candidate, dna).mismatched }))
     .sort((a, b) =>
+      // `?? 0`, not step 3b's `?? 1`: step 1 sets times_served only on titles
+      // served before (SEEN), so a FRESH title has none: it was served 0 times.
       (a.candidate.title.times_served ?? 0) - (b.candidate.title.times_served ?? 0) ||
       Number(b.clash) - Number(a.clash) ||
       b.candidate.external_rating_score - a.candidate.external_rating_score)
