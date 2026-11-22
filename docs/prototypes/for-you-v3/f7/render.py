@@ -16,7 +16,7 @@ GROUPS = [
   'The label sits over the title, in the poster circles’ outline on the where-to-watch pill’s shape: no new colour, size or icon. '
   'In all three, the line under the poster is the title’s usual one, and the link says “Why this pick” (the card’s own words when it claims no match), '
   'since 40% isn’t a match. La La Land is the pick the app would make for the test account; the account gets none today (see 2).'),
- ('2-next-to-a-normal-card', [('a-normal', 'A normal card'), ('b-stretch-today', 'A stretch pick today'), ('c-stretch-a', 'Proposed (wording A)')],
+ ('2-next-to-a-normal-card', [('a-normal', 'A normal card'), ('b-stretch-today', 'A stretch pick today'), ('c-stretch-b', 'Proposed (wording B)')],
   'Left: Django Unchained, on the test account’s For you now, 97%. Middle: a stretch pick as the app would show it today, nothing says it’s on purpose, '
   'so 40% reads as a bad match, and the line is the engine’s raw note (“high critical rating” isn’t always true: the rating it checks is partly the audience’s). '
   'Right: the label, the usual line, “Why this pick”. Found while checking: the test account gets no stretch picks at all, because the app also waits '

@@ -119,8 +119,8 @@ STATES = {
   'c-stretch-b':      "card('La La Land','new',%s);" % json.dumps(W['b']),
   'c-stretch-c':      "card('La La Land','new',%s);" % json.dumps(W['c']),
   'd-sheet-today':    "sheet('La La Land','today',null,'top');",
-  'd-sheet-new-top':  "sheet('La La Land','new',%s,'top');" % json.dumps(W['a']),
-  'd-sheet-new-end':  "sheet('La La Land','new',%s,'end');" % json.dumps(W['a']),
+  'd-sheet-new-top':  "sheet('La La Land','new',%s,'top');" % json.dumps(W['b']),
+  'd-sheet-new-end':  "sheet('La La Land','new',%s,'end');" % json.dumps(W['b']),
 }
 
 for key, js in STATES.items():
