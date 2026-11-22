@@ -24,6 +24,10 @@ GROUPS = [
  ('4-card-page', [('d-card-one', 'One person'), ('d-card-two', 'Two people'), ('d-card-nobody', 'Nobody')],
   'The same three cases on a title’s card page (Watchlist, Seen, Search), which shows the breakdown on the page itself. It’s the same piece '
   'of the app, so it changes in the same way, in the same words. Scrolled down to the Score breakdown; the title’s poster is above.'),
+ ('5-loved-and-liked', [('e-mixed', 'A \u00b7 Name the titles'), ('e-mixed-count', 'B \u00b7 Count them')],
+  'If you loved two of a person\u2019s titles and liked two: loved comes first, then liked, in one line. '
+  'These four ratings are made up to show the case (the test account has no one like this); the credits are real, Nolan made all four. '
+  'With many titles, A would name three in each half and add \u201cand 2 more\u201d.'),
  ('0-naming-words', [('a-new-one', 'A · Name the titles'), ('a-new-one-count', 'B · Count them')],
   'Two ways to say it. A names what you rated (“you loved Interstellar, Inception and Oppenheimer”). B counts it (“you loved 3 of their titles”). '
   '“His” or “her” isn’t possible: the app doesn’t know it, so B says “their”. With many titles, A would list three and add “and 2 more”.'),
