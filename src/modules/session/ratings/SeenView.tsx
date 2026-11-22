@@ -298,6 +298,7 @@ export default function SeenView({
     const was = pageRef.current?.row;
     setPage(null);
     const gone = was && cleared.current[was.key];
+    // The name is never empty: nameless rows are filtered out on load (#406).
     if (gone) showNote({ key: was.key, title: was.title ?? "", from: gone.rating });
   }
   // The list's place under the card page, put back when the card closes (display: none can drop a scroll offset).
@@ -416,6 +417,7 @@ export default function SeenView({
       cleared.current[key] = item;
       dataRef.current = { ...now, items: now.items.filter((i) => i.id !== key) };
       setData(dataRef.current);
+      // The name is never empty: nameless rows are filtered out on load (#406).
       showNote({ key, title: item.title ?? "", from: item.rating });
     }
   }
