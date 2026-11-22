@@ -229,6 +229,70 @@ function peopleIn(crew: TitleRow['crew'] | null | undefined): Map<string, RatedT
 }
 
 // ─────────────────────────────────────────────
+// The people you rated, for "Why it's a match" (v3 F6)
+// ─────────────────────────────────────────────
+
+/** One person under the sheet's Creators bar: who they are here, and the
+ *  titles of theirs you loved and liked, best known first. */
+export interface RatedCreator {
+  name: string
+  /** Their roles on THIS title, crew_matches order: "director, writer". */
+  role: string
+  loved: string[]
+  liked: string[]
+}
+
+/**
+ * Everyone in this title you've rated something of (v3 F6, FOR-YOU.md DEC-8),
+ * strongest first. crew_matches alone can't say it: it holds every person in
+ * your profile (strand_a), and the taste games' "Creators they trust", the
+ * 48-hour check-in and chat write people there too. So a person is named only
+ * when they're also in a title you loved or liked (`rated`, from your own
+ * ratings). Liked people only: a rated-down one is a reason against.
+ *
+ * The title itself counts when you've rated it (Seen's card page), last, so
+ * the bar it raised is still explained. Cinematographers are never named
+ * (users don't follow them; `peopleIn` leaves them out).
+ */
+export function ratedCreators(item: CardReasonInput, rated: RatedByPerson): RatedCreator[] {
+  const { title, reason_payload: p } = item
+  const self = `${title.type}:${title.tmdb_id}`
+
+  // crew_matches carries names only; the title row maps a name to its person id.
+  const idOf = new Map<string, string>()
+  for (const c of [...(title.crew?.directors ?? []), ...(title.crew?.writers ?? []), ...(title.crew?.cast ?? [])]) {
+    if (!idOf.has(c.name)) idOf.set(c.name, c.tmdb_person_id)
+  }
+
+  // One entry per person, every role they had here, their strongest affinity.
+  const people = new Map<string, { roles: string[]; affinity: number }>()
+  for (const m of p.crew_matches) {
+    if (!(m.affinity_score > 0)) continue
+    const e = people.get(m.name) ?? { roles: [], affinity: 0 }
+    if (!e.roles.includes(m.role)) e.roles.push(m.role)
+    e.affinity = Math.max(e.affinity, m.affinity_score)
+    people.set(m.name, e)
+  }
+
+  const out: (RatedCreator & { affinity: number })[] = []
+  for (const [name, { roles, affinity }] of people) {
+    const id = idOf.get(name)
+    const titles = (id ? rated.get(id) ?? [] : [])
+      .slice()
+      .sort((a, b) => (a.key === self ? 1 : 0) - (b.key === self ? 1 : 0) || b.votes - a.votes)
+    // A person can be in a rated title twice over (writer-director): once each.
+    const names = (reaction: 'loved' | 'liked') =>
+      [...new Set(titles.filter(t => t.reaction === reaction).map(t => t.title))]
+    const loved = names('loved'), liked = names('liked')
+    if (loved.length + liked.length === 0) continue
+    out.push({ name, role: roles.join(', '), loved, liked, affinity })
+  }
+  return out
+    .sort((a, b) => b.affinity - a.affinity)
+    .map(({ affinity: _affinity, ...c }) => c)
+}
+
+// ─────────────────────────────────────────────
 // The sentence
 // ─────────────────────────────────────────────
 

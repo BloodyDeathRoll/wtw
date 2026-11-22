@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import type { Recommendation } from '@/types/recommendation'
 
@@ -9,7 +9,7 @@ import type { Recommendation } from '@/types/recommendation'
 vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SearchCard, { forgetMyRatings, myRatings } from '@/app/search/SearchCard'
-import { markFor } from '@/app/search/SearchView'
+import { markFor, TitleRow } from '@/app/search/SearchView'
 import { addToWatchlist, getWatchlist, setWatchlistRating } from '@/lib/watchlist'
 import { getAllPendingForTesting } from '@/lib/regret-queue'
 import { announceHidden, RATED_EVENT } from '@/modules/session/recommendations/rate'
@@ -247,10 +247,11 @@ describe('where a title stands with you (SEARCH_V3, SEARCH.md DEC-5)', () => {
   })
 
   // Source-level: both views need a whole page around them.
+  // For you's X, Hide and Undo share one write (v3 F3); RecommendationsView-hide.test.tsx checks what it announces.
   it('For you\'s Remove and Seen\'s Restore announce it once the write lands', () => {
     const feed = readFileSync('src/modules/session/recommendations/RecommendationsView.tsx', 'utf8')
     const seen = readFileSync('src/modules/session/ratings/RatingsView.tsx', 'utf8')
-    expect(feed).toMatch(/if \(!res\.ok\) \{[\s\S]{0,200}\} else \{\s*announceHidden\(`\$\{rec\.type\}:\$\{tmdb_id\}`, true\);/)
+    expect(feed).toMatch(/if \(!res\.ok\) \{[\s\S]{0,200}\} else \{\s*announceHidden\(`\$\{rec\.type\}:\$\{tmdb_id\}`, hide\);/)
     expect(seen).toMatch(/if \(!res\.ok\) throw new Error\(String\(res\.status\)\);\s*announceHidden\(`\$\{rem\.media_type\}:\$\{rem\.tmdb_id\}`, false\);/)
   })
 })
@@ -269,5 +270,80 @@ describe('SearchView under SEARCH_V3', () => {
   it('the mark follows the year on the second line, in white; the third line is the actors or the character alone (Eran, #365)', () => {
     expect(view).toMatch(/\{h\.year \?\? ""\}[\s\S]*?series[\s\S]*?<span className=\{styles\.mark\}>\{mark\}<\/span>[\s\S]*?<\/small>\s*<small className=\{styles\.cast\}>\{line \|\| "\\u00a0"\}<\/small>/)
     expect(readFileSync('src/app/search/search.module.css', 'utf8')).toMatch(/\.row \.mark \{[^}]*color: #fff;/)
+  })
+  it('the year line reads year · series · mark · match, each " · " only after something (Q2 + Q7)', () => {
+    const hit = (o: object) => ({ tmdb_id: '1', title: 'T', poster_path: null, ...o }) as Parameters<typeof TitleRow>[0]['h']
+    const yearLine = (h: Parameters<typeof TitleRow>[0]['h'], mark?: string, match?: number) => {
+      const { container, unmount } = render(<TitleRow h={h} mark={mark} match={match} line="as Han Solo" onPick={() => {}} />)
+      const text = container.querySelector('b')!.nextElementSibling!.textContent // the line under the title
+      unmount()
+      return text
+    }
+    expect(yearLine(hit({ type: 'tv', year: 2023 }), '❤️ Loved', 0.87)).toBe('2023 · series · ❤️ Loved · 87% match')
+    expect(yearLine(hit({ type: 'movie', year: 1977 }), 'Hidden from For you')).toBe('1977 · Hidden from For you')
+    expect(yearLine(hit({ type: 'movie', year: null }), 'In your Watchlist', 0.5)).toBe('In your Watchlist · 50% match')
+    expect(yearLine(hit({ type: 'movie', year: 2000 }), undefined, 0.97)).toBe('2000 · 97% match')
+    expect(yearLine(hit({ type: 'movie', year: 2000 }))).toBe('2000')
+  })
+  it('a year line that would wrap drops the word "match": "97%" alone; one that fits keeps it (Eran, #365)', () => {
+    const h = { tmdb_id: '1', title: '1923', type: 'tv', year: 2022, poster_path: null } as Parameters<typeof TitleRow>[0]['h']
+    const lineOf = (height: number) => {
+      const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height } as DOMRect)
+      const style = vi.spyOn(window, 'getComputedStyle').mockReturnValue({ lineHeight: '18px' } as CSSStyleDeclaration)
+      const { container, unmount } = render(<TitleRow h={h} mark="In your Watchlist" match={0.97} line="as Jacob Dutton" onPick={() => {}} />)
+      const text = container.querySelector('b')!.nextElementSibling!.textContent
+      unmount(); rect.mockRestore(); style.mockRestore()
+      return text
+    }
+    expect(lineOf(36)).toBe('2022 · series · In your Watchlist · 97%')
+    expect(lineOf(18)).toBe('2022 · series · In your Watchlist · 97% match')
+  })
+  it('a change of width measures again, both ways (a rotation)', () => {
+    const h = { tmdb_id: '1', title: '1923', type: 'tv', year: 2022, poster_path: null } as Parameters<typeof TitleRow>[0]['h']
+    let box = { height: 18, width: 300 }
+    let resized: () => void = () => {}
+    vi.stubGlobal('ResizeObserver', class { constructor(cb: () => void) { resized = cb } observe() {} disconnect() {} })
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => box as DOMRect)
+    const style = vi.spyOn(window, 'getComputedStyle').mockReturnValue({ lineHeight: '18px' } as CSSStyleDeclaration)
+    try {
+      const { container } = render(<TitleRow h={h} mark="In your Watchlist" match={0.97} line="as Jacob Dutton" onPick={() => {}} />)
+      const line = () => container.querySelector('b')!.nextElementSibling!.textContent
+      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+      box = { height: 36, width: 200 } // narrower: now it wraps
+      act(() => resized())
+      expect(line()).toBe('2022 · series · In your Watchlist · 97%')
+      box = { height: 18, width: 300 } // wider again: it fits
+      act(() => resized())
+      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+    } finally {
+      rect.mockRestore(); style.mockRestore(); vi.unstubAllGlobals()
+    }
+  })
+  it('with no ResizeObserver, the window\'s resize measures again; a late font measures once more', async () => {
+    const h = { tmdb_id: '1', title: '1923', type: 'tv', year: 2022, poster_path: null } as Parameters<typeof TitleRow>[0]['h']
+    let height = 18
+    let fontsLoaded: () => void = () => {}
+    vi.stubGlobal('ResizeObserver', undefined)
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: new Promise<void>((r) => { fontsLoaded = r }) } })
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ height, width: 300 }) as DOMRect)
+    const style = vi.spyOn(window, 'getComputedStyle').mockReturnValue({ lineHeight: '18px' } as CSSStyleDeclaration)
+    try {
+      const { container } = render(<TitleRow h={h} mark="In your Watchlist" match={0.97} line="as Jacob Dutton" onPick={() => {}} />)
+      const line = () => container.querySelector('b')!.nextElementSibling!.textContent
+      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+      height = 36
+      act(() => { window.dispatchEvent(new Event('resize')) })
+      expect(line()).toBe('2022 · series · In your Watchlist · 97%')
+      height = 18
+      await act(async () => { fontsLoaded() })
+      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+    } finally {
+      rect.mockRestore(); style.mockRestore(); vi.unstubAllGlobals()
+      delete (document as unknown as { fonts?: unknown }).fonts
+    }
+  })
+  it('the third line is the actors or the character alone', () => {
+    const { container } = render(<TitleRow h={{ tmdb_id: '1', title: 'T', type: 'movie', year: 1977, poster_path: null } as Parameters<typeof TitleRow>[0]['h']} mark="👍 Liked" line="as Han Solo" onPick={() => {}} />)
+    expect(container.querySelector('b')!.nextElementSibling!.nextElementSibling!.textContent).toBe('as Han Solo')
   })
 })
