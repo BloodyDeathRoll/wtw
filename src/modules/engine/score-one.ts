@@ -134,3 +134,44 @@ export async function scoreOneTitle(
     taste_version: dna.metadata.taste_version,
   }
 }
+
+/**
+ * The match alone for several titles at once (v3 Q7: Search's results, the
+ * Watchlist's rows), keyed `type:tmdb_id`. The same number scoreOneTitle
+ * gives each: step 2's parts are per title, so scoring them together changes
+ * nothing (if a part ever comes to depend on the set, that stops being true:
+ * the unit test mocks step 2, so only a live check would show it; #393 has
+ * one), and each is placed against its own list's saved pool. No
+ * breakdown, so no steps 3 and 6. A title it can't score honestly (outside
+ * the catalogue, cold start, v1, no pool) is left out, never guessed.
+ */
+export async function scoreMatches(
+  userId: string,
+  keys: TitleKey[],
+  given?: { dna?: DNASchema },
+): Promise<Record<string, number>> {
+  if (!keys.length || !formulaV2Enabled()) return {}
+  const dna = given?.dna ?? await loadDNA(userId)
+  if (!dna || isColdStart(dna)) return {}
+
+  const types = [...new Set(keys.map(k => k.type))]
+  const [rows, ...saved] = await Promise.all([
+    loadTitleRows(keys),
+    ...types.map(t => readPoolStats(userId, poolLists(t))),
+  ])
+  if (!rows.length) return {}
+  const pools = new Map(types.map((t, i) => [t, saved[i]]))
+  if (types.some(t => !pools.get(t))) {
+    const built = await buildPool(userId, dna)
+    for (const t of types) if (!pools.get(t)) pools.set(t, built)
+  }
+
+  const out: Record<string, number> = {}
+  for (const s of await scoreCandidates(rows, dna)) {
+    const pool = pools.get(s.title.type)
+    if (!pool) continue
+    const match = displayMatch(scoreAgainstPool(v2PartsOf(s), pool.stats).composite)
+    if (match > 0) out[`${s.title.type}:${s.title.tmdb_id}`] = match
+  }
+  return out
+}

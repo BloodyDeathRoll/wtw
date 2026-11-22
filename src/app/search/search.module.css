@@ -206,6 +206,10 @@
   /* Your mark after the year (SEARCH_V3, Eran 2026-11-19): white, same size and weight. */
   color: #fff;
 }
+.row .matchWord {
+  /* "match" in regular weight; "97%" stays gold and bold (Eran, #365). */
+  font-weight: 400;
+}
 .row .cast {
   overflow: hidden;
   text-overflow: ellipsis;
