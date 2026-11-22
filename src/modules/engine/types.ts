@@ -153,4 +153,12 @@ export interface TasteWhy {
   catch_shared?: boolean
 }
 
-export type ReasonPayloadWithTaste = import('@/types/dna').ReasonPayload & { taste?: TasteWhy }
+export type ReasonPayloadWithTaste = import('@/types/dna').ReasonPayload & {
+  taste?: TasteWhy
+  /**
+   * v3 F6: the people in the title you've rated something of, with those
+   * titles (step7-card-reason.ts `ratedCreators`). Absent on a payload made
+   * before it (an older cached batch, a saved Watchlist snapshot).
+   */
+  rated_creators?: import('./pipeline/step7-card-reason').RatedCreator[]
+}

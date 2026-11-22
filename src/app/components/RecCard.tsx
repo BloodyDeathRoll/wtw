@@ -288,6 +288,37 @@ export function WhyTextOnly({ text, pending = false }: { text: string; pending?:
   )
 }
 
+/** "Inception" · "Inception and Tenet" · "Inception, Tenet and 2 more": two
+ *  titles at most, best known first (Eran, 2026-11-22). */
+function TitleList({ titles }: { titles: string[] }) {
+  const named = titles.slice(0, 2)
+  const more = titles.length - named.length
+  return (
+    <>
+      <em>{named[0]}</em>
+      {named[1] != null && (more > 0 ? ", " : " and ")}
+      {named[1] != null && <em>{named[1]}</em>}
+      {more > 0 && ` and ${more} more`}
+    </>
+  )
+}
+
+/** The line under a person's name: "Director, writer · you loved X and Y,
+ *  and liked Z" (approved mock docs/prototypes/for-you-v3/f6). Without the
+ *  titles (a payload from before F6), just the role. */
+function CreatorLine({ c }: { c: { role: string; loved: string[]; liked: string[] } }) {
+  const role = c.role.charAt(0).toUpperCase() + c.role.slice(1)
+  if (c.loved.length + c.liked.length === 0) return <>{role}</>
+  return (
+    <>
+      {role} · you{" "}
+      {c.loved.length > 0 && <>loved <TitleList titles={c.loved} /></>}
+      {c.loved.length > 0 && c.liked.length > 0 && ", and "}
+      {c.liked.length > 0 && <>liked <TitleList titles={c.liked} /></>}
+    </>
+  )
+}
+
 export function WhyPanel({ result, why }: { result: RecommendationResult; why?: string | null | "pending" | "failed" }) {
   const p = result.reason_payload as ReasonPayloadWithTaste
   // Present when the batch was scored by formula v2; an older batch or v1 has none.
@@ -331,6 +362,15 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
   // v2 without bars (scored in too small a pool to compare) shows none rather than guessing.
   const segments = taste ? (taste.bars ? SCORE_SEGMENTS_V2 : []) : SCORE_SEGMENTS
 
+  // v3 F6 (FOR-YOU.md DEC-8): with the v2 bars, the people you rated are named
+  // under the Creators bar, and with nobody there's no bar, one quiet line.
+  // The Crew section folds into it. A payload from before F6 has no
+  // rated_creators: its people are named without "you loved", and with no
+  // one you follow it still gets the quiet line, never the bar.
+  const creatorsRow = taste?.bars != null
+  const creators: { name: string; role: string; loved: string[]; liked: string[] }[] =
+    p.rated_creators ?? crewLines.map(m => ({ ...m, loved: [], liked: [] }))
+
   // composite_score 0 is "no match claim": a cold-start pick (popular titles
   // served under 15 ratings). A breakdown of a score that doesn't exist would
   // be a made-up claim, so it's left out; the written "why" says what it is.
@@ -370,12 +410,23 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
       {!noClaim && segments.length > 0 && (
         <div className={styles.whySection}>
           <div className={styles.whySectionLabel}>Score breakdown</div>
-          {segments.map(seg => (
+          {segments.map(seg => seg.key === "creators" && creatorsRow && creators.length === 0 ? (
+            <div key={seg.key} className={styles.scoreRow}>
+              <div className={styles.scoreLabel}>{seg.label}</div>
+              <div className={`${styles.whyText} ${styles.whyTextMuted}`}>Nobody you’ve rated is in this one.</div>
+            </div>
+          ) : (
             <div key={seg.key} className={styles.scoreRow}>
               <div className={styles.scoreLabel}>{seg.label}</div>
               <div className={styles.scoreTrack}>
                 <div className={styles.scoreFill} style={{ width: grown ? `${Math.min(1, scores[seg.key]) * 100}%` : 0 }} />
               </div>
+            </div>
+          ))}
+          {creatorsRow && creators.map(c => (
+            <div key={c.name} className={styles.crewInfo}>
+              <span className={styles.crewName}>{c.name}</span>
+              <span className={styles.crewWho}><CreatorLine c={c} /></span>
             </div>
           ))}
         </div>
@@ -395,7 +446,7 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
         </div>
       )}
 
-      <div className={styles.whySection}>
+      {!(creatorsRow && !noClaim) && <div className={styles.whySection}>
         <div className={styles.whySectionLabel}>Crew</div>
         {crewLines.length > 0 ? (
           crewLines.map((m, i) => (
@@ -407,7 +458,7 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
         ) : (
           <div className={`${styles.whyText} ${styles.whyTextMuted}`}>No one you follow is in this one.</div>
         )}
-      </div>
+      </div>}
 
       {against.length > 0 && (
         <div className={styles.whySection}>
