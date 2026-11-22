@@ -85,6 +85,7 @@ import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { forYouV3Enabled } from "@/lib/flags";
 import { shareTitle } from "@/lib/share";
 import { announceHidden, deleteRating, postRating } from "./rate";
+import { useStoppedOn } from "./use-stopped-on";
 import ShareIcon from "@/app/components/ShareIcon";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
@@ -295,6 +296,8 @@ export default function RecommendationsView({
   const [isSet, setIsSet] = useState(false);
   // The last Refresh failed: the same 20 stay, and the top line says so.
   const [refreshFailed, setRefreshFailed] = useState(false);
+  // v3 F4 (FOR-YOU.md DEC-6): the cards of the 20 the person stopped on, reported for resting (use-stopped-on.ts).
+  const contentRef = useRef<HTMLDivElement>(null);
   // The card whose "Why this?" detail overlay is open (null = closed).
   const [detail, setDetail] = useState<Recommendation | null>(null);
   // Once a card has been judged we swap its buttons for the outcome tag.
@@ -311,6 +314,13 @@ export default function RecommendationsView({
   // v3 F3 (FOR-YOU.md DEC-5): cards folded into their "Hidden … Undo" note, by rec.id, with the card's height at the
   // tap (the note folds from it). The note keeps the card's place for as long as this list is on screen.
   const [hidden, setHidden] = useState<Record<string, number>>({});
+  const setKey = recs.map((r) => r.id).join(",");
+  const flushStops = useStoppedOn(
+    contentRef,
+    mode === "recommendations" && isSet && !refreshing && forYouV3Enabled(),
+    `${setKey}|${Object.keys(hidden).join(",")}`,
+    setKey,
+  );
   // When the server's watchlist lands after mount (hydrateWatchlist): the
   // watchlist view re-pages from it; the feed only refreshes its saved marks,
   // since re-paging there would throw away the cards on screen.
@@ -574,7 +584,7 @@ export default function RecommendationsView({
     setRefreshFailed(false);
     setError(null);
     try {
-      await feedbackQueueRef.current;
+      await Promise.all([feedbackQueueRef.current, flushStops()]);
       const page = await onRefresh();
       if (page && page.set) {
         setHidden({});
@@ -952,7 +962,7 @@ export default function RecommendationsView({
         <WatchlistChips chips={chips} active={filter} onPick={setFilter} />
       )}
 
-      <div className={styles.content}>
+      <div ref={contentRef} className={styles.content}>
         {mode === "watchlist" && pageEntry && pageRec ? (
           <WatchlistCardPage
             key={pageEntry.rec.id}
@@ -1144,6 +1154,7 @@ function Feed({
               onShare={onShare}
               saved={saved.has(rec.id)}
               onToggleWatchlist={onToggleWatchlist}
+              stretch={!!rec.is_stretch_pick}
             />
           )}
           {onCalibrate && (i + 1) % NUDGE_EVERY === 0 && <CalibrateNudge onClick={onCalibrate} />}
@@ -1274,6 +1285,7 @@ function FeedCard({
   starred,
   onStar,
   whyInline,
+  stretch = false,
 }: {
   rec: Recommendation;
   reasonPending?: boolean;
@@ -1297,6 +1309,12 @@ function FeedCard({
    * under Seen it?, in place of the "Why it's a match" link. Absent on the feed.
    */
   whyInline?: ReactNode;
+  /**
+   * v3 F7 (FOR-YOU.md DEC-10): a stretch pick on the feed, the 1 in 20 placed
+   * on purpose outside your taste: the label over the title, and the link
+   * claims no match. Only the feed passes it; a card page re-scores the title.
+   */
+  stretch?: boolean;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   // The gap can only close from a measured height: pin it before the collapse
@@ -1313,12 +1331,14 @@ function FeedCard({
   // title is saved there is nothing to turn down, so the X goes (2026-11-06).
   // Hide (v3 F3) follows the same rule.
   const showX = (!!onRemove || !!onHide) && !saved;
+  const claimsMatch = rec.match > 0 && !stretch;
 
   return (
     <article
       ref={cardRef}
       className={`${styles.card} ${styles.heroCard} ${leaving ? styles.cardLeaving : ""}`}
       aria-hidden={leaving || undefined}
+      data-rec-id={rec.id}
     >
       {/* The poster is the card's top half (2026-10-26, Eran picked layout C,
           docs/prototypes/rec-card/g-final-*.jpg): where to watch and the
@@ -1330,6 +1350,7 @@ function FeedCard({
         <MatchRing match={rec.match} className={styles.heroRing} />
         <div className={styles.heroFoot}>
           <div className={styles.cardTitleBlock}>
+            {stretch && <StretchLabel />}
             <h3 className={styles.heroTitle}>{rec.title}</h3>
             <MetaRow rec={rec} />
           </div>
@@ -1383,10 +1404,11 @@ function FeedCard({
             type="button"
             className={styles.whyLink}
             onClick={() => onWhy(rec)}
-            aria-label={`Why ${rec.title} is a match`}
+            aria-label={claimsMatch ? `Why ${rec.title} is a match` : `Why ${rec.title} was picked`}
           >
-            {/* No score, no "match" claim (taste-game saves, cold start). */}
-            <span>{rec.match > 0 ? "Why it\u2019s a match" : "Why this pick"}</span>
+            {/* No score, no "match" claim (taste-game saves, cold start), and
+                none on a stretch pick (v3 F7): 40% or less isn't a match. */}
+            <span>{claimsMatch ? "Why it\u2019s a match" : "Why this pick"}</span>
             <ChevronRight size={18} strokeWidth={2.2} aria-hidden />
           </button>
         )}
@@ -1491,6 +1513,14 @@ function WhereBadge({ where }: { where: string | null }) {
       <span>{where}</span>
     </div>
   );
+}
+
+/**
+ * v3 F7 (FOR-YOU.md DEC-10, Q-3; docs/prototypes/for-you-v3/f7, Eran 2026-11-22): over a stretch pick's title, on the
+ * card and in its "Why this pick" sheet. True of every stretch pick: step 5 places it on purpose, below 40% match.
+ */
+function StretchLabel() {
+  return <span className={styles.stretchLabel}>Not your usual, on purpose</span>;
 }
 
 /** Round glass play button on the poster. Absent when there is no trailer. */
@@ -1878,7 +1908,7 @@ function WhyDetailOverlay({
         className={styles.whySheet}
         role="dialog"
         aria-modal="true"
-        aria-label={`Why ${rec.title} is a match`}
+        aria-label={rec.match > 0 && !rec.is_stretch_pick ? `Why ${rec.title} is a match` : `Why ${rec.title} was picked`}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -1887,6 +1917,8 @@ function WhyDetailOverlay({
         <div className={styles.whyGrab} aria-hidden />
         <div className={`${styles.whySheetHead} ${scrolled ? styles.whySheetHeadScrolled : ""}`}>
           <div className={styles.cardTitleBlock}>
+            {/* Opened only from the feed, so the flag means a stretch pick there (v3 F7). */}
+            {rec.is_stretch_pick && <StretchLabel />}
             <h2 className={styles.heroTitle}>{rec.title}</h2>
             <MetaRow rec={rec} />
           </div>

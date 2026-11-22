@@ -440,7 +440,6 @@ export function plotLine(synopsis: string | null | undefined, max: number): stri
 }
 
 interface ReasonParts {
-  stretch: string | null
   people: string[]
   story: (withMood: boolean, withAbout: boolean, nExtras: number) => string
   hasStory: boolean
@@ -494,7 +493,6 @@ function reasonParts(item: CardReasonInput, rated: RatedByPerson, maxPeople: num
   const crowd = omdb >= 0.75 ? 'Critics loved it.' : tmdb >= 0.75 ? 'Audiences loved it.' : ''
 
   return {
-    stretch: p.is_stretch_pick && p.stretch_rationale ? p.stretch_rationale : null,
     people: personSentences(item, rated, maxPeople),
     story,
     // Nothing to say about the story beyond "a film".
@@ -512,7 +510,10 @@ function reasonParts(item: CardReasonInput, rated: RatedByPerson, maxPeople: num
  *     catalogue's plot text, so no two cards read alike.
  * No mood labels and no "Critics loved it": on every card, they read the
  * same ("A warm and hopeful comedy. Critics loved it." on card after card)
- * and stopped meaning anything. A stretch pick keeps its own rationale.
+ * and stopped meaning anything. A stretch pick gets the same line: the card's
+ * label says it's a stretch (v3 F7, Eran 2026-11-22), and its old rationale
+ * ("Intentional stretch: … High critical rating. Accept or reject …") was
+ * engine-speak and not always true.
  */
 export function cardReason(
   item: CardReasonInput,
@@ -521,7 +522,6 @@ export function cardReason(
   plots: Map<string, string> = new Map(),
 ): string {
   const r = reasonParts(item, rated, 1)
-  if (r.stretch) return r.stretch
   const who = r.people[0] ?? ''
   const max = CARD_REASON_MAX_CHARS
   const synopsis = item.title.synopsis
@@ -558,7 +558,6 @@ export function sheetReason(item: CardReasonInput, rated: RatedByPerson = new Ma
   const r = reasonParts(item, rated, 2)
   const plot = plotLine(item.title.synopsis, 320)
   const parts = [
-    r.stretch ?? '',
     ...r.people,
     plot ?? (r.hasStory ? r.story(false, true, 3) : ''),
   ].filter(Boolean)
