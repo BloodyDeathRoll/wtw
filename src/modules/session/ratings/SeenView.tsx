@@ -192,6 +192,13 @@ export default function SeenView({
   >(null);
   // Hidden titles restored here, kept for the note's Undo while it shows (S4).
   const restoredRows = useRef<Record<string, RemovedItem>>({});
+  // A title's Restore and Undo writes go one after the other, so the server ends where the screen does.
+  const hiddenWrites = useRef<Record<string, Promise<void>>>({});
+  function inOrder(key: string, write: () => Promise<void>): Promise<void> {
+    const next = (hiddenWrites.current[key] ?? Promise.resolve()).then(write);
+    hiddenWrites.current[key] = next.catch(() => {});
+    return next;
+  }
   const noteTimer = useRef<number | undefined>(undefined);
   const noteRef = useRef(note);
   noteRef.current = note;
@@ -434,17 +441,25 @@ export default function SeenView({
     // The name is never empty: nameless rows are filtered out on load (#406).
     showNote({ key: row.key, title: row.title ?? "", restored: true });
     try {
-      const res = await fetch("/api/recommendations/removed", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type }),
+      await inOrder(row.key, async () => {
+        const res = await fetch("/api/recommendations/removed", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        announceHidden(row.key, false);
       });
-      if (!res.ok) throw new Error(String(res.status));
-      announceHidden(row.key, false);
     } catch {
+      // An Undo already tapped has put it back; otherwise put it back here, and drop the note and its timer.
+      if (!restoredRows.current[row.key]) return;
       delete restoredRows.current[row.key];
       setHidden(item, true);
-      setNote((cur) => (cur?.key === row.key ? null : cur));
+      if (noteRef.current?.key === row.key) {
+        window.clearTimeout(noteTimer.current);
+        noteRef.current = null;
+        setNote(null);
+      }
     }
   }
 
@@ -455,13 +470,15 @@ export default function SeenView({
     delete restoredRows.current[key];
     setHidden(item, true);
     try {
-      const res = await fetch("/api/recommendations/removed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type, title: item.title }),
+      await inOrder(key, async () => {
+        const res = await fetch("/api/recommendations/removed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type, title: item.title }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        announceHidden(key, true);
       });
-      if (!res.ok) throw new Error(String(res.status));
-      announceHidden(key, true);
     } catch {
       restoredRows.current[key] = item;
       setHidden(item, false);

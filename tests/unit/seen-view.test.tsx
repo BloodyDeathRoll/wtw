@@ -441,6 +441,39 @@ describe('S4: Hidden from For you, with Restore (DEC-8)', () => {
     expect(hiddenCount()).toBe('Hidden from For you1')
   })
 
+  it('Undo tapped while the Restore is still on its way: the hide goes after it, and Search hears them in order', async () => {
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const order: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/removed') {
+        order.push(`${init?.method} sent`)
+        if (init?.method === 'DELETE') await held
+        order.push(`${init?.method} done`)
+        return Response.json({ ok: true })
+      }
+      return Response.json(DATA)
+    }))
+    const heard: boolean[] = []
+    const on = (e: Event) => heard.push((e as CustomEvent).detail.hidden)
+    window.addEventListener('wtw:hidden', on)
+    try {
+      await openHidden()
+      fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      await flush()
+      expect(order).toEqual(['DELETE sent'])
+      release()
+      await flush(); await flush(); await flush()
+      expect(order).toEqual(['DELETE sent', 'DELETE done', 'POST sent', 'POST done'])
+      expect(heard).toEqual([false, true])
+      expect(titles()).toEqual(['The Hunger Games'])
+      expect(hiddenCount()).toBe('Hidden from For you1')
+    } finally {
+      window.removeEventListener('wtw:hidden', on)
+    }
+  })
+
   it('Search hears both: restored, then hidden again', async () => {
     const heard: unknown[] = []
     const on = (e: Event) => heard.push((e as CustomEvent).detail)
