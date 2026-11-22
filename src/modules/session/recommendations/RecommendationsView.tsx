@@ -82,7 +82,9 @@ import {
   type WatchlistFilter,
 } from "./watchlist-order";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
-import { forYouV3Enabled } from "@/lib/flags";
+import { fastTabsEnabled, forYouV3Enabled } from "@/lib/flags";
+import { heldTwenty, holdTwenty, isNewTwenty } from "./held-twenty";
+import { tabScroller } from "@/modules/session/tab-place";
 import { shareTitle } from "@/lib/share";
 import { announceHidden, deleteRating, postRating } from "./rate";
 import { useStoppedOn } from "./use-stopped-on";
@@ -286,14 +288,25 @@ export default function RecommendationsView({
   onCalibrate,
   building = false,
 }: Props) {
-  const [recs, setRecs] = useState<Recommendation[]>([]);
-  const [hasMore, setHasMore] = useState(true);
+  // v3 F8 (FAST_TABS): For you's 20 as you left them, kept between tabs (held-twenty.ts): painted at once, no loader.
+  const holdOn = mode === "recommendations" && !!user && fastTabsEnabled() && forYouV3Enabled();
+  const [initialHeld] = useState(() => (holdOn ? heldTwenty(user?.id, contentType) : null));
+  const [recs, setRecs] = useState<Recommendation[]>(() => initialHeld?.recs ?? []);
+  // The list the cards on screen belong to: only that list's 20 are kept (never the old list's cards under a new one).
+  const [listOf, setListOf] = useState<ContentType | null>(initialHeld ? contentType : null);
+  const contentTypeRef = useRef(contentType);
+  contentTypeRef.current = contentType;
+  // The ids of the server's 20 as they last came in (HeldTwenty.served), and the Refreshes started (a quiet read
+  // that lands after one is old news).
+  const servedRef = useRef<string[]>(initialHeld?.served ?? []);
+  const refreshesRef = useRef(0);
+  const [hasMore, setHasMore] = useState(!initialHeld);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // v3 F1: the list on screen is the 20 (the server said so), kept until Refresh: no paging, the top line and the
   // end card. False: today's paged feed, which is also what a failure to read the 20 serves.
-  const [isSet, setIsSet] = useState(false);
+  const [isSet, setIsSet] = useState(!!initialHeld);
   // The last Refresh failed: the same 20 stay, and the top line says so.
   const [refreshFailed, setRefreshFailed] = useState(false);
   // v3 F4 (FOR-YOU.md DEC-6): the cards of the 20 the person stopped on, reported for resting (use-stopped-on.ts).
@@ -305,15 +318,17 @@ export default function RecommendationsView({
   // re-opening the view.
   const [feedbackGiven, setFeedbackGiven] = useState<
     Record<string, WatchlistRating>
-  >({});
+  >(() => initialHeld?.feedbackGiven ?? {});
   // Watchlist membership by rec.id, seeded from localStorage on mount so the
   // CTA renders in the right state without re-reading storage per card.
-  const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [saved, setSaved] = useState<Set<string>>(() =>
+    initialHeld ? new Set(getWatchlist().map((e) => e.rec.id)) : new Set(),
+  );
   // Cards the X is sliding off the feed (CARD_LEAVE_MS), by rec.id.
   const [leaving, setLeaving] = useState<Set<string>>(new Set());
   // v3 F3 (FOR-YOU.md DEC-5): cards folded into their "Hidden … Undo" note, by rec.id, with the card's height at the
   // tap (the note folds from it). The note keeps the card's place for as long as this list is on screen.
-  const [hidden, setHidden] = useState<Record<string, number>>({});
+  const [hidden, setHidden] = useState<Record<string, number>>(() => initialHeld?.hidden ?? {});
   const setKey = recs.map((r) => r.id).join(",");
   const flushStops = useStoppedOn(
     contentRef,
@@ -456,8 +471,8 @@ export default function RecommendationsView({
   // restarts the walk when the live batch was replaced underneath (a rating
   // refresh); otherwise the offset lands in the tail of a batch whose top was
   // never shown.
-  const versionRef = useRef<number | null>(null);
-  const hasMoreRef = useRef(true);
+  const versionRef = useRef<number | null>(initialHeld?.tasteVersion ?? null);
+  const hasMoreRef = useRef(!initialHeld);
   // Serializes feedback POSTs: each click's server-side fingerprint merge is a
   // read-modify-write on the DNA, so requests must not overlap. Find More
   // awaits this chain so every rating is merged before regeneration.
@@ -479,6 +494,8 @@ export default function RecommendationsView({
     if (data.set) {
       // The 20: the whole list, in its order, replacing what was there. Nothing pages on from it.
       setIsSet(true);
+      setListOf(contentTypeRef.current);
+      servedRef.current = data.recommendations.map((r) => r.id);
       setRecs(keepDone ? data.recommendations : data.recommendations.filter((r) => !onWatchlist.has(r.id)));
       // A card rated since the 20 were made comes back with its chip lit (the server says which: `rated`).
       const ratedNow = data.recommendations.filter((r) => r.rated);
@@ -532,6 +549,52 @@ export default function RecommendationsView({
 
   // Initial load + reload when content type changes.
   useEffect(() => {
+    // v3 F8 (FAST_TABS): this list's 20 are kept from before — show them as they were, and read the server's 20
+    // quietly behind them. Only a new 20 (a Refresh on another device) replaces them; otherwise a rating made on
+    // another device lights its chip. Any failure leaves the kept 20 on screen.
+    const kept = holdOn ? heldTwenty(user?.id, contentType) : null;
+    if (kept) {
+      setRecs(kept.recs);
+      setListOf(contentType);
+      setIsSet(true);
+      setRefreshFailed(false);
+      setHasMore(false);
+      hasMoreRef.current = false;
+      offsetRef.current = 0;
+      versionRef.current = kept.tasteVersion;
+      servedRef.current = kept.served;
+      loadingRef.current = false;
+      setSaved(new Set(getWatchlist().map((e) => e.rec.id)));
+      setFeedbackGiven(kept.feedbackGiven);
+      setHidden(kept.hidden);
+      const refreshes = refreshesRef.current;
+      let cancelled = false;
+      void (async () => {
+        try {
+          const res = await fetch(`/api/recommendations/generate?type=${contentType}&offset=0`);
+          if (!res.ok) return;
+          const data = (await res.json()) as Omit<RecPage, "source">;
+          if (cancelled || refreshes !== refreshesRef.current || !data.set) return;
+          if (isNewTwenty(kept, data.recommendations)) {
+            setHidden({});
+            applyPage(data, true);
+            tabScroller()?.scrollTo({ top: 0 });
+            return;
+          }
+          const ratedNow = data.recommendations.filter((r) => r.rated);
+          // What you did on this phone wins over the server's older word.
+          if (ratedNow.length) {
+            setFeedbackGiven((prev) => ({ ...Object.fromEntries(ratedNow.map((r) => [r.id, r.rated!])), ...prev }));
+          }
+        } catch (e) {
+          console.error("[recs] quiet check failed", e);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+    setListOf(null);
     setRecs([]);
     setIsSet(false);
     setRefreshFailed(false);
@@ -556,7 +619,22 @@ export default function RecommendationsView({
     // hydratedAt bumps when the server's watchlist lands after mount.
     // building: a Picks tap empties the list now and fetches once the build
     // lands; re-seeding alongside is redundant but cheap.
+    // holdOn and user are fixed for a mount (flags are read at build; the user is the page's).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentType, mode, loadMore, hydratedAt, building]);
+
+  // v3 F8 (FAST_TABS): keep the 20 as they are on screen, for the way back. Not while a Refresh is out (the old 20 are
+  // still on screen), and only once the cards on screen are this list's.
+  useEffect(() => {
+    if (!holdOn || !user || !isSet || refreshing || listOf !== contentType) return;
+    holdTwenty(user.id, contentType, {
+      recs,
+      served: servedRef.current,
+      feedbackGiven,
+      hidden,
+      tasteVersion: versionRef.current,
+    });
+  }, [holdOn, user, isSet, refreshing, listOf, contentType, recs, feedbackGiven, hidden]);
 
   // "Find more": rebuild the fingerprint (feedback so far included) and
   // regenerate recs server-side, then APPEND the fresh batch — existing cards
@@ -587,6 +665,7 @@ export default function RecommendationsView({
   // come back and the top line says so. Hide's notes last until here (DEC-5).
   async function handleRefresh() {
     if (!onRefresh || refreshing) return;
+    refreshesRef.current += 1;
     setRefreshing(true);
     setRefreshFailed(false);
     setError(null);

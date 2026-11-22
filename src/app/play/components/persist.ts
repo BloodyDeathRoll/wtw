@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PlayState } from '../lib/brain'
 import { MAX_EVENTS_PER_REQUEST, type PlayEvent } from '../lib/events'
+import { tabsChanged } from '@/lib/fast-tabs'
 
 export type SaveMode = 'server' | 'local'
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'local' | 'conflict' | 'error'
@@ -68,6 +69,8 @@ export function usePersistence(userId: string, initialMode: SaveMode, initialVer
       if (!res.ok) throw new Error(`state ${res.status}`)
       version.current = ((await res.json()) as { version: number }).version
       setStatus('saved')
+      // v3 F8: and again once it has landed, in case the way out came first.
+      tabsChanged()
     } catch (err) {
       console.warn('[play] save failed', err)
       setStatus('error')
@@ -82,6 +85,8 @@ export function usePersistence(userId: string, initialMode: SaveMode, initialVer
    */
   const firstPending = useRef<number | null>(null)
   const save = useCallback((state: PlayState, events: PlayEvent[] = []) => {
+    // v3 F8: from now, a kept copy of /play (or You) is out of date: the next way out fetches them again.
+    tabsChanged()
     latest.current = state
     queue.current.push(...events)
     if (timer.current) clearTimeout(timer.current)
