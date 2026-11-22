@@ -430,6 +430,12 @@
   color: var(--why-muted);
   text-transform: capitalize;
 }
+/* v3 F6: "Director, writer · you loved Interstellar, Inception and 1 more"
+   under a name. The role's size and colour, but a sentence: no capitalising. */
+.crewWho {
+  font-size: 13.5px;
+  color: var(--why-muted);
+}
 /* "No one you follow is in this one." */
 .whyTextMuted {
   color: var(--why-muted);

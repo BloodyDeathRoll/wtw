@@ -515,6 +515,29 @@
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
+/* v3 F3: "Hide" where the X was, the eye-off icon and the word (FOR-YOU.md DEC-5,
+   docs/prototypes/for-you-v3/2-hide.jpg). The X's colours, the button's height. */
+.wantHide {
+  flex: 0 0 auto;
+  height: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rv-white-10);
+  color: var(--rv-white-70);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.wantHide:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
 /* The X was tapped: 0.5s sliding away, then 0.25s for the gap to close
    (CARD_LEAVE_MS = 750 in RecommendationsView.tsx). FeedCard drives max-height
    and margin from the measured height. */
@@ -1299,6 +1322,16 @@
 .note p b {
   font-weight: 600;
   color: #fff;
+}
+.note p span {
+  color: var(--rv-white-70);
+}
+/* v3 F3: the note in a hidden card's place on For you ("Hidden. You won't see
+   … again." / "Your taste isn't changed."). It holds its height in the list and
+   clips while it folds from the card's. */
+.hiddenNote {
+  flex-shrink: 0;
+  overflow: hidden;
 }
 .note button {
   flex: 0 0 auto;

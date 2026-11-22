@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  EyeOff,
   MessageCircle,
   Play,
   Star,
@@ -80,6 +81,7 @@ import {
   type WatchlistFilter,
 } from "./watchlist-order";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
+import { forYouV3Enabled } from "@/lib/flags";
 import { shareTitle } from "@/lib/share";
 import { announceHidden, deleteRating, postRating } from "./rate";
 import ShareIcon from "@/app/components/ShareIcon";
@@ -291,6 +293,9 @@ export default function RecommendationsView({
   const [saved, setSaved] = useState<Set<string>>(new Set());
   // Cards the X is sliding off the feed (CARD_LEAVE_MS), by rec.id.
   const [leaving, setLeaving] = useState<Set<string>>(new Set());
+  // v3 F3 (FOR-YOU.md DEC-5): cards folded into their "Hidden … Undo" note, by rec.id, with the card's height at the
+  // tap (the note folds from it). The note keeps the card's place for as long as this list is on screen.
+  const [hidden, setHidden] = useState<Record<string, number>>({});
   // When the server's watchlist lands after mount (hydrateWatchlist): the
   // watchlist view re-pages from it; the feed only refreshes its saved marks,
   // since re-paging there would throw away the cards on screen.
@@ -792,25 +797,59 @@ export default function RecommendationsView({
         return next;
       });
     }, reduce ? 0 : CARD_LEAVE_MS);
+    persistHidden(rec, true);
+  }
+
+  // v3 F3 (FOR-YOU.md DEC-5): Hide folds the card into a note with Undo, in the card's place. The same write as the
+  // X and nothing more: removed_titles is an exclusion list, never the taste model. The screen follows the server:
+  // a write that fails puts back what was there.
+  function handleHide(rec: Recommendation, cardHeight: number) {
+    if (rec.id in hidden) return;
+    setHidden((prev) => ({ ...prev, [rec.id]: cardHeight }));
+    persistHidden(rec, true, () => unhideLocally(rec.id));
+  }
+
+  function handleUnhide(rec: Recommendation) {
+    unhideLocally(rec.id);
+    persistHidden(rec, false, () => setHidden((prev) => ({ ...prev, [rec.id]: 0 })));
+  }
+
+  function unhideLocally(id: string) {
+    setHidden((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  // The X's and Hide's write, and Undo's: one row in removed_titles (POST
+  // adds it, DELETE restores the title). Queued with the ratings, not
+  // fire-and-forget: "Find more" awaits this chain before regenerating, so the
+  // change is on the server before the new batch is built (unqueued, a quick
+  // Remove → Find more could regenerate first and re-serve the title), and
+  // Hide → Undo → Hide land in the order tapped.
+  function persistHidden(rec: Recommendation, hide: boolean, onFail?: () => void) {
     const tmdb_id = rec.id.includes(":") ? rec.id.split(":")[1] : rec.id;
-    // Queued with the ratings, not fire-and-forget: "Find more" awaits this
-    // chain before regenerating, so the removal is on the server before the
-    // new batch is built. Unqueued, a quick Remove → Find more could regenerate
-    // first and re-serve the title.
+    const what = hide ? "remove" : "restore";
     feedbackQueueRef.current = feedbackQueueRef.current.then(async () => {
       try {
         const res = await fetch("/api/recommendations/removed", {
-          method: "POST",
+          method: hide ? "POST" : "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tmdb_id, media_type: rec.type, title: rec.title }),
+          body: JSON.stringify(
+            hide ? { tmdb_id, media_type: rec.type, title: rec.title } : { tmdb_id, media_type: rec.type },
+          ),
         });
         if (!res.ok) {
-          console.error(`[recs] remove HTTP ${res.status}`, await res.text().catch(() => ""));
+          console.error(`[recs] ${what} HTTP ${res.status}`, await res.text().catch(() => ""));
+          onFail?.();
         } else {
-          announceHidden(`${rec.type}:${tmdb_id}`, true);
+          announceHidden(`${rec.type}:${tmdb_id}`, hide);
         }
       } catch (e) {
-        console.error("[recs] remove failed", e);
+        console.error(`[recs] ${what} failed`, e);
+        onFail?.();
       }
     });
   }
@@ -903,8 +942,11 @@ export default function RecommendationsView({
           onLoadMore={loadMore}
           onFeedback={handleFeedback}
           onUnrate={handleUnrate}
-          onRemove={handleRemove}
+          onRemove={forYouV3Enabled() ? undefined : handleRemove}
           leaving={leaving}
+          hidden={hidden}
+          onHide={forYouV3Enabled() ? handleHide : undefined}
+          onUnhide={handleUnhide}
           onWhy={setDetail}
           onShare={(r) => void shareTitle(r, sharerName)}
           onFindMore={onFindMore ? handleFindMore : undefined}
@@ -938,6 +980,9 @@ function Feed({
   onUnrate,
   onRemove,
   leaving,
+  hidden,
+  onHide,
+  onUnhide,
   onWhy,
   onShare,
   onFindMore,
@@ -957,6 +1002,11 @@ function Feed({
   /** The X beside "Add to Watchlist" — the feed only; absent on the Watchlist. */
   onRemove?: (rec: Recommendation) => void;
   leaving: Set<string>;
+  /** Cards folded into their "Hidden … Undo" note (v3 F3), with the card's height at the tap. */
+  hidden: Record<string, number>;
+  /** Hide in the X's place (v3 F3, FOR_YOU_V3); the X when absent. */
+  onHide?: (rec: Recommendation, cardHeight: number) => void;
+  onUnhide: (rec: Recommendation) => void;
   onWhy: (rec: Recommendation) => void;
   onShare: (rec: Recommendation) => void;
   onFindMore?: () => void;
@@ -1013,18 +1063,23 @@ function Feed({
     <div ref={listRef} className={styles.list} {...TAB_SCROLL}>
       {recs.map((rec, i) => (
         <Fragment key={rec.id}>
-          <FeedCard
-            rec={rec}
-            rated={feedbackGiven[rec.id]}
-            onFeedback={onFeedback}
-            onUnrate={onUnrate}
-            onRemove={onRemove}
-            leaving={leaving.has(rec.id)}
-            onWhy={onWhy}
-            onShare={onShare}
-            saved={saved.has(rec.id)}
-            onToggleWatchlist={onToggleWatchlist}
-          />
+          {rec.id in hidden ? (
+            <HiddenNote rec={rec} fromHeight={hidden[rec.id]} onUndo={onUnhide} />
+          ) : (
+            <FeedCard
+              rec={rec}
+              rated={feedbackGiven[rec.id]}
+              onFeedback={onFeedback}
+              onUnrate={onUnrate}
+              onRemove={onRemove}
+              onHide={onHide}
+              leaving={leaving.has(rec.id)}
+              onWhy={onWhy}
+              onShare={onShare}
+              saved={saved.has(rec.id)}
+              onToggleWatchlist={onToggleWatchlist}
+            />
+          )}
           {onCalibrate && (i + 1) % NUDGE_EVERY === 0 && <CalibrateNudge onClick={onCalibrate} />}
         </Fragment>
       ))}
@@ -1093,6 +1148,7 @@ function FeedCard({
   onFeedback,
   onUnrate,
   onRemove,
+  onHide,
   leaving = false,
   onWhy,
   onShare,
@@ -1109,6 +1165,8 @@ function FeedCard({
   onFeedback: (rec: Recommendation, rating: FeedbackRating) => void;
   onUnrate: (rec: Recommendation) => void;
   onRemove?: (rec: Recommendation) => void;
+  /** v3 F3: "Hide" in the X's place; the card's height goes with it, for the note's fold. */
+  onHide?: (rec: Recommendation, cardHeight: number) => void;
   /** The X was tapped: slide away, then close the gap (CARD_LEAVE_MS). */
   leaving?: boolean;
   onWhy: (rec: Recommendation) => void;
@@ -1137,7 +1195,8 @@ function FeedCard({
   }, [leaving]);
   // "Want it?" — the X sits beside Add to Watchlist on the feed. Once the
   // title is saved there is nothing to turn down, so the X goes (2026-11-06).
-  const showX = !!onRemove && !saved;
+  // Hide (v3 F3) follows the same rule.
+  const showX = (!!onRemove || !!onHide) && !saved;
 
   return (
     <article
@@ -1218,15 +1277,27 @@ function FeedCard({
         {showX ? (
           <div className={styles.wantRow}>
             <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
-            <button
-              type="button"
-              className={styles.wantX}
-              onClick={() => onRemove?.(rec)}
-              aria-label={`Not for me: never recommend ${rec.title} again`}
-              title="Not for me"
-            >
-              <X size={20} strokeWidth={1.8} aria-hidden />
-            </button>
+            {onHide ? (
+              // v3 F3 (FOR-YOU.md DEC-5): the X says what it does.
+              <button
+                type="button"
+                className={styles.wantHide}
+                onClick={() => onHide(rec, cardRef.current?.offsetHeight ?? 0)}
+              >
+                <EyeOff size={18} strokeWidth={1.8} aria-hidden />
+                Hide
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.wantX}
+                onClick={() => onRemove?.(rec)}
+                aria-label={`Not for me: never recommend ${rec.title} again`}
+                title="Not for me"
+              >
+                <X size={20} strokeWidth={1.8} aria-hidden />
+              </button>
+            )}
           </div>
         ) : (
           <WatchlistButton rec={rec} saved={saved} onToggle={onToggleWatchlist} primary />
@@ -1235,6 +1306,54 @@ function FeedCard({
         {whyInline}
       </div>
     </article>
+  );
+}
+
+/**
+ * v3 F3 (FOR-YOU.md DEC-5, docs/prototypes/for-you-v3/2-hide.jpg): what's left where a hidden card was, in the
+ * Watchlist's note look. It folds from the card's height to its own, so the next card moves up, and keeps the card's
+ * place in the list. Undo brings the card back.
+ */
+function HiddenNote({
+  rec,
+  fromHeight,
+  onUndo,
+}: {
+  rec: Recommendation;
+  /** The card's height at the tap; 0 shows the note without the fold (a failed Undo putting it back). */
+  fromHeight: number;
+  onUndo: (rec: Recommendation) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !fromHeight) return;
+    const to = el.offsetHeight;
+    if (to >= fromHeight) return;
+    el.style.height = `${fromHeight}px`;
+    void el.offsetHeight; // commit the card's height so the change below animates
+    el.style.transition = `height ${FOLD_MS}ms var(--ease-out)`;
+    el.style.height = `${to}px`;
+    const clear = () => {
+      el.style.height = "";
+      el.style.transition = "";
+    };
+    const t = window.setTimeout(clear, FOLD_MS + 40);
+    return () => {
+      window.clearTimeout(t);
+      clear();
+    };
+  }, [fromHeight]);
+
+  return (
+    <div ref={ref} className={`${styles.note} ${styles.hiddenNote}`} role="status">
+      <p>
+        Hidden. You won&rsquo;t see <b>{rec.title}</b> again.
+        <br />
+        <span>Your taste isn&rsquo;t changed.</span>
+      </p>
+      <button type="button" onClick={() => onUndo(rec)}>Undo</button>
+    </div>
   );
 }
 
