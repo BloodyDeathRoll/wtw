@@ -313,6 +313,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* v3 F7: "Not your usual, on purpose" over a stretch pick's title
+   (docs/prototypes/for-you-v3/f7). Nothing new: .trailerCircle's outline and
+   glass on .whereBadge's shape and text. */
+.stretchLabel {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+}
 .heroRing {
   position: absolute;
   top: 12px;
