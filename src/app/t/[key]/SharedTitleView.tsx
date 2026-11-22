@@ -11,7 +11,6 @@
  * Saving goes through the same watchlist as the feed, so it syncs and reaches
  * the fingerprint like any other save.
  */
-import JustWatchCredit from "@/app/components/JustWatchCredit";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Play, Star } from "lucide-react";
@@ -20,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addToWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
 import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
+import JustWatchCredit from "@/app/components/JustWatchCredit";
 import { RETURN_COOKIE } from "@/lib/safe-redirect";
 import type { Recommendation } from "@/types/recommendation";
 import styles from "./SharedTitle.module.css";
