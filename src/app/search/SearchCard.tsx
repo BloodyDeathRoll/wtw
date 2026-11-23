@@ -6,7 +6,11 @@
  * Disliked lit if you rated it, today's breakdown under them, where to watch in Israel, share and the trailer. A
  * rating lands in Seen and your taste through the same route a card uses anywhere else (DEC-4).
  *
- * Not here yet: the match ring (Q5, Alon), and a save teaching your taste (Q6).
+ * Your match (v3 Q5, SEARCH.md DEC-3): the ring fills in when the engine scores the title for you now (M1, about a
+ * second); the card doesn't wait for it. A title it can't score honestly (outside the catalogue, a cold-start
+ * profile) shows no ring, and no older match stands in for today's (plan DEC-5).
+ *
+ * Not here yet: a save teaching your taste (Q6).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +28,7 @@ import {
   type WatchlistRating,
 } from "@/lib/watchlist";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
+import { fetchFreshExplain, freshKey, getCachedExplain, setCachedExplain } from "@/lib/explain-cache";
 import { TitleCardPage } from "@/modules/session/recommendations/RecommendationsView";
 import { deleteRating, HIDDEN_EVENT, postRating, RATED_EVENT, type HiddenDetail, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
 
@@ -119,6 +124,25 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
   const server = useRef(rated);
   const latest = useRef(0);
   const heard = useRef(false); // a rating of this title landed since the card opened: newer than Seen's list
+  // Today's match, once the engine answers (the breakdown under the card asks the same request: one call).
+  const [match, setMatch] = useState<{ id: string; value: number } | null>(() => {
+    const today = getCachedExplain(freshKey(rec.id))?.match;
+    return today ? { id: rec.id, value: today } : null;
+  });
+
+  useEffect(() => {
+    const tmdbId = rec.id.split(":")[1];
+    if (!tmdbId || getCachedExplain(freshKey(rec.id))?.match) return;
+    let on = true;
+    void fetchFreshExplain(rec.type, tmdbId).then((d) => {
+      if (!d) return;
+      setCachedExplain(freshKey(rec.id), d);
+      if (on && d.match) setMatch({ id: rec.id, value: d.match });
+    });
+    return () => {
+      on = false;
+    };
+  }, [rec.id, rec.type]);
 
   useEffect(() => {
     let on = true;
@@ -148,7 +172,12 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
 
   const reasonPending = line?.id !== rec.id;
   // The why line built from facts, as the Watchlist shows; a title we don't have keeps its synopsis.
-  const shown: Recommendation = { ...rec, reason: (!reasonPending && line?.text) || rec.reason };
+  const shown: Recommendation = {
+    ...rec,
+    reason: (!reasonPending && line?.text) || rec.reason,
+    // Only today's match draws the ring; until it lands (or with none), no ring.
+    match: match?.id === rec.id ? match.value : 0,
+  };
 
   function rollBack(r: Recommendation, tap: number) {
     if (tap !== latest.current) return;

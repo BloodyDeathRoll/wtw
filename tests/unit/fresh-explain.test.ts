@@ -20,6 +20,25 @@ describe('fetchFreshExplain', () => {
     expect(await fetchFreshExplain('movie', '1', (async () => new Response('x', { status: 500 })) as unknown as typeof fetch)).toBeNull()
     expect(await fetchFreshExplain('movie', '1', (async () => { throw new Error('offline') }) as unknown as typeof fetch)).toBeNull()
   })
+  it('carries today\'s match (v3 Q5), and none when the engine gives none', async () => {
+    const body = { scored: true, tmdb_id: '95480', reason_payload: payload() }
+    expect((await fetchFreshExplain('tv', '95480', okRes({ ...body, match: 0.94 })))!.match).toBe(0.94)
+    expect((await fetchFreshExplain('tv', '95480', okRes({ ...body, match: 0 })))!.match).toBeUndefined()
+  })
+  it('one request per title at a time: the card\'s ring and its breakdown share it', async () => {
+    let n = 0
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    const slow = (async () => { n++; await gate; return new Response(JSON.stringify({ scored: true, reason_payload: payload(), match: 0.8 })) }) as unknown as typeof fetch
+    const a = fetchFreshExplain('movie', '603', slow)
+    const b = fetchFreshExplain('movie', '603', slow)
+    release()
+    expect((await a)!.match).toBe(0.8)
+    expect(await b).toBe(await a)
+    expect(n).toBe(1)
+    await fetchFreshExplain('movie', '603', slow) // settled: the next one asks again
+    expect(n).toBe(2)
+  })
   it('asks the score route with the type (TMDB ids collide across movies and series)', async () => {
     let url = ''
     await fetchFreshExplain('tv', '1396', (async (u: string) => { url = u; return new Response('{}') }) as unknown as typeof fetch)
