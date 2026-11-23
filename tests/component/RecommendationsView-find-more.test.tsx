@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import RecommendationsView from '@/modules/session/recommendations/RecommendationsView'
 import type { Recommendation, RecPage } from '@/types/recommendation'
 
@@ -24,7 +24,8 @@ beforeEach(() => {
   fetchMock = vi.fn(async () => new Response(JSON.stringify(pageOf([1, 2]))))
   vi.stubGlobal('fetch', fetchMock)
 })
-afterEach(() => vi.unstubAllGlobals())
+// Unmount before the IntersectionObserver stub goes (a late effect crashed RecommendationsView-hide in CI, 2026-11-22).
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 const pageFetches = () => fetchMock.mock.calls.filter(([url]) => String(url).startsWith('/api/recommendations/generate')).length
 

@@ -55,7 +55,9 @@ import { AppMenu, VOICES, type Voice } from "./AppMenu";
 import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
-import { chatMode, navHistoryEnabled, navTabsEnabled } from "@/lib/flags";
+import { chatMode, fastTabsEnabled, forYouV3Enabled, navHistoryEnabled, navTabsEnabled } from "@/lib/flags";
+import { holdsTwenty } from "../recommendations/held-twenty";
+import { refreshIfStale } from "@/lib/fast-tabs";
 import { markInApp, stageHref, stageOfAddress } from "@/modules/session/nav-history";
 import { AskButton, TabBar, type Tab } from "@/app/components/TabBar";
 import rv from "../recommendations/RecommendationsView.module.css";
@@ -597,13 +599,21 @@ export default function WTWApp({
     // ?from=play only tells the server not to send the player back to the games.
     if (s || q.has("from")) window.history.replaceState(null, "", window.location.pathname);
   }, [consultant, navHistory]);
+  // v3 F8 (FAST_TABS): back on For you from Games or You, with its 20 kept on the phone (held-twenty.ts). The home
+  // route opens on them at once: no first-load wait, no warm-up, and the list you were on. Never on a page load (the
+  // phone keeps nothing across one), so the server's first render and this one agree.
+  const [kept] = useState(() => fastTabsEnabled() && holdsTwenty(user.id));
   const [favorites, setFavorites] = useState(conversation.favorites);
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voicePrimer, setVoicePrimer] = useState<string | null>(null);
   // "Both" until the person picks (then this device remembers the choice, below). The first feed after the
   // onboarding is built for both (src/modules/engine/first-feed.ts), so opening on Movies cost a second build.
-  const [contentType, setContentType] = useState<ContentType>(FEED_START_TYPE);
+  const [contentType, setContentType] = useState<ContentType>(() => {
+    if (!kept) return FEED_START_TYPE;
+    const c = window.localStorage.getItem("wtw:contentType");
+    return isContentType(c) ? c : FEED_START_TYPE;
+  });
   const [voice, setVoice] = useState<Voice>(DEFAULT_VOICE);
   // Whether the user has done anything this page-load. Once they have,
   // the greeting yields to "continue: <last AI question>" so we don't
@@ -612,8 +622,8 @@ export default function WTWApp({
   // While the fingerprint is being built + recs generated (on the way into
   // the recommendations view), we show a brief building state.
   // Opening straight on For you (NAV_TABS), the feed waits for the warm-up below, as a tap on Picks did.
-  const [buildingRecs, setBuildingRecs] = useState(tabsOn && !isNewUser);
-  const firstBuildRef = useRef(tabsOn && !isNewUser);
+  const [buildingRecs, setBuildingRecs] = useState(tabsOn && !isNewUser && !kept);
+  const firstBuildRef = useRef(tabsOn && !isNewUser && !kept);
   // Saved-card count, for the home circle + its badge. Re-read on every stage
   // change so returning from the watchlist reflects what just left it.
   const [watchlistN, setWatchlistN] = useState(0);
@@ -674,6 +684,11 @@ export default function WTWApp({
   const chattedThisLoadRef = useRef(false);
 
   useEffect(() => {
+    // FAST_TABS: this visit warmed up already, and the 20 it made are on screen.
+    if (kept) {
+      warmDoneRef.current = true;
+      return;
+    }
     warmPromiseRef.current = (async () => {
       try {
         await fetchWithTimeout("/api/dna/bootstrap", { method: "POST" });
@@ -700,6 +715,8 @@ export default function WTWApp({
         setBuildingRecs(false);
       }
     })();
+    // `kept` is fixed for a mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Created once: the conversation id and router are fixed for this mount.
@@ -742,6 +759,8 @@ export default function WTWApp({
   const [leaving, setLeaving] = useState<string | null>(null);
   function leaveTo(href: string, label = "Loading") {
     setLeaving(label);
+    // v3 F8 (FAST_TABS): after a write, the next screen (You, My taste, the games) is fetched new, not kept.
+    refreshIfStale(router);
     router.push(href);
   }
   function openProfile() {
@@ -792,7 +811,7 @@ export default function WTWApp({
   // (cached server-side at the new taste_version). Shared by the initial
   // "Recommend" entry and the in-list "Find More" refresh.
   // Resolves with the new batch's first page when the server sent one ("Find more").
-  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean; more?: boolean }): Promise<RecPage | null> {
+  async function endSessionAndGenerate(opts?: { skipTranscript?: boolean; more?: boolean; refresh?: boolean }): Promise<RecPage | null> {
     // Watchlist saves ride along on this request rather than posting their own —
     // saving a card is supposed to cost zero extra calls.
     const savedIds = getUnsyncedIds();
@@ -810,6 +829,8 @@ export default function WTWApp({
           skip_transcript: opts?.skipTranscript ?? false,
           // "Find more": the batch was read to its end — build the next one.
           more: opts?.more === true,
+          // v3 F1: For you's Refresh — the next batch, made into the new 20 and kept.
+          refresh: opts?.refresh === true,
           // Which list to regenerate — batches are built per content type.
           content_type: contentType,
           watchlist_added: savedIds,
@@ -1163,6 +1184,8 @@ export default function WTWApp({
             sharerName={user.name}
             setContentType={setContentType}
             onFindMore={() => endSessionAndGenerate({ skipTranscript: true, more: true })}
+            onRefresh={forYouV3Enabled() ? () => endSessionAndGenerate({ skipTranscript: true, more: true, refresh: true }) : undefined}
+            onTalk={consultant && turnsLeft ? openChat : undefined}
             headerRight={headerMenu}
             user={user}
             building={buildingRecs}
