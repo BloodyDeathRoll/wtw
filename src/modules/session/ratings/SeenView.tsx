@@ -194,13 +194,13 @@ export default function SeenView({
   const restoredRows = useRef<Record<string, RemovedItem>>({});
   // A title's writes (a rating change and its Undo; a Restore and its Undo) go one after the other, so the server ends
   // where the screen does.
-  const hiddenWrites = useRef<Record<string, Promise<void>>>({});
+  const titleWrites = useRef<Record<string, Promise<void>>>({});
   // Each Restore or Undo of a title bumps its count: a late failure of an older Restore leaves the row where the newer
   // tap put it.
   const hiddenTaps = useRef<Record<string, number>>({});
   function inOrder(key: string, write: () => Promise<void>): Promise<void> {
-    const next = (hiddenWrites.current[key] ?? Promise.resolve()).then(write);
-    hiddenWrites.current[key] = next.catch(() => {});
+    const next = (titleWrites.current[key] ?? Promise.resolve()).then(write);
+    titleWrites.current[key] = next.catch(() => {});
     return next;
   }
   const noteTimer = useRef<number | undefined>(undefined);
@@ -379,8 +379,10 @@ export default function SeenView({
       }),
     });
     if (!res.ok) throw new Error(String(res.status));
-    // The Watchlist keeps a rated title, re-tagged, as today's Ratings screen does.
-    if (!announce()) return;
+    if (announce()) tell(item, to);
+  }
+  /** The Watchlist keeps a rated title, re-tagged, as today's Ratings screen does; every listener follows. */
+  function tell(item: RatingItem, to: Reaction) {
     if (item.media_type) setWatchlistRating(`${item.media_type}:${item.tmdb_id}`, to);
     setWatchlistRating(item.tmdb_id, to);
     announceRated(item.id, to);
@@ -409,6 +411,8 @@ export default function SeenView({
       if (writes.current[key] === n) {
         apply(confirmed.current[key]);
         setNote((cur) => (cur?.key === key ? null : cur));
+        // An older tap that landed was never told (a newer one was on its way): tell it now.
+        tell(item, confirmed.current[key]);
       }
     }
   }
@@ -506,7 +510,7 @@ export default function SeenView({
     dataRef.current = { ...d, items: [...d.items, item] };
     setData(dataRef.current);
     try {
-      await post(item, item.rating);
+      await inOrder(key, () => post(item, item.rating));
       confirmed.current[key] = item.rating;
     } catch {
       const now = dataRef.current;

@@ -9,7 +9,7 @@ vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SeenView, { seenCounts, seenRows } from '@/modules/session/ratings/SeenView'
 import { forgetMyRatings } from '@/app/search/SearchCard'
-import { announceRated } from '@/modules/session/recommendations/rate'
+import { announceRated, RATED_EVENT } from '@/modules/session/recommendations/rate'
 
 const facts = { year: 2000, meta: '1h 53m', star: 8.2 }
 const DATA: RatingsSummary = {
@@ -214,6 +214,33 @@ describe('S2: change a rating right on the row (DEC-4, DEC-5)', () => {
     await act(async () => { answers[1](new Response(null, { status: 200 })); await flush() })
     expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
     expect(chipCounts()).toEqual(['Loved2', 'Liked1', 'Disliked', 'Hidden from For you1'])
+  })
+
+  it('a newer tap that fails falls back to the older one that landed, and tells the app about it', async () => {
+    posts = []
+    const answers: ((r: Response) => void)[] = []
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/feedback') {
+        posts.push(JSON.parse(String(init?.body)))
+        return new Promise<Response>((res) => answers.push(res))
+      }
+      return Promise.resolve(Response.json(DATA))
+    }))
+    const heard: (string | null)[] = []
+    const onRated = (e: Event) => heard.push((e as CustomEvent<{ rating: string | null }>).detail.rating)
+    window.addEventListener(RATED_EVENT, onRated)
+    try {
+      render(<SeenView onBack={() => {}} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+      fireEvent.click(screen.getByRole('button', { name: "Watched it, didn't like it: Memento" }))
+      await act(async () => { await flush(); answers[0](new Response(null, { status: 200 })); await flush(); await flush() })
+      expect(heard).toEqual([]) // the disliked tap is still on its way
+      await act(async () => { answers[1](new Response(null, { status: 500 })); await flush(); await flush() })
+      expect(screen.getByRole('button', { name: 'Liked it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+      expect(heard).toEqual(['liked'])
+    } finally {
+      window.removeEventListener(RATED_EVENT, onRated)
+    }
   })
 
   it('the lit icon does nothing', async () => {
