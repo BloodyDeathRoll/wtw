@@ -2744,16 +2744,22 @@ export function TitleCardPage({
   );
 }
 
-/**
- * Whether the Why says what the line under the title already says (a title
- * with no personal reason shows its plot in both): then it's shown once (Eran, #403).
- * Compared as words only, so emphasis marks and spacing don't count.
- */
+/** Whether two texts say the same thing: the same words, or one holds the other whole (40+ letters). Marks and spacing don't count. */
 export function sameText(a: string | null | undefined, b: string | null | undefined): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
   if (!a || !b) return false;
   const [x, y] = [norm(a), norm(b)];
   return x.length > 0 && (x === y || (Math.min(x.length, y.length) >= 40 && (x.includes(y) || y.includes(x))));
+}
+
+/**
+ * The Why minus the sentences the line under the title already says: a title
+ * with no personal reason opens its Why with the same plot (Slow Horses; Eran,
+ * #403), so the plot shows once and what the Why adds stays. Null when nothing is left.
+ */
+export function whyBeyondLine(why: string, line: string | null | undefined): string | null {
+  const kept = why.split(/(?<=[.!?]["”*]?)\s+/).filter((s) => s.trim() && !sameText(s, line));
+  return kept.length > 0 ? kept.join(" ") : null;
 }
 
 /**
@@ -2805,10 +2811,16 @@ function InlineWhy({
   let body: ReactNode = null;
   if (data && data !== "loading") {
     const result = toResult(data, rec);
-    const shownWhy = why === "pending" || why === "failed" ? null : (why ?? result.explanation);
-    body = <WhyPanel result={result} why={why} omitWhy={sameText(shownWhy, rec.reason)} />;
+    if (why === "pending" || why === "failed") body = <WhyPanel result={result} why={why} />;
+    else {
+      const rest = whyBeyondLine(why ?? result.explanation, rec.reason);
+      body = <WhyPanel result={result} why={rest} omitWhy={rest === null} />;
+    }
   } else if (data === "loading" || why === "pending") body = <WhyTextOnly text="" pending />;
-  else if (typeof why === "string" && why !== "failed" && !sameText(why, rec.reason)) body = <WhyTextOnly text={why} />;
+  else if (typeof why === "string" && why !== "failed") {
+    const rest = whyBeyondLine(why, rec.reason);
+    if (rest) body = <WhyTextOnly text={rest} />;
+  }
   if (!body) return null;
   return (
     <div ref={innerRef} className={styles.cardWhy}>
