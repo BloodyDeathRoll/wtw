@@ -1492,7 +1492,8 @@ function FeedCard({
         {/* The text is the teaser; the Why page is the full answer. The text
             opens it too — the link is the control a keyboard reaches. */}
         {rec.reason ? (
-          <p className={styles.heroReason} onClick={() => onWhy(rec)}>
+          // On the card page the line is shown whole (app text is never trimmed; Eran, #403).
+          <p className={whyInline ? `${styles.heroReason} ${styles.heroReasonWhole}` : styles.heroReason} onClick={() => onWhy(rec)}>
             <Emphasis text={rec.reason} />
           </p>
         ) : reasonPending ? (
@@ -2744,6 +2745,18 @@ export function TitleCardPage({
 }
 
 /**
+ * Whether the Why says what the line under the title already says (a title
+ * with no personal reason shows its plot in both): then it's shown once (Eran, #403).
+ * Compared as words only, so emphasis marks and spacing don't count.
+ */
+export function sameText(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  if (!a || !b) return false;
+  const [x, y] = [norm(a), norm(b)];
+  return x.length > 0 && (x === y || (Math.min(x.length, y.length) >= 40 && (x.includes(y) || y.includes(x))));
+}
+
+/**
  * The sheet's content on the card page (Why, Score breakdown, What it's like,
  * Crew), in the sheet's own styles. The written why takes 1–3 s: three quiet
  * lines hold its place. A saved title with no breakdown (a third of today's)
@@ -2790,9 +2803,12 @@ function InlineWhy({
   }, [data, rec.id, rec.type, snapshot]);
 
   let body: ReactNode = null;
-  if (data && data !== "loading") body = <WhyPanel result={toResult(data, rec)} why={why} />;
-  else if (data === "loading" || why === "pending") body = <WhyTextOnly text="" pending />;
-  else if (typeof why === "string" && why !== "failed") body = <WhyTextOnly text={why} />;
+  if (data && data !== "loading") {
+    const result = toResult(data, rec);
+    const shownWhy = why === "pending" || why === "failed" ? null : (why ?? result.explanation);
+    body = <WhyPanel result={result} why={why} omitWhy={sameText(shownWhy, rec.reason)} />;
+  } else if (data === "loading" || why === "pending") body = <WhyTextOnly text="" pending />;
+  else if (typeof why === "string" && why !== "failed" && !sameText(why, rec.reason)) body = <WhyTextOnly text={why} />;
   if (!body) return null;
   return (
     <div ref={innerRef} className={styles.cardWhy}>
