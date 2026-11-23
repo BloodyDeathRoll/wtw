@@ -82,3 +82,24 @@
   width: 100%;
   opacity: 0;
 }
+
+/* S4 (DEC-8, 5-hidden middle): the line over the hidden titles, and each row's yellow Restore, in the Watchlist
+   note's Undo look. */
+.hiddenLine {
+  margin: 0;
+  padding: 0 16px 8px;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+.restore {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 10px 4px;
+  border: 0;
+  background: none;
+  color: var(--rv-yellow);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+}

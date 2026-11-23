@@ -279,6 +279,8 @@ describe('S3: the card page from Seen, and clearing a rating (DEC-6, DEC-7)', ()
     render(<SeenView onBack={() => {}} user={user} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Memento: open' }))
     await screen.findByRole('button', { name: 'Add to Watchlist: Memento' })
+    // The lit chip waits for Seen's list (myRatings), which can land after the card on a slow machine.
+    await screen.findByRole('button', { name: 'Loved it (tap to clear)' })
     await flush()
   }
 
@@ -383,5 +385,153 @@ describe('S3: the card page from Seen, and clearing a rating (DEC-6, DEC-7)', ()
     fireEvent.click(screen.getByRole('button', { name: 'back' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to Watchlist: Memento' })).toBeNull())
     expect(list.scrollTop).toBe(420)
+  })
+})
+
+describe('S4: Hidden from For you, with Restore (DEC-8)', () => {
+  let calls: { url: string; method: string; body: Record<string, unknown> | null }[]
+  let ok: boolean
+  beforeEach(() => {
+    calls = []
+    ok = true
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
+      if (url === '/api/recommendations/removed') return ok ? Response.json({ ok: true }) : new Response('no', { status: 500 })
+      return Response.json(DATA)
+    }))
+  })
+  const flush = () => new Promise((r) => setTimeout(r, 0))
+  const hiddenCount = () => within(screen.getByRole('group', { name: 'Show' })).getByRole('button', { name: /^Hidden from For you/ }).textContent
+  async function openHidden() {
+    render(<SeenView onBack={() => {}} />)
+    await screen.findByText('Seen (3)')
+    fireEvent.click(screen.getByRole('button', { name: /^Hidden from For you/ }))
+  }
+
+  it('the line on top, and a Restore on each hidden row; rated rows have none', async () => {
+    await openHidden()
+    expect(screen.getByText('You hid these on For you, so they never come back there. Restore one and it can.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Restore The Hunger Games' })).toHaveTextContent('Restore')
+    fireEvent.click(screen.getByRole('button', { name: /^Loved/ }))
+    expect(screen.queryByRole('button', { name: /^Restore/ })).toBeNull()
+    expect(screen.queryByText(/You hid these on For you/)).toBeNull()
+  })
+
+  it('Restore: the row folds into the note, the count drops, the server is told; Undo hides it again', async () => {
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Restored. The Hunger Games can show up on For you again.')
+    expect(hiddenCount()).toBe('Hidden from For you')
+    await flush()
+    expect(calls.filter((c) => c.url.includes('/removed')).map((c) => [c.method, c.body])).toEqual([['DELETE', { tmdb_id: '4', media_type: 'movie' }]])
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(titles()).toEqual(['The Hunger Games'])
+    expect(hiddenCount()).toBe('Hidden from For you1')
+    await flush()
+    expect(calls.filter((c) => c.url.includes('/removed')).map((c) => c.method)).toEqual(['DELETE', 'POST'])
+    expect(calls.at(-1)?.body).toEqual({ tmdb_id: '4', media_type: 'movie', title: 'The Hunger Games' })
+  })
+
+  it('a failed Restore puts the row back and drops the note', async () => {
+    ok = false
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    await flush(); await flush()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(titles()).toEqual(['The Hunger Games'])
+    expect(hiddenCount()).toBe('Hidden from For you1')
+  })
+
+  it('Undo tapped while the Restore is still on its way: the hide goes after it, and Search hears them in order', async () => {
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const order: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/removed') {
+        order.push(`${init?.method} sent`)
+        if (init?.method === 'DELETE') await held
+        order.push(`${init?.method} done`)
+        return Response.json({ ok: true })
+      }
+      return Response.json(DATA)
+    }))
+    const heard: boolean[] = []
+    const on = (e: Event) => heard.push((e as CustomEvent).detail.hidden)
+    window.addEventListener('wtw:hidden', on)
+    try {
+      await openHidden()
+      fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      await flush()
+      expect(order).toEqual(['DELETE sent'])
+      release()
+      await flush(); await flush(); await flush()
+      expect(order).toEqual(['DELETE sent', 'DELETE done', 'POST sent', 'POST done'])
+      expect(heard).toEqual([false, true])
+      expect(titles()).toEqual(['The Hunger Games'])
+      expect(hiddenCount()).toBe('Hidden from For you1')
+    } finally {
+      window.removeEventListener('wtw:hidden', on)
+    }
+  })
+
+  it('a slow Restore that fails after another row\'s Restore still puts its row back', async () => {
+    let fail!: () => void
+    const held = new Promise<void>((r) => (fail = r))
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/removed') {
+        const body = JSON.parse(String(init?.body))
+        if (body.tmdb_id === '4') return (await held, new Response('no', { status: 500 }))
+        return Response.json({ ok: true })
+      }
+      return Response.json({ ...DATA, removed: [...DATA.removed, { ...DATA.removed[0], tmdb_id: '5', title: 'Dune', removed_at: '2026-10-01T00:00:00Z' }] })
+    }))
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore Dune' }))
+    await flush()
+    expect(hiddenCount()).toBe('Hidden from For you')
+    fail()
+    await flush(); await flush()
+    expect(hiddenCount()).toBe('Hidden from For you1')
+    expect(screen.getByRole('button', { name: 'Restore The Hunger Games' })).toBeInTheDocument()
+  })
+
+  it('Restore, Undo, Restore again, then the first Restore fails: the row stays restored', async () => {
+    let fail!: () => void
+    const held = new Promise<void>((r) => (fail = r))
+    let deletes = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/removed') {
+        if (init?.method === 'DELETE' && ++deletes === 1) return (await held, new Response('no', { status: 500 }))
+        return Response.json({ ok: true })
+      }
+      return Response.json(DATA)
+    }))
+    await openHidden()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+    fail()
+    await flush(); await flush(); await flush(); await flush()
+    expect(hiddenCount()).toBe('Hidden from For you')
+    expect(screen.getByRole('status')).toHaveTextContent('Restored. The Hunger Games can show up on For you again.')
+  })
+
+  it('Search hears both: restored, then hidden again', async () => {
+    const heard: unknown[] = []
+    const on = (e: Event) => heard.push((e as CustomEvent).detail)
+    window.addEventListener('wtw:hidden', on)
+    try {
+      await openHidden()
+      fireEvent.click(screen.getByRole('button', { name: 'Restore The Hunger Games' }))
+      await flush()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      await flush()
+      expect(heard).toEqual([{ id: 'movie:4', hidden: false }, { id: 'movie:4', hidden: true }])
+    } finally {
+      window.removeEventListener('wtw:hidden', on)
+    }
   })
 })

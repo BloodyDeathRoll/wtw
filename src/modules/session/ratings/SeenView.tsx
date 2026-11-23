@@ -17,7 +17,9 @@
  * reaction lit, "Saved to Seen", Add to Watchlist, no Hide. Tap the lit reaction to clear it; back on Seen the row
  * has folded into a note with Undo, and the counts drop. Approved screens: 3-tap.jpg, 4-clear.jpg.
  *
- * Not yet: Restore on Hidden (S4).
+ * S4 (DEC-8): Hidden from For you lists the titles you hid there, under a line that says so, each with a yellow
+ * Restore. Restore folds the row into a note with Undo, and the count drops. Approved screen: 5-hidden.jpg, middle
+ * and right (the entry is the chip, DEC-2).
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -33,7 +35,7 @@ import { TAB_SCROLL } from "@/app/components/TabBar";
 import SearchCard from "@/app/search/SearchCard";
 import { FingerprintLoader } from "../components/FingerprintLoader";
 import { PosterTile } from "../recommendations/RecommendationsView";
-import { announceRated, RATED_EVENT, type RatedDetail } from "../recommendations/rate";
+import { announceHidden, announceRated, RATED_EVENT, type RatedDetail } from "../recommendations/rate";
 import rv from "../recommendations/RecommendationsView.module.css";
 import rs from "./RatingsView.module.css";
 import styles from "./SeenView.module.css";
@@ -184,7 +186,22 @@ export default function SeenView({
   // Which rows a chip shows is fixed when the chip (type, sort) opens: a re-rated row stays put until then (DEC-4).
   const [frozen, setFrozen] = useState<RatingsSummary | null>(null);
   // A row's note: "will move" after a change on the row (S2), or "Rating cleared" (no `to`) after a clear on its card (S3).
-  const [note, setNote] = useState<{ key: string; title: string; from: Reaction; to?: Reaction } | null>(null);
+  // A "Restored" note (S4) carries `restored` and no reaction.
+  const [note, setNote] = useState<
+    { key: string; title: string; from?: Reaction; to?: Reaction; restored?: boolean } | null
+  >(null);
+  // Hidden titles restored here, kept for the note's Undo while it shows (S4).
+  const restoredRows = useRef<Record<string, RemovedItem>>({});
+  // A title's Restore and Undo writes go one after the other, so the server ends where the screen does.
+  const hiddenWrites = useRef<Record<string, Promise<void>>>({});
+  // Each Restore or Undo of a title bumps its count: a late failure of an older Restore leaves the row where the newer
+  // tap put it.
+  const hiddenTaps = useRef<Record<string, number>>({});
+  function inOrder(key: string, write: () => Promise<void>): Promise<void> {
+    const next = (hiddenWrites.current[key] ?? Promise.resolve()).then(write);
+    hiddenWrites.current[key] = next.catch(() => {});
+    return next;
+  }
   const noteTimer = useRef<number | undefined>(undefined);
   const noteRef = useRef(note);
   noteRef.current = note;
@@ -230,6 +247,8 @@ export default function SeenView({
   const rows = useMemo(() => (frozen ? seenRows(frozen, chip, kind, sort) : []), [frozen, chip, kind, sort]);
   // Each row's reaction as it is now, which may differ from the chip it still sits under.
   const live = useMemo(() => new Map((data?.items ?? []).map((i) => [i.id, i.rating])), [data]);
+  // The hidden titles as they are now: a restored one is gone from here at once (S4).
+  const liveHidden = useMemo(() => new Set((data?.removed ?? []).map((r) => `${r.media_type}:${r.tmdb_id}`)), [data]);
   const counts = useMemo(() => (data ? seenCounts(data, kind) : null), [data, kind]);
   const visible = rows.slice(0, shown);
   const hasMore = shown < rows.length;
@@ -284,13 +303,18 @@ export default function SeenView({
   function showNote(next: NonNullable<typeof note>) {
     window.clearTimeout(noteTimer.current);
     const cur = noteRef.current;
-    if (cur && !cur.to && cur.key !== next.key) delete cleared.current[cur.key];
+    if (cur && cur.key !== next.key) dropSnapshot(cur);
     noteRef.current = next; // a second call before the next render sees this one
     setNote(next);
     noteTimer.current = window.setTimeout(() => {
       setNote(null);
-      if (!next.to) delete cleared.current[next.key];
+      dropSnapshot(next);
     }, NOTE_MS);
+  }
+  /** A note gone: its row's snapshot for Undo goes too. */
+  function dropSnapshot(n: NonNullable<typeof note>) {
+    if (n.restored) delete restoredRows.current[n.key];
+    else if (!n.to) delete cleared.current[n.key];
   }
 
   /** Back on Seen from a card: a rating cleared there folds its row into the note (DEC-7). */
@@ -396,8 +420,76 @@ export default function SeenView({
     if (!note) return;
     window.clearTimeout(noteTimer.current);
     setNote(null);
-    if (note.to) void rate(note.key, note.from);
+    if (note.restored) void hideAgain(note.key);
+    else if (note.to && note.from) void rate(note.key, note.from);
     else void unclear(note.key);
+  }
+
+  /** Take a hidden title out of (put it back into) the Hidden list, at once. */
+  function setHidden(item: RemovedItem, hidden: boolean) {
+    const d = dataRef.current;
+    if (!d) return;
+    const key = `${item.media_type}:${item.tmdb_id}`;
+    const rest = d.removed.filter((r) => `${r.media_type}:${r.tmdb_id}` !== key);
+    dataRef.current = { ...d, removed: hidden ? [...rest, item] : rest };
+    setData(dataRef.current);
+  }
+
+  /** Restore (DEC-8): the row folds into a note with Undo and the count drops; a failed write puts the row back. */
+  async function restore(row: SeenRow) {
+    const item = dataRef.current?.removed.find((r) => `${r.media_type}:${r.tmdb_id}` === row.key);
+    if (!item) return;
+    restoredRows.current[row.key] = item;
+    const tap = (hiddenTaps.current[row.key] = (hiddenTaps.current[row.key] ?? 0) + 1);
+    setHidden(item, false);
+    // The name is never empty: nameless rows are filtered out on load (#406).
+    showNote({ key: row.key, title: row.title ?? "", restored: true });
+    try {
+      await inOrder(row.key, async () => {
+        const res = await fetch("/api/recommendations/removed", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        announceHidden(row.key, false);
+      });
+    } catch {
+      // A newer tap (Undo, or Restore again) decides where the row is; otherwise put it back here, and drop the note
+      // and its timer.
+      if (hiddenTaps.current[row.key] !== tap) return;
+      delete restoredRows.current[row.key];
+      setHidden(item, true);
+      if (noteRef.current?.key === row.key) {
+        window.clearTimeout(noteTimer.current);
+        noteRef.current = null;
+        setNote(null);
+      }
+    }
+  }
+
+  /** Undo a Restore: hidden again at once, and written again; a failed write leaves it restored, note and all. */
+  async function hideAgain(key: string) {
+    const item = restoredRows.current[key];
+    if (!item) return;
+    delete restoredRows.current[key];
+    hiddenTaps.current[key] = (hiddenTaps.current[key] ?? 0) + 1;
+    setHidden(item, true);
+    try {
+      await inOrder(key, async () => {
+        const res = await fetch("/api/recommendations/removed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type, title: item.title }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        announceHidden(key, true);
+      });
+    } catch {
+      restoredRows.current[key] = item;
+      setHidden(item, false);
+      showNote({ key, title: item.title ?? "", restored: true });
+    }
   }
 
   /** Undo a clear: the row is back at once, with its rating, and written again; a failed write takes it out again, note and all. */
@@ -554,6 +646,12 @@ export default function SeenView({
             </label>
           </div>
 
+          {chip === "hidden" && rows.length > 0 && (
+            <p className={`${rv.muted} ${styles.hiddenLine}`}>
+              You hid these on For you, so they never come back there. Restore one and it can.
+            </p>
+          )}
+
           <div className={rv.content}>
             {rows.length === 0 ? (
               // A chip with nothing behind it: one line, the chip still lit (DEC-9, 2-filter right).
@@ -567,8 +665,9 @@ export default function SeenView({
                 <div key={`${chip}|${kind}|${sort}`} className={rv.listFade}>
                   {visible.map((r) => {
                     const rec = asRec(r);
-                    // Cleared on its card page: the row has folded into the note, or gone once the note did (DEC-7).
-                    const gone = r.reaction !== null && !live.has(r.key);
+                    // Cleared on its card page (DEC-7) or restored (DEC-8): the row has folded into the note, or gone once
+                    // the note did.
+                    const gone = r.reaction !== null ? !live.has(r.key) : !liveHidden.has(r.key);
                     if (gone && note?.key !== r.key) return null;
                     if (gone && note)
                       return (
@@ -576,7 +675,11 @@ export default function SeenView({
                           <div className={rv.noteWrap}>
                             <div className={rv.note} role="status">
                               <p>
-                                Rating cleared. <b>{note.title}</b> is out of Seen, and your taste forgets it.
+                                {note.restored ? (
+                                  <>Restored. <b>{note.title}</b> can show up on For you again.</>
+                                ) : (
+                                  <>Rating cleared. <b>{note.title}</b> is out of Seen, and your taste forgets it.</>
+                                )}
                               </p>
                               <button type="button" onClick={undo}>Undo</button>
                             </div>
@@ -621,6 +724,16 @@ export default function SeenView({
                               </div>
                             )}
                           </div>
+                          {r.reaction === null && (
+                            <button
+                              type="button"
+                              className={styles.restore}
+                              aria-label={`Restore ${rec.title}`}
+                              onClick={() => void restore(r)}
+                            >
+                              Restore
+                            </button>
+                          )}
                         </div>
                         {note?.key === r.key && note.to && (
                           <div className={rv.noteWrap}>
