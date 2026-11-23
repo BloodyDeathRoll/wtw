@@ -16,15 +16,27 @@ const io = vi.hoisted(() => ({
   alone: null as unknown,
   byId: {} as Record<string, unknown>,
   poolLists: [] as string[][],
+  /** Order of events, for the speed tests (P2-G check 2). */
+  events: [] as string[],
+  /** When set, loadRatedByPerson waits for it. */
+  ratedGate: null as Promise<void> | null,
 }))
 vi.mock('@/lib/flags', async (orig) => ({ ...(await orig<typeof import('@/lib/flags')>()), formulaV2Enabled: () => io.v2 }))
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }) }) }))
 vi.mock('@/modules/engine/why/score-titles', () => ({ loadTitleRows: async () => io.rows }))
-vi.mock('@/modules/engine/pipeline/step7-card-reason', async (orig) => ({ ...(await orig<object>()), loadRatedByPerson: async () => new Map() }))
+vi.mock('@/modules/engine/pipeline/step7-card-reason', async (orig) => ({
+  ...(await orig<object>()),
+  loadRatedByPerson: async () => { io.events.push('rated:start'); await io.ratedGate; io.events.push('rated:done'); return new Map() },
+}))
+vi.mock('@/modules/engine/scoring/taste-weights', () => ({
+  userTasteWeights: async () => { io.events.push('training'); return [] },
+}))
 vi.mock('@/modules/engine/pipeline/step1-candidate-gen', () => ({ getCandidates: async () => { io.candidates++; return POOL_ROWS } }))
 vi.mock('@/modules/engine/pipeline/step2-composite-score', () => ({
-  scoreCandidates: async (rows: TitleRow[]) =>
-    rows === POOL_ROWS ? POOL_SCORED : rows.map(r => structuredClone(io.byId[r.tmdb_id] ?? io.alone)),
+  scoreCandidates: async (rows: TitleRow[]) => {
+    io.events.push('step2')
+    return rows === POOL_ROWS ? POOL_SCORED : rows.map(r => structuredClone(io.byId[r.tmdb_id] ?? io.alone))
+  },
 }))
 vi.mock('@/modules/engine/scoring/pool-stats', async (orig) => ({
   ...(await orig<typeof import('@/modules/engine/scoring/pool-stats')>()),
@@ -71,6 +83,8 @@ beforeEach(() => {
   io.alone = scored('603', { creators: 0.8, crowd: 0.9, model: 1.2 })
   io.byId = {}
   io.poolLists = []
+  io.events = []
+  io.ratedGate = null
 })
 
 describe('scoreOneTitle', () => {
@@ -122,6 +136,21 @@ describe('scoreOneTitle', () => {
 })
 
 // v3 Q7: the match alone for several titles at once (Search's rows, the Watchlist's rows).
+describe('scoreOneTitle is quick (P2-G check 2: the ring under 1 s)', () => {
+  it('starts the taste training before step 2, and step 2 does not wait for the rated titles', async () => {
+    let release!: () => void
+    io.ratedGate = new Promise<void>(r => { release = r })
+    const done = scoreOneTitle('u1', KEY, { dna: readyDNA() })
+    await vi.waitFor(() => expect(io.events).toContain('step2'))
+    expect(io.events).not.toContain('rated:done')            // step 2 ran while the rated read was still open
+    expect(io.events.indexOf('training')).toBeLessThan(io.events.indexOf('step2'))
+    release()
+    const r = await done
+    expect(r.scored).toBe(true)
+    expect(io.events.at(-1)).toBe('rated:done')
+  })
+})
+
 describe('scoreMatches', () => {
   const PARTS: Record<string, V2Parts> = {
     '603': { creators: 0.8, crowd: 0.9, model: 1.2 },

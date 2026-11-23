@@ -20,6 +20,9 @@ const db = vi.hoisted(() => ({
   removed: [] as { tmdb_id: string; media_type: string }[],
   watchlist: [] as { rec_id: string }[],
   batch: [] as unknown[],
+  // v3 F2: what the person did since the 20 were made, as the fingerprint has it.
+  signals: [] as { tmdb_id: string; type: string; reaction: string }[],
+  history: [] as Record<string, unknown>[],
 }))
 
 vi.mock('next/server', async (orig) => ({
@@ -41,7 +44,13 @@ function query(table: string) {
   q.select = () => q
   q.in = async () => ({ data: [], error: null })
   q.eq = (col: string, v: unknown) => { filters[col] = v; return q }
-  q.single = async () => (table === 'users' ? { data: { dna: dnaAt(7) }, error: null } : { data: null, error: null })
+  q.single = async () => {
+    if (table !== 'users') return { data: null, error: null }
+    const dna = dnaAt(7)
+    dna.signals = db.signals as never
+    dna.learning_loop.recommendation_history = db.history as never
+    return { data: { dna }, error: null }
+  }
   q.maybeSingle = async () => {
     if (db.readFails) return { data: null, error: { message: 'boom' } }
     const recs = db.stored.get(String(filters.content_type))
@@ -83,6 +92,7 @@ beforeEach(() => {
   db.stored.clear(); db.readFails = false; db.writeFails = false
   db.upserts.length = 0; db.served.length = 0; db.removed.length = 0; db.watchlist.length = 0
   db.batch = batchOf(0)
+  db.signals.length = 0; db.history.length = 0
 })
 afterEach(() => { vi.unstubAllEnvs() })
 
@@ -147,6 +157,41 @@ describe('GET /api/recommendations/generate with FOR_YOU_V3 on', () => {
     db.removed.push({ tmdb_id: '103', media_type: 'movie' })
     const again = await page()
     expect(again.ids).toEqual(first.ids.filter((id) => id !== 'movie:103'))
+  })
+
+  // v3 F2 (FOR-YOU.md DEC-4, #350): what you did stays on the card until Refresh.
+  it('a title rated or saved since stays in its place, the rated one carrying its rating (F2)', async () => {
+    const first = await page()
+    db.signals.push({ tmdb_id: '104', type: 'movie', reaction: 'loved' })
+    db.history.push({ recommended: 'movie:107', tmdb_id: '107', type: 'movie', accepted: true, watched: false, rating: null })
+    db.watchlist.push({ rec_id: 'movie:107' })
+    const again = await page()
+    expect(again.ids).toEqual(first.ids)
+    const byId = Object.fromEntries((again.body.recommendations as { id: string; rated?: string }[]).map((r) => [r.id, r.rated]))
+    expect(byId['movie:104']).toBe('loved')
+    expect(byId['movie:107']).toBeUndefined()
+    expect(byId['movie:105']).toBeUndefined()
+  })
+
+  it('a rating of a title of the other type with the same id lights nothing', async () => {
+    await page()
+    db.signals.push({ tmdb_id: '104', type: 'tv', reaction: 'disliked' })
+    const again = await page()
+    expect((again.body.recommendations as { id: string; rated?: string }[]).find((r) => r.id === 'movie:104')?.rated).toBeUndefined()
+  })
+
+  it('the next 20 leave out what was rated or saved (F2: until Refresh)', async () => {
+    db.signals.push({ tmdb_id: '104', type: 'movie', reaction: 'liked' })
+    db.watchlist.push({ rec_id: 'movie:107' })
+    const { makeTheTwenty } = await import('@/lib/for-you-set')
+    const previous = batchOf(0, 20)
+    const r = await makeTheTwenty({
+      userId: 'u1', dna: { ...dnaAt(7), signals: db.signals } as never, batch: batchOf(0, 22), removed: new Set(),
+      contentType: 'movies', previous, source: 'refresh', mustKeep: true,
+    })
+    const ids = r.recommendations.map((c) => c.id)
+    expect(ids).not.toContain('movie:104')
+    expect(ids).not.toContain('movie:107')
   })
 
   it('a failed read of the 20 serves today\'s paged feed, not an error', async () => {

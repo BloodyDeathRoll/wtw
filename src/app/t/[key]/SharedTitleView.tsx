@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addToWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
 import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
+import JustWatchCredit from "@/app/components/JustWatchCredit";
 import { RETURN_COOKIE } from "@/lib/safe-redirect";
 import type { Recommendation } from "@/types/recommendation";
 import styles from "./SharedTitle.module.css";
@@ -211,6 +212,8 @@ export default function SharedTitleView({
             )}
           </div>
         </article>
+        {/* The credit for the service named on the card (v3 L1, Eran on #396): once, under the card. */}
+        {rec.where && <JustWatchCredit at="end" />}
       </div>
     </AppShell>
   );

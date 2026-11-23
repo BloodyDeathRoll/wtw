@@ -16,6 +16,7 @@ import AppShell from '@/modules/session/components/AppShell'
 import { TabBar } from '@/app/components/TabBar'
 import type { AppUser } from '@/modules/session/types'
 import { LEAVE_TIMEOUT_MS, RouteLoading } from '@/app/components/RouteLoading'
+import { refreshIfStale } from '@/lib/fast-tabs'
 import IntroVoice from '@/modules/session/voice/IntroVoice'
 import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from '@/modules/session/voice/intro-copy'
 import type { GameTitle } from '../lib/scales'
@@ -116,6 +117,8 @@ export default function PlayApp({ user, existingUser, chatReady = false, voiceIn
   async function leave(href: string) {
     setLeaving(true)
     await flushNow()
+    // v3 F8 (FAST_TABS): what was just saved shows on the next screen, not a copy kept from before.
+    refreshIfStale(router)
     router.push(href)
   }
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)

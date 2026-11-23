@@ -81,3 +81,14 @@ export function onboardingV2Enabled(): boolean {
 export function searchV3Enabled(): boolean {
   return isOn(process.env.SEARCH_V3)
 }
+
+/**
+ * v3 F8 (docs/plan/v3/PLAN.md §4 F8, DEC-10): tabs open at once, the way you left them. For you keeps its 20 on the
+ * phone between tabs; Games and You are reused from the router's memory for a few minutes (next.config.ts
+ * `staleTimes`) and fetched ahead once the app is idle; a write refreshes what it changed (src/lib/fast-tabs.ts).
+ * Off by default: today's tabs. The client reads it too, and next.config.ts reads it at build, so a change needs a
+ * redeploy. Gate: P1-G.
+ */
+export function fastTabsEnabled(): boolean {
+  return isOn(process.env.FAST_TABS)
+}
