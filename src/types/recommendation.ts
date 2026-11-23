@@ -48,6 +48,9 @@ export interface Recommendation {
   /** True when the engine flagged this as a stretch pick — feedback on it is
    *  itself a fingerprint signal, so it rides through to the feedback API. */
   is_stretch_pick?: boolean;
+  /** v3 F2 (FOR_YOU_V3): in the 20, the person's rating of this title, so the card comes back with its chip lit
+   *  until Refresh. Absent: not rated (or not a card of the 20). */
+  rated?: "loved" | "liked" | "disliked";
   /** Motif + palette used when poster_url is null or fails to load. */
   motif: MotifKind;
   palette: [string, string];
@@ -61,6 +64,9 @@ export interface RecPage {
   has_more: boolean;
   source: string;
   taste_version: number | null;
+  /** v3 F1 (FOR_YOU_V3): this page is the whole 20 (src/lib/for-you-set.ts), kept until Refresh. Absent: a page of
+   *  today's feed, which pages on with `next_offset`. */
+  set?: boolean;
 }
 
 /** The three taste reactions the recommendation cards offer — identical to the

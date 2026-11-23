@@ -313,6 +313,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* v3 F7: "Not your usual, on purpose" over a stretch pick's title
+   (docs/prototypes/for-you-v3/f7). Nothing new: .trailerCircle's outline and
+   glass on .whereBadge's shape and text. */
+.stretchLabel {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+}
 .heroRing {
   position: absolute;
   top: 12px;
@@ -1085,6 +1105,71 @@
   line-height: 1.45;
   color: #fff;
 }
+/* ─── v3 F1: the 20, with Refresh (FOR-YOU.md DEC-1–2; docs/prototypes/for-you-v3/9-refresh-at-the-end.jpg,
+   10-refresh-at-the-top.jpg). Values as the approved mocks drew them. ─── */
+/* "Your 20 picks · ↻ Refresh": the list's first row, so it scrolls away with it. */
+.setTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 0 4px 0 6px;
+  margin-bottom: -4px;
+}
+.setTopLabel {
+  color: var(--rv-white-70);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+/* Refresh failed: today's error colour (.error). */
+.setTopLabelError {
+  color: #ff8b8b;
+}
+/* The "Why it's a match" yellow, as a text link. */
+.setTopRefresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: var(--rv-yellow);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+/* The end card's two buttons, stacked. */
+.setEndBtns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+/* "Tell me what you want": the dark pill (Hide's background), full width, the primary's height. */
+.setEndChat {
+  height: 50px;
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rv-white-10);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.setEndChat:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 /* The Watchlist's end card (DEC-9): 14px clear of the last row, as in 10-end. */
 .endCard {
   margin-top: 14px;

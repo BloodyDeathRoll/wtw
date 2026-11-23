@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import RecommendationsView from '@/modules/session/recommendations/RecommendationsView'
 import { HIDDEN_EVENT, type HiddenDetail } from '@/modules/session/recommendations/rate'
 import type { Recommendation, RecPage } from '@/types/recommendation'
@@ -31,6 +31,9 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 afterEach(() => {
+  // Unmount first: an effect still settling after the test (the list's paging observer) must not run after the
+  // IntersectionObserver stub is gone (seen once in CI, 2026-11-22).
+  cleanup()
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
   vi.restoreAllMocks()

@@ -15,7 +15,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Gamepad2, MessageCircle, Sparkles } from "lucide-react";
 import { watchlistCount, WATCHLIST_CHANGED_EVENT, WATCHLIST_HYDRATED_EVENT } from "@/lib/watchlist";
-import { forYouV3Enabled, navHistoryEnabled } from "@/lib/flags";
+import { fastTabsEnabled, forYouV3Enabled, navHistoryEnabled } from "@/lib/flags";
+import { refreshIfStale, startFastTabs } from "@/lib/fast-tabs";
 import { markInApp } from "@/modules/session/nav-history";
 import { useTabPlace } from "@/modules/session/tab-place";
 import type { AppUser } from "@/modules/session/types";
@@ -47,6 +48,21 @@ export function AskButton({ className, onClick }: { className: string; onClick: 
   );
 }
 
+/**
+ * v3 F8 (FAST_TABS): the tabs a screen fetches ahead once the app is idle. From the home route, Games and You (For you
+ * and the Watchlist are its own stages); from Games or You, the others. An inner page (My taste, Account) fetches its
+ * own tab too, the way back to it.
+ */
+export function tabsToFetchAhead(active: Tab, atRoot: boolean, homeRoute: boolean): string[] {
+  const tabs = (Object.keys(TAB_HREF) as Tab[]).filter((t) =>
+    homeRoute ? t === "games" || t === "you" : !(t === active && atRoot),
+  );
+  return tabs.map((t) => TAB_HREF[t]);
+}
+
+/** v3 F8 (FAST_TABS): the loading cover waits this long, so a screen kept in memory opens with no spinner at all. */
+export const COVER_AFTER_MS = 250;
+
 const STROKE = 1.5;
 const STROKE_ON = 1.9;
 
@@ -73,6 +89,8 @@ export function TabBar({
   const [count, setCount] = useState(0);
   const [typing, setTyping] = useState(false);
   const [leaving, setLeaving] = useState<Tab | null>(null);
+  // FAST_TABS: the tab whose screen is late enough for the loading cover (below).
+  const [lateFor, setLateFor] = useState<Tab | null>(null);
   // N2 (NAV_HISTORY): each tab screen keeps its scroll place, per user; an inner page (Seen, My taste, Account) has
   // its own. For you keeps its place only once FOR_YOU_V3 holds its list still (Eran, #357).
   const placeKey =
@@ -80,6 +98,10 @@ export function TabBar({
       ? null
       : `${user.id}:${atRoot ? active : `${active}:${typeof window === "undefined" ? "" : window.location.pathname}`}`;
   useTabPlace(placeKey);
+  // v3 F8 (FAST_TABS): the other tabs fetched ahead, and kept pages refreshed after a write (src/lib/fast-tabs.ts).
+  // Only the real bar: the copy over a loading screen is gone a moment later.
+  const ahead = keepPlace ? tabsToFetchAhead(active, atRoot, !!onTab).join(" ") : "";
+  useEffect(() => startFastTabs(router, ahead ? ahead.split(" ") : []), [router, ahead]);
 
   // A tab on its own route (Games, You): WTW has a screen in this browser tab now, so the home route opened from here
   // keeps the history under it (NAV_HISTORY, src/modules/session/nav-history.ts). The home route marks itself.
@@ -116,9 +138,20 @@ export function TabBar({
 
   useEffect(() => {
     if (!leaving) return;
-    const t = setTimeout(() => setLeaving(null), LEAVE_TIMEOUT_MS);
+    const t = setTimeout(() => {
+      setLeaving(null);
+      setLateFor(null);
+    }, LEAVE_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [leaving]);
+  // The loading cover: at once, as today; under FAST_TABS only once the next screen is a moment late, so one kept in
+  // memory (or fetched ahead) shows without the spinning logo. The tab you tapped lights at once either way.
+  useEffect(() => {
+    if (!leaving || !fastTabsEnabled()) return;
+    const t = setTimeout(() => setLateFor(leaving), COVER_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [leaving]);
+  const cover = !!leaving && (lateFor === leaving || !fastTabsEnabled());
 
   function go(tab: Tab) {
     if (tab === active && atRoot) {
@@ -127,6 +160,8 @@ export function TabBar({
     }
     if (onTab?.(tab)) return;
     setLeaving(tab);
+    // FAST_TABS: a write since the last refresh, and the next screen is fetched new, not taken from memory.
+    refreshIfStale(router);
     router.push(TAB_HREF[tab]);
   }
 
@@ -183,7 +218,7 @@ export function TabBar({
           );
         })}
       </nav>
-      {leaving && <RouteLoading label="Loading" overlay tabs={<TabBar active={leaving} user={user} onTab={() => true} keepPlace={false} />} />}
+      {leaving && cover && <RouteLoading label="Loading" overlay tabs={<TabBar active={leaving} user={user} onTab={() => true} keepPlace={false} />} />}
     </>
   );
 }

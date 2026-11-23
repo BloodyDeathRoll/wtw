@@ -31,6 +31,7 @@ let feedbackOk: boolean
 let ratingsGate: Promise<void> | null
 let feedbackGate: Promise<void> | null
 let outcomes: boolean[]
+let score: Record<string, unknown> | null
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -44,11 +45,14 @@ beforeEach(() => {
   ratingsGate = null
   feedbackGate = null
   outcomes = []
+  score = null
+  window.sessionStorage.clear()
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : null })
     if (url.includes('/ratings')) return (await ratingsGate, Response.json({ counts: {}, items: ratings, removed: hidden }))
     if (url.includes('why-lines')) return Response.json({ lines: line ? { 'movie:77': line } : {} })
     if (url.includes('/feedback')) return (await feedbackGate, (outcomes.length ? outcomes.shift() : feedbackOk) ? Response.json({ ok: true }) : new Response('no', { status: 500 }))
+    if (url.includes('/score') && score) return Response.json(score)
     if (url.includes('/score') || url.includes('/explain')) return new Response('', { status: 404 })
     if (url.includes('/why')) return Response.json({ text: null })
     return Response.json({ entries: [] })
@@ -233,6 +237,44 @@ describe('a save from Search counts at once (v3 Q6, SEARCH.md DEC-4)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Remove from Watchlist: Memento/i }))
     await waitFor(() => expect(saves().at(-1)?.body).toMatchObject({ removed: ['movie:77'] }))
     await waitFor(() => expect(getUnsyncedRemovals()).toEqual([]))
+  })
+})
+
+describe('your match (v3 Q5, SEARCH.md DEC-3)', () => {
+  const scored = (match: number) => ({ scored: true, tmdb_id: '77', title: 'Memento', explanation: '', match,
+    reason_payload: { crew_matches: [], lineage_connections: [], dimension_matches: [], soft_preferences_applied: [], external_ratings: [], is_stretch_pick: false, stretch_rationale: null, groq_rationale: '', negative_signals: [], taste: { bars: { taste: 0.9, crowd: 0.8, creators: 0.6 }, like: [] } } })
+  const scoreCalls = () => calls.filter((c) => c.url.includes('/score')).length
+
+  it('the card shows at once; the ring fills in with today\'s match when the engine answers, in one request', async () => {
+    score = scored(0.87)
+    card()
+    expect(screen.getByRole('button', { name: 'Add to Watchlist: Memento' })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: '87% match' })).toBeInTheDocument()
+    expect(scoreCalls()).toBe(1) // the ring and the breakdown under the card share it
+  })
+
+  it('a title the engine can\'t score (outside the catalogue, cold start) shows no ring', async () => {
+    card()
+    await waitFor(() => expect(scoreCalls()).toBeGreaterThan(0))
+    expect(screen.queryByRole('img', { name: /% match/ })).toBeNull()
+  })
+
+  it('no older match stands in for today\'s: a saved card\'s match shows only if the engine gives it today', async () => {
+    render(<SearchCard rec={rec({ match: 0.91 })} user={user} />)
+    expect(screen.queryByRole('img', { name: /% match/ })).toBeNull()
+    await waitFor(() => expect(scoreCalls()).toBeGreaterThan(0))
+    expect(screen.queryByRole('img', { name: /% match/ })).toBeNull()
+  })
+
+  it('opened again this session: the ring is there at once, with no new request', async () => {
+    score = scored(0.87)
+    card()
+    await screen.findByRole('img', { name: '87% match' })
+    cleanup()
+    const before = scoreCalls()
+    card()
+    expect(screen.getByRole('img', { name: '87% match' })).toBeInTheDocument()
+    expect(scoreCalls()).toBe(before)
   })
 })
 

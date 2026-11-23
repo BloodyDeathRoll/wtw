@@ -23,6 +23,7 @@
 
 import type { FeedbackRating, Recommendation } from "@/types/recommendation"
 import type { ExplainData } from "@/lib/explain-cache"
+import { tabsChanged } from "@/lib/fast-tabs"
 
 const STORAGE_KEY = "wtw_watchlist"
 
@@ -136,6 +137,7 @@ export function addToWatchlist(rec: Recommendation, explain: ExplainData | null 
   ]
   writeList(next.slice(0, MAX_ENTRIES))
   queueChange(rec.id, "upsert")
+  tabsChanged() // v3 F8: a kept page may show it (src/lib/fast-tabs.ts)
   // Re-saved after an unsave: the pending removal is moot (the save will be
   // re-reported), so drop it rather than leave it queued forever.
   const removals = readRemovals()
@@ -152,6 +154,7 @@ export function removeFromWatchlist(id: string) {
   if (!gone) return
   writeList(list.filter((e) => e.rec.id !== id))
   queueChange(id, "delete")
+  tabsChanged()
   // The fingerprint excludes saved titles from the feed, so an unsave has to
   // reach it too — otherwise the title stays hidden forever. Always queued,
   // even for an entry that never synced: an EARLIER save of the same title
