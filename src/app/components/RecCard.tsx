@@ -319,7 +319,7 @@ function CreatorLine({ c }: { c: { role: string; loved: string[]; liked: string[
   )
 }
 
-export function WhyPanel({ result, why }: { result: RecommendationResult; why?: string | null | "pending" | "failed" }) {
+export function WhyPanel({ result, why, omitWhy = false }: { result: RecommendationResult; why?: string | null | "pending" | "failed"; omitWhy?: boolean }) {
   const p = result.reason_payload as ReasonPayloadWithTaste
   // Present when the batch was scored by formula v2; an older batch or v1 has none.
   const taste = p.taste
@@ -394,7 +394,7 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
 
   return (
     <div className={styles.whyPanel}>
-      <div className={styles.whySection}>
+      {!omitWhy && <div className={styles.whySection}>
         <div className={styles.whySectionLabel}>Why</div>
         {why === "pending" ? (
           <div className={styles.whySkeleton} aria-label="Writing why" role="status">
@@ -405,7 +405,7 @@ export function WhyPanel({ result, why }: { result: RecommendationResult; why?: 
         ) : (
           <div className={styles.whyText}><Emphasis text={why ?? result.explanation} /></div>
         )}
-      </div>
+      </div>}
 
       {!noClaim && segments.length > 0 && (
         <div className={styles.whySection}>

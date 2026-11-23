@@ -398,6 +398,11 @@
   color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
 }
+.heroReason.heroReasonWhole {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
 /* A Watchlist card's fresh "why" line is on its way: two quiet lines the
    height of .heroReason's (15.5px × 1.45), so nothing jumps when it lands. */
 .heroReasonPending {

@@ -1492,7 +1492,8 @@ function FeedCard({
         {/* The text is the teaser; the Why page is the full answer. The text
             opens it too — the link is the control a keyboard reaches. */}
         {rec.reason ? (
-          <p className={styles.heroReason} onClick={() => onWhy(rec)}>
+          // On the card page the line is shown whole (app text is never trimmed; Eran, #403).
+          <p className={whyInline ? `${styles.heroReason} ${styles.heroReasonWhole}` : styles.heroReason} onClick={() => onWhy(rec)}>
             <Emphasis text={rec.reason} />
           </p>
         ) : reasonPending ? (
@@ -2743,6 +2744,26 @@ export function TitleCardPage({
   );
 }
 
+/** Whether two texts say the same thing: the same words, or one holds the other whole (40+ letters). Marks and spacing don't count. */
+export function sameText(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  if (!a || !b) return false;
+  const [x, y] = [norm(a), norm(b)];
+  return x.length > 0 && (x === y || (Math.min(x.length, y.length) >= 40 && (x.includes(y) || y.includes(x))));
+}
+
+/**
+ * The Why minus the sentences the line under the title already says: a title
+ * with no personal reason opens its Why with the same plot (Slow Horses; Eran,
+ * #403), so the plot shows once and what the Why adds stays. Null when nothing is left.
+ */
+export function whyBeyondLine(why: string, line: string | null | undefined): string | null {
+  // No lookbehind: Safari before 16.4 can't parse one, and it would break the whole module.
+  const sentences = (why.match(/[^.!?]+[.!?]+["”*]*|[^.!?]+$/g) ?? []).map((s) => s.trim());
+  const kept = sentences.filter((s) => s && !sameText(s, line));
+  return kept.length > 0 ? kept.join(" ") : null;
+}
+
 /**
  * The sheet's content on the card page (Why, Score breakdown, What it's like,
  * Crew), in the sheet's own styles. The written why takes 1–3 s: three quiet
@@ -2790,9 +2811,18 @@ function InlineWhy({
   }, [data, rec.id, rec.type, snapshot]);
 
   let body: ReactNode = null;
-  if (data && data !== "loading") body = <WhyPanel result={toResult(data, rec)} why={why} />;
-  else if (data === "loading" || why === "pending") body = <WhyTextOnly text="" pending />;
-  else if (typeof why === "string" && why !== "failed") body = <WhyTextOnly text={why} />;
+  if (data && data !== "loading") {
+    const result = toResult(data, rec);
+    if (why === "pending" || why === "failed") body = <WhyPanel result={result} why={why} />;
+    else {
+      const rest = whyBeyondLine(why ?? result.explanation, rec.reason);
+      body = <WhyPanel result={result} why={rest} omitWhy={rest === null} />;
+    }
+  } else if (data === "loading" || why === "pending") body = <WhyTextOnly text="" pending />;
+  else if (typeof why === "string" && why !== "failed") {
+    const rest = whyBeyondLine(why, rec.reason);
+    if (rest) body = <WhyTextOnly text={rest} />;
+  }
   if (!body) return null;
   return (
     <div ref={innerRef} className={styles.cardWhy}>
