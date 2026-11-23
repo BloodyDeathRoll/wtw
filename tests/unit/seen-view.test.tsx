@@ -191,6 +191,31 @@ describe('S2: change a rating right on the row (DEC-4, DEC-5)', () => {
     expect((posts as { reaction: string }[]).map((p) => p.reaction)).toEqual(['liked', 'disliked', 'loved'])
   })
 
+  it('a change and its Undo go one after the other; the older answer never puts the row back (P2-G check 1)', async () => {
+    posts = []
+    const answers: ((r: Response) => void)[] = []
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/recommendations/feedback') {
+        posts.push(JSON.parse(String(init?.body)))
+        return new Promise<Response>((res) => answers.push(res))
+      }
+      return Promise.resolve(Response.json(DATA))
+    }))
+    render(<SeenView onBack={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Liked it: Memento' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    await flush()
+    // The Undo waits for the change's answer.
+    expect((posts as { reaction: string }[]).map((p) => p.reaction)).toEqual(['liked'])
+    await act(async () => { answers[0](new Response(null, { status: 200 })); await flush(); await flush() })
+    // The change's answer came back after the Undo: the row stays on Loved.
+    expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect((posts as { reaction: string }[]).map((p) => p.reaction)).toEqual(['liked', 'loved'])
+    await act(async () => { answers[1](new Response(null, { status: 200 })); await flush() })
+    expect(screen.getByRole('button', { name: 'Loved it: Memento' })).toHaveAttribute('aria-pressed', 'true')
+    expect(chipCounts()).toEqual(['Loved2', 'Liked1', 'Disliked', 'Hidden from For you1'])
+  })
+
   it('the lit icon does nothing', async () => {
     serveWith(true)
     render(<SeenView onBack={() => {}} />)
