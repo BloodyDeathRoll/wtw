@@ -187,22 +187,28 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
 
   try {
     const supabase = createServiceClient()
+    // Every chunk's read at once (up to 3 for 400 titles), then read in the same
+    // order as before: one after another, they cost ~0.4 s, the slowest part of
+    // scoring one title (P2-G check 2).
+    const chunks: { type: 'movie' | 'tv'; ids: string[] }[] = []
     for (const type of ['movie', 'tv'] as const) {
       const ids = [...reaction.keys()].filter(k => k.startsWith(`${type}:`)).map(k => k.slice(type.length + 1))
-      for (let i = 0; i < ids.length; i += 150) {
-        const { data, error } = await supabase
-          .from('titles')
-          .select('tmdb_id, title, crew, tmdb_vote_count')
-          .eq('type', type)
-          .in('tmdb_id', ids.slice(i, i + 150))
-        if (error) throw error
-        for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
-          const key = `${type}:${t.tmdb_id}`
-          for (const [id, roles] of peopleIn(t.crew)) {
-            const list = out.get(id) ?? []
-            list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
-            out.set(id, list)
-          }
+      for (let i = 0; i < ids.length; i += 150) chunks.push({ type, ids: ids.slice(i, i + 150) })
+    }
+    const results = await Promise.all(chunks.map(c => supabase
+      .from('titles')
+      .select('tmdb_id, title, crew, tmdb_vote_count')
+      .eq('type', c.type)
+      .in('tmdb_id', c.ids)))
+    for (const [n, { data, error }] of results.entries()) {
+      if (error) throw error
+      const { type } = chunks[n]
+      for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
+        const key = `${type}:${t.tmdb_id}`
+        for (const [id, roles] of peopleIn(t.crew)) {
+          const list = out.get(id) ?? []
+          list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
+          out.set(id, list)
         }
       }
     }

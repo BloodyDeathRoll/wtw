@@ -34,6 +34,7 @@ import { loadRatedByPerson } from './pipeline/step7-card-reason'
 import { sheetTexts, toResults } from './pipeline/step7-explanation'
 import { scoreAgainstPool } from './scoring/formula-v2'
 import { poolStatsOf, readPoolStats, savePoolStats, v2PartsOf, type SavedPoolStats } from './scoring/pool-stats'
+import { userTasteWeights } from './scoring/taste-weights'
 import { displayMatch } from './match-display'
 import { loadTitleRows, type TitleKey } from './why/score-titles'
 
@@ -95,10 +96,18 @@ export async function scoreOneTitle(
   // claiming one here would be the guess DEC-5 rules out.
   if (isColdStart(dna)) return { scored: false, reason: 'cold_start' }
 
-  const [rows, saved, rated] = await Promise.all([
+  // Speed (P2-G check 2, the ring under 1 s): nothing waits on what it doesn't need.
+  // - The taste model's training data starts loading now, alongside the title read;
+  //   step 2 picks it up from taste-weights.ts's memo (keyed by this same `dna`).
+  // - The rated titles' crew (the slowest read, ~0.4 s) is only needed for the text at
+  //   the end, so it runs alongside step 2 instead of in front of it.
+  // Measured locally 2026-11-23: ~0.9 s on the server before, the reads in a queue.
+  void userTasteWeights(dna).catch(() => {})  // a failure is step 2's to handle (it scores without the model)
+  const ratedP = loadRatedByPerson(dna)        // never rejects: an empty map on failure
+
+  const [rows, saved] = await Promise.all([
     loadTitleRows([key]),
     readPoolStats(userId, poolLists(key.type)),
-    loadRatedByPerson(dna),
   ])
   const row = rows[0]
   if (!row) return { scored: false, reason: 'not_in_catalogue' }
@@ -116,6 +125,7 @@ export async function scoreOneTitle(
   // Step 3 (soft preferences, for the payload: the match keeps the score
   // before them, as the card does) and step 6.
   const items = buildReasonPayloads(applySoftModifiers([alone], dna))
+  const rated = await ratedP
   const [result] = toResults(items, rated)
   const k = `${key.type}:${key.tmdb_id}`
 
@@ -155,6 +165,8 @@ export async function scoreMatches(
   if (!dna || isColdStart(dna)) return {}
 
   const types = [...new Set(keys.map(k => k.type))]
+  // The training data loads alongside the reads below; step 2 reuses it (see scoreOneTitle).
+  void userTasteWeights(dna).catch(() => {})
   const [rows, ...saved] = await Promise.all([
     loadTitleRows(keys),
     ...types.map(t => readPoolStats(userId, poolLists(t))),
