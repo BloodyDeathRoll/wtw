@@ -176,13 +176,9 @@
   color: #ffa900;
   font-weight: 600;
 }
-/* Four lines at most, like the feed card's reason (.heroReason). */
+/* In full: app text is never trimmed (Eran, 2026-11-23, on #411). */
 .synopsis {
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
   font-size: 15.5px;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.88);
