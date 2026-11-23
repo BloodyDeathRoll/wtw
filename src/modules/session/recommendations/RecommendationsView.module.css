@@ -398,7 +398,7 @@
   color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
 }
-.heroReasonWhole {
+.heroReason.heroReasonWhole {
   display: block;
   -webkit-line-clamp: unset;
   overflow: visible;
