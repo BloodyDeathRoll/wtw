@@ -2758,7 +2758,9 @@ export function sameText(a: string | null | undefined, b: string | null | undefi
  * #403), so the plot shows once and what the Why adds stays. Null when nothing is left.
  */
 export function whyBeyondLine(why: string, line: string | null | undefined): string | null {
-  const kept = why.split(/(?<=[.!?]["”*]?)\s+/).filter((s) => s.trim() && !sameText(s, line));
+  // No lookbehind: Safari before 16.4 can't parse one, and it would break the whole module.
+  const sentences = (why.match(/[^.!?]+[.!?]+["”*]*|[^.!?]+$/g) ?? []).map((s) => s.trim());
+  const kept = sentences.filter((s) => s && !sameText(s, line));
   return kept.length > 0 ? kept.join(" ") : null;
 }
 
