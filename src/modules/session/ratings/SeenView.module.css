@@ -1,0 +1,105 @@
+/* Seen v3 (docs/plan/v3/SEEN.md, S1). The look is the Watchlist's
+   (RecommendationsView.module.css) and today's dropdowns (RatingsView.module.css);
+   this file only carries the tokens and layout those two need together. */
+
+/* Today's Ratings tokens the Watchlist's root doesn't define (RatingsView.module.css .view). */
+.tokens {
+  --rv-white: #fff;
+  --rv-gold: #f4b940;
+  --rv-dark-50-70: rgba(22, 22, 20, 0.7);
+  --rv-labels: 16px;
+  --rv-menus: 20px;
+  --rv-small: 13.5px;
+  --rv-pad: 16px;
+  --rv-pad-2: 6.5px;
+  --rv-pad-small: 10px;
+}
+
+/* Today's two dropdowns, under the chips, on the chips' left edge (DEC-3, 7-icons). */
+.dropdowns {
+  display: flex;
+  align-items: center;
+  gap: var(--rv-pad-2);
+  padding: 0 16px 8px;
+  flex-shrink: 0;
+}
+
+/* S3: a row that opens the card page carries a button over all of it; the icons sit above that button. */
+.row {
+  position: relative;
+  cursor: default;
+}
+.open {
+  position: absolute;
+  inset: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: inherit;
+}
+.open:focus-visible {
+  outline: 1px solid var(--rv-gold);
+}
+
+/* S2 (DEC-4, 7-icons right): the card's reaction chips as icons only, under the facts line. */
+.icons {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.icon {
+  flex: 0 0 52px;
+  height: 36px;
+}
+/* The two you didn't pick, dimmed a little (about 55%). */
+.iconDim > span {
+  opacity: 0.55;
+}
+
+/* S3: under the card page the list stays mounted (its place kept), out of sight. */
+.here {
+  display: contents;
+}
+.away {
+  display: none;
+}
+
+/* The type and sort pills fit their word, as in 7-icons ("All ⌄"): the native select lies over the pill, unseen,
+   since a select is as wide as its longest option in every browser. */
+.pill {
+  position: relative;
+}
+.pillText {
+  font-size: var(--rv-small);
+  color: var(--rv-white);
+}
+.pillSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+}
+
+/* S4 (DEC-8, 5-hidden middle): the line over the hidden titles, and each row's yellow Restore, in the Watchlist
+   note's Undo look. */
+.hiddenLine {
+  margin: 0;
+  padding: 0 16px 8px;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+.restore {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 10px 4px;
+  border: 0;
+  background: none;
+  color: var(--rv-yellow);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+}

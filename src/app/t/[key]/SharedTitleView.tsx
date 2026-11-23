@@ -3,7 +3,7 @@
 /**
  * The shared-link page (docs/prototypes/share/v3/8a–8d): who sent it, then the
  * title as a feed card without a match ring.
- *   8a signed out      → "Save to my watchlist" signs in with Google and comes
+ *   8a signed out      → "Save to my Watchlist" signs in with Google and comes
  *                        back here with ?save=1, which saves it.
  *   8b signed in       → "Add to Watchlist" saves on the spot.
  *   8c saved           → the feed's saved button + "See my recommendations".
@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addToWatchlist, hydrateWatchlist, isInWatchlist, removeFromWatchlist } from "@/lib/watchlist";
 import { shareTitle } from "@/lib/share";
 import ShareIcon from "@/app/components/ShareIcon";
+import JustWatchCredit from "@/app/components/JustWatchCredit";
 import { RETURN_COOKIE } from "@/lib/safe-redirect";
 import type { Recommendation } from "@/types/recommendation";
 import styles from "./SharedTitle.module.css";
@@ -174,14 +175,14 @@ export default function SharedTitleView({
               <>
                 <button type="button" className={styles.cta} onClick={signInToSave} disabled={busy}>
                   <Bookmark size={16} strokeWidth={1.8} aria-hidden />
-                  <span>Save to my watchlist</span>
+                  <span>Save to my Watchlist</span>
                 </button>
                 <p className={styles.sub}>Free. Sign in with Google and it&rsquo;s saved.</p>
               </>
             ) : welcomed && saved ? (
               <>
                 <p className={styles.sub}>
-                  It&rsquo;s on your watchlist. Now two minutes of games, and I&rsquo;ll find you more like it.
+                  It&rsquo;s on your Watchlist. Now two minutes of games, and I&rsquo;ll find you more like it.
                 </p>
                 <button type="button" className={styles.cta} onClick={() => router.push("/play")}>
                   Let&rsquo;s play
@@ -196,7 +197,7 @@ export default function SharedTitleView({
                   aria-pressed={saved}
                 >
                   <Bookmark size={16} strokeWidth={1.8} fill={saved ? "currentColor" : "none"} aria-hidden />
-                  <span>{saved ? "Remove from watchlist" : "Add to Watchlist"}</span>
+                  <span>{saved ? "Remove from Watchlist" : "Add to Watchlist"}</span>
                 </button>
                 {saved && (
                   <button
@@ -211,6 +212,8 @@ export default function SharedTitleView({
             )}
           </div>
         </article>
+        {/* The credit for the service named on the card (v3 L1, Eran on #396): once, under the card. */}
+        {rec.where && <JustWatchCredit at="end" />}
       </div>
     </AppShell>
   );

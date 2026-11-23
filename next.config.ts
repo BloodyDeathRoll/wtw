@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withPWA from "@ducanh2912/next-pwa";
+import { fastTabsEnabled } from "./src/lib/flags";
 
 // Site-wide response headers (audit 2026-09-11). The CSP is set per request in
 // src/middleware.ts (it needs a nonce), report-only for now. Microphone stays
@@ -20,7 +21,16 @@ const nextConfig: NextConfig = {
   env: {
     CHAT_MODE: process.env.CHAT_MODE ?? "",
     NAV_TABS: process.env.NAV_TABS ?? "",
+    NAV_HISTORY: process.env.NAV_HISTORY ?? "",
+    SEEN_V3: process.env.SEEN_V3 ?? "",
+    FOR_YOU_V3: process.env.FOR_YOU_V3 ?? "",
+    SEARCH_V3: process.env.SEARCH_V3 ?? "",
+    FAST_TABS: process.env.FAST_TABS ?? "",
   },
+  // v3 F8 (FAST_TABS, src/lib/flags.ts): a page you left a few minutes ago is reused from the router's memory, not
+  // rendered again; src/lib/fast-tabs.ts refreshes it after a write. Read at build, like the flags above. Off: none
+  // (Next's default, 0 s), today's behaviour.
+  ...(fastTabsEnabled() ? { experimental: { staleTimes: { dynamic: 300 } } } : {}),
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "image.tmdb.org" },

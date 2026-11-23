@@ -144,7 +144,7 @@ describe('the card page', () => {
     view()
     fireEvent.click(screen.getByRole('button', { name: 'Title movie:1: open' }))
     expect(screen.getByRole('button', { name: 'back' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Remove from watchlist: Title movie:1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove from Watchlist: Title movie:1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Star Title movie:1' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Why Title movie:1 is a match/ })).toBeNull()
     expect(screen.queryByText('Watchlist (3)')).toBeNull()
@@ -156,7 +156,7 @@ describe('the card page', () => {
     seed(THREE)
     view()
     fireEvent.click(screen.getByRole('button', { name: 'Title movie:1: open' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from watchlist: Title movie:1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Watchlist: Title movie:1' }))
     await waitFor(() => expect(screen.getByText('Watchlist (2)')).toBeInTheDocument())
     const note = screen.getByRole('status')
     expect(note).toHaveTextContent('Removed. Title movie:1 is off your Watchlist.')
@@ -168,5 +168,96 @@ describe('the card page', () => {
     expect(screen.getByText('Watchlist (3)')).toBeInTheDocument()
     expect(rowNames()).toEqual(['Title movie:2', 'Title movie:1', 'Title tv:3'])
     expect(JSON.parse(window.localStorage.getItem('wtw_watchlist')!)).toHaveLength(3)
+  })
+})
+
+// v3 L1 (#372, Eran's B): one "Where to watch: JustWatch" line per screen, only where a service is shown.
+describe('the JustWatch credit', () => {
+  const CREDIT = 'Where to watch: JustWatch'
+
+  it('ends the list once when a row shows a service', () => {
+    seed(THREE)
+    view()
+    expect(screen.getAllByText(CREDIT)).toHaveLength(1)
+  })
+
+  it('is absent when no row shows one (a Seen row shows its reaction, not its service)', () => {
+    seed([
+      { rec: rec('movie:1', { where_il: null }), added_at: 2, rating: null, starred: false, explain: null, synced: true },
+      { rec: rec('movie:2', { where_il: 'Netflix' }), added_at: 1, rating: 'liked', starred: false, explain: null, synced: true },
+    ])
+    view()
+    expect(screen.queryByText(CREDIT)).toBeNull()
+  })
+
+  it('waits for the real end: not while more rows are still to come', () => {
+    seed(Array.from({ length: 8 }, (_, i) => (
+      { rec: rec(`movie:${i + 1}`, { where_il: 'Netflix' }), added_at: 8 - i, rating: null, starred: false, explain: null, synced: true }
+    )))
+    view()
+    expect(rowNames()).toHaveLength(6) // the first page; the rest come as you scroll
+    expect(screen.queryByText(CREDIT)).toBeNull()
+  })
+
+  it('sits under the card on the card page when the title has a service, and not when it has none', () => {
+    seed(THREE)
+    view()
+    fireEvent.click(screen.getByRole('button', { name: 'Title movie:1: open' }))
+    expect(screen.getAllByText(CREDIT)).toHaveLength(1)
+    cleanup()
+    seed(THREE)
+    view()
+    fireEvent.click(screen.getByRole('button', { name: 'Title tv:3: open' }))
+    expect(screen.queryByText(CREDIT)).toBeNull()
+  })
+})
+
+describe('the end card (DEC-9)', () => {
+  const FOUR = [
+    ...THREE,
+    { rec: rec('movie:4', { where_il: null }), added_at: 0, rating: null, starred: false, explain: null, synced: true },
+  ]
+  const talk = () => screen.queryByRole('button', { name: /Let.s talk/ })
+
+  it('sits under the last unseen row, before the Seen line, and its button opens the chat', () => {
+    seed(FOUR)
+    const onTalk = vi.fn()
+    view({ onTalk })
+    expect(screen.getByText('That’s your list')).toBeInTheDocument()
+    expect(screen.getByText('Need help deciding? Let’s talk it over.')).toBeInTheDocument()
+    const card = screen.getByRole('group', { name: 'That’s your list' })
+    const lastUnseen = screen.getByRole('button', { name: 'Title movie:4: open' })
+    const seenLine = screen.getByRole('separator', { name: 'Seen, 1' })
+    expect(lastUnseen.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(card.compareDocumentPosition(seenLine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(talk()!)
+    expect(onTalk).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the list when nothing is Seen', () => {
+    seed(FOUR.map((e) => ({ ...e, rating: null })))
+    view({ onTalk: () => {} })
+    const card = screen.getByRole('group', { name: 'That’s your list' })
+    const last = screen.getAllByRole('button', { name: /: open$/ }).at(-1)!
+    expect(last.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('needs three unseen titles', () => {
+    seed(THREE)
+    view({ onTalk: () => {} })
+    expect(talk()).toBeNull()
+  })
+
+  it('shows under All only', () => {
+    seed(FOUR)
+    view({ onTalk: () => {} })
+    fireEvent.click(within(screen.getByRole('group', { name: 'Show' })).getByRole('button', { name: /^Movies/ }))
+    expect(talk()).toBeNull()
+  })
+
+  it('is not offered when the chat is off or out of turns (no onTalk)', () => {
+    seed(FOUR)
+    view()
+    expect(talk()).toBeNull()
   })
 })

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Bebas_Neue } from 'next/font/google'
-import { ChevronRight, LogOut, MessageSquare, RotateCcw, User } from 'lucide-react'
+import { ChevronRight, LogOut, MessageSquare, RotateCcw, Trash2, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { TastePageData } from '../profile/dna/lib/taste-page'
 import base from '../profile/dna/dna.module.css'
@@ -57,6 +57,9 @@ export function SeenCard({ seen, total }: { seen: TastePageData['seen']; total: 
   )
 }
 
+/** The app's red (YOU.md DEC-3), as the sheets' error line. */
+const DANGER = '#ff8a7a'
+
 /** A row in the genre rows' look that opens a page: icon, label (and a line under it), chevron. */
 function LinkRow({ href, icon, label, says }: { href: string; icon: React.ReactNode; label: string; says?: string }) {
   return (
@@ -97,11 +100,12 @@ export function YouLinksCard({ feedback = false }: { feedback?: boolean }) {
 
 /**
  * The Account page's rows (v3 Y1, YOU.md DEC-3; you-v3/2-account-page.jpg): Start my taste over (today's row and
- * sheet), then Sign out (no arrow: it acts at once). Delete my account joins last with v3 Y3.
+ * sheet), then Sign out (no arrow: it acts at once), then Delete my account, last, in the app's red (v3 Y3).
  */
 export function AccountRows() {
   const router = useRouter()
   const [asking, setAsking] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   return (
     <section className={base.section}>
       <div className={t.grows}>
@@ -128,8 +132,18 @@ export function AccountRows() {
           <span />
           <span />
         </button>
+        <button type="button" className={t.grow} onClick={() => setDeleting(true)}>
+          <i className={t.gline} aria-hidden="true" style={{ color: DANGER }}><Trash2 size={24} strokeWidth={1.75} /></i>
+          <span className={t.gtext}>
+            <span className={t.glabel} style={{ display: 'block', color: DANGER }}>Delete my account</span>
+            <span className={t.gsays} style={{ display: 'block' }}>Erase your account and everything WTW knows about you.</span>
+          </span>
+          <span />
+          <span className={t.chev}><ChevronRight size={16} strokeWidth={2} /></span>
+        </button>
       </div>
       {asking && <StartOverSheet onClose={() => setAsking(false)} />}
+      {deleting && <DeleteAccountSheet onClose={() => setDeleting(false)} />}
     </section>
   )
 }
@@ -172,6 +186,57 @@ function StartOverSheet({ onClose }: { onClose: () => void }) {
         <button type="button" className={s.sheetCta} autoFocus onClick={onClose} disabled={state === 'busy'}>Cancel</button>
         <button type="button" className={s.sheetOpt} onClick={startOver} disabled={state === 'busy'}>
           {state === 'busy' ? 'Starting over…' : 'Start over'}
+        </button>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+
+/**
+ * "Delete your account?" (v3 Y3; you-v3/2-account-page.jpg right, and the states Eran approved on #371 2026-11-19):
+ * the Start-over sheet's look, Cancel the big orange button so the safe choice is the easy one. While it works both
+ * buttons dim and the second reads "Deleting…"; if it fails, one red line and the sheet stays open. Once deleted:
+ * signed out, on the login page.
+ */
+function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
+  const [state, setState] = useState<'ask' | 'busy' | 'failed'>('ask')
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && state !== 'busy') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose, state])
+
+  async function erase() {
+    setState('busy')
+    try {
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ confirm: 'delete-account' }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      // The login is gone; clear this browser's session too, then the login page.
+      await createClient().auth.signOut().catch(() => {})
+      // A full load, not router.push: nothing of the deleted account may stay in this tab's memory.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign('/login')
+    } catch {
+      setState('failed')
+    }
+  }
+
+  return createPortal(
+    <div className={bebas.variable}>
+      <div className={s.sheetBg} onClick={state === 'busy' ? undefined : onClose} />
+      <div className={s.sheet} role="alertdialog" aria-modal="true" aria-labelledby="delete-account-h">
+        <h3 id="delete-account-h">Delete your account?</h3>
+        <p>WTW erases your account and everything in it: your ratings, your taste profile, your Watchlist, your game scores, your chats and the notes you sent us. You’ll be signed out. This can’t be undone.</p>
+        {state === 'failed' && <p className={s.sheetError} role="alert">Couldn’t delete your account just now. Try again in a moment.</p>}
+        <button type="button" className={s.sheetCta} autoFocus onClick={onClose} disabled={state === 'busy'}>Cancel</button>
+        <button type="button" className={s.sheetOpt} onClick={erase} disabled={state === 'busy'}>
+          {state === 'busy' ? 'Deleting…' : 'Delete my account'}
         </button>
       </div>
     </div>,

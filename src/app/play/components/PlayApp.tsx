@@ -16,6 +16,7 @@ import AppShell from '@/modules/session/components/AppShell'
 import { TabBar } from '@/app/components/TabBar'
 import type { AppUser } from '@/modules/session/types'
 import { LEAVE_TIMEOUT_MS, RouteLoading } from '@/app/components/RouteLoading'
+import { refreshIfStale } from '@/lib/fast-tabs'
 import IntroVoice from '@/modules/session/voice/IntroVoice'
 import { GAMES_INTRO_AUDIO_SRC, GAMES_INTRO_MESSAGE } from '@/modules/session/voice/intro-copy'
 import type { GameTitle } from '../lib/scales'
@@ -116,6 +117,8 @@ export default function PlayApp({ user, existingUser, chatReady = false, voiceIn
   async function leave(href: string) {
     setLeaving(true)
     await flushNow()
+    // v3 F8 (FAST_TABS): what was just saved shows on the next screen, not a copy kept from before.
+    refreshIfStale(router)
     router.push(href)
   }
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -147,16 +150,16 @@ export default function PlayApp({ user, existingUser, chatReady = false, voiceIn
     if (savedSet.has(t.id)) {
       unsaveTitle(t.id)
       setSaved(prev => { const n = new Set(prev); n.delete(t.id); return n })
-      note(S, `Removed ${t.title} from your watchlist`)
-      toast(`Removed ${t.title} from your watchlist`)
+      note(S, `Removed ${t.title} from your Watchlist`)
+      toast(`Removed ${t.title} from your Watchlist`)
       commit([{ kind: 'watchlist_remove', item_key: t.id, payload: { title: t.id, from: source } }])
       return
     }
     saveTitle(t, source)
     setSaved(prev => new Set(prev).add(t.id))
     learnFromRating(S, t, 0.5, 0.3)
-    note(S, `Saved ${t.title} to your watchlist (${SAVED_FROM[source].toLowerCase()})`)
-    toast(`${t.title} is on your watchlist`, () => {
+    note(S, `Saved ${t.title} to your Watchlist (${SAVED_FROM[source].toLowerCase()})`)
+    toast(`${t.title} is on your Watchlist`, () => {
       unsaveTitle(t.id)
       setSaved(prev => { const n = new Set(prev); n.delete(t.id); return n })
       note(S, `Undid saving ${t.title}`)
@@ -464,8 +467,8 @@ export default function PlayApp({ user, existingUser, chatReady = false, voiceIn
     removeSaved(id, title) {
       unsaveTitle(id)
       setSaved(prev => { const n = new Set(prev); n.delete(id); return n })
-      note(S, `Removed ${title} from your watchlist`)
-      toast(`Removed ${title} from your watchlist`)
+      note(S, `Removed ${title} from your Watchlist`)
+      toast(`Removed ${title} from your Watchlist`)
       commit([{ kind: 'watchlist_remove', item_key: id, payload: { title: id, from: 'watchlist' } }])
     },
     undoToast() {

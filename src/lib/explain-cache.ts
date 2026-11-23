@@ -19,6 +19,8 @@ export interface ExplainData {
   explanation: string;
   reason_payload: RecommendationResult["reason_payload"];
   is_stretch_pick: boolean;
+  /** Today's match (0–0.97), when the engine scored it now (M1). Absent on `/explain` and saved snapshots. */
+  match?: number;
 }
 
 type CacheMap = Record<string, ExplainData>;
@@ -63,14 +65,31 @@ export const freshKey = (id: string) => `fresh:${id}`;
 
 /**
  * Today's breakdown for one title, from the engine (`GET
- * /api/recommendations/score`, M1): the same shape as `/explain`. Null when
- * the engine won't score it (not in the catalogue, a profile still on
- * cold-start picks) or the call fails: the card page then falls back.
+ * /api/recommendations/score`, M1): the same shape as `/explain`, plus today's
+ * match. Null when the engine won't score it (not in the catalogue, a profile
+ * still on cold-start picks) or the call fails: the card page then falls back.
+ *
+ * One request per title at a time: Search's card asks for the match (v3 Q5)
+ * as its breakdown asks for the bars, and both get the same answer.
  */
-export async function fetchFreshExplain(
+const inFlight = new Map<string, Promise<ExplainData | null>>();
+export function fetchFreshExplain(
   type: "movie" | "tv",
   tmdbId: string,
   fetchImpl: typeof fetch = fetch,
+): Promise<ExplainData | null> {
+  const key = `${type}:${tmdbId}`;
+  const pending = inFlight.get(key);
+  if (pending) return pending;
+  const p = askScore(type, tmdbId, fetchImpl).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+async function askScore(
+  type: "movie" | "tv",
+  tmdbId: string,
+  fetchImpl: typeof fetch,
 ): Promise<ExplainData | null> {
   try {
     const res = await fetchImpl(
@@ -85,6 +104,7 @@ export async function fetchFreshExplain(
       explanation: d.explanation ?? "",
       reason_payload: d.reason_payload,
       is_stretch_pick: false,
+      ...(typeof d.match === "number" && d.match > 0 ? { match: d.match } : {}),
     };
   } catch {
     return null;
@@ -101,4 +121,29 @@ export function withoutGuessedBars(d: ExplainData): ExplainData {
   const p = d.reason_payload as RecommendationResult["reason_payload"] & { taste?: unknown };
   if (p?.taste) return d;
   return { ...d, reason_payload: { ...p, taste: { like: [] } } as RecommendationResult["reason_payload"] };
+}
+
+/**
+ * Today's match for several titles (v3 Q7, `POST /api/recommendations/score`),
+ * keyed "type:tmdb_id". A title the engine won't score is absent; a failed
+ * call gives null, so the caller can ask again later. Either way it shows
+ * what it has (the saved match on a Watchlist row, nothing on a Search result).
+ */
+export async function fetchMatches(
+  titles: { type: "movie" | "tv"; tmdb_id: string }[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<Record<string, number> | null> {
+  if (!titles.length) return {};
+  try {
+    const res = await fetchImpl("/api/recommendations/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titles }),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { matches?: Record<string, number> };
+    return d.matches ?? {};
+  } catch {
+    return null;
+  }
 }

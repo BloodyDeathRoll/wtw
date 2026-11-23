@@ -1,0 +1,16 @@
+/* The approved mock (docs/prototypes/l1-justwatch/mock.html, B): 12px, white at 45%, centred. */
+.credit {
+  font-size: 12px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+}
+/* At the end of a list, inside its .sentinel: 14px under the last line. */
+.end {
+  margin: 14px 0 0;
+}
+/* Under a card page's card, inside the list's 16px gap: 14px under it, and the
+   32px a list's .sentinel leaves at its end, so it clears the tab bar. */
+.underCard {
+  margin: -2px 0 32px;
+}

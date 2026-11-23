@@ -1,0 +1,770 @@
+"use client";
+
+/**
+ * Seen for v3 (docs/plan/v3/SEEN.md, S1; behind SEEN_V3): the Watchlist's rows
+ * (poster, title, year · length · ★, your reaction where the Watchlist shows the
+ * match), chips Loved · Liked · Disliked · Hidden from For you with no All
+ * (opens on Loved), and today's two dropdowns under them (DEC-1, 2, 3, 9).
+ * Approved screens: docs/prototypes/seen-v3/7-icons.jpg (the chips, the
+ * dropdowns), 2-filter.jpg left (a row's reaction), 6-empty.jpg.
+ *
+ * S2 (DEC-4, DEC-5): each rated row carries ❤️ 👍 👎, yours lit. Tap another and
+ * the gold moves at once, the counts change, and the row stays put with a note and
+ * Undo; it leaves its chip the next time that chip opens. The lit icon does nothing.
+ * Approved screen: 7-icons.jpg right.
+ *
+ * S3 (DEC-6, DEC-7): a rated row opens the title's card page, the same one Search opens (SearchCard): your
+ * reaction lit, "Saved to Seen", Add to Watchlist, no Hide. Tap the lit reaction to clear it; back on Seen the row
+ * has folded into a note with Undo, and the counts drop. Approved screens: 3-tap.jpg, 4-clear.jpg.
+ *
+ * S4 (DEC-8): Hidden from For you lists the titles you hid there, under a line that says so, each with a yellow
+ * Restore. Restore folds the row into a note with Undo, and the count drops. Approved screen: 5-hidden.jpg, middle
+ * and right (the entry is the chip, DEC-2).
+ */
+
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { ContentType } from "@/lib/content-type";
+import { setWatchlistRating } from "@/lib/watchlist";
+import { ChevronDown, ChevronLeft, Star } from "lucide-react";
+import type { Reaction } from "@/types/dna";
+import type { ContentKind, Recommendation } from "@/types/recommendation";
+import type { AppUser } from "@/modules/session/types";
+import type { RatingsSummary, RatingItem, RemovedItem } from "@/app/api/recommendations/ratings/route";
+import { HeaderSearch } from "@/app/components/HeaderSearch";
+import { TAB_SCROLL } from "@/app/components/TabBar";
+import SearchCard from "@/app/search/SearchCard";
+import { FingerprintLoader } from "../components/FingerprintLoader";
+import { PosterTile } from "../recommendations/RecommendationsView";
+import { announceHidden, announceRated, RATED_EVENT, type RatedDetail } from "../recommendations/rate";
+import rv from "../recommendations/RecommendationsView.module.css";
+import rs from "./RatingsView.module.css";
+import styles from "./SeenView.module.css";
+
+export type SeenChip = Reaction | "hidden";
+type SortKey = "newest" | "oldest" | "title";
+type KindFilter = "all" | "movie" | "tv";
+
+const CHIPS: { chip: SeenChip; label: string }[] = [
+  { chip: "loved", label: "Loved" },
+  { chip: "liked", label: "Liked" },
+  { chip: "disliked", label: "Disliked" },
+  { chip: "hidden", label: "Hidden from For you" },
+];
+// Today's dropdowns, today's words (DEC-3).
+const SORT_LABELS: Record<SortKey, string> = { newest: "Date Added", oldest: "Oldest First", title: "Title A–Z" };
+const KIND_LABELS: Record<KindFilter, string> = { all: "All", movie: "Movies", tv: "Series" };
+const EMPTY_CHIP: Record<SeenChip, string> = {
+  loved: "Nothing loved yet.",
+  liked: "Nothing liked yet.",
+  disliked: "Nothing disliked yet.",
+  hidden: "Nothing hidden yet.",
+};
+// The card's reactions as icons only (DEC-4), with the card's own accessible names.
+const ICONS: { r: Reaction; emoji: string; aria: string; label: string }[] = [
+  { r: "loved", emoji: "❤️", aria: "Loved it", label: "Loved" },
+  { r: "liked", emoji: "👍", aria: "Liked it", label: "Liked" },
+  { r: "disliked", emoji: "👎", aria: "Watched it, didn't like it", label: "Disliked" },
+];
+/** How long a row's "will move" note stays, as the Watchlist's Undo note (its NOTE_MS). */
+const NOTE_MS = 5000;
+/** Rows shown at first and added per scroll: Seen grows to hundreds, and each row is a poster. */
+const PAGE = 20;
+
+/** One Seen row, whichever list it comes from. */
+export interface SeenRow {
+  key: string;
+  title: string | null;
+  type: ContentKind | null;
+  poster_url: string | null;
+  year: number | null;
+  meta: string | null;
+  star: number | null;
+  reaction: Reaction | null;
+  at: string;
+}
+
+const fromRating = (i: RatingItem): SeenRow => ({
+  key: i.id,
+  title: i.title,
+  type: i.media_type,
+  poster_url: i.poster_url,
+  year: i.year,
+  meta: i.meta,
+  star: i.star,
+  reaction: i.rating,
+  at: i.created_at,
+});
+const fromHidden = (r: RemovedItem): SeenRow => ({
+  key: `${r.media_type}:${r.tmdb_id}`,
+  title: r.title,
+  type: r.media_type,
+  poster_url: r.poster_url,
+  year: r.year,
+  meta: r.meta,
+  star: r.star,
+  reaction: null,
+  at: r.removed_at,
+});
+
+/** The rows a chip shows, after the type filter and the sort (DEC-2, DEC-3). Legacy rows with no type show under All only. */
+export function seenRows(data: RatingsSummary, chip: SeenChip, kind: KindFilter, sort: SortKey): SeenRow[] {
+  const rows = chip === "hidden" ? data.removed.map(fromHidden) : data.items.filter((i) => i.rating === chip).map(fromRating);
+  const kept = rows.filter((r) => kind === "all" || r.type === kind);
+  if (sort === "title") return kept.sort((a, b) => (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" }));
+  const dir = sort === "newest" ? -1 : 1;
+  return kept.sort((a, b) => dir * (Date.parse(a.at) - Date.parse(b.at)));
+}
+
+/** Each chip's count under the type filter: the part. The header's count is the whole of Seen. */
+export function seenCounts(data: RatingsSummary, kind: KindFilter): Record<SeenChip, number> {
+  const keep = (t: string | null) => kind === "all" || t === kind;
+  const c: Record<SeenChip, number> = { loved: 0, liked: 0, disliked: 0, hidden: 0 };
+  for (const i of data.items) if (keep(i.media_type)) c[i.rating] += 1;
+  for (const r of data.removed) if (keep(r.media_type)) c.hidden += 1;
+  return c;
+}
+
+/**
+ * year · length · ★, in the Watchlist row's look (its MetaRow), with only the parts we know: a title missing from
+ * `titles` has none, and one with no year or score still shows the rest. Never "0" or "★ 0.0".
+ */
+function FactsLine({ row }: { row: SeenRow }) {
+  if (!row.year && !row.meta && !row.star) return null;
+  return (
+    <div className={rv.cardMeta}>
+      {row.year ? <span>{row.year}</span> : null}
+      {row.meta ? <span>{row.meta}</span> : null}
+      {row.star ? (
+        <span className={rv.metaRating}>
+          <Star size={16} className={rv.metaStar} aria-hidden />
+          {row.star.toFixed(1)}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** A row in the shape the Watchlist's poster takes. Only the poster's fallback reads the palette. */
+function asRec(r: SeenRow): Recommendation {
+  return {
+    id: r.key,
+    title: r.title ?? "", // never empty: nameless rows are filtered out on load (#406)
+    type: r.type ?? "movie",
+    year: r.year ?? 0,
+    poster_url: r.poster_url,
+    meta: r.meta ?? "",
+    rating: r.star ?? 0,
+    match: 0,
+    reason: "",
+    where: null,
+    motif: "dot",
+    palette: ["#16242E", "#F5C9A6"],
+  };
+}
+
+export default function SeenView({
+  onBack,
+  onBrowse,
+  headerRight,
+  user,
+  contentType,
+}: {
+  onBack: () => void;
+  /** The feed the rating's rebuild is for, as every other rating write sends it. */
+  contentType?: ContentType;
+  /** The empty state's "Go to For you" (DEC-9). */
+  onBrowse?: () => void;
+  headerRight?: ReactNode;
+  user?: AppUser;
+}) {
+  const [data, setData] = useState<RatingsSummary | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [chip, setChip] = useState<SeenChip>("loved");
+  const [sort, setSort] = useState<SortKey>("newest");
+  const [kind, setKind] = useState<KindFilter>("all");
+  const [shown, setShown] = useState(PAGE);
+  // Which rows a chip shows is fixed when the chip (type, sort) opens: a re-rated row stays put until then (DEC-4).
+  const [frozen, setFrozen] = useState<RatingsSummary | null>(null);
+  // A row's note: "will move" after a change on the row (S2), or "Rating cleared" (no `to`) after a clear on its card (S3).
+  // A "Restored" note (S4) carries `restored` and no reaction.
+  const [note, setNote] = useState<
+    { key: string; title: string; from?: Reaction; to?: Reaction; restored?: boolean } | null
+  >(null);
+  // Hidden titles restored here, kept for the note's Undo while it shows (S4).
+  const restoredRows = useRef<Record<string, RemovedItem>>({});
+  // A title's writes (a rating change and its Undo; a Restore and its Undo) go one after the other, so the server ends
+  // where the screen does.
+  const titleWrites = useRef<Record<string, Promise<void>>>({});
+  // Each Restore or Undo of a title bumps its count: a late failure of an older Restore leaves the row where the newer
+  // tap put it.
+  const hiddenTaps = useRef<Record<string, number>>({});
+  function inOrder(key: string, write: () => Promise<void>): Promise<void> {
+    const next = (titleWrites.current[key] ?? Promise.resolve()).then(write);
+    titleWrites.current[key] = next.catch(() => {});
+    return next;
+  }
+  const noteTimer = useRef<number | undefined>(undefined);
+  const noteRef = useRef(note);
+  noteRef.current = note;
+  const writes = useRef<Record<string, number>>({});
+  // What the server last confirmed per row: a failed write goes back to it, not to the tap before (a burst can fail twice).
+  const confirmed = useRef<Record<string, Reaction>>({});
+  // The list as of the last render, so two taps before a re-render each see the reaction the first one set.
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  useEffect(() => () => window.clearTimeout(noteTimer.current), []);
+  // Ratings cleared on a card page, kept for the note's Undo (and for a re-rate on the same card).
+  const cleared = useRef<Record<string, RatingItem>>({});
+
+  // S3: the card page open over the list (the list stays mounted, so it keeps its place).
+  const [page, setPage] = useState<{ row: SeenRow; rec: Recommendation | null; failed: boolean } | null>(null);
+  const pageRef = useRef(page);
+  pageRef.current = page;
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/recommendations/ratings");
+        if (!res.ok) throw new Error(String(res.status));
+        const all = (await res.json()) as RatingsSummary;
+        // A title we can't name stays out of Seen rather than show unnamed (#406); the route names what it can. A
+        // hidden title left out this way has no Restore here: only one outside the catalogue, accepted on #406.
+        const json = { ...all, items: all.items.filter((i) => i.title), removed: all.removed.filter((r) => r.title) };
+        if (alive) {
+          setData(json);
+          setFrozen(json);
+          setStatus("ready");
+        }
+      } catch {
+        if (alive) setStatus("error");
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const rows = useMemo(() => (frozen ? seenRows(frozen, chip, kind, sort) : []), [frozen, chip, kind, sort]);
+  // Each row's reaction as it is now, which may differ from the chip it still sits under.
+  const live = useMemo(() => new Map((data?.items ?? []).map((i) => [i.id, i.rating])), [data]);
+  // The hidden titles as they are now: a restored one is gone from here at once (S4).
+  const liveHidden = useMemo(() => new Set((data?.removed ?? []).map((r) => `${r.media_type}:${r.tmdb_id}`)), [data]);
+  const counts = useMemo(() => (data ? seenCounts(data, kind) : null), [data, kind]);
+  const visible = rows.slice(0, shown);
+  const hasMore = shown < rows.length;
+
+  // A chip, type or sort change starts at the top, with the first page.
+  const listRef = useRef<HTMLDivElement>(null);
+  function pick(next: () => void) {
+    next();
+    setFrozen(data);
+    setShown(PAGE);
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((hits) => {
+      if (hits[0]?.isIntersecting) setShown((n) => n + PAGE);
+    }, { rootMargin: "240px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, visible.length]);
+
+  // A rating that lands anywhere (the card page above all): Seen follows it. A clear takes the row out of Seen.
+  // The event's id is the card's rec.id, "type:tmdb_id", the same string as a rating row's id (pinned by the S3 tests).
+  useEffect(() => {
+    const onRated = (e: Event) => {
+      const { id, rating } = (e as CustomEvent<RatedDetail>).detail;
+      const d = dataRef.current;
+      if (!d) return;
+      const item = d.items.find((i) => i.id === id);
+      let items = d.items;
+      if (rating && item && item.rating !== rating) items = d.items.map((i) => (i.id === id ? { ...i, rating } : i));
+      else if (rating && !item && cleared.current[id]) {
+        items = [...d.items, { ...cleared.current[id], rating }];
+        delete cleared.current[id];
+      } else if (!rating && item) {
+        cleared.current[id] = item;
+        items = d.items.filter((i) => i.id !== id);
+      } else return;
+      if (rating) confirmed.current[id] = rating;
+      else delete confirmed.current[id];
+      dataRef.current = { ...d, items };
+      setData(dataRef.current);
+    };
+    window.addEventListener(RATED_EVENT, onRated);
+    return () => window.removeEventListener(RATED_EVENT, onRated);
+  }, []);
+
+  /** Show a note for 5 s. A "Rating cleared" note keeps its row's snapshot for Undo only while it shows. */
+  function showNote(next: NonNullable<typeof note>) {
+    window.clearTimeout(noteTimer.current);
+    const cur = noteRef.current;
+    if (cur && cur.key !== next.key) dropSnapshot(cur);
+    noteRef.current = next; // a second call before the next render sees this one
+    setNote(next);
+    noteTimer.current = window.setTimeout(() => {
+      setNote(null);
+      dropSnapshot(next);
+    }, NOTE_MS);
+  }
+  /** A note gone: its row's snapshot for Undo goes too. */
+  function dropSnapshot(n: NonNullable<typeof note>) {
+    if (n.restored) delete restoredRows.current[n.key];
+    else if (!n.to) delete cleared.current[n.key];
+  }
+
+  /** Back on Seen from a card: a rating cleared there folds its row into the note (DEC-7). */
+  function closeLocal() {
+    const was = pageRef.current?.row;
+    setPage(null);
+    const gone = was && cleared.current[was.key];
+    // The name is never empty: nameless rows are filtered out on load (#406).
+    if (gone) showNote({ key: was.key, title: was.title ?? "", from: gone.rating });
+  }
+  // The list's place under the card page, put back when the card closes (display: none can drop a scroll offset).
+  const listTop = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (page || listTop.current === null) return;
+    if (listRef.current) listRef.current.scrollTop = listTop.current;
+    listTop.current = null;
+  }, [page]);
+  // As the Watchlist's card page: opening adds a history entry, so the phone's Back returns to the list.
+  useEffect(() => {
+    const onPop = () => {
+      if (pageRef.current && !window.history.state?.wtwCard) closeLocal();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  function closePage() {
+    if (window.history.state?.wtwCard) window.history.back();
+    else closeLocal();
+  }
+  async function openPage(row: SeenRow) {
+    if (!row.reaction || !row.type) return; // a hidden title, or a legacy row we can't look up
+    if (!pageRef.current) listTop.current = listRef.current?.scrollTop ?? null;
+    if (!window.history.state?.wtwCard) {
+      window.history.pushState({ ...window.history.state, wtwCard: row.key }, "", window.location.href);
+    }
+    setPage({ row, rec: null, failed: false });
+    try {
+      const res = await fetch(`/api/search/title?key=${row.type}-${row.key.split(":")[1]}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const shared = (await res.json()) as { rec: Recommendation; synopsis: string };
+      const rec = { ...shared.rec, reason: shared.synopsis || "" };
+      setPage((p) => (p?.row.key === row.key ? { row, rec, failed: false } : p));
+    } catch {
+      setPage((p) => (p?.row.key === row.key ? { row, rec: null, failed: true } : p));
+    }
+  }
+
+  /** The feedback route, as every rating write sends it; on success the Watchlist's tag and every listener follow
+   *  (unless `announce` says a newer tap on this title is still to land). */
+  async function post(item: RatingItem, to: Reaction, announce: () => boolean = () => true) {
+    const res = await fetch("/api/recommendations/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "watched",
+        reaction: to,
+        tmdb_id: item.tmdb_id,
+        media_type: item.media_type ?? undefined,
+        title: item.title ?? undefined,
+        content_type: contentType,
+      }),
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    if (announce()) tell(item, to);
+  }
+  /** The Watchlist keeps a rated title, re-tagged, as today's Ratings screen does; every listener follows. */
+  function tell(item: RatingItem, to: Reaction) {
+    if (item.media_type) setWatchlistRating(`${item.media_type}:${item.tmdb_id}`, to);
+    setWatchlistRating(item.tmdb_id, to);
+    announceRated(item.id, to);
+  }
+
+  /** Set a row's reaction to `to`: lit and counted at once, written through the feedback route; a failed write puts it back. */
+  async function rate(key: string, to: Reaction) {
+    const item = dataRef.current?.items.find((i) => i.id === key);
+    if (!item || item.rating === to) return;
+    confirmed.current[key] ??= item.rating;
+    const n = (writes.current[key] = (writes.current[key] ?? 0) + 1);
+    const apply = (r: Reaction) => {
+      const d = dataRef.current;
+      if (!d) return;
+      dataRef.current = { ...d, items: d.items.map((i) => (i.id === key ? { ...i, rating: r } : i)) };
+      setData(dataRef.current);
+    };
+    apply(to);
+    try {
+      // One after the other, and only the newest tap tells the rest of the app: a change and its Undo sent together
+      // could land in either order, and the older one's answer put the row back (seen once in Chrome, P2-G check 1).
+      await inOrder(key, () => post(item, to, () => writes.current[key] === n));
+      confirmed.current[key] = to;
+    } catch {
+      // Only the newest tap on this row may put it back.
+      if (writes.current[key] === n) {
+        apply(confirmed.current[key]);
+        setNote((cur) => (cur?.key === key ? null : cur));
+        // An older tap that landed was never told (a newer one was on its way): tell it now.
+        tell(item, confirmed.current[key]);
+      }
+    }
+  }
+
+  function changeOnRow(row: SeenRow, to: Reaction) {
+    const from = dataRef.current?.items.find((i) => i.id === row.key)?.rating;
+    if (!from || from === to) return; // the lit icon does nothing (DEC-5)
+    void rate(row.key, to);
+    // The name is never empty: nameless rows are filtered out on load (#406).
+    showNote({ key: row.key, title: row.title ?? "", from: note?.key === row.key && note.to ? note.from : from, to });
+  }
+
+  function undo() {
+    if (!note) return;
+    window.clearTimeout(noteTimer.current);
+    setNote(null);
+    if (note.restored) void hideAgain(note.key);
+    else if (note.to && note.from) void rate(note.key, note.from);
+    else void unclear(note.key);
+  }
+
+  /** Take a hidden title out of (put it back into) the Hidden list, at once. */
+  function setHidden(item: RemovedItem, hidden: boolean) {
+    const d = dataRef.current;
+    if (!d) return;
+    const key = `${item.media_type}:${item.tmdb_id}`;
+    const rest = d.removed.filter((r) => `${r.media_type}:${r.tmdb_id}` !== key);
+    dataRef.current = { ...d, removed: hidden ? [...rest, item] : rest };
+    setData(dataRef.current);
+  }
+
+  /** Restore (DEC-8): the row folds into a note with Undo and the count drops; a failed write puts the row back. */
+  async function restore(row: SeenRow) {
+    const item = dataRef.current?.removed.find((r) => `${r.media_type}:${r.tmdb_id}` === row.key);
+    if (!item) return;
+    restoredRows.current[row.key] = item;
+    const tap = (hiddenTaps.current[row.key] = (hiddenTaps.current[row.key] ?? 0) + 1);
+    setHidden(item, false);
+    // The name is never empty: nameless rows are filtered out on load (#406).
+    showNote({ key: row.key, title: row.title ?? "", restored: true });
+    try {
+      await inOrder(row.key, async () => {
+        const res = await fetch("/api/recommendations/removed", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        announceHidden(row.key, false);
+      });
+    } catch {
+      // A newer tap (Undo, or Restore again) decides where the row is; otherwise put it back here, and drop the note
+      // and its timer.
+      if (hiddenTaps.current[row.key] !== tap) return;
+      delete restoredRows.current[row.key];
+      setHidden(item, true);
+      if (noteRef.current?.key === row.key) {
+        window.clearTimeout(noteTimer.current);
+        noteRef.current = null;
+        setNote(null);
+      }
+    }
+  }
+
+  /** Undo a Restore: hidden again at once, and written again; a failed write leaves it restored, note and all. */
+  async function hideAgain(key: string) {
+    const item = restoredRows.current[key];
+    if (!item) return;
+    delete restoredRows.current[key];
+    hiddenTaps.current[key] = (hiddenTaps.current[key] ?? 0) + 1;
+    setHidden(item, true);
+    try {
+      await inOrder(key, async () => {
+        const res = await fetch("/api/recommendations/removed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: item.tmdb_id, media_type: item.media_type, title: item.title }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        announceHidden(key, true);
+      });
+    } catch {
+      restoredRows.current[key] = item;
+      setHidden(item, false);
+      showNote({ key, title: item.title ?? "", restored: true });
+    }
+  }
+
+  /** Undo a clear: the row is back at once, with its rating, and written again; a failed write takes it out again, note and all. */
+  async function unclear(key: string) {
+    const item = cleared.current[key];
+    const d = dataRef.current;
+    if (!item || !d) return;
+    delete cleared.current[key];
+    dataRef.current = { ...d, items: [...d.items, item] };
+    setData(dataRef.current);
+    try {
+      await inOrder(key, () => post(item, item.rating));
+      confirmed.current[key] = item.rating;
+    } catch {
+      const now = dataRef.current;
+      if (!now) return;
+      cleared.current[key] = item;
+      dataRef.current = { ...now, items: now.items.filter((i) => i.id !== key) };
+      setData(dataRef.current);
+      // The name is never empty: nameless rows are filtered out on load (#406).
+      showNote({ key, title: item.title ?? "", from: item.rating });
+    }
+  }
+
+  // The lit chip stays in view: Hidden sits off to the right on a phone (DEC-2).
+  const chipsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    chipsRef.current
+      ?.querySelector<HTMLElement>('[aria-pressed="true"]')
+      ?.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [chip]);
+
+  // The whole of Seen: every rated title. Hidden from For you is a different list (not seen), so the chips' counts
+  // don't add up to it (SEEN.md DEC-1, DEC-8).
+  const total = data?.items.length ?? 0;
+  const nothing = status === "ready" && data && data.items.length === 0 && data.removed.length === 0;
+
+  return (
+    <div className={`${rv.view} ${styles.tokens}`}>
+      <div className={rv.header}>
+        <button type="button" className={rv.headerBtn} onClick={page ? closePage : onBack} aria-label="back">
+          <ChevronLeft size={30} strokeWidth={1.5} aria-hidden />
+        </button>
+        {/* The card page has no title in the header, as the Watchlist's (3-tap). */}
+        <span className={rv.headerTitle}>{page ? "" : status === "ready" ? `Seen (${total})` : "Seen"}</span>
+        <div className={rv.headerRight}>
+          {user && <HeaderSearch btnClass={rv.headerBtn} user={user} menu={headerRight} scope="ratings" from="ratings" />}
+          {headerRight}
+        </div>
+      </div>
+
+      {page && user && (
+        <div className={rv.content}>
+          {page.rec ? (
+            <SearchCard key={page.row.key} rec={page.rec} user={user} />
+          ) : (
+            <div className={rs.loading}>
+              {page.failed ? (
+                <span className={rs.note}>Couldn&rsquo;t load this title. Try again in a moment.</span>
+              ) : (
+                <FingerprintLoader size={66} />
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Under the card page the list stays mounted, so Back finds it where it was. */}
+      <div className={page ? styles.away : styles.here}>
+      {status === "loading" && (
+        <div className={rs.loading}>
+          <span className={rs.loadingText}>Loading your ratings</span>
+          <FingerprintLoader size={66} />
+        </div>
+      )}
+      {status === "error" && (
+        <div className={rs.loading}>
+          <span className={rs.note}>Couldn&rsquo;t load your ratings. Try again in a moment.</span>
+        </div>
+      )}
+
+      {nothing && (
+        // Nothing rated: one line and the orange button, no chips (DEC-9, 6-empty).
+        <div className={rv.content}>
+          <div className={rv.list}>
+            <div className={rv.emptyState}>
+              <span className={rv.muted}>
+                Nothing here yet. Tap Loved, Liked or Disliked on any title you&rsquo;ve seen and it lands here.
+              </span>
+              {onBrowse && (
+                <button
+                  type="button"
+                  className={`${rv.watchlistBtn} ${rv.watchlistBtnPrimary} ${rv.emptyBtn}`}
+                  onClick={onBrowse}
+                >
+                  Go to For you
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {status === "ready" && data && counts && !nothing && (
+        <>
+          <div ref={chipsRef} className={rv.chips} role="group" aria-label="Show">
+            {CHIPS.map((c) => {
+              const on = c.chip === chip;
+              return (
+                <button
+                  key={c.chip}
+                  type="button"
+                  className={`${rv.seenChip} ${rv.filterChip} ${on ? rv.seenChipOn : ""}`}
+                  aria-pressed={on}
+                  onClick={() => pick(() => setChip(c.chip))}
+                >
+                  {c.label}
+                  {counts[c.chip] > 0 && <b>{counts[c.chip]}</b>}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={styles.dropdowns}>
+            <label className={`${rs.sortPill} ${styles.pill}`}>
+              {/* The pill fits its word ("All ⌄"), not the longest option (Eran on #400): the select lies over it, unseen. */}
+              <span className={styles.pillText}>{KIND_LABELS[kind]}</span>
+              <select
+                className={`${rs.sortSelect} ${styles.pillSelect}`}
+                value={kind}
+                onChange={(e) => pick(() => setKind(e.target.value as KindFilter))}
+                aria-label="show movies, series or all"
+              >
+                {(Object.keys(KIND_LABELS) as KindFilter[]).map((k) => (
+                  <option key={k} value={k}>{KIND_LABELS[k]}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} strokeWidth={2} aria-hidden />
+            </label>
+            <label className={`${rs.sortPill} ${styles.pill}`}>
+              {/* The pill fits its word ("All ⌄"), not the longest option (Eran on #400): the select lies over it, unseen. */}
+              <span className={styles.pillText}>{SORT_LABELS[sort]}</span>
+              <select
+                className={`${rs.sortSelect} ${styles.pillSelect}`}
+                value={sort}
+                onChange={(e) => pick(() => setSort(e.target.value as SortKey))}
+                aria-label="sort by"
+              >
+                {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                  <option key={k} value={k}>{SORT_LABELS[k]}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} strokeWidth={2} aria-hidden />
+            </label>
+          </div>
+
+          {chip === "hidden" && rows.length > 0 && (
+            <p className={`${rv.muted} ${styles.hiddenLine}`}>
+              You hid these on For you, so they never come back there. Restore one and it can.
+            </p>
+          )}
+
+          <div className={rv.content}>
+            {rows.length === 0 ? (
+              // A chip with nothing behind it: one line, the chip still lit (DEC-9, 2-filter right).
+              <div className={rv.list}>
+                <div className={rv.emptyState}>
+                  <span className={rv.muted}>{EMPTY_CHIP[chip]}</span>
+                </div>
+              </div>
+            ) : (
+              <div ref={listRef} className={`${rv.list} ${rv.listRows}`} {...TAB_SCROLL}>
+                <div key={`${chip}|${kind}|${sort}`} className={rv.listFade}>
+                  {visible.map((r) => {
+                    const rec = asRec(r);
+                    // Cleared on its card page (DEC-7) or restored (DEC-8): the row has folded into the note, or gone once
+                    // the note did.
+                    const gone = r.reaction !== null ? !live.has(r.key) : !liveHidden.has(r.key);
+                    if (gone && note?.key !== r.key) return null;
+                    if (gone && note)
+                      return (
+                        <div key={r.key} className={rv.rowWrap}>
+                          <div className={rv.noteWrap}>
+                            <div className={rv.note} role="status">
+                              <p>
+                                {note.restored ? (
+                                  <>Restored. <b>{note.title}</b> can show up on For you again.</>
+                                ) : (
+                                  <>Rating cleared. <b>{note.title}</b> is out of Seen, and your taste forgets it.</>
+                                )}
+                              </p>
+                              <button type="button" onClick={undo}>Undo</button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    const opens = !!user && r.reaction !== null && r.type !== null;
+                    return (
+                      <div key={r.key} className={rv.rowWrap}>
+                        <div className={`${rv.row} ${styles.row}`} aria-label={rec.title}>
+                          {opens && (
+                            // The whole row opens the card page; the icons sit above it as their own buttons.
+                            <button
+                              type="button"
+                              className={styles.open}
+                              aria-label={`${rec.title}: open`}
+                              onClick={() => void openPage(r)}
+                            />
+                          )}
+                          <PosterTile rec={rec} size="row" />
+                          <div className={rv.rowBody}>
+                            <h3 className={rv.rowTitle}>{rec.title}</h3>
+                            <FactsLine row={r} />
+                            {r.reaction && (
+                              <div className={styles.icons}>
+                                {ICONS.map((ic) => {
+                                  const on = live.get(r.key) === ic.r;
+                                  return (
+                                    <button
+                                      key={ic.r}
+                                      type="button"
+                                      className={`${rv.seenChip} ${styles.icon} ${on ? rv.seenChipOn : styles.iconDim}`}
+                                      onClick={() => changeOnRow(r, ic.r)}
+                                      aria-pressed={on}
+                                      aria-label={`${ic.aria}: ${rec.title}`}
+                                      title={ic.label}
+                                    >
+                                      <span className={rv.chipEmoji} aria-hidden>{ic.emoji}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          {r.reaction === null && (
+                            <button
+                              type="button"
+                              className={styles.restore}
+                              aria-label={`Restore ${rec.title}`}
+                              onClick={() => void restore(r)}
+                            >
+                              Restore
+                            </button>
+                          )}
+                        </div>
+                        {note?.key === r.key && note.to && (
+                          <div className={rv.noteWrap}>
+                            <div className={rv.note} role="status">
+                              <p>
+                                <b>{note.title}</b> will move to {ICONS.find((ic) => ic.r === note.to)?.label}.
+                              </p>
+                              <button type="button" onClick={undo}>Undo</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div ref={sentinelRef} className={rv.sentinel} />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      </div>
+    </div>
+  );
+}

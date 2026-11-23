@@ -29,6 +29,26 @@ export function clientIp(req: Request): string {
   return first || req.headers.get('x-real-ip') || 'unknown'
 }
 
+/** The Redis key a rule counts a user (or "all") under. */
+export function rateKey(rule: RateLimitRule, userId: string): string {
+  return `rl:${rule.scope}:u:${userId}`
+}
+
+/**
+ * Whether `userId` has requests left in the rule's current window, without
+ * using one (a plain GET; the window's count is what `hit` compares). Fails
+ * closed like `enforceRateLimit`: when Redis cannot answer, the call would be
+ * refused too.
+ */
+export async function hasRateLeft(rule: RateLimitRule, userId: string): Promise<boolean> {
+  try {
+    const n = await getRedis().get<number | string>(rateKey(rule, userId))
+    return Number(n ?? 0) < rule.perUser
+  } catch {
+    return false
+  }
+}
+
 async function hit(key: string, max: number, windowSec: number): Promise<boolean> {
   const redis = getRedis()
   const n = await redis.incr(key)
@@ -50,7 +70,7 @@ export async function enforceRateLimit(
 ): Promise<NextResponse | null> {
   const ip = clientIp(req)
   try {
-    const userOk = await hit(`rl:${rule.scope}:u:${userId}`, rule.perUser, rule.windowSec)
+    const userOk = await hit(rateKey(rule, userId), rule.perUser, rule.windowSec)
     const ipOk = rule.perIp ? await hit(`rl:${rule.scope}:ip:${ip}`, rule.perIp, rule.windowSec) : true
     if (userOk && ipOk) return null
     console.warn(`[rate-limit] ${rule.scope}: refused user=${userId} ip=${ip} (${userOk ? 'ip' : 'user'} window)`)

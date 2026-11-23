@@ -168,6 +168,11 @@
   margin: 16px 0 32px;
   text-align: center;
   min-height: 40px;
+  /* A flex item of the scrolling list: without this it shrank to its 40px
+     min-height, what's taller in it ("Find more" is 46px, then the JustWatch
+     credit) spilled out, and the scroll stopped before its 32px margin, so the
+     last line sat under the tab bar (v3 L1, measured at 375px). */
+  flex-shrink: 0;
 }
 /* Find more in progress: the fingerprint alone, no captions. */
 .findMoreLoading {
@@ -217,27 +222,6 @@
 .findMoreBtn:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.28);
-}
-
-/* Empty-state CTA into the feed — the app's one primary button: the games'
-   orange pill (play.css --cta-grad, 56px tall, 18px bold text). */
-.browseBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 56px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #ffa900 0%, #ff7a00 55%, #ff4400 100%);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.1;
-  white-space: nowrap;
-  cursor: pointer;
 }
 
 /* Empty list (watchlist with nothing saved yet). */
@@ -328,6 +312,26 @@
 .whereBadge span {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* v3 F7: "Not your usual, on purpose" over a stretch pick's title
+   (docs/prototypes/for-you-v3/f7). Nothing new: .trailerCircle's outline and
+   glass on .whereBadge's shape and text. */
+.stretchLabel {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
 }
 .heroRing {
   position: absolute;
@@ -494,7 +498,7 @@
 .seenChip:active {
   transform: scale(0.96);
 }
-/* "Saved to Ratings" — takes the prompt's place once rated. */
+/* "Saved to Seen" — takes the prompt's place once rated. */
 .seenItSaved {
   display: inline-flex;
   align-items: center;
@@ -528,6 +532,29 @@
   cursor: pointer;
 }
 .wantX:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+/* v3 F3: "Hide" where the X was, the eye-off icon and the word (FOR-YOU.md DEC-5,
+   docs/prototypes/for-you-v3/2-hide.jpg). The X's colours, the button's height. */
+.wantHide {
+  flex: 0 0 auto;
+  height: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rv-white-10);
+  color: var(--rv-white-70);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.wantHide:hover {
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
@@ -1078,6 +1105,75 @@
   line-height: 1.45;
   color: #fff;
 }
+/* ─── v3 F1: the 20, with Refresh (FOR-YOU.md DEC-1–2; docs/prototypes/for-you-v3/9-refresh-at-the-end.jpg,
+   10-refresh-at-the-top.jpg). Values as the approved mocks drew them. ─── */
+/* "Your 20 picks · ↻ Refresh": the list's first row, so it scrolls away with it. */
+.setTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 0 4px 0 6px;
+  margin-bottom: -4px;
+}
+.setTopLabel {
+  color: var(--rv-white-70);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+/* Refresh failed: today's error colour (.error). */
+.setTopLabelError {
+  color: #ff8b8b;
+}
+/* The "Why it's a match" yellow, as a text link. */
+.setTopRefresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: var(--rv-yellow);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+/* The end card's two buttons, stacked. */
+.setEndBtns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+/* "Tell me what you want": the dark pill (Hide's background), full width, the primary's height. */
+.setEndChat {
+  height: 50px;
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rv-white-10);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.setEndChat:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* The Watchlist's end card (DEC-9): 14px clear of the last row, as in 10-end. */
+.endCard {
+  margin-top: 14px;
+}
 
 /* ─── Watchlist v3 (docs/plan/v3/WATCHLIST.md, mocks docs/prototypes/watchlist-v3) ─── */
 
@@ -1311,6 +1407,16 @@
 .note p b {
   font-weight: 600;
   color: #fff;
+}
+.note p span {
+  color: var(--rv-white-70);
+}
+/* v3 F3: the note in a hidden card's place on For you ("Hidden. You won't see
+   … again." / "Your taste isn't changed."). It holds its height in the list and
+   clips while it folds from the card's. */
+.hiddenNote {
+  flex-shrink: 0;
+  overflow: hidden;
 }
 .note button {
   flex: 0 0 auto;

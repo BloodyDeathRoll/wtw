@@ -9,6 +9,7 @@ WTW is an AI-powered film and TV recommendation engine that builds a continuousl
 | Working on | Read first |
 |---|---|
 | **Anything — start here.** What's done, what's next, who drives it | `docs/INTEGRATION.md` |
+| **v3 work (ready for friends: For you, Seen, Search, You)** — work packages, lanes, gates, the screen sign-off rule; status in GitHub Issues | `docs/plan/v3/PLAN.md` · decisions per part: `docs/plan/v3/*.md` · numbers: `docs/plan/v3/EVIDENCE.md` |
 | **v2 work (new formula, first run, chat as consultant)** — work packages, lanes, gates; status in GitHub Issues | `docs/plan/PLAN.md` · numbers: `docs/plan/EVIDENCE.md` |
 | `src/types/dna.ts`, `src/modules/dna/`, any cross-module seam | `docs/DNA-CONTRACT.md` |
 | Full DNA field reference | `docs/master_dna_schema.json` |
@@ -91,6 +92,7 @@ UPSTASH_REDIS_REST_URL=            UPSTASH_REDIS_REST_TOKEN=
 MISTRAL_BATCH_API_KEY=   # optional — nightly enrichment only; falls back to MISTRAL_API_KEY
 TYPESAFE_API_KEY=        # Jev — engine step 4 filter; when it fails the batch is served in score order and the devs are told
 JEV_ENABLED=false        # skips step 4 (Jev) entirely; set in Vercel since P1-E7. Unset = on
+NAV_HISTORY=             # v3 N1: Back retraces your steps (needs NAV_TABS; client-side, redeploy to change). Unset = off; on at P1-G
 RESEND_API_KEY=          # v3 Y2: "Send us feedback" emails (Resend, sending access only). Unset = the feedback row is hidden
 FEEDBACK_TO=             # v3 Y2: the team's feedback inbox (YOU.md DEC-5)
 ```

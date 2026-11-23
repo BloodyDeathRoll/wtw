@@ -5,7 +5,8 @@ import { getAuthUser } from "@/lib/supabase/auth-user";
 import { loadHomeBootstrap, openConversation } from "@/lib/home-bootstrap";
 import { welcomeForSignals } from "@/lib/welcome";
 import { PLAY_ONBOARDING_LIVE } from "@/lib/play-rollout";
-import { onboardingV2Enabled } from "@/lib/flags";
+import { chatMode, onboardingV2Enabled } from "@/lib/flags";
+import { chatHasTurns } from "@/lib/chat-budget";
 import { needsOnboarding, onboardingDone } from "@/lib/onboarding-route";
 import { progressOf } from "./play/lib/server";
 import WTWApp from "@/modules/session/components/WTWApp";
@@ -68,13 +69,16 @@ export default async function Home({
 
   // The conversation (created only now, after the redirect decision), the
   // greeting (Groq, cached) and the dev notice (Redis) are independent.
-  const [conversation, welcome, jevFailures] = await Promise.all([
+  const [conversation, welcome, jevFailures, chatTurnsLeft] = await Promise.all([
     openConversation(supabase, user.id, boot),
     // Done with the new onboarding means not new, whatever the signal count: no old games intro.
     welcomeForSignals(user.id, boot.signals, appUser.name, utcOffsetMinutes,
       onboardingV2Enabled() && onboardingDone(boot.play.state)),
     // Jev failures since this dev last dismissed the notice; [] for everyone else.
     devJevFailures(appUser.email),
+    // Whether the chat can still answer today: a screen never offers a chat that won't (WATCHLIST.md DEC-9).
+    // Only for someone who can open the chat at all (chatReady below).
+    chatMode() === "consultant" && !needsOnboarding(boot.play.state, boot.signals) ? chatHasTurns(user.id) : false,
   ]);
 
   return (
@@ -87,6 +91,7 @@ export default async function Home({
         calibrationNudge={play.skipped}
         // Q5: the chat shows once the onboarding is done. An existing account that skips it (DEC-8) counts.
         chatReady={!needsOnboarding(boot.play.state, boot.signals)}
+        chatTurnsLeft={chatTurnsLeft}
         // The new onboarding replaces the v0.1 voice welcome (Eran 2026-11-15): someone past it with few
         // ratings and no chat opens on the feed, not on "Hey there, welcome to What To Watch!".
         voiceWelcome={!onboardingV2Enabled()}

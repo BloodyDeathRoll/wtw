@@ -14,6 +14,8 @@ import { generateRecommendations } from "@/modules/engine";
 import { createBlankDNA } from "@/modules/dna/blank-dna";
 import { getCachedRecommendations } from "@/modules/engine/pipeline/step8-cache";
 import { buildRecPage, getRemovedKeys } from "@/lib/rec-page";
+import { makeTheTwenty, readForYouSet, serveTheTwenty } from "@/lib/for-you-set";
+import { forYouV3Enabled } from "@/lib/flags";
 import { startTimer } from "@/lib/timing";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
@@ -76,9 +78,21 @@ export async function GET(req: Request) {
     .eq("id", user.id)
     .single<{ dna: DNASchema | null }>()
     .then((r) => ({ ok: true as const, ...r }), (err: unknown) => ({ ok: false as const, err }));
+  // v3 F1 (FOR_YOU_V3): the 20, kept until Refresh (src/lib/for-you-set.ts). Read alongside. `ok: false` (the read
+  // failed) falls back to today's paged feed below, never to an error.
+  const setOn = forYouV3Enabled();
+  const setRead = setOn
+    ? readForYouSet(user.id, contentType).then(
+        (set) => ({ ok: true as const, set }),
+        (err: unknown) => {
+          console.warn("[recommendations/generate] the 20: read failed, serving today's feed:", err instanceof Error ? err.message : err);
+          return { ok: false as const, set: null };
+        },
+      )
+    : Promise.resolve({ ok: false as const, set: null });
   // Titles the user has "Removed" — filtered out of every page below.
-  const [removed, dnaResult] = await Promise.all([getRemovedKeys(user.id), dnaRead]);
-  t.mark("dna + removed list");
+  const [removed, dnaResult, stored] = await Promise.all([getRemovedKeys(user.id), dnaRead, setRead]);
+  t.mark(setOn ? "dna + removed list + the 20" : "dna + removed list");
 
   try {
     if (!dnaResult.ok) throw dnaResult.err;
@@ -101,6 +115,11 @@ export async function GET(req: Request) {
     )
   }
 
+  // The 20 are kept: serve them as they are, whatever the batch cache holds now.
+  if (dna && stored.set) {
+    return NextResponse.json(await serveTheTwenty({ userId, dna, set: stored.set, removed, source: "set", fresh: false }));
+  }
+
   // ── Read the rec cache (a Redis blip here is non-fatal: dna is already known,
   //    so the cold path below regenerates) ──────────────────────────────────
   if (dna) {
@@ -117,6 +136,10 @@ export async function GET(req: Request) {
 
   // The page itself is built in src/lib/rec-page.ts, shared with session/end.
   async function servePage(recs: RecommendationResult[], source: string) {
+    // No 20 yet (the first For you with FOR_YOU_V3 on, or a new picker setting): make it from this batch.
+    if (stored.ok) {
+      return NextResponse.json(await makeTheTwenty({ userId, dna, batch: recs, removed, contentType, source, mustKeep: false }));
+    }
     const taste_version = dna?.metadata.taste_version ?? null;
     const start = versionParam != null && String(taste_version) !== versionParam ? 0 : offset;
     return NextResponse.json(await buildRecPage({ userId, dna, recs, removed, start, contentType, source }));

@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- v3 Y3 mock (Alon, 2026-11-19): Delete my account's sheet, the states Eran's 2-account-page.jpg doesn't show.
+     The sheet is you.module.css .sheet/.sheetCta/.sheetOpt/.sheetError (the Start-over sheet), values copied as-is;
+     the Account page behind it is simplified. Render: render.sh -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#f4f1ea;font-family:Inter,system-ui,sans-serif;color:#151515;width:1269px}
+  .wrap{display:flex;gap:28px;padding:20px 28px 6px}
+  .label{font:600 22px/1.2 Inter;margin:0 0 12px;width:375px}
+  .phone{position:relative;width:375px;height:812px;background:#000;border-radius:22px;overflow:hidden;color:#fff}
+  .hdr{display:flex;align-items:center;justify-content:center;height:70px;font:400 22px Inter}
+  .card{margin:14px 16px;background:#121214;border-radius:24px;padding:10px 18px}
+  .r{display:grid;grid-template-columns:26px 1fr 16px;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .r:last-child{border:0}.l{font-size:17px;color:rgba(255,255,255,.72)}.s{font-size:13.5px;color:rgba(255,255,255,.6);margin-top:2px}
+  .red{color:#ff8a7a}
+  /* you.module.css, as shipped */
+  .sheetBg{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#121214;border-radius:24px 24px 0 0;padding:18px 22px 28px;display:grid;gap:12px}
+  .sheet h3{margin:0;font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:34px;letter-spacing:.04em;color:#ffa900}
+  .sheet p{margin:0 0 6px;font-size:18px;line-height:1.5;color:#d6d6da}
+  .sheet .sheetError{color:#ff8a7a;font-size:16px}
+  .sheetCta,.sheetOpt{width:100%;height:60px;padding:0 20px;border:0;border-radius:999px;color:#fff;font:700 20px Inter}
+  .sheetCta{background:linear-gradient(90deg,#ffa900 0%,#ff7a00 55%,#ff4400 100%)}.sheetOpt{background:#262629}
+  .busy{opacity:.6}
+  .cap{font:400 17px/1.45 Inter;margin:12px 28px 20px;width:1180px}
+</style></head><body>
+<div class="wrap">
+<div><p class="label">1 · Asks first (Eran’s draft text)</p><div class="phone"><div class="hdr">Account</div><div class="card">
+ <div class="r"><span>⟲</span><div><div class="l">Start my taste over</div><div class="s">Teach WTW your taste from scratch. Your Watchlist and game scores stay.</div></div><span>›</span></div>
+ <div class="r"><span>⇥</span><div class="l">Sign out</div><span></span></div>
+ <div class="r"><span class="red">🗑</span><div><div class="l red">Delete my account</div><div class="s">Erase your account and everything WTW knows about you.</div></div><span>›</span></div></div>
+<div class="sheetBg"></div>
+<div class="sheet"><h3>Delete your account?</h3><p>WTW erases your account and everything in it: your ratings, your taste profile, your Watchlist, your game scores and your chats. You’ll be signed out. This can’t be undone.</p>
+<button class="sheetCta">Cancel</button><button class="sheetOpt">Delete my account</button></div></div></div>
+<div><p class="label">2 · Deleting…</p><div class="phone"><div class="hdr">Account</div><div class="card">
+ <div class="r"><span>⟲</span><div><div class="l">Start my taste over</div><div class="s">Teach WTW your taste from scratch. Your Watchlist and game scores stay.</div></div><span>›</span></div>
+ <div class="r"><span>⇥</span><div class="l">Sign out</div><span></span></div>
+ <div class="r"><span class="red">🗑</span><div><div class="l red">Delete my account</div><div class="s">Erase your account and everything WTW knows about you.</div></div><span>›</span></div></div>
+<div class="sheetBg"></div>
+<div class="sheet"><h3>Delete your account?</h3><p>WTW erases your account and everything in it: your ratings, your taste profile, your Watchlist, your game scores and your chats. You’ll be signed out. This can’t be undone.</p>
+<button class="sheetCta busy">Cancel</button><button class="sheetOpt busy">Deleting…</button></div></div></div>
+<div><p class="label">3 · It failed</p><div class="phone"><div class="hdr">Account</div><div class="card">
+ <div class="r"><span>⟲</span><div><div class="l">Start my taste over</div><div class="s">Teach WTW your taste from scratch. Your Watchlist and game scores stay.</div></div><span>›</span></div>
+ <div class="r"><span>⇥</span><div class="l">Sign out</div><span></span></div>
+ <div class="r"><span class="red">🗑</span><div><div class="l red">Delete my account</div><div class="s">Erase your account and everything WTW knows about you.</div></div><span>›</span></div></div>
+<div class="sheetBg"></div>
+<div class="sheet"><h3>Delete your account?</h3><p>WTW erases your account and everything in it: your ratings, your taste profile, your Watchlist, your game scores and your chats. You’ll be signed out. This can’t be undone.</p><p class="sheetError">Couldn’t delete your account just now. Try again in a moment.</p>
+<button class="sheetCta">Cancel</button><button class="sheetOpt">Delete my account</button></div></div></div>
+</div>
+<p class="cap"><b>1</b> is Eran’s draft (2-account-page.jpg), unchanged. <b>2</b> and <b>3</b> aren’t in a JPEG yet. They mirror the Start-over sheet: while it works, both buttons dim and the second reads “Deleting…”; if it fails, one red line above the buttons and the sheet stays open. On success: signed out, on the login page (today’s screen). Text for Eran’s OK (Q-5): should it also say your feedback notes go (YOU.md DEC-5: the rows go, emails already in our inbox stay)? The Account page behind the sheet is simplified.</p>
+</body></html>

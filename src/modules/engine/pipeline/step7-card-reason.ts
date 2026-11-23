@@ -187,22 +187,28 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
 
   try {
     const supabase = createServiceClient()
+    // Every chunk's read at once (up to 3 for 400 titles), then read in the same
+    // order as before: one after another, they cost ~0.4 s, the slowest part of
+    // scoring one title (P2-G check 2).
+    const chunks: { type: 'movie' | 'tv'; ids: string[] }[] = []
     for (const type of ['movie', 'tv'] as const) {
       const ids = [...reaction.keys()].filter(k => k.startsWith(`${type}:`)).map(k => k.slice(type.length + 1))
-      for (let i = 0; i < ids.length; i += 150) {
-        const { data, error } = await supabase
-          .from('titles')
-          .select('tmdb_id, title, crew, tmdb_vote_count')
-          .eq('type', type)
-          .in('tmdb_id', ids.slice(i, i + 150))
-        if (error) throw error
-        for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
-          const key = `${type}:${t.tmdb_id}`
-          for (const [id, roles] of peopleIn(t.crew)) {
-            const list = out.get(id) ?? []
-            list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
-            out.set(id, list)
-          }
+      for (let i = 0; i < ids.length; i += 150) chunks.push({ type, ids: ids.slice(i, i + 150) })
+    }
+    const results = await Promise.all(chunks.map(c => supabase
+      .from('titles')
+      .select('tmdb_id, title, crew, tmdb_vote_count')
+      .eq('type', c.type)
+      .in('tmdb_id', c.ids)))
+    for (const [n, { data, error }] of results.entries()) {
+      if (error) throw error
+      const { type } = chunks[n]
+      for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
+        const key = `${type}:${t.tmdb_id}`
+        for (const [id, roles] of peopleIn(t.crew)) {
+          const list = out.get(id) ?? []
+          list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
+          out.set(id, list)
         }
       }
     }
@@ -226,6 +232,70 @@ function peopleIn(crew: TitleRow['crew'] | null | undefined): Map<string, RatedT
   for (const c of crew?.writers ?? []) add(c.tmdb_person_id, 'writer')
   for (const c of (crew?.cast ?? []).slice(0, 5)) add(c.tmdb_person_id, 'actor')
   return out
+}
+
+// ─────────────────────────────────────────────
+// The people you rated, for "Why it's a match" (v3 F6)
+// ─────────────────────────────────────────────
+
+/** One person under the sheet's Creators bar: who they are here, and the
+ *  titles of theirs you loved and liked, best known first. */
+export interface RatedCreator {
+  name: string
+  /** Their roles on THIS title, crew_matches order: "director, writer". */
+  role: string
+  loved: string[]
+  liked: string[]
+}
+
+/**
+ * Everyone in this title you've rated something of (v3 F6, FOR-YOU.md DEC-8),
+ * strongest first. crew_matches alone can't say it: it holds every person in
+ * your profile (strand_a), and the taste games' "Creators they trust", the
+ * 48-hour check-in and chat write people there too. So a person is named only
+ * when they're also in a title you loved or liked (`rated`, from your own
+ * ratings). Liked people only: a rated-down one is a reason against.
+ *
+ * The title itself counts when you've rated it (Seen's card page), last, so
+ * the bar it raised is still explained. Cinematographers are never named
+ * (users don't follow them; `peopleIn` leaves them out).
+ */
+export function ratedCreators(item: CardReasonInput, rated: RatedByPerson): RatedCreator[] {
+  const { title, reason_payload: p } = item
+  const self = `${title.type}:${title.tmdb_id}`
+
+  // crew_matches carries names only; the title row maps a name to its person id.
+  const idOf = new Map<string, string>()
+  for (const c of [...(title.crew?.directors ?? []), ...(title.crew?.writers ?? []), ...(title.crew?.cast ?? [])]) {
+    if (!idOf.has(c.name)) idOf.set(c.name, c.tmdb_person_id)
+  }
+
+  // One entry per person, every role they had here, their strongest affinity.
+  const people = new Map<string, { roles: string[]; affinity: number }>()
+  for (const m of p.crew_matches) {
+    if (!(m.affinity_score > 0)) continue
+    const e = people.get(m.name) ?? { roles: [], affinity: 0 }
+    if (!e.roles.includes(m.role)) e.roles.push(m.role)
+    e.affinity = Math.max(e.affinity, m.affinity_score)
+    people.set(m.name, e)
+  }
+
+  const out: (RatedCreator & { affinity: number })[] = []
+  for (const [name, { roles, affinity }] of people) {
+    const id = idOf.get(name)
+    const titles = (id ? rated.get(id) ?? [] : [])
+      .slice()
+      .sort((a, b) => (a.key === self ? 1 : 0) - (b.key === self ? 1 : 0) || b.votes - a.votes)
+    // A person can be in a rated title twice over (writer-director): once each.
+    const names = (reaction: 'loved' | 'liked') =>
+      [...new Set(titles.filter(t => t.reaction === reaction).map(t => t.title))]
+    const loved = names('loved'), liked = names('liked')
+    if (loved.length + liked.length === 0) continue
+    out.push({ name, role: roles.join(', '), loved, liked, affinity })
+  }
+  return out
+    .sort((a, b) => b.affinity - a.affinity)
+    .map(({ affinity: _affinity, ...c }) => c)
 }
 
 // ─────────────────────────────────────────────
@@ -376,7 +446,6 @@ export function plotLine(synopsis: string | null | undefined, max: number): stri
 }
 
 interface ReasonParts {
-  stretch: string | null
   people: string[]
   story: (withMood: boolean, withAbout: boolean, nExtras: number) => string
   hasStory: boolean
@@ -430,7 +499,6 @@ function reasonParts(item: CardReasonInput, rated: RatedByPerson, maxPeople: num
   const crowd = omdb >= 0.75 ? 'Critics loved it.' : tmdb >= 0.75 ? 'Audiences loved it.' : ''
 
   return {
-    stretch: p.is_stretch_pick && p.stretch_rationale ? p.stretch_rationale : null,
     people: personSentences(item, rated, maxPeople),
     story,
     // Nothing to say about the story beyond "a film".
@@ -448,7 +516,10 @@ function reasonParts(item: CardReasonInput, rated: RatedByPerson, maxPeople: num
  *     catalogue's plot text, so no two cards read alike.
  * No mood labels and no "Critics loved it": on every card, they read the
  * same ("A warm and hopeful comedy. Critics loved it." on card after card)
- * and stopped meaning anything. A stretch pick keeps its own rationale.
+ * and stopped meaning anything. A stretch pick gets the same line: the card's
+ * label says it's a stretch (v3 F7, Eran 2026-11-22), and its old rationale
+ * ("Intentional stretch: … High critical rating. Accept or reject …") was
+ * engine-speak and not always true.
  */
 export function cardReason(
   item: CardReasonInput,
@@ -457,7 +528,6 @@ export function cardReason(
   plots: Map<string, string> = new Map(),
 ): string {
   const r = reasonParts(item, rated, 1)
-  if (r.stretch) return r.stretch
   const who = r.people[0] ?? ''
   const max = CARD_REASON_MAX_CHARS
   const synopsis = item.title.synopsis
@@ -494,7 +564,6 @@ export function sheetReason(item: CardReasonInput, rated: RatedByPerson = new Ma
   const r = reasonParts(item, rated, 2)
   const plot = plotLine(item.title.synopsis, 320)
   const parts = [
-    r.stretch ?? '',
     ...r.people,
     plot ?? (r.hasStory ? r.story(false, true, 3) : ''),
   ].filter(Boolean)

@@ -172,24 +172,22 @@ async function toUIRecommendations(
   });
 }
 
-// Type-filter → drop removed + already-judged titles → paginate → adapt to the
-// UI shape. Used for both the warm cache and a freshly regenerated list so
-// their handling can't drift apart.
-export async function buildRecPage(opts: {
-  userId: string;
-  dna: DNASchema | null;
-  recs: RecommendationResult[];
-  /** Titles the user has "Removed" (getRemovedKeys); a promise lets the caller start the read early. */
-  removed: Set<string> | Promise<Set<string>>;
-  /** Position in the batch to start from. */
-  start: number;
-  contentType: ContentType;
-  source: string;
-}): Promise<RecPage> {
-  const { userId, dna, recs, start, contentType, source } = opts;
-  const removed = await opts.removed;
-  const timer = startTimer("rec-page");
-
+/**
+ * Which titles of `recs` may be shown: not removed (Hide / the X), not judged
+ * (rated, or on the Watchlist; unless `keepJudged`), not caught by the user's standing rules. Shared
+ * by the paged feed and the 20 (src/lib/for-you-set.ts), so their handling
+ * can't drift apart.
+ */
+export async function servableFilter(
+  dna: DNASchema | null,
+  removed: Set<string>,
+  recs: RecommendationResult[],
+  /**
+   * v3 F2 (FOR-YOU.md DEC-4): the stored 20 keep what you rated or saved, lit, until Refresh. Hidden titles and your
+   * standing rules still drop out.
+   */
+  opts: { keepJudged?: boolean } = {},
+): Promise<(r: RecommendationResult) => boolean> {
   /**
    * Titles the user has already judged, as `${type}:${tmdb_id}` keys.
    *
@@ -208,30 +206,103 @@ export async function buildRecPage(opts: {
    * genuinely brings it back — unless it was also rated, which is its own,
    * stronger judgement.
    */
-  const judged = new Set((dna?.signals ?? []).map((s) => titleKey(s.type, s.tmdb_id)))
+  const judged = new Set(opts.keepJudged ? [] : (dna?.signals ?? []).map((s) => titleKey(s.type, s.tmdb_id)))
   // Watchlisted titles are excluded too (decided 2026-08-28): a saved title
   // resurfacing as a "new" recommendation reads as a repeat. The marker lives
   // in recommendation_history (see watchlist-intent.ts); legacy markers with
   // no type match on the bare id — see matchesKeySet.
-  for (const h of dna?.learning_loop.recommendation_history ?? []) {
+  for (const h of opts.keepJudged ? [] : dna?.learning_loop.recommendation_history ?? []) {
     if (isSavedMarker(h)) judged.add(recordKey(h))
   }
 
-  const taste_version = dna?.metadata.taste_version ?? null;
-  // The batch was generated for this content type, so this only guards a
-  // cache entry written before the split.
-  const wanted = titleTypeFor(contentType);
-  const typeFiltered = wanted ? recs.filter((r) => r.type === wanted) : recs;
-
   // The user's standing rules, applied to whatever the cache handed us.
   const rules = dna?.contextual_logic?.exclusion_rules ?? [];
-  const fields = rules.length > 0 ? await fetchRuleFields(typeFiltered) : null;
-  timer.mark("rule fields");
-  const servable = (r: RecommendationResult) => {
+  const fields = rules.length > 0 ? await fetchRuleFields(recs) : null;
+  return (r: RecommendationResult) => {
     if (removed.has(titleKey(r.type, r.tmdb_id)) || matchesKeySet(judged, r.type, r.tmdb_id)) return false;
     const t = fields?.get(`${r.type}:${r.tmdb_id}`);
     return !t || !isExcluded(t, rules);
   };
+}
+
+/** The batch's titles of the picker's type. The batch was generated for it, so this only guards a cache entry written before the split. */
+export function ofContentType(recs: RecommendationResult[], contentType: ContentType): RecommendationResult[] {
+  const wanted = titleTypeFor(contentType);
+  return wanted ? recs.filter((r) => r.type === wanted) : recs;
+}
+
+/**
+ * The cards for `items`, in order. `record` (a page served for the first time):
+ * make sure each has its streaming service, and remember what this user was shown.
+ */
+export async function toCards(
+  userId: string,
+  items: RecommendationResult[],
+  opts: { record: boolean; timer?: { mark: (s: string) => void } },
+): Promise<Recommendation[]> {
+  const { record, timer } = opts;
+  // Streaming availability for THIS page, before it renders: the batch-wide
+  // check runs in the background after generation, so this is usually a
+  // no-op — but a page served before it lands would otherwise show no
+  // service name until a refetch. At most one TMDB call per card on the
+  // page (in parallel); a failure just leaves the line off.
+  if (record) {
+    try {
+      await ensureWatchProviders(
+        items.map((r) => ({ tmdb_id: r.tmdb_id, type: r.type })),
+        { maxChecks: items.length },
+      );
+    } catch (err) {
+      console.warn("[recommendations/generate] page provider check failed (non-fatal):", err instanceof Error ? err.message : err);
+    }
+    timer?.mark("watch providers");
+  }
+  const uiRecs = await toUIRecommendations(items);
+  timer?.mark(`card rows (${items.length})`);
+  // Remember what this user was actually shown (served_titles, migration
+  // 0019): the next batch keeps these out of its "fresh" 80% and draws its
+  // "seen" 20% from them until they're rated. With the score each card was
+  // served with and the formula behind it (migration 0032), for the live
+  // score (src/modules/engine/live-score.ts). After the response — a
+  // bookkeeping write must never delay a page.
+  if (record && items.length > 0) {
+    const keys = items.map((r) => titleKey(r.type, r.tmdb_id));
+    const scores = items.map((r) => r.composite_score);
+    const formulas = items.map((r) => servedFormula(r));
+    after(async () => {
+      const { error } = await createServiceClient().rpc("record_served_titles", {
+        p_user_id: userId,
+        p_keys: keys,
+        p_scores: scores,
+        p_formulas: formulas,
+      });
+      if (error) console.warn("[recommendations/generate] record_served_titles failed (non-fatal):", error.message);
+    });
+  }
+  return uiRecs;
+}
+
+// Type-filter → drop removed + already-judged titles → paginate → adapt to the
+// UI shape. Used for both the warm cache and a freshly regenerated list so
+// their handling can't drift apart.
+export async function buildRecPage(opts: {
+  userId: string;
+  dna: DNASchema | null;
+  recs: RecommendationResult[];
+  /** Titles the user has "Removed" (getRemovedKeys); a promise lets the caller start the read early. */
+  removed: Set<string> | Promise<Set<string>>;
+  /** Position in the batch to start from. */
+  start: number;
+  contentType: ContentType;
+  source: string;
+}): Promise<RecPage> {
+  const { userId, dna, recs, start, contentType, source } = opts;
+  const removed = await opts.removed;
+  const timer = startTimer("rec-page");
+  const taste_version = dna?.metadata.taste_version ?? null;
+  const typeFiltered = ofContentType(recs, contentType);
+  const servable = await servableFilter(dna, removed, typeFiltered);
+  timer.mark("rule fields");
 
   // `offset` is a position in the cached batch, not in the filtered list.
   // The user rates and removes cards they have already been served, and each
@@ -248,41 +319,6 @@ export async function buildRecPage(opts: {
   }
   const nextOffset = cursor;
   const hasMore = typeFiltered.slice(cursor).some(servable);
-  // Streaming availability for THIS page, before it renders: the batch-wide
-  // check runs in the background after generation, so this is usually a
-  // no-op — but a page served before it lands would otherwise show no
-  // service name until a refetch. At most one TMDB call per card on the
-  // page (≤6, in parallel); a failure just leaves the line off.
-  try {
-    await ensureWatchProviders(
-      items.map((r) => ({ tmdb_id: r.tmdb_id, type: r.type })),
-      { maxChecks: DEFAULT_PAGE_SIZE },
-    );
-  } catch (err) {
-    console.warn("[recommendations/generate] page provider check failed (non-fatal):", err instanceof Error ? err.message : err);
-  }
-  timer.mark("watch providers");
-  const uiRecs = await toUIRecommendations(items);
-  timer.mark(`card rows (${items.length})`);
-  // Remember what this user was actually shown (served_titles, migration
-  // 0019): the next batch keeps these out of its "fresh" 80% and draws its
-  // "seen" 20% from them until they're rated. With the score each card was
-  // served with and the formula behind it (migration 0032), for the live
-  // score (src/modules/engine/live-score.ts). After the response — a
-  // bookkeeping write must never delay a page.
-  if (items.length > 0) {
-    const keys = items.map((r) => titleKey(r.type, r.tmdb_id));
-    const scores = items.map((r) => r.composite_score);
-    const formulas = items.map((r) => servedFormula(r));
-    after(async () => {
-      const { error } = await createServiceClient().rpc("record_served_titles", {
-        p_user_id: userId,
-        p_keys: keys,
-        p_scores: scores,
-        p_formulas: formulas,
-      });
-      if (error) console.warn("[recommendations/generate] record_served_titles failed (non-fatal):", error.message);
-    });
-  }
+  const uiRecs = await toCards(userId, items, { record: true, timer });
   return { recommendations: uiRecs, next_offset: nextOffset, has_more: hasMore, source, taste_version };
 }
