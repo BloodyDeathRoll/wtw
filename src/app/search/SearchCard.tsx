@@ -10,7 +10,8 @@
  * second); the card doesn't wait for it. A title it can't score honestly (outside the catalogue, a cold-start
  * profile) shows no ring, and no older match stands in for today's (plan DEC-5).
  *
- * Not here yet: a save teaching your taste (Q6).
+ * A save or a removal here reaches your profile at once (v3 Q6, SEARCH.md DEC-4): the same "saved" mark a save from
+ * For you gets, so For you stops serving the title. A save is interest, not taste: it doesn't move your matches.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -29,6 +30,7 @@ import {
 } from "@/lib/watchlist";
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { fetchFreshExplain, freshKey, getCachedExplain, setCachedExplain } from "@/lib/explain-cache";
+import { reportSavesNow } from "@/lib/report-saves";
 import { TitleCardPage } from "@/modules/session/recommendations/RecommendationsView";
 import { deleteRating, HIDDEN_EVENT, postRating, RATED_EVENT, type HiddenDetail, type RatedDetail, type Reaction } from "@/modules/session/recommendations/rate";
 
@@ -223,6 +225,8 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
       if (rated && rated !== "removed") setWatchlistRating(r.id, rated);
     }
     setSaved(!saved);
+    // Recorded in your profile now, not at the next session end (Q6); a failure leaves it queued for that.
+    void reportSavesNow();
   }
 
   return (
