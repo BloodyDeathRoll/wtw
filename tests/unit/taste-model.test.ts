@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 
 import type { DNASignal } from '@/types/dna'
-import { buildTraining, contributions, predict, trainTasteModel, type TastePair, type TasteRow } from '@/modules/dna/taste-model'
+import { buildTraining, contributions, MODERN_FLOOR, MODERN_INDEX, predict, trainTasteModel, type TastePair, type TasteRow } from '@/modules/dna/taste-model'
+import { FEATURE_GENRES, FEATURE_SCALES } from '@/lib/taste-scales/features'
 
 /**
  * Reference fixture: 40 titles from a MINSTD generator (exact in both JS and
@@ -48,6 +49,37 @@ describe('trainTasteModel', () => {
 
   it('returns zeros with no data', () => {
     expect(trainTasteModel([], [])).toEqual(new Array(25).fill(0))
+  })
+  // #436: the recency penalty is capped at −0.15; a gentler weight stays as trained.
+  describe('the recency floor (#436)', () => {
+    /** 40 titles: newer ones (modern = +1) rated `newLevel`, older ones (modern = −1) rated `oldLevel`; a little noise elsewhere. */
+    const byEra = (newLevel: 1 | 2 | 3, oldLevel: 1 | 2 | 3): TasteRow[] => Array.from({ length: 40 }, (_, i) => {
+      const vec = Array.from({ length: 25 }, (_, k) => (k === 0 ? 0 : ((i * 7 + k * 3) % 11) / 50 - 0.1))
+      const isNew = i % 2 === 0
+      vec[MODERN_INDEX] = isNew ? 1 : -1
+      return { vec, level: isNew ? newLevel : oldLevel, weight: 1 }
+    })
+
+    it('sits on `modern` (position 21: rating, 13 genres, then the scales)', () => {
+      expect(MODERN_INDEX).toBe(21)
+      expect(FEATURE_SCALES[MODERN_INDEX - 1 - FEATURE_GENRES.length]).toBe('modern')
+      expect(MODERN_FLOOR).toBe(-0.15)
+    })
+
+    it('a strong penalty (every newer title rated down) is lifted to exactly −0.15', () => {
+      const w = trainTasteModel(byEra(1, 3), [])
+      expect(w[MODERN_INDEX]).toBe(MODERN_FLOOR)
+    })
+
+    it('a gentler weight, or a lean towards newer titles, stays as trained', () => {
+      // Newer titles rated down a little more often than older ones (1 in 4 against 1 in 8): a mild lean.
+      const mild = trainTasteModel(byEra(2, 2).map((r, i) => ({ ...r, level: (i % 8 === 0 || i % 16 === 1 ? 1 : 2) as 1 | 2 })), [])
+      expect(mild[MODERN_INDEX]).toBeLessThan(0)
+      expect(mild[MODERN_INDEX]).toBeGreaterThan(MODERN_FLOOR)
+      const towardsNew = trainTasteModel(byEra(3, 1), [])
+      expect(towardsNew[MODERN_INDEX]).toBeGreaterThan(0)
+    })
+
   })
 })
 

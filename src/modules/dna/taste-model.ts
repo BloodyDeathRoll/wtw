@@ -19,7 +19,7 @@
 import type { DNASignal, Reaction } from '@/types/dna'
 // brain.ts is pure and must stay so: this file runs in the engine (update-from-play.ts and cold-start.ts import it too).
 import { nevers, type PlayState } from '@/app/play/lib/brain'
-import { FEATURE_GENRES, TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
+import { FEATURE_GENRES, FEATURE_SCALES, TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
 import { titleKey } from '@/lib/title-key'
 
 export interface TasteRow { vec: number[]; level: 1 | 2 | 3; weight: number }
@@ -58,7 +58,18 @@ export function genreLean(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | null
   return w0
 }
 
-/** Solves (XᵀWX + Λ) w = XᵀWy + Λ·w0. Without `w0` it is the plain ridge towards 0. */
+/**
+ * The recency penalty's floor (#436; Eran, 2026-11-24, on #389). A trained
+ * `modern` weight below it docked recent titles hard: on one account MobLand
+ * scored 67% and its loved 2020s titles averaged 48 against 86 for older ones.
+ * Lifted to −0.15, the harness costs at most 2 points of concordance on any of
+ * the three sheets (#389), and MobLand reads 97. A gentler weight stays as trained.
+ */
+export const MODERN_FLOOR = -0.15
+/** `modern`'s place in the 25 features: rating, the 13 genres, then the scales. */
+export const MODERN_INDEX = 1 + FEATURE_GENRES.length + FEATURE_SCALES.indexOf('modern')
+
+/** Solves (XᵀWX + Λ) w = XᵀWy + Λ·w0. Without `w0` it is the plain ridge towards 0. Then the recency floor. */
 export function trainTasteModel(rows: TasteRow[], pairs: TastePair[], w0?: number[]): number[] {
   const d = TASTE_FEATURE_COUNT
   const A = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => (i === j ? PENALTY[i] : 0)))
@@ -75,7 +86,9 @@ export function trainTasteModel(rows: TasteRow[], pairs: TastePair[], w0?: numbe
   for (const r of rows) add(r.vec, r.level - mean, r.weight)
   for (const p of pairs) add(p.chosen.map((v, k) => v - p.other[k]), 1, 1)
   if (rows.length === 0 && pairs.length === 0) return Array.from({ length: d }, (_, i) => w0?.[i] ?? 0)
-  return solveSPD(A, b)
+  const w = solveSPD(A, b)
+  if (w[MODERN_INDEX] < MODERN_FLOOR) w[MODERN_INDEX] = MODERN_FLOOR
+  return w
 }
 
 export function predict(w: number[], x: number[]): number {
