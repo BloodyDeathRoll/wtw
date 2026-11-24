@@ -30,6 +30,8 @@ export interface FeedbackInput {
   action: FeedbackAction
   reaction: Reaction | undefined
   is_stretch_pick: boolean
+  /** The title's name, for a stretch pick's record (falls back to its id). */
+  title?: string
 }
 
 /**
@@ -41,7 +43,7 @@ export interface FeedbackInput {
  * fresh read when its compare-and-set misses.
  */
 export function applyFeedbackToDNA(dna: DNASchema, input: FeedbackInput): boolean {
-  const { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick } = input
+  const { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick, title } = input
   let dnaChanged = false
   const history = dna.learning_loop.recommendation_history
   const entryIndex = history.findLastIndex(h => recordMatches(h, tmdb_id, media_type))
@@ -87,16 +89,31 @@ export function applyFeedbackToDNA(dna: DNASchema, input: FeedbackInput): boolea
     dnaChanged = true
   }
 
-  // Also update stretch_pick_history if applicable
+  // A stretch pick's outcome (#419 part 3, Eran 2026-11-24): loved or liked is
+  // accepted, disliked is rejected. The chat records a stretch pick when it
+  // serves one (recordStretchPick); For you never did, so a rating there found
+  // no record and the outcome was lost. Now the first rating creates it, and the
+  // DNA writer's updateSchemaFromStretch (called by the feedback route right
+  // after) finds it. unrateInDNA resets it when the rating is cleared.
   if (is_stretch_pick && (action === 'watched' || action === 'skipped')) {
-    const stretchEntry = dna.learning_loop.stretch_pick_history
-      .find(s => s.tmdb_id === tmdb_id)
-
+    const accepted = action === 'watched' && (reaction === 'loved' || reaction === 'liked')
+    const history = dna.learning_loop.stretch_pick_history
+    const stretchEntry = history.find(s => s.tmdb_id === tmdb_id)
     if (stretchEntry) {
-      stretchEntry.accepted  = action === 'watched'
-      stretchEntry.reaction  = reaction ?? null
-      dnaChanged = true
+      stretchEntry.accepted = accepted
+      stretchEntry.reaction = reaction ?? null
+    } else {
+      history.push({
+        title: title ?? tmdb_id,
+        tmdb_id,
+        accepted,
+        reaction: reaction ?? null,
+        session: dna.metadata.total_sessions,
+        // Formula v2 stretches on the match, not on strand B dimensions.
+        dimensions_stretched: [],
+      })
     }
+    dnaChanged = true
   }
 
   return dnaChanged
