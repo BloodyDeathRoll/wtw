@@ -50,12 +50,15 @@
   gap: 8px;
   margin-top: 8px;
 }
-.icon {
+/* `.icons .icon`, not `.icon`: the button also carries the card's `.seenChip` (flex: 1, 13.5px), and two one-class rules
+   are settled by which file the production bundle puts last. Two classes win whatever the order (P2-G check 6). */
+.icons .icon {
   flex: 0 0 52px;
   height: 36px;
+  font-size: 17px;
 }
 /* The two you didn't pick, dimmed a little (about 55%). */
-.iconDim > span {
+.icons .iconDim > span {
   opacity: 0.55;
 }
 
