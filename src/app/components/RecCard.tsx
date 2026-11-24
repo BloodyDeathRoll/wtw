@@ -247,6 +247,21 @@ const ROLE_PHRASE: Record<string, string> = {
 // instead, so it never shows as a reason against.
 const NO_CREW_FILLER = /^No crew members from your watch history/
 
+/**
+ * Whether the Why already says `line` (#433): the Why ends on its one honest
+ * reservation word for word, after a lead-in ("Just know going in: It's
+ * funnier than you usually go for."), and the same line can sit under
+ * "Doesn't quite fit". Words only, any case, so the Why's emphasis, quotes
+ * and the lead-in's capital don't count. No Why yet (loading, failed): false,
+ * so the line stays.
+ */
+export function saidInWhy(why: string | null | undefined, line: string): boolean {
+  if (!why) return false
+  const words = (s: string) => s.toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9']+/g, " ").trim()
+  const l = words(line)
+  return l.length > 0 && words(why).includes(l)
+}
+
 /** "en" → "English". Falls back to the code if the browser can't name it. */
 function languageName(code: string): string {
   try {
@@ -387,10 +402,12 @@ export function WhyPanel({ result, why, omitWhy = false }: { result: Recommendat
     }
   }
 
+  // The Why on screen: a line it already says isn't said again below (#433).
+  const whyShown = omitWhy || why === "pending" || why === "failed" ? null : (why ?? result.explanation)
   const against = [
     ...dislikedCrew.map(m => `You’ve rated down other titles ${ROLE_PHRASE[m.role.toLowerCase()] ?? "with"} ${m.name}.`),
     ...p.negative_signals.filter(s => !NO_CREW_FILLER.test(s)),
-  ]
+  ].filter(s => !saidInWhy(whyShown, s))
 
   return (
     <div className={styles.whyPanel}>

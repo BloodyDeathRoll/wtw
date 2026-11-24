@@ -361,7 +361,7 @@ function personSentences(item: CardReasonInput, rated: RatedByPerson, max: numbe
     } else {
       plain.push(m.affinity_score >= STRONG
         ? `${m.name} ${ROLE_VERB[m.role]}, and you love their work.`
-        : `${m.name} ${ROLE_VERB[m.role]}; you've enjoyed their work before.`)
+        : `${m.name} ${ROLE_VERB[m.role]}; you've liked their work before.`)
     }
   }
   return [...linked, ...plain].slice(0, max)
