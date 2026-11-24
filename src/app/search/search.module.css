@@ -108,9 +108,8 @@
 .recentText {
   min-width: 0;
   font-size: 16px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* A long search wraps onto the next line, never cut with "…" (P2-G check 6). */
+  overflow-wrap: anywhere;
 }
 
 .field {

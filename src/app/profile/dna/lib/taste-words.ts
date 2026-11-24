@@ -10,17 +10,16 @@ import type { GenreCall } from '@/lib/genre-calls'
 export type Reaction3 = 'loved' | 'liked' | 'disliked'
 export interface Tally { loved: number; liked: number; disliked: number }
 
-/** What your ratings say about a genre, under its name. `thin` = too little to go on (shown quieter). */
+/**
+ * What your ratings say about a genre, under its name: plain counts in Seen's words ("8 loved · 3 liked"), a zero left
+ * out. Never "Loved all 8" or "enjoyed" (Eran, P2-G check 6, 2026-11-24). `thin` = too little to go on (shown quieter).
+ */
 export function genreSays(t: Tally, call: GenreCall): { text: string; thin: boolean } {
   const n = t.loved + t.liked + t.disliked
   if (!n) return { text: call === 'never' ? 'Hidden from your feed' : 'Nothing rated yet', thin: true }
   if (n < 3) return { text: `Only ${n} rated so far`, thin: true }
-  if (t.loved === n) return { text: `Loved all ${n}`, thin: false }
-  if (!t.disliked) return { text: `Enjoyed all ${n}`, thin: false }
-  const s = t.disliked / n
-  if (s <= 0.25) return { text: `Mostly enjoyed · ${n} titles`, thin: false }
-  if (s >= 0.6) return { text: `Mostly disliked · ${n} titles`, thin: false }
-  return { text: `Mixed · ${n} titles`, thin: false }
+  const parts = (['loved', 'liked', 'disliked'] as const).filter(k => t[k] > 0).map(k => `${t[k]} ${k}`)
+  return { text: parts.join(' · '), thin: false }
 }
 
 /** The line under a genre's five steps, in the person's own voice. */

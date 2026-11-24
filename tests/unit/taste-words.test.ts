@@ -8,11 +8,13 @@ describe('genreSays', () => {
     expect(genreSays({ loved: 0, liked: 0, disliked: 0 }, 'normal')).toEqual({ text: 'Nothing rated yet', thin: true })
     expect(genreSays({ loved: 0, liked: 0, disliked: 0 }, 'never')).toEqual({ text: 'Hidden from your feed', thin: true })
     expect(genreSays({ loved: 1, liked: 1, disliked: 0 }, 'normal')).toEqual({ text: 'Only 2 rated so far', thin: true })
-    expect(genreSays({ loved: 7, liked: 0, disliked: 0 }, 'normal').text).toBe('Loved all 7')
-    expect(genreSays({ loved: 2, liked: 1, disliked: 0 }, 'normal').text).toBe('Enjoyed all 3')
-    expect(genreSays({ loved: 5, liked: 2, disliked: 1 }, 'normal').text).toBe('Mostly enjoyed · 8 titles')
-    expect(genreSays({ loved: 1, liked: 0, disliked: 2 }, 'normal').text).toBe('Mostly disliked · 3 titles')
-    expect(genreSays({ loved: 3, liked: 2, disliked: 3 }, 'normal').text).toBe('Mixed · 8 titles')
+    // Plain counts in Seen's words, a zero left out; never "Loved all N" or "enjoyed" (P2-G check 6).
+    expect(genreSays({ loved: 7, liked: 0, disliked: 0 }, 'normal')).toEqual({ text: '7 loved', thin: false })
+    expect(genreSays({ loved: 8, liked: 3, disliked: 0 }, 'normal').text).toBe('8 loved · 3 liked')
+    expect(genreSays({ loved: 8, liked: 3, disliked: 1 }, 'normal').text).toBe('8 loved · 3 liked · 1 disliked')
+    expect(genreSays({ loved: 3, liked: 2, disliked: 5 }, 'normal').text).toBe('3 loved · 2 liked · 5 disliked')
+    expect(genreSays({ loved: 0, liked: 1, disliked: 5 }, 'normal').text).toBe('1 liked · 5 disliked')
+    expect(genreSays({ loved: 0, liked: 0, disliked: 3 }, 'never').text).toBe('3 disliked')
   })
   it('the line under each step reads the same from any earlier step', () => {
     expect(CALL_SAYS.less('Comedy')).toBe('I want to see less Comedy in my feed.')
