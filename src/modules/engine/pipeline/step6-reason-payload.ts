@@ -68,10 +68,11 @@ function buildNegativeSignals(item: ScoredTitle, catchShared = false): string[] 
     }
   }
 
-  if (item.is_stretch_pick && item.formula_v2) {
+  if (item.is_stretch_pick && (item.formula_v2 || item.dimensions_stretched.length === 0)) {
     // v2 (Eran, 2026-11-12, on #272): the stretched dimensions are strand B
     // names v2 doesn't use ("narrative complexity"), so it is said plainly.
     // dimensions_stretched itself is unchanged: the DNA writer records it.
+    // A pick with no strand B clash (#416) is said plainly under v1 too.
     negatives.unshift('A stretch pick: chosen on purpose from outside what you usually go for.')
   } else if (item.is_stretch_pick && item.dimensions_stretched.length > 0) {
     const dims = item.dimensions_stretched.map(d => d.replace(/_/g, ' ')).join(', ')
