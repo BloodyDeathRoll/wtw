@@ -39,7 +39,7 @@ export default function GenreStep({ top, onStart, screenRef }: {
       <div className="setup welcome lit">
         <div>
           <h2>Lights, camera, genres!</h2>
-          <p className="sub">Three steps to your first matches. First, tap “Love” or “Like” on every genre you enjoy and “Never” on any you don’t. Blank is neutral.</p>
+          <p className="sub">Three steps to your first matches. First, tap “Love” or “Like” on every genre you go for and “Never” on any you don’t. Blank is neutral.</p>
         </div>
         <div className="grows">
           <div className="grow ghead"><span />{ANSWERS.map(r => <span key={r.k} className={`gh gh-${r.k}`}>{r.label}</span>)}</div>
