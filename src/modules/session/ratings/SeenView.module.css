@@ -50,7 +50,9 @@
   gap: 8px;
   margin-top: 8px;
 }
-.icon {
+/* Two classes, so it beats the card's `.seenChip { flex: 1 }` whatever order the build puts the two files in
+   (the production build put that one last: the icons stretched across the row; P2-G check 6). */
+.icons .icon {
   flex: 0 0 52px;
   height: 36px;
 }
