@@ -47,3 +47,21 @@
 .sheetCta:disabled, .sheetOpt:disabled { opacity: .6; cursor: default; }
 .sheetCta:focus-visible, .sheetOpt:focus-visible { outline: 2px solid #d49b3a; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+
+/* "Send us feedback" (v3 Y2, YOU.md DEC-5; you-v3/3-feedback.jpg, 4-feedback-sent.jpg). The box is the chat input's
+   look (WTWApp.module.css .inputbar: #161614, the yellow glow while typing) with 20px corners since it's several
+   lines, ~260px tall (30% taller than the mock, Eran 2026-11-18), 16px text so the phone doesn't zoom. Send and Back
+   to You are the sheet's buttons above (.sheetCta, .sheetOpt); the red is the sheet's error red. */
+.fb { display: grid; gap: 16px; padding: 4px 0 24px; }
+.fbIntro { margin: 0; font-size: 17px; line-height: 1.45; color: rgba(255, 255, 255, .7); }
+.fbBox {
+  box-sizing: border-box; width: 100%; height: 260px; padding: 18px 22px; resize: none;
+  background: #161614; border: 0; border-radius: 20px; outline: 0;
+  color: #fff; font: inherit; font-size: 16px; line-height: 1.5;
+  transition: box-shadow .18s ease;
+}
+.fbBox::placeholder { color: rgba(255, 255, 255, .45); }
+.fbBox:focus { box-shadow: 0 0 0 3px rgba(255, 169, 0, .12); }
+.fbNote { margin: -4px 0 0; font-size: 14px; color: rgba(255, 255, 255, .5); }
+.fbError { margin: -4px 0 0; font-size: 16px; line-height: 1.4; color: #ff8a7a; }
+.fbThanks { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.25; color: #fff; }

@@ -93,6 +93,8 @@ MISTRAL_BATCH_API_KEY=   # optional — nightly enrichment only; falls back to M
 TYPESAFE_API_KEY=        # Jev — engine step 4 filter; when it fails the batch is served in score order and the devs are told
 JEV_ENABLED=false        # skips step 4 (Jev) entirely; set in Vercel since P1-E7. Unset = on
 NAV_HISTORY=             # v3 N1: Back retraces your steps (needs NAV_TABS; client-side, redeploy to change). Unset = off; on at P1-G
+RESEND_API_KEY=          # v3 Y2: "Send us feedback" emails (Resend, sending access only). Unset = the feedback row is hidden
+FEEDBACK_TO=             # v3 Y2: the team's feedback inbox (YOU.md DEC-5)
 ```
 
 ## Commands

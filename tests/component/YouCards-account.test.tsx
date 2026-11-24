@@ -20,9 +20,15 @@ describe('the bottom of You', () => {
     expect(screen.queryByText('Start my taste over')).toBeNull()
     expect(screen.queryByText('ACCOUNT')).toBeNull()
   })
-  it('Send us feedback waits for its page (Y2): no row that leads nowhere', () => {
+  it('Send us feedback waits for the email service (Y2): no row that leads nowhere', () => {
     render(<YouLinksCard />)
     expect(screen.queryByText('Send us feedback')).toBeNull()
+  })
+  it('with the email service set up: Send us feedback first, then Account', () => {
+    render(<YouLinksCard feedback />)
+    const links = screen.getAllByRole('link')
+    expect(links.map(l => l.getAttribute('href'))).toEqual(['/you/feedback', '/you/account'])
+    expect(screen.getByText('Tell us what to fix, or what you’d love to see.')).toBeInTheDocument()
   })
 })
 
