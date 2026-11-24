@@ -1178,6 +1178,8 @@ function Feed({
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // The JustWatch credit closes the list once it's all here and a card shows a service (v3 L1, #427).
+  const showCredit = !refreshing && !loading && !hasMore && recs.some((r) => r.where);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -1263,7 +1265,7 @@ function Feed({
         </Fragment>
       ))}
       {isSet && onRefresh && !loading && <SetEndCard onRefresh={onRefresh} onTalk={onTalk} />}
-      <div ref={sentinelRef} className={styles.sentinel}>
+      <div ref={sentinelRef} className={`${styles.sentinel} ${showCredit ? styles.sentinelCredit : ""}`}>
         {refreshing && !isSet && (
           // Just the fingerprint: the user asked for more and knows why
           // they're waiting, so the captions were noise.
@@ -1284,8 +1286,8 @@ function Feed({
           )
         )}
         {error && <span className={styles.error}>{error}</span>}
-        {/* The credit for the services on the cards (v3 L1): once, at the end. */}
-        {!refreshing && !loading && !hasMore && recs.some((r) => r.where) && <JustWatchCredit at="end" />}
+        {/* The credit for the services on the cards (v3 L1): once, at the very bottom (#427). */}
+        {showCredit && <JustWatchCredit at="end" />}
       </div>
     </div>
   );
@@ -2320,6 +2322,8 @@ function WatchlistList({
   }, [entries, ghosts, filter]);
   const visible = rows.slice(0, shownN);
   const hasMore = shownN < rows.length;
+  // The JustWatch credit closes the list once it's all here and an unseen row shows a service (v3 L1, #427).
+  const showCredit = !hasMore && visible.some((e) => !isSeen(e) && e.rec.where_il);
   // The end card (DEC-9): under the last unseen row, before the Seen line, under All only, with three or more unseen
   // titles (a removed row waiting on its Undo no longer counts), and only when the chat can answer.
   const unseenN = rows.slice(0, seenFrom).filter((e) => !ghosts[e.rec.id]).length;
@@ -2405,10 +2409,10 @@ function WatchlistList({
         {/* No Seen rows (or none paged in yet): the card closes the unseen list. */}
         {visible.length === seenFrom && endCard}
       </div>
-      <div ref={sentinelRef} className={styles.sentinel}>
+      <div ref={sentinelRef} className={`${styles.sentinel} ${showCredit ? styles.sentinelCredit : ""}`}>
         {!hasMore && <span className={styles.muted}>That&rsquo;s everything we found.</span>}
-        {/* The credit for the rows' services (v3 L1): once, at the end. Seen rows show no service. */}
-        {!hasMore && visible.some((e) => !isSeen(e) && e.rec.where_il) && <JustWatchCredit at="end" />}
+        {/* The credit for the rows' services (v3 L1): once, at the very bottom (#427). Seen rows show no service. */}
+        {showCredit && <JustWatchCredit at="end" />}
       </div>
     </div>
   );
@@ -2738,8 +2742,8 @@ export function TitleCardPage({
         onStar={saved ? onStar : undefined}
         whyInline={<InlineWhy snapshot={snapshot ?? null} rec={rec} innerRef={whyRef} />}
       />
-      {/* The credit for the service on the poster (v3 L1). */}
-      {rec.where && <JustWatchCredit at="underCard" />}
+      {/* The credit for the service on the poster (v3 L1), at the very bottom of the page (#427). */}
+      {rec.where && <JustWatchCredit at="page" />}
     </div>
   );
 }
