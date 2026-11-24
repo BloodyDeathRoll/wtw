@@ -212,8 +212,8 @@ export default function SharedTitleView({
             )}
           </div>
         </article>
-        {/* The credit for the service named on the card (v3 L1, Eran on #396): once, under the card. */}
-        {rec.where && <JustWatchCredit at="end" />}
+        {/* The credit for the service named on the card (v3 L1, Eran on #396): once, at the very bottom of the page (#427). */}
+        {rec.where && <JustWatchCredit at="sharePage" />}
       </div>
     </AppShell>
   );

@@ -621,7 +621,7 @@ export default function SearchView({
                 onShare={() => void shareTitle(card, user.name)}
               />
               {/* The credit for the service on the poster (v3 L1). */}
-              {card.where && <JustWatchCredit at="underCard" />}
+              {card.where && <JustWatchCredit at="page" />}
             </div>
           </div>
         )}
