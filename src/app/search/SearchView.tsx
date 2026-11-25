@@ -44,6 +44,15 @@ import styles from "./search.module.css";
 const VOICE_KEY = "wtw:voice";
 /** How long typing must pause before TMDB is asked. */
 const PAUSE_MS = 250;
+// How long a results list must stay on screen before its matches are asked for (#375: the score route was ~70% of CPU).
+const MATCH_PAUSE_MS = 600;
+// The matches asked this visit (this page load), kept across Search's opens. One account's at a time.
+// shortcut: a rating made elsewhere in the visit doesn't refresh a match already here; a reload does.
+let visit: { userId: string; asked: Set<string>; got: Record<string, number> } | null = null;
+function visitMatches(userId: string) {
+  if (visit?.userId !== userId) visit = { userId, asked: new Set(), got: {} };
+  return visit;
+}
 /** Keys /api/search/cast answers in one call (its MAX_KEYS). */
 const CAST_KEYS = 8;
 const IMG = "https://image.tmdb.org/t/p/";
@@ -84,9 +93,8 @@ export default function SearchView({
   const [now, setNow] = useState(0); // bumps to search without waiting for the pause
   // SEARCH_V3: your rating of each title, and what you hid from For you, to mark the rows (SEARCH.md DEC-5).
   const [marks, setMarks] = useState<Record<string, WatchlistRating>>({});
-  // SEARCH_V3: your match on each title row, by "type:tmdb_id" (v3 Q7); each title asked once a visit.
-  const [matches, setMatches] = useState<Record<string, number>>({});
-  const askedMatch = useRef(new Set<string>());
+  // SEARCH_V3: your match on each title row, by "type:tmdb_id" (v3 Q7); each title asked once a visit (#375).
+  const [matches, setMatches] = useState<Record<string, number>>(() => visitMatches(user.id).got);
 
   // The open card lives in the URL (/search?t=movie-1900): opening one pushes a
   // history entry, so Back (the arrow, or Android's back gesture) closes the
@@ -389,17 +397,26 @@ export default function SearchView({
   const rowKeys = v3
     ? [...mineHits, ...shown.filter(isTitle), ...(person?.page?.titles ?? [])].map((h) => `${h.type}:${h.tmdb_id}`).join(",")
     : "";
+  // Asked only once the rows hold still (typing has paused), so "sl" → "slo" → "slow" scores one list, not three (#375).
   useEffect(() => {
-    const ks = rowKeys ? [...new Set(rowKeys.split(","))].filter((k) => !askedMatch.current.has(k)) : [];
-    ks.forEach((k) => askedMatch.current.add(k));
-    for (let i = 0; i < ks.length; i += 60) {
-      const chunk = ks.slice(i, i + 60);
-      void fetchMatches(chunk.map((k) => ({ type: k.split(":")[0] as "movie" | "tv", tmdb_id: k.split(":")[1] }))).then((m) => {
-        if (!m) chunk.forEach((k) => askedMatch.current.delete(k)); // failed: asked again with the next list
-        else if (Object.keys(m).length) setMatches((cur) => ({ ...cur, ...m }));
-      });
-    }
-  }, [rowKeys]);
+    const visit = visitMatches(user.id);
+    const ks = rowKeys ? [...new Set(rowKeys.split(","))].filter((k) => !visit.asked.has(k)) : [];
+    if (!ks.length) return;
+    const t = setTimeout(() => {
+      ks.forEach((k) => visit.asked.add(k));
+      for (let i = 0; i < ks.length; i += 60) {
+        const chunk = ks.slice(i, i + 60);
+        void fetchMatches(chunk.map((k) => ({ type: k.split(":")[0] as "movie" | "tv", tmdb_id: k.split(":")[1] }))).then((m) => {
+          if (!m) chunk.forEach((k) => visit.asked.delete(k)); // failed: asked again with the next list
+          else if (Object.keys(m).length) {
+            Object.assign(visit.got, m);
+            setMatches((cur) => ({ ...cur, ...m }));
+          }
+        });
+      }
+    }, MATCH_PAUSE_MS);
+    return () => clearTimeout(t);
+  }, [rowKeys, user.id]);
   const matchOf = (h: TitleSearchHit) => matches[`${h.type}:${h.tmdb_id}`];
   let note: string | null = null;
   if (openKey) {
