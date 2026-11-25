@@ -77,12 +77,26 @@ function hasDimensionMismatch(
   }
 }
 
+/** Low match, high crowd: a title the stretch pick may take (before the ranked-list check). */
+export function isStretchCandidate(s: ScoredTitle): boolean {
+  return s.composite_score < MAX_COMPOSITE_SCORE && s.external_rating_score >= MIN_EXTERNAL_RATING
+}
+
+/**
+ * Whether injectStretchPick can place one at all: only then do its candidates need their story data.
+ * Mirrors injectStretchPick's early return (keep the two in step).
+ */
+export function stretchPossible(ranked: ScoredTitle[], dna: DNASchema): boolean {
+  return ranked.length > 0 && dna.signals.length >= SUPPRESS_BELOW_SIGNALS
+}
+
 export function injectStretchPick(
   ranked: ScoredTitle[],
   allCandidates: ScoredTitle[],
   dna: DNASchema
 ): ScoredTitle[] {
   // ── Suppression checks ────────────────────────────────────
+  // (stretchPossible below mirrors these, for generate.ts's story-data read.)
   if (
     ranked.length === 0 ||
     dna.signals.length < SUPPRESS_BELOW_SIGNALS
@@ -104,8 +118,7 @@ export function injectStretchPick(
   const stretchCandidates = allCandidates
     .filter(candidate =>
       !rankedIds.has(`${candidate.title.type}:${candidate.title.tmdb_id}`) &&  // already in list
-      candidate.composite_score < MAX_COMPOSITE_SCORE &&
-      candidate.external_rating_score >= MIN_EXTERNAL_RATING)
+      isStretchCandidate(candidate))
     .map(candidate => ({ candidate, clash: hasDimensionMismatch(candidate, dna).mismatched }))
     .sort((a, b) =>
       // `?? 0`, not step 3b's `?? 1`: step 1 sets times_served only on titles

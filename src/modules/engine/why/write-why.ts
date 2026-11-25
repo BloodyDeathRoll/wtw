@@ -505,6 +505,8 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
   if (words < 60 || words > 115) problems.push(`it is ${words} words long; write 85–100`)
   if (!facts.reservation && RESERVATION.test(text)) problems.push(`it contains a reservation or a contrast ("${text.match(RESERVATION)![0]}"); the facts give no reservation`)
   if (CLICHE.test(text)) problems.push(`it uses "${text.match(CLICHE)![0]}"; talk like a friend, not an app`)
+  // WTW says loved / liked / disliked (Eran, 2026-11-25, on #440): never "enjoyed".
+  if (/\benjoyed\b/i.test(text)) problems.push('it says "enjoyed"; WTW says "loved" or "liked"')
   if (SAMENESS.test(text)) problems.push(`it says "${text.match(SAMENESS)![0]}"; no critics or audiences, and describe the feel in fresh words, not a list of mood tags`)
   if (STOCK_OPENER.test(norm(text))) problems.push(`it opens with "${text.match(/^\S+(\s+\S+)?/)![0]}"; open with something specific about this title or the person`)
   if (/\n/.test(text.trim())) problems.push('it has a line break; one paragraph')
@@ -572,7 +574,7 @@ export function checkWhy(text: string, facts: WhyFacts): string[] {
   // "*Title*, which you loved" is true for the titles the facts compare to,
   // with the reaction the facts give; a hypothetical ("if you're after
   // something lighter") claims nothing.
-  const OK_VERBS: Record<string, string> = { loved: 'loved|adored|enjoyed', liked: 'liked|enjoyed' }
+  const OK_VERBS: Record<string, string> = { loved: 'loved|adored', liked: 'liked' }
   rest = rest.split(/(?<=[.!?])\s+/).map(sentence => {
     const c = facts.compared.find(x => sentence.includes(`*${norm(x.title)}*`))
     return c ? sentence.replace(new RegExp(`\\byou(?:'ve| have)? (?:clearly |really |always |previously |already |also )?(?:${OK_VERBS[c.reaction]})\\b`, 'g'), ' ') : sentence
@@ -614,6 +616,7 @@ Rules:
 - No critics, audiences, reviews or ratings. No "match", "fit", "taste", data or algorithms.
 - Name no person, place, year, number or award that isn't in the facts.
 - Don't guess anyone's gender: use a name, or the plot's own words.
+- WTW's words for what someone thought of a title are "loved", "liked" and "disliked". Never "enjoyed".
 - Titles go in *asterisks*; no other asterisks.
 - Skip stock phrases: "right at home", "hooked", "warm hug", "lingers long after the credits", "a specific magic", "irresistible", "electric", "crackles", "breath of fresh air", "sneaks up on you", "respects your intelligence", "edge of your seat". Never say "anchors", "dynamic", "infectious" or "got you"; "chemistry" and "whimsy" at most once. Never start with "You'll love", "Since you", "Because you", "If you", "There is" or "<title> is a".
 - Reply with the paragraph only.

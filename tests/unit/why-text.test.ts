@@ -128,6 +128,15 @@ describe('the check', () => {
     expect(checkWhy('Troy Kotsur, who you loved in *Some Show*, is back. ' + GOOD, f).join()).toMatch(/opening words/)
     expect(checkWhy('Troy Kotsur, who you liked in *Some Show*, is back in a warm one. ' + GOOD, f)).toEqual([])
   })
+  it('never "enjoyed": WTW says loved / liked / disliked (Eran, 2026-11-25)', () => {
+    expect(checkWhy(GOOD.replace('in the best way', 'in a way everyone enjoyed'), facts).join()).toMatch(/enjoyed/)
+    const item = codaItem() as { reason_payload: { crew_matches: unknown[] } }
+    item.reason_payload.crew_matches = [{ name: 'Troy Kotsur', role: 'actor', affinity_score: 0.3 }]
+    const rated: RatedByPerson = new Map([['3', [{ key: 'tv:1', title: 'Some Show', reaction: 'liked', votes: 10, role: 'actor' }]]])
+    const f = buildWhyFacts(item as never, rated)
+    // Even about a title the viewer did like: the word is the app's, not "enjoyed".
+    expect(checkWhy('Troy Kotsur, who you liked in *Some Show*, is back in a warm one. ' + GOOD.replace('in the best way', 'the way you enjoyed *Some Show*'), f).join()).toMatch(/enjoyed/)
+  })
 })
 
 describe('comparisons to famous titles (option B, 2026-11-06)', () => {
