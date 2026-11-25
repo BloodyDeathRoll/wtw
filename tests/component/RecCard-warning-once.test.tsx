@@ -49,6 +49,19 @@ describe('#433: a warning is said once on the card', () => {
     expect(notFitText()).toContain('funnier')
   })
 
+  it('no `why` given: the card line is the Why on screen, and counts', () => {
+    const r = { ...result([CATCH, 'Rated lower than what you usually pick.']), explanation: `A spy comedy. ${CATCH}` }
+    render(<WhyPanel result={r} />)
+    expect(notFitText()).not.toContain('funnier')
+    expect(notFitText()).toContain('Rated lower than what you usually pick.')
+  })
+
+  it('omitWhy (the card page, the Why only repeated the line): no Why here, so the line stays', () => {
+    render(<WhyPanel result={result([CATCH])} why={null} omitWhy />)
+    expect(screen.queryByText(/Just know going in/)).toBeNull()
+    expect(notFitText()).toContain('funnier')
+  })
+
   it('matches on words only: case, curly quotes and emphasis do not count', () => {
     expect(saidInWhy('…one thing to know: it’s *funnier* than you usually go for', CATCH)).toBe(true)
     expect(saidInWhy('It is funnier than most.', CATCH)).toBe(false)

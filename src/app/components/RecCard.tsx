@@ -403,6 +403,10 @@ export function WhyPanel({ result, why, omitWhy = false }: { result: Recommendat
   }
 
   // The Why on screen: a line it already says isn't said again below (#433).
+  // No `why` given (For you's sheet before its text arrives, or a caller with
+  // none): the card line is what shows, so that's what counts. `omitWhy` (the
+  // card page, when the Why only repeated the line under the title): no Why
+  // shows here, so every line stays.
   const whyShown = omitWhy || why === "pending" || why === "failed" ? null : (why ?? result.explanation)
   const against = [
     ...dislikedCrew.map(m => `You’ve rated down other titles ${ROLE_PHRASE[m.role.toLowerCase()] ?? "with"} ${m.name}.`),
