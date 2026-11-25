@@ -23,6 +23,7 @@
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
+import { ratedTitleFacts, type RatedTitleFacts } from './rated-title-cache'
 import type { DNASchema, ReasonPayload } from '@/types/dna'
 import type { TitleRow } from '../types'
 
@@ -196,30 +197,41 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
   if (reaction.size === 0) return out
 
   try {
-    const supabase = createServiceClient()
-    // Every chunk's read at once (up to 3 for 400 titles), then read in the same
-    // order as before: one after another, they cost ~0.4 s, the slowest part of
-    // scoring one title (P2-G check 2).
-    const chunks: { type: 'movie' | 'tv'; ids: string[] }[] = []
-    for (const type of ['movie', 'tv'] as const) {
-      const ids = [...reaction.keys()].filter(k => k.startsWith(`${type}:`)).map(k => k.slice(type.length + 1))
-      for (let i = 0; i < ids.length; i += 150) chunks.push({ type, ids: ids.slice(i, i + 150) })
-    }
-    const results = await Promise.all(chunks.map(c => supabase
-      .from('titles')
-      .select('tmdb_id, title, crew, tmdb_vote_count')
-      .eq('type', c.type)
-      .in('tmdb_id', c.ids)))
-    for (const [n, { data, error }] of results.entries()) {
-      if (error) throw error
-      const { type } = chunks[n]
-      for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
-        const key = `${type}:${t.tmdb_id}`
-        for (const [id, roles] of peopleIn(t.crew)) {
-          const list = out.get(id) ?? []
-          list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
-          out.set(id, list)
+    // Per title, from memory, then Redis, then the database for the rest (#438): a title's crew
+    // doesn't change, and a viewer's list changes by one title per rating.
+    const facts = await ratedTitleFacts([...reaction.keys()], async (missing) => {
+      const supabase = createServiceClient()
+      // Every chunk's read at once (up to 3 for 400 titles): one after another, they cost ~0.4 s,
+      // the slowest part of scoring one title (P2-G check 2).
+      const chunks: { type: 'movie' | 'tv'; ids: string[] }[] = []
+      for (const type of ['movie', 'tv'] as const) {
+        const ids = missing.filter(k => k.startsWith(`${type}:`)).map(k => k.slice(type.length + 1))
+        for (let i = 0; i < ids.length; i += 150) chunks.push({ type, ids: ids.slice(i, i + 150) })
+      }
+      const results = await Promise.all(chunks.map(c => supabase
+        .from('titles')
+        .select('tmdb_id, title, crew, tmdb_vote_count')
+        .eq('type', c.type)
+        .in('tmdb_id', c.ids)))
+      const loaded = new Map<string, RatedTitleFacts | null>()
+      for (const [n, { data, error }] of results.entries()) {
+        if (error) throw error
+        for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
+          // No crew yet (enrichment or a backfill pending): not ready, so not cached; it names no one this time.
+          loaded.set(`${chunks[n].type}:${t.tmdb_id}`, t.crew ? { t: t.title, v: t.tmdb_vote_count ?? 0, p: [...peopleIn(t.crew)] } : null)
         }
+      }
+      return loaded
+    })
+    // In the ratings' order (newest first), whatever answered each title: memory, Redis or the
+    // database. The order of a person's titles must not depend on how warm the cache is.
+    for (const key of reaction.keys()) {
+      const f = facts.get(key)
+      if (!f) continue
+      for (const [id, roles] of f.p) {
+        const list = out.get(id) ?? []
+        list.push({ key, title: f.t, reaction: reaction.get(key)!, votes: f.v, role: roles[0], roles })
+        out.set(id, list)
       }
     }
   } catch (err) {

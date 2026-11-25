@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitleWithPayload } from '@/modules/engine/pipeline/step6-reason-payload'
 import type { ReasonPayloadWithTaste } from '@/modules/engine/types'
@@ -24,6 +24,9 @@ vi.mock('@/lib/supabase/service', () => ({
 
 const { loadRatedByPerson, ratedUnavailable } = await import('@/modules/engine/pipeline/step7-card-reason')
 const { toResults } = await import('@/modules/engine/pipeline/step7-explanation')
+const { clearRatedTitleMemory } = await import('@/modules/engine/pipeline/rated-title-cache')
+// Each case reads the database afresh: the per-title cache would answer from memory otherwise (#438).
+beforeEach(() => clearRatedTitleMemory())
 
 const crew = {
   directors: [{ tmdb_person_id: '525', name: 'Christopher Nolan' }],
