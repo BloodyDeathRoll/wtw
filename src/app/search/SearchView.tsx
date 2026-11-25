@@ -664,15 +664,16 @@ function countOf(titles: PersonTitle[]) {
 }
 
 /** Where a title stands with you (SEARCH_V3, SEARCH.md DEC-5): your rating first, then saved, then hidden from For you. */
-const MARKS: Record<WatchlistRating, string> = {
+const MARKS = {
   loved: "❤️ Loved",
   liked: "👍 Liked",
   disliked: "👎 Disliked",
   removed: "Hidden from For you",
-};
+} as const satisfies Record<WatchlistRating, string>;
 /** The mark as an icon on the poster (#437, Eran's option A): the rating's own emoji, the Watchlist's bookmark, Hide's eye. */
 const SAVED_MARK = "In your Watchlist";
-const MARK_ICONS: Record<string, ReactNode> = {
+export type Mark = (typeof MARKS)[WatchlistRating] | typeof SAVED_MARK;
+const MARK_ICONS: Record<Mark, ReactNode> = {
   [MARKS.loved]: "❤️",
   [MARKS.liked]: "👍",
   [MARKS.disliked]: "👎",
@@ -680,7 +681,7 @@ const MARK_ICONS: Record<string, ReactNode> = {
   [SAVED_MARK]: <Bookmark size={13} strokeWidth={1.8} fill="currentColor" style={{ color: "#ffa900" }} />,
   [MARKS.removed]: <EyeOff size={13} strokeWidth={2} />,
 };
-export function markFor(rating: WatchlistRating | undefined, saved: boolean): string | undefined {
+export function markFor(rating: WatchlistRating | undefined, saved: boolean): Mark | undefined {
   if (rating && rating !== "removed") return MARKS[rating];
   if (saved) return SAVED_MARK;
   return rating && MARKS[rating];
@@ -698,7 +699,7 @@ export function TitleRow({
   onPick,
 }: {
   h: LocalHit;
-  mark?: string;
+  mark?: Mark;
   match?: number;
   line: string | undefined;
   onPick: () => void;

@@ -9,7 +9,7 @@ import type { Recommendation } from '@/types/recommendation'
 vi.mock('@/lib/share', () => ({ shareTitle: vi.fn() }))
 
 import SearchCard, { forgetMyRatings, myRatings } from '@/app/search/SearchCard'
-import { markFor, TitleRow } from '@/app/search/SearchView'
+import { markFor, TitleRow, type Mark } from '@/app/search/SearchView'
 import { addToWatchlist, getUnsyncedIds, getUnsyncedRemovals, getWatchlist, setWatchlistRating } from '@/lib/watchlist'
 import { resetReportSaves } from '@/lib/report-saves'
 import { getAllPendingForTesting } from '@/lib/regret-queue'
@@ -341,22 +341,22 @@ describe('SearchView under SEARCH_V3', () => {
   })
   it('the year line reads year · series · match, each " · " only after something; the mark is on the poster (Q2 + Q7, #437)', () => {
     const hit = (o: object) => ({ tmdb_id: '1', title: 'T', poster_path: null, ...o }) as Parameters<typeof TitleRow>[0]['h']
-    const rowOf = (h: Parameters<typeof TitleRow>[0]['h'], mark?: string, match?: number) => {
+    const rowOf = (h: Parameters<typeof TitleRow>[0]['h'], mark?: Mark, match?: number) => {
       const { container, unmount } = render(<TitleRow h={h} mark={mark} match={match} line="as Han Solo" onPick={() => {}} />)
       const text = container.querySelector('b')!.nextElementSibling!.textContent // the line under the title
-      const badge = container.querySelector('[aria-hidden="true"]')
+      const badge = container.querySelector('[class*="markBadge"]')
       const svg = badge?.querySelector('svg')
       const icon = badge?.textContent || (svg ? [...svg.classList].find((c) => c.startsWith('lucide-'))! + (svg.style.color ? ` ${svg.style.color}` : '') : null)
-      const out = { text, badge: container.querySelector('.sr-only')?.textContent ?? null, icon: icon ?? null }
+      const out = { text, words: container.querySelector('.sr-only')?.textContent ?? null, icon: icon ?? null }
       unmount()
       return out
     }
-    expect(rowOf(hit({ type: 'tv', year: 2023 }), '❤️ Loved', 0.87)).toEqual({ text: '2023 · series · 87% match', badge: '❤️ Loved', icon: '❤️' })
-    expect(rowOf(hit({ type: 'movie', year: 1977 }), '👎 Disliked')).toEqual({ text: '1977', badge: '👎 Disliked', icon: '👎' })
-    expect(rowOf(hit({ type: 'movie', year: 1977 }), 'Hidden from For you')).toEqual({ text: '1977', badge: 'Hidden from For you', icon: 'lucide-eye-off' })
-    expect(rowOf(hit({ type: 'movie', year: null }), 'In your Watchlist', 0.5)).toEqual({ text: '50% match', badge: 'In your Watchlist', icon: 'lucide-bookmark rgb(255, 169, 0)' })
-    expect(rowOf(hit({ type: 'movie', year: 2000 }), undefined, 0.97)).toEqual({ text: '2000 · 97% match', badge: null, icon: null })
-    expect(rowOf(hit({ type: 'movie', year: 2000 }))).toEqual({ text: '2000', badge: null, icon: null })
+    expect(rowOf(hit({ type: 'tv', year: 2023 }), '❤️ Loved', 0.87)).toEqual({ text: '2023 · series · 87% match', words: '❤️ Loved', icon: '❤️' })
+    expect(rowOf(hit({ type: 'movie', year: 1977 }), '👎 Disliked')).toEqual({ text: '1977', words: '👎 Disliked', icon: '👎' })
+    expect(rowOf(hit({ type: 'movie', year: 1977 }), 'Hidden from For you')).toEqual({ text: '1977', words: 'Hidden from For you', icon: 'lucide-eye-off' })
+    expect(rowOf(hit({ type: 'movie', year: null }), 'In your Watchlist', 0.5)).toEqual({ text: '50% match', words: 'In your Watchlist', icon: 'lucide-bookmark rgb(255, 169, 0)' })
+    expect(rowOf(hit({ type: 'movie', year: 2000 }), undefined, 0.97)).toEqual({ text: '2000 · 97% match', words: null, icon: null })
+    expect(rowOf(hit({ type: 'movie', year: 2000 }))).toEqual({ text: '2000', words: null, icon: null })
   })
   it('a year line that would wrap drops the word "match": "97%" alone; one that fits keeps it (Eran, #365)', () => {
     const h = { tmdb_id: '1', title: '1923', type: 'tv', year: 2022, poster_path: null } as Parameters<typeof TitleRow>[0]['h']
