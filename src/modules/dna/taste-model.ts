@@ -19,7 +19,7 @@
 import type { DNASignal, Reaction } from '@/types/dna'
 // brain.ts is pure and must stay so: this file runs in the engine (update-from-play.ts and cold-start.ts import it too).
 import { nevers, type PlayState } from '@/app/play/lib/brain'
-import { FEATURE_GENRES, TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
+import { FEATURE_GENRES, FEATURE_SCALES, TASTE_FEATURE_COUNT } from '@/lib/taste-scales/features'
 import { titleKey } from '@/lib/title-key'
 
 export interface TasteRow { vec: number[]; level: 1 | 2 | 3; weight: number }
@@ -58,7 +58,24 @@ export function genreLean(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | null
   return w0
 }
 
-/** Solves (XᵀWX + Λ) w = XᵀWy + Λ·w0. Without `w0` it is the plain ridge towards 0. */
+/**
+ * The recency penalty's floor (#436, Eran's call on #389). A trained `modern`
+ * weight below it docked recent titles hard: on Shahar's account (−0.31) MobLand
+ * matched 89% and its loved 2020s titles averaged 48 against 88 for pre-1990 ones
+ * (#389 first found MobLand at 67%, before the series crew fix #395). Lifted to
+ * −0.15, MobLand reads 96% there and the 2020s titles 58 (#441); the harness
+ * moves at most 2 points of concordance on any of the three sheets. A gentler
+ * weight stays as trained.
+ *
+ * A clamp after the solve, as #389 decided: the other weights were fit with
+ * `modern` free and aren't refit with it held at the floor. The harness numbers
+ * above include that.
+ */
+export const MODERN_FLOOR = -0.15
+/** `modern`'s place in the 25 features: rating, the 13 genres, then the scales. */
+export const MODERN_INDEX = 1 + FEATURE_GENRES.length + FEATURE_SCALES.indexOf('modern')
+
+/** Solves (XᵀWX + Λ) w = XᵀWy + Λ·w0. Without `w0` it is the plain ridge towards 0. Then the recency floor. */
 export function trainTasteModel(rows: TasteRow[], pairs: TastePair[], w0?: number[]): number[] {
   const d = TASTE_FEATURE_COUNT
   const A = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => (i === j ? PENALTY[i] : 0)))
@@ -74,8 +91,14 @@ export function trainTasteModel(rows: TasteRow[], pairs: TastePair[], w0?: numbe
   const mean = totalW > 0 ? rows.reduce((s, r) => s + r.weight * r.level, 0) / totalW : 0
   for (const r of rows) add(r.vec, r.level - mean, r.weight)
   for (const p of pairs) add(p.chosen.map((v, k) => v - p.other[k]), 1, 1)
-  if (rows.length === 0 && pairs.length === 0) return Array.from({ length: d }, (_, i) => w0?.[i] ?? 0)
-  return solveSPD(A, b)
+  if (rows.length === 0 && pairs.length === 0) return floorModern(Array.from({ length: d }, (_, i) => w0?.[i] ?? 0))
+  return floorModern(solveSPD(A, b))
+}
+
+/** The recency floor, on every path out of trainTasteModel (with no data, w0 is the answer). */
+function floorModern(w: number[]): number[] {
+  if (w[MODERN_INDEX] < MODERN_FLOOR) w[MODERN_INDEX] = MODERN_FLOOR
+  return w
 }
 
 export function predict(w: number[], x: number[]): number {
