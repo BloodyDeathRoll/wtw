@@ -7,7 +7,7 @@
 import { useLayoutEffect } from 'react'
 import { EyeOff } from 'lucide-react'
 import { FingerprintLoader } from '@/modules/session/components/FingerprintLoader'
-import { Poster, SaveRibbon, ShareButton } from '@/app/play/components/ui'
+import { Poster, ShareButton } from '@/app/play/components/ui'
 import type { Ctl } from '@/app/play/components/types'
 import type { Pair, Title } from '@/app/play/lib/brain'
 import { QUICK_PICKS, type Side, type SwapNote } from '../lib/quick-picks'
@@ -21,7 +21,6 @@ const NOTE: Record<Exclude<SwapNote, null | 'no-swaps'>, string> = {
 function PairSide({ ctl, t, off, onPick, onUnseen }: { ctl: Ctl; t: Title; off: boolean; onPick: () => void; onUnseen: () => void }) {
   return (
     <div className="side">
-      <SaveRibbon ctl={ctl} t={t} from="onboarding" />
       <ShareButton ctl={ctl} t={t} />
       <button type="button" className="pick" onClick={onPick}>
         <Poster t={t} />
@@ -37,7 +36,7 @@ function PairSide({ ctl, t, off, onPick, onUnseen }: { ctl: Ctl; t: Title; off: 
 /**
  * Too tall for the phone (very long titles on a small screen): both posters shrink by the same amount, keeping
  * their shape and their left edge, until "Can't decide" fits; titles, buttons and columns keep their width, and
- * the + and share buttons move with the poster's corner. Normal pairs don't change.
+ * the share button moves with the poster's corner. Normal pairs don't change.
  */
 function useFit(screen: React.RefObject<HTMLDivElement | null>, key: string) {
   useLayoutEffect(() => {
@@ -47,7 +46,7 @@ function useFit(screen: React.RefObject<HTMLDivElement | null>, key: string) {
     const btn = s.querySelector<HTMLElement>(':scope > .actions')
     if (sides.length !== 2 || !btn) return
     const reset = () => sides.forEach(side => {
-      for (const el of side.querySelectorAll<HTMLElement>('.poster, .rib, .shc')) el.removeAttribute('style')
+      for (const el of side.querySelectorAll<HTMLElement>('.poster, .shc')) el.removeAttribute('style')
     })
     reset()
     const cw = sides[0].clientWidth
@@ -55,12 +54,10 @@ function useFit(screen: React.RefObject<HTMLDivElement | null>, key: string) {
     let w = cw
     while (bottom() > s.clientHeight + 0.5 && w > cw * 0.6) {
       w -= 2
-      const g = `${cw - w + 8}px`
       for (const side of sides) {
         side.querySelector<HTMLElement>('.poster')!.style.width = `${w}px`
-        side.querySelector<HTMLElement>('.rib')!.style.right = g
         const sh = side.querySelector<HTMLElement>('.shc')!
-        sh.style.right = g
+        sh.style.right = `${cw - w + 8}px`
         sh.style.top = `${w * 1.5 - 46}px`
       }
     }
