@@ -179,9 +179,16 @@
   background: rgba(255, 255, 255, 0.06);
 }
 /* Bigger than the game's 28×42: here the poster helps pick the right one (2026-11-04). */
+.thumbWrap {
+  /* Holds the poster and your mark's badge on its corner (#437). */
+  position: relative;
+  flex: none;
+  display: block;
+}
 .thumb {
-  width: 40px;
-  height: 60px;
+  width: 48px;
+  height: 72px;
+  display: block;
   border-radius: 4px;
   object-fit: cover;
   background: #0e0e10;
@@ -201,8 +208,20 @@
   font-size: 13.5px;
   color: #8a8a8e;
 }
-.row .mark {
-  /* Your mark after the year (SEARCH_V3, Eran 2026-11-19): white, same size and weight. */
+.markBadge {
+  /* Your mark on the poster's bottom-left (#437, Eran's option A): a 22 px dark disc. */
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(10, 10, 12, 0.82);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  line-height: 1;
   color: #fff;
 }
 .row .matchWord {

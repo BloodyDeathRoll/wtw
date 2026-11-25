@@ -18,7 +18,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
+import { Bookmark, ChevronLeft, EyeOff, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
 import { clearRecentSearches, rememberSearch, useRecentSearches } from "./recent";
@@ -664,19 +664,30 @@ function countOf(titles: PersonTitle[]) {
 }
 
 /** Where a title stands with you (SEARCH_V3, SEARCH.md DEC-5): your rating first, then saved, then hidden from For you. */
-const MARKS: Record<WatchlistRating, string> = {
+const MARKS = {
   loved: "❤️ Loved",
   liked: "👍 Liked",
   disliked: "👎 Disliked",
   removed: "Hidden from For you",
+} as const satisfies Record<WatchlistRating, string>;
+/** The mark as an icon on the poster (#437, Eran's option A): the rating's own emoji, the Watchlist's bookmark, Hide's eye. */
+const SAVED_MARK = "In your Watchlist";
+export type Mark = (typeof MARKS)[WatchlistRating] | typeof SAVED_MARK;
+const MARK_ICONS: Record<Mark, ReactNode> = {
+  [MARKS.loved]: "❤️",
+  [MARKS.liked]: "👍",
+  [MARKS.disliked]: "👎",
+  // The app's yellow (--rv-yellow), as on a saved card's Watchlist button.
+  [SAVED_MARK]: <Bookmark size={13} strokeWidth={1.8} fill="currentColor" style={{ color: "#ffa900" }} />,
+  [MARKS.removed]: <EyeOff size={13} strokeWidth={2} />,
 };
-export function markFor(rating: WatchlistRating | undefined, saved: boolean): string | undefined {
+export function markFor(rating: WatchlistRating | undefined, saved: boolean): Mark | undefined {
   if (rating && rating !== "removed") return MARKS[rating];
-  if (saved) return "In your Watchlist";
+  if (saved) return SAVED_MARK;
   return rating && MARKS[rating];
 }
 
-/** One title in a list: poster, name, year (· series · your mark in white ·
+/** One title in a list: poster (your mark on its corner, SEARCH_V3), name, year (· series ·
  *  your match, SEARCH_V3), and a third line — the lead actors, or who a person
  *  played. That line's space is held while it's still on its way, so rows
  *  don't move. */
@@ -688,7 +699,7 @@ export function TitleRow({
   onPick,
 }: {
   h: LocalHit;
-  mark?: string;
+  mark?: Mark;
   match?: number;
   line: string | undefined;
   onPick: () => void;
@@ -743,26 +754,28 @@ export function TitleRow({
   }, [match]);
   return (
     <button type="button" role="option" aria-selected="false" className={styles.row} onClick={onPick}>
-      {poster ? (
-        // eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP
-        <img className={styles.thumb} src={poster} alt="" loading="lazy" />
-      ) : (
-        <span className={styles.thumb} />
-      )}
+      <span className={styles.thumbWrap}>
+        {poster ? (
+          // eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP
+          <img className={styles.thumb} src={poster} alt="" loading="lazy" />
+        ) : (
+          <span className={styles.thumb} />
+        )}
+        {/* Your mark, on the poster's corner (#437). Its words are read after the row's text, below. */}
+        {mark ? (
+          <span className={styles.markBadge} aria-hidden>
+            {MARK_ICONS[mark]}
+          </span>
+        ) : null}
+      </span>
       <span className={styles.rowText}>
         <b>{h.title}</b>
         <small ref={yearRef}>
           {h.year ?? ""}
           {h.type === "tv" ? `${h.year ? " · " : ""}series` : ""}
-          {mark ? (
-            <>
-              {h.year || h.type === "tv" ? " · " : ""}
-              <span className={styles.mark}>{mark}</span>
-            </>
-          ) : null}
           {match ? (
             <>
-              {h.year || h.type === "tv" || mark ? " · " : ""}
+              {h.year || h.type === "tv" ? " · " : ""}
               <span className={rv.rowMatch}>
                 {Math.round(match * 100)}%{short ? null : <span className={styles.matchWord}> match</span>}
               </span>
@@ -770,6 +783,7 @@ export function TitleRow({
           ) : null}
         </small>
         <small className={styles.cast}>{line || "\u00a0"}</small>
+        {mark ? <span className="sr-only">{mark}</span> : null}
       </span>
     </button>
   );
