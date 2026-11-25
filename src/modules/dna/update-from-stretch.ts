@@ -18,6 +18,10 @@ export async function updateSchemaFromStretch(
     //    Boost their confidence so the engine explores that direction more.
     const record = dna.learning_loop.stretch_pick_history.find(s => s.tmdb_id === tmdb_id)
     if (!record || (reaction !== 'loved' && reaction !== 'liked')) return false
+    // Nothing to boost (a For you stretch pick under v2 stretches on the match, not on strand B):
+    // no write, and above all no taste_version bump. A bump per click restarts the feed's paging
+    // under the user (unrate.ts); the outcome itself is already recorded by applyFeedbackToDNA (#442).
+    if (record.dimensions_stretched.length === 0) return false
 
     const boost = reaction === 'loved' ? 0.08 : 0.04
     for (const dim of record.dimensions_stretched) {

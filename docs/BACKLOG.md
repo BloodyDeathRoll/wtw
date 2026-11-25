@@ -255,3 +255,4 @@ Page title: still along the lines of "My taste" (old item 9). Settle the exact w
 - ~~**Rules on the items themselves**~~ **Adopted for genres on 2026-11-13** (section 3); people follow later.
 - **A "Tune" mode with draggable dots** on the scales: drag where you want to be. A dragged dot stays and is marked as yours, with a reset. Knobs appear only in Tune mode, so the page never looks like a form (the no-forms rule). In v2 a dragged scale would set an override on the taste model's weight. That isn't designed yet.
 - ~~**The rules list then shrinks**~~ Done: there is no rules list.
+- **`stretch_pick_history` is keyed by `tmdb_id` alone** (Alon, 2026-11-25, from #442's review): `applyFeedbackToDNA`, `unrate.ts` and the chat look a record up by `tmdb_id`, so a movie and a series sharing an id could share a stretch record. Rare; add `media_type` to `StretchPickRecord` (a `dna.ts` change: tell all three) if it ever bites.
