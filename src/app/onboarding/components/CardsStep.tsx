@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { EyeOff } from 'lucide-react'
-import { Poster, SaveRibbon, ShareButton } from '@/app/play/components/ui'
+import { Poster, ShareButton } from '@/app/play/components/ui'
 import type { Ctl } from '@/app/play/components/types'
 import type { Title } from '@/app/play/lib/brain'
 import { SETUP_TOTAL, TARGET, betweenCopy, type CardsState, type Message, type Rating } from '../lib/cards'
@@ -51,7 +51,6 @@ export function CardScreen({ top, ctl, t, rated, milestone, onAnswer, note, scre
       <div className="learn va2">
         <div className="reveal-poster learn-poster">
           <Poster t={t} size="w500" />
-          <SaveRibbon ctl={ctl} t={t} from="onboarding" />
           <ShareButton ctl={ctl} t={t} />
         </div>
         <h2 className={t.title.length > LONG_TITLE ? 'long' : undefined}>{t.title}</h2>

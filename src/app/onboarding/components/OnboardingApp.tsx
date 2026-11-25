@@ -18,7 +18,6 @@ import type { Ctl } from '@/app/play/components/types'
 import { freshState, prepareTitles, type PlayState, type Title } from '@/app/play/lib/brain'
 import type { PlayEvent } from '@/app/play/lib/events'
 import type { GameTitle } from '@/app/play/lib/scales'
-import { savedIds, saveTitle, unsaveTitle, type SaveSource } from '@/app/play/lib/watchlist'
 import type { SavedPlay } from '@/app/play/lib/server'
 import OnboardingTop from './OnboardingTop'
 import GenreStep from './GenreStep'
@@ -161,10 +160,8 @@ export default function OnboardingApp({ user, saved, titles }: { user: AppUser; 
   }
   const note = status === 'error' || queue.failed
 
-  // ── The watchlist ribbon, share and their toast (the games' own, so the card is the game card) ──
-  const [savedSet, setSavedSet] = useState<Set<string>>(() => new Set())
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- the device's list exists only in the browser (as PlayApp)
-  useEffect(() => { setSavedSet(savedIds()) }, [])
+  // ── Share and its toast (the games' own, so the card is the game card). No Watchlist save here: a new user
+  // doesn't know the Watchlist yet (Eran, 2026-11-25), and it read the device's list of whoever used it last (#451).
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const showToast = (msg: string) => {
@@ -172,22 +169,7 @@ export default function OnboardingApp({ user, saved, titles }: { user: AppUser; 
     if (toastTimer.current) clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(''), 1900)
   }
-  const ctl = {
-    user,
-    toast: showToast,
-    isSaved: (id: string) => savedSet.has(id),
-    toggleSave: (t: Title, from: SaveSource) => {
-      if (savedSet.has(t.id)) {
-        unsaveTitle(t.id)
-        setSavedSet(prev => { const n = new Set(prev); n.delete(t.id); return n })
-        showToast(`Removed ${t.title} from your Watchlist`)
-        return
-      }
-      saveTitle(t, from)
-      setSavedSet(prev => new Set(prev).add(t.id))
-      showToast(`${t.title} is on your Watchlist`)
-    },
-  } as unknown as Ctl
+  const ctl = { user, toast: showToast } as unknown as Ctl
 
   // ── Steps ──
   const startCards = async (answers: GenreAnswers) => {

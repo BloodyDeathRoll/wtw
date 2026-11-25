@@ -86,11 +86,11 @@ export function preload(paths: (string | null | undefined)[], size = 'w500'): vo
 
 // ── The quick picks (P2-U0 Flow, the pick's stack-and-exit; timings from docs/prototypes/first-run/play.py) ──
 
-/** The pair's titles: the poster button (poster, name, year) with its + and share. */
-export const PAIR_PARTS: Part[] = [{ sel: '.duel .side :is(.pick, .rib, .shc)' }]
+/** The pair's titles: the poster button (poster, name, year) with its share. */
+export const PAIR_PARTS: Part[] = [{ sel: '.duel .side :is(.pick, .shc)' }]
 /** One side swapped ("Haven't seen"): only that side moves; the line under the question fades in with it. */
 export const sideParts = (k: 0 | 1): Part[] => [
-  { sel: `.duel .side:nth-child(${k + 1}) :is(.pick, .rib, .shc)` }, { sel: '.prompt p', fade: true },
+  { sel: `.duel .side:nth-child(${k + 1}) :is(.pick, .shc)` }, { sel: '.prompt p', fade: true },
 ]
 /** After a pick the next pair arrives at 760 ms; after the last pick the next screen waits for the pile to leave. */
 export const PEEK = 12, SLIDE = 600, EXIT_AT = 450, EXIT = 390, STACK = EXIT_AT + EXIT, NEXT_AT = 760
@@ -121,7 +121,7 @@ export function pickOut(screen: HTMLElement | null, pk: 0 | 1, lastPick: boolean
   sides.forEach((side, i) => {
     side.style.position = 'relative'
     side.style.zIndex = i === pk ? '3' : '1'
-    for (const e of side.querySelectorAll<HTMLElement>('.pick, .rib, .shc')) {
+    for (const e of side.querySelectorAll<HTMLElement>('.pick, .shc')) {
       e.style.visibility = 'visible'
       if (still) { e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: OUT_MS, easing: OUT_EASE, fill: 'forwards' }); continue }
       if (i === 1) e.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-gap}px)` }], { duration: SLIDE, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' })
