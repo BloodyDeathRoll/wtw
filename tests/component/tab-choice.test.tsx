@@ -46,7 +46,7 @@ describe('useTabChoice', () => {
 
   it('a new key (another account, or the user arriving late) reads its own, or opens on the usual chip', () => {
     sessionStorage.setItem('wtw:choice:u1:seen:chip', 'liked')
-    const h = renderHook(({ k }) => useTabChoice<string>(k, 'loved'), { initialProps: { k: ':seen:chip' } })
+    const h = renderHook(({ k }) => useTabChoice<string>(k, 'loved'), { initialProps: { k: '' } })
     expect(h.result.current[0]).toBe('loved')
     h.rerender({ k: 'u1:seen:chip' })
     expect(h.result.current[0]).toBe('liked')
