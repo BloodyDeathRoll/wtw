@@ -24,7 +24,6 @@
  */
 
 import { computeCrewAffinity } from '../scoring/crew-affinity'
-import { computeNarrativeMatchScores } from '../scoring/narrative-match'
 import { computeVisceralMatch } from '../scoring/visceral-match'
 import { computeContentAffinity } from '../scoring/content-affinity'
 import {
@@ -136,9 +135,11 @@ export async function scoreCandidates(
   const tasteModel = v2 ? loadTasteModel(candidates, dna) : null
 
   // ── Batch narrative match (1 pgvector RPC) — weight 0 under v2 ──
+  // Formula v1 only, so loaded only then: it brings the AI SDK and Mistral's client, ~100 ms of
+  // CPU on every cold start of a route that never calls it under v2 (the Search ring, #438).
   const narrativeScores = v2
     ? new Map<string, number>()
-    : await computeNarrativeMatchScores(
+    : await (await import('../scoring/narrative-match')).computeNarrativeMatchScores(
         dna.strand_b_narrative_dimensions,
         dna.strand_c_visceral_specs,
         dna.metadata.user_id,
