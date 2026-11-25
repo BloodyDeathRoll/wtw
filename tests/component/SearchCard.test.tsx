@@ -331,8 +331,9 @@ describe('SearchView under SEARCH_V3', () => {
   it('marks every title row: the results, your own group and a person\'s titles (DEC-5)', () => {
     expect(view.match(/<TitleRow[^>]*\bmark=\{markOf\(/g)).toHaveLength(3)
   })
-  it('the mark sits on the poster\'s corner as an icon, its words for screen readers; the year line is year · series · match (#437, Eran\'s option A)', () => {
-    expect(view).toMatch(/<span className=\{styles\.thumbWrap\}>[\s\S]*?<span className=\{styles\.markBadge\} role="img" aria-label=\{mark\}>\s*\{MARK_ICONS\[mark\]\}/)
+  it('the mark sits on the poster\'s corner as an icon, its words read after the row; the year line is year · series · match (#437, Eran\'s option A)', () => {
+    expect(view).toMatch(/<span className=\{styles\.thumbWrap\}>[\s\S]*?<span className=\{styles\.markBadge\} aria-hidden>\s*\{MARK_ICONS\[mark\]\}/)
+    expect(view).toMatch(/<small className=\{styles\.cast\}>[^\n]*\n\s*\{mark \? <span className="sr-only">\{mark\}<\/span> : null\}/)
     expect(view).not.toMatch(/styles\.mark\}/)
     const css = readFileSync('src/app/search/search.module.css', 'utf8')
     expect(css).toMatch(/\.thumb \{[^}]*width: 48px;[^}]*height: 72px;/)
@@ -343,15 +344,17 @@ describe('SearchView under SEARCH_V3', () => {
     const rowOf = (h: Parameters<typeof TitleRow>[0]['h'], mark?: string, match?: number) => {
       const { container, unmount } = render(<TitleRow h={h} mark={mark} match={match} line="as Han Solo" onPick={() => {}} />)
       const text = container.querySelector('b')!.nextElementSibling!.textContent // the line under the title
-      const badge = container.querySelector('[role="img"]')
-      const out = { text, badge: badge?.getAttribute('aria-label') ?? null, icon: badge?.textContent || (badge?.querySelector('svg') ? 'svg' : null) }
+      const badge = container.querySelector('[aria-hidden="true"]')
+      const svg = badge?.querySelector('svg')
+      const icon = badge?.textContent || (svg ? [...svg.classList].find((c) => c.startsWith('lucide-'))! + (svg.style.color ? ` ${svg.style.color}` : '') : null)
+      const out = { text, badge: container.querySelector('.sr-only')?.textContent ?? null, icon: icon ?? null }
       unmount()
       return out
     }
     expect(rowOf(hit({ type: 'tv', year: 2023 }), '❤️ Loved', 0.87)).toEqual({ text: '2023 · series · 87% match', badge: '❤️ Loved', icon: '❤️' })
     expect(rowOf(hit({ type: 'movie', year: 1977 }), '👎 Disliked')).toEqual({ text: '1977', badge: '👎 Disliked', icon: '👎' })
-    expect(rowOf(hit({ type: 'movie', year: 1977 }), 'Hidden from For you')).toEqual({ text: '1977', badge: 'Hidden from For you', icon: 'svg' })
-    expect(rowOf(hit({ type: 'movie', year: null }), 'In your Watchlist', 0.5)).toEqual({ text: '50% match', badge: 'In your Watchlist', icon: 'svg' })
+    expect(rowOf(hit({ type: 'movie', year: 1977 }), 'Hidden from For you')).toEqual({ text: '1977', badge: 'Hidden from For you', icon: 'lucide-eye-off' })
+    expect(rowOf(hit({ type: 'movie', year: null }), 'In your Watchlist', 0.5)).toEqual({ text: '50% match', badge: 'In your Watchlist', icon: 'lucide-bookmark rgb(255, 169, 0)' })
     expect(rowOf(hit({ type: 'movie', year: 2000 }), undefined, 0.97)).toEqual({ text: '2000 · 97% match', badge: null, icon: null })
     expect(rowOf(hit({ type: 'movie', year: 2000 }))).toEqual({ text: '2000', badge: null, icon: null })
   })

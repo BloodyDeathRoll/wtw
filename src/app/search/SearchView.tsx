@@ -671,16 +671,18 @@ const MARKS: Record<WatchlistRating, string> = {
   removed: "Hidden from For you",
 };
 /** The mark as an icon on the poster (#437, Eran's option A): the rating's own emoji, the Watchlist's bookmark, Hide's eye. */
+const SAVED_MARK = "In your Watchlist";
 const MARK_ICONS: Record<string, ReactNode> = {
   [MARKS.loved]: "❤️",
   [MARKS.liked]: "👍",
   [MARKS.disliked]: "👎",
-  "In your Watchlist": <Bookmark size={13} strokeWidth={1.8} fill="currentColor" />,
+  // The app's yellow (--rv-yellow), as on a saved card's Watchlist button.
+  [SAVED_MARK]: <Bookmark size={13} strokeWidth={1.8} fill="currentColor" style={{ color: "#ffa900" }} />,
   [MARKS.removed]: <EyeOff size={13} strokeWidth={2} />,
 };
 export function markFor(rating: WatchlistRating | undefined, saved: boolean): string | undefined {
   if (rating && rating !== "removed") return MARKS[rating];
-  if (saved) return "In your Watchlist";
+  if (saved) return SAVED_MARK;
   return rating && MARKS[rating];
 }
 
@@ -758,9 +760,9 @@ export function TitleRow({
         ) : (
           <span className={styles.thumb} />
         )}
-        {/* Your mark, on the poster's corner; its words are for screen readers only (#437). */}
+        {/* Your mark, on the poster's corner (#437). Its words are read after the row's text, below. */}
         {mark ? (
-          <span className={styles.markBadge} role="img" aria-label={mark}>
+          <span className={styles.markBadge} aria-hidden>
             {MARK_ICONS[mark]}
           </span>
         ) : null}
@@ -780,6 +782,7 @@ export function TitleRow({
           ) : null}
         </small>
         <small className={styles.cast}>{line || "\u00a0"}</small>
+        {mark ? <span className="sr-only">{mark}</span> : null}
       </span>
     </button>
   );

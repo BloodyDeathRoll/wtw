@@ -186,7 +186,6 @@
   display: block;
 }
 .thumb {
-  /* 40×60 until #437 made room for the mark's badge. */
   width: 48px;
   height: 72px;
   display: block;
@@ -224,10 +223,6 @@
   font-size: 12px;
   line-height: 1;
   color: #fff;
-}
-.markBadge :global(.lucide-bookmark) {
-  /* The app's yellow (--rv-yellow), as on a saved card's Watchlist button. */
-  color: #ffa900;
 }
 .row .matchWord {
   /* "match" in regular weight; "97%" stays gold and bold (Eran, #365). */
