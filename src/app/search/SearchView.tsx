@@ -18,7 +18,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, ChevronLeft, History, Play, Star, X } from "lucide-react";
+import { Bookmark, ChevronLeft, EyeOff, History, Play, Star, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { navTabsEnabled, searchV3Enabled } from "@/lib/flags";
 import { clearRecentSearches, rememberSearch, useRecentSearches } from "./recent";
@@ -670,13 +670,21 @@ const MARKS: Record<WatchlistRating, string> = {
   disliked: "👎 Disliked",
   removed: "Hidden from For you",
 };
+/** The mark as an icon on the poster (#437, Eran's option A): the rating's own emoji, the Watchlist's bookmark, Hide's eye. */
+const MARK_ICONS: Record<string, ReactNode> = {
+  [MARKS.loved]: "❤️",
+  [MARKS.liked]: "👍",
+  [MARKS.disliked]: "👎",
+  "In your Watchlist": <Bookmark size={13} strokeWidth={1.8} fill="currentColor" />,
+  [MARKS.removed]: <EyeOff size={13} strokeWidth={2} />,
+};
 export function markFor(rating: WatchlistRating | undefined, saved: boolean): string | undefined {
   if (rating && rating !== "removed") return MARKS[rating];
   if (saved) return "In your Watchlist";
   return rating && MARKS[rating];
 }
 
-/** One title in a list: poster, name, year (· series · your mark in white ·
+/** One title in a list: poster (your mark on its corner, SEARCH_V3), name, year (· series ·
  *  your match, SEARCH_V3), and a third line — the lead actors, or who a person
  *  played. That line's space is held while it's still on its way, so rows
  *  don't move. */
@@ -743,26 +751,28 @@ export function TitleRow({
   }, [match]);
   return (
     <button type="button" role="option" aria-selected="false" className={styles.row} onClick={onPick}>
-      {poster ? (
-        // eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP
-        <img className={styles.thumb} src={poster} alt="" loading="lazy" />
-      ) : (
-        <span className={styles.thumb} />
-      )}
+      <span className={styles.thumbWrap}>
+        {poster ? (
+          // eslint-disable-next-line @next/next/no-img-element -- TMDB CDN, already allowed by the CSP
+          <img className={styles.thumb} src={poster} alt="" loading="lazy" />
+        ) : (
+          <span className={styles.thumb} />
+        )}
+        {/* Your mark, on the poster's corner; its words are for screen readers only (#437). */}
+        {mark ? (
+          <span className={styles.markBadge} role="img" aria-label={mark}>
+            {MARK_ICONS[mark]}
+          </span>
+        ) : null}
+      </span>
       <span className={styles.rowText}>
         <b>{h.title}</b>
         <small ref={yearRef}>
           {h.year ?? ""}
           {h.type === "tv" ? `${h.year ? " · " : ""}series` : ""}
-          {mark ? (
-            <>
-              {h.year || h.type === "tv" ? " · " : ""}
-              <span className={styles.mark}>{mark}</span>
-            </>
-          ) : null}
           {match ? (
             <>
-              {h.year || h.type === "tv" || mark ? " · " : ""}
+              {h.year || h.type === "tv" ? " · " : ""}
               <span className={rv.rowMatch}>
                 {Math.round(match * 100)}%{short ? null : <span className={styles.matchWord}> match</span>}
               </span>

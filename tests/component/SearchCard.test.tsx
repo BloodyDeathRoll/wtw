@@ -331,23 +331,29 @@ describe('SearchView under SEARCH_V3', () => {
   it('marks every title row: the results, your own group and a person\'s titles (DEC-5)', () => {
     expect(view.match(/<TitleRow[^>]*\bmark=\{markOf\(/g)).toHaveLength(3)
   })
-  it('the mark follows the year on the second line, in white; the third line is the actors or the character alone (Eran, #365)', () => {
-    expect(view).toMatch(/\{h\.year \?\? ""\}[\s\S]*?series[\s\S]*?<span className=\{styles\.mark\}>\{mark\}<\/span>[\s\S]*?<\/small>\s*<small className=\{styles\.cast\}>\{line \|\| "\\u00a0"\}<\/small>/)
-    expect(readFileSync('src/app/search/search.module.css', 'utf8')).toMatch(/\.row \.mark \{[^}]*color: #fff;/)
+  it('the mark sits on the poster\'s corner as an icon, its words for screen readers; the year line is year · series · match (#437, Eran\'s option A)', () => {
+    expect(view).toMatch(/<span className=\{styles\.thumbWrap\}>[\s\S]*?<span className=\{styles\.markBadge\} role="img" aria-label=\{mark\}>\s*\{MARK_ICONS\[mark\]\}/)
+    expect(view).not.toMatch(/styles\.mark\}/)
+    const css = readFileSync('src/app/search/search.module.css', 'utf8')
+    expect(css).toMatch(/\.thumb \{[^}]*width: 48px;[^}]*height: 72px;/)
+    expect(css).toMatch(/\.markBadge \{[^}]*left: 3px;[^}]*bottom: 3px;[^}]*width: 22px;[^}]*height: 22px;/)
   })
-  it('the year line reads year · series · mark · match, each " · " only after something (Q2 + Q7)', () => {
+  it('the year line reads year · series · match, each " · " only after something; the mark is on the poster (Q2 + Q7, #437)', () => {
     const hit = (o: object) => ({ tmdb_id: '1', title: 'T', poster_path: null, ...o }) as Parameters<typeof TitleRow>[0]['h']
-    const yearLine = (h: Parameters<typeof TitleRow>[0]['h'], mark?: string, match?: number) => {
+    const rowOf = (h: Parameters<typeof TitleRow>[0]['h'], mark?: string, match?: number) => {
       const { container, unmount } = render(<TitleRow h={h} mark={mark} match={match} line="as Han Solo" onPick={() => {}} />)
       const text = container.querySelector('b')!.nextElementSibling!.textContent // the line under the title
+      const badge = container.querySelector('[role="img"]')
+      const out = { text, badge: badge?.getAttribute('aria-label') ?? null, icon: badge?.textContent || (badge?.querySelector('svg') ? 'svg' : null) }
       unmount()
-      return text
+      return out
     }
-    expect(yearLine(hit({ type: 'tv', year: 2023 }), '❤️ Loved', 0.87)).toBe('2023 · series · ❤️ Loved · 87% match')
-    expect(yearLine(hit({ type: 'movie', year: 1977 }), 'Hidden from For you')).toBe('1977 · Hidden from For you')
-    expect(yearLine(hit({ type: 'movie', year: null }), 'In your Watchlist', 0.5)).toBe('In your Watchlist · 50% match')
-    expect(yearLine(hit({ type: 'movie', year: 2000 }), undefined, 0.97)).toBe('2000 · 97% match')
-    expect(yearLine(hit({ type: 'movie', year: 2000 }))).toBe('2000')
+    expect(rowOf(hit({ type: 'tv', year: 2023 }), '❤️ Loved', 0.87)).toEqual({ text: '2023 · series · 87% match', badge: '❤️ Loved', icon: '❤️' })
+    expect(rowOf(hit({ type: 'movie', year: 1977 }), '👎 Disliked')).toEqual({ text: '1977', badge: '👎 Disliked', icon: '👎' })
+    expect(rowOf(hit({ type: 'movie', year: 1977 }), 'Hidden from For you')).toEqual({ text: '1977', badge: 'Hidden from For you', icon: 'svg' })
+    expect(rowOf(hit({ type: 'movie', year: null }), 'In your Watchlist', 0.5)).toEqual({ text: '50% match', badge: 'In your Watchlist', icon: 'svg' })
+    expect(rowOf(hit({ type: 'movie', year: 2000 }), undefined, 0.97)).toEqual({ text: '2000 · 97% match', badge: null, icon: null })
+    expect(rowOf(hit({ type: 'movie', year: 2000 }))).toEqual({ text: '2000', badge: null, icon: null })
   })
   it('a year line that would wrap drops the word "match": "97%" alone; one that fits keeps it (Eran, #365)', () => {
     const h = { tmdb_id: '1', title: '1923', type: 'tv', year: 2022, poster_path: null } as Parameters<typeof TitleRow>[0]['h']
@@ -359,8 +365,8 @@ describe('SearchView under SEARCH_V3', () => {
       unmount(); rect.mockRestore(); style.mockRestore()
       return text
     }
-    expect(lineOf(36)).toBe('2022 · series · In your Watchlist · 97%')
-    expect(lineOf(18)).toBe('2022 · series · In your Watchlist · 97% match')
+    expect(lineOf(36)).toBe('2022 · series · 97%')
+    expect(lineOf(18)).toBe('2022 · series · 97% match')
   })
   it('a change of width measures again, both ways (a rotation)', () => {
     const h = { tmdb_id: '1', title: '1923', type: 'tv', year: 2022, poster_path: null } as Parameters<typeof TitleRow>[0]['h']
@@ -372,13 +378,13 @@ describe('SearchView under SEARCH_V3', () => {
     try {
       const { container } = render(<TitleRow h={h} mark="In your Watchlist" match={0.97} line="as Jacob Dutton" onPick={() => {}} />)
       const line = () => container.querySelector('b')!.nextElementSibling!.textContent
-      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+      expect(line()).toBe('2022 · series · 97% match')
       box = { height: 36, width: 200 } // narrower: now it wraps
       act(() => resized())
-      expect(line()).toBe('2022 · series · In your Watchlist · 97%')
+      expect(line()).toBe('2022 · series · 97%')
       box = { height: 18, width: 300 } // wider again: it fits
       act(() => resized())
-      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+      expect(line()).toBe('2022 · series · 97% match')
     } finally {
       rect.mockRestore(); style.mockRestore(); vi.unstubAllGlobals()
     }
@@ -394,13 +400,13 @@ describe('SearchView under SEARCH_V3', () => {
     try {
       const { container } = render(<TitleRow h={h} mark="In your Watchlist" match={0.97} line="as Jacob Dutton" onPick={() => {}} />)
       const line = () => container.querySelector('b')!.nextElementSibling!.textContent
-      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+      expect(line()).toBe('2022 · series · 97% match')
       height = 36
       act(() => { window.dispatchEvent(new Event('resize')) })
-      expect(line()).toBe('2022 · series · In your Watchlist · 97%')
+      expect(line()).toBe('2022 · series · 97%')
       height = 18
       await act(async () => { fontsLoaded() })
-      expect(line()).toBe('2022 · series · In your Watchlist · 97% match')
+      expect(line()).toBe('2022 · series · 97% match')
     } finally {
       rect.mockRestore(); style.mockRestore(); vi.unstubAllGlobals()
       delete (document as unknown as { fonts?: unknown }).fonts
