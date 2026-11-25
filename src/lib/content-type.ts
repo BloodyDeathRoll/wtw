@@ -21,3 +21,8 @@ export const FEED_START_TYPE: ContentType = 'all'
 export function isContentType(v: unknown): v is ContentType {
   return v === 'movies' || v === 'series' || v === 'all'
 }
+
+/** The phone's storage key for the person's last pick: one per account, so a new sign-in opens on its own (#344). */
+export function contentTypeKey(userId: string): string {
+  return `wtw:contentType:${userId}`
+}
