@@ -18,7 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Recommendation } from "@/types/recommendation";
 import type { AppUser } from "@/modules/session/types";
 import type { RatingsSummary } from "@/app/api/recommendations/ratings/route";
-import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-type";
+import { FEED_START_TYPE, contentTypeKey, isContentType, type ContentType } from "@/lib/content-type";
 import { shareTitle } from "@/lib/share";
 import {
   addToWatchlist,
@@ -101,10 +101,10 @@ async function whyLine(id: string): Promise<string | null> {
   }
 }
 
-/** The list a rating's next batch is built for: the one this device last picked on For you (WTWApp keeps it). */
-function contentType(): ContentType {
+/** The list a rating's next batch is built for: the one this account last picked on this device (WTWApp keeps it). */
+function contentType(userId: string): ContentType {
   try {
-    const c = window.localStorage.getItem("wtw:contentType");
+    const c = window.localStorage.getItem(contentTypeKey(userId));
     if (isContentType(c)) return c;
   } catch {
     // Storage off.
@@ -194,7 +194,7 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
     setRated(rating);
     setWatchlistRating(r.id, rating);
     queue = queue.then(async () => {
-      const ok = await postRating(r, rating, contentType()).catch(() => false);
+      const ok = await postRating(r, rating, contentType(user.id)).catch(() => false);
       if (!ok) return rollBack(r, tap);
       server.current = rating;
       // A saved title rated is one you watched: the 48-hour check-in, as from the Watchlist. Not for a dislike.
@@ -208,7 +208,7 @@ export default function SearchCard({ rec, user }: { rec: Recommendation; user: A
     setRated(undefined);
     setWatchlistRating(r.id, null);
     queue = queue.then(async () => {
-      const ok = await deleteRating(r, contentType(), saved).catch(() => false);
+      const ok = await deleteRating(r, contentType(user.id), saved).catch(() => false);
       if (!ok) return rollBack(r, tap);
       server.current = undefined;
       removeFromRegretQueue(r.id.split(":")[1] ?? r.id, r.type);
