@@ -104,6 +104,7 @@ export function applyFeedbackToDNA(dna: DNASchema, input: FeedbackInput): boolea
       stretchEntry.reaction = reaction ?? null
     } else {
       history.push({
+        // Every caller that sends is_stretch_pick sends the title too (rate.ts); the id is only a fallback.
         title: title ?? tmdb_id,
         tmdb_id,
         accepted,
