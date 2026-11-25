@@ -41,6 +41,16 @@ describe('a stretch pick rated on For you records its outcome (#419 part 3)', ()
     expect(record(disliked)).toMatchObject({ accepted: false, reaction: 'disliked' })
   })
 
+  it('a chat record with stretched dimensions still gets its boost and its bump', async () => {
+    io.dna = createBlankDNA('u1'); io.writes = 0
+    io.dna.learning_loop.stretch_pick_history.push({ title: 'La La Land', tmdb_id: '313369', accepted: true, reaction: 'loved', session: 2, dimensions_stretched: ['moral_ambiguity'] })
+    const c0 = io.dna.strand_b_narrative_dimensions.moral_ambiguity.confidence, v0 = io.dna.metadata.taste_version
+    await updateSchemaFromStretch('u1', '313369', 'loved', 'movie')
+    expect(io.writes).toBe(1)
+    expect(io.dna.strand_b_narrative_dimensions.moral_ambiguity.confidence).toBeCloseTo(c0 + 0.08, 10)
+    expect(io.dna.metadata.taste_version).toBe(v0 + 1)
+  })
+
   it('a record the chat made is updated, not doubled', () => {
     const dna = createBlankDNA('u1')
     dna.learning_loop.stretch_pick_history.push({ title: 'La La Land', tmdb_id: '313369', accepted: false, reaction: null, session: 2, dimensions_stretched: ['moral_ambiguity'] })
@@ -55,13 +65,14 @@ describe('a stretch pick rated on For you records its outcome (#419 part 3)', ()
     expect(dna.learning_loop.stretch_pick_history).toEqual([])
   })
 
-  it('then the DNA writer finds it (it found nothing before), and un-rating resets it', async () => {
+  it('then the DNA writer finds it, but with nothing to boost writes nothing (no taste_version bump per click)', async () => {
     io.dna = createBlankDNA('u1'); io.writes = 0
     const v0 = io.dna.metadata.taste_version
     rate(io.dna, 'loved')
     await updateSchemaFromStretch('u1', '313369', 'loved', 'movie')
-    expect(io.writes).toBe(1)                                  // the writer acted on the record
-    expect(io.dna.metadata.taste_version).toBe(v0 + 1)         // and bumped the version, as on any DNA write
+    expect(io.writes).toBe(0)
+    expect(io.dna.metadata.taste_version).toBe(v0)
+    expect(record(io.dna)).toMatchObject({ accepted: true, reaction: 'loved' })   // the outcome stays recorded
 
     expect(unrateInDNA(io.dna, { tmdb_id: '313369', media_type: 'movie', saved: false }, new Map())).toBe(true)
     expect(record(io.dna)).toMatchObject({ accepted: false, reaction: null })

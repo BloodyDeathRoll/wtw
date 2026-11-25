@@ -89,7 +89,7 @@ export function applyFeedbackToDNA(dna: DNASchema, input: FeedbackInput): boolea
     dnaChanged = true
   }
 
-  // A stretch pick's outcome (#419 part 3, Eran 2026-11-24): loved or liked is
+  // A stretch pick's outcome (#419 part 3, decided by Eran 2026-11-24): loved or liked is
   // accepted, disliked is rejected. The chat records a stretch pick when it
   // serves one (recordStretchPick); For you never did, so a rating there found
   // no record and the outcome was lost. Now the first rating creates it, and the
@@ -97,13 +97,14 @@ export function applyFeedbackToDNA(dna: DNASchema, input: FeedbackInput): boolea
   // after) finds it. unrateInDNA resets it when the rating is cleared.
   if (is_stretch_pick && (action === 'watched' || action === 'skipped')) {
     const accepted = action === 'watched' && (reaction === 'loved' || reaction === 'liked')
-    const history = dna.learning_loop.stretch_pick_history
-    const stretchEntry = history.find(s => s.tmdb_id === tmdb_id)
+    const stretches = dna.learning_loop.stretch_pick_history
+    // By tmdb_id alone, like unrate.ts and the chat (a movie/TV id collision: BACKLOG).
+    const stretchEntry = stretches.find(s => s.tmdb_id === tmdb_id)
     if (stretchEntry) {
       stretchEntry.accepted = accepted
       stretchEntry.reaction = reaction ?? null
     } else {
-      history.push({
+      stretches.push({
         // Every caller that sends is_stretch_pick sends the title too (rate.ts); the id is only a fallback.
         title: title ?? tmdb_id,
         tmdb_id,
