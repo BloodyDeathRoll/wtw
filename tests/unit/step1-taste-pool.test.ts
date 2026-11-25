@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const io = vi.hoisted(() => ({
   rpcs: [] as { name: string; args: Record<string, unknown> }[],
+  rpcSelects: [] as string[],
   w: [] as number[],
   tasteFails: false,
   trainingFails: false,
@@ -20,8 +21,10 @@ const row = (id: string, genre = 'Drama') => ({
 
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
-    from: () => ({ select: () => ({ eq: async () => (io.readFails ? { data: null, error: { message: 'read failed' } } : { data: [], error: null }) }) }),
-    rpc: async (name: string, args: Record<string, unknown>) => {
+    from: () => ({ select: () => ({ in: async () => ({ data: [], error: null }), eq: async () => (io.readFails ? { data: null, error: { message: 'read failed' } } : { data: [], error: null }) }) }),
+    // supabase.rpc(...).select(CANDIDATE_COLUMNS): the result answers .select() with itself.
+    rpc(name: string, args: Record<string, unknown>) { const p = this.rpcImpl(name, args); return Object.assign(p, { select: (cols: string) => { io.rpcSelects.push(cols); return p } }) },
+    rpcImpl: async (name: string, args: Record<string, unknown>) => {
       io.rpcs.push({ name, args })
       if (name === 'get_candidate_titles') return { data: [row('v1'), row('v2')], error: null }
       if (name === 'get_candidate_titles_by_taste') {
@@ -55,6 +58,7 @@ const called = (name: string) => io.rpcs.filter(r => r.name === name)
 
 beforeEach(() => {
   io.rpcs.length = 0
+  io.rpcSelects.length = 0
   io.w = [0.5, ...new Array(24).fill(0.1)]
   io.tasteFails = false
   io.trainingFails = false
@@ -82,6 +86,16 @@ describe('step 1 — FORMULA_V2 on', () => {
     expect(called('get_candidate_titles_by_narrative')).toHaveLength(0)
     expect(io.embeds).toBe(0) // no fingerprint embedding needed
     expect(ids(out)).toEqual(['t1', 't2', 'v1', 'v2'])
+  })
+
+  it('#438: every pool is asked for the slim columns only (no crew, plot or story data)', async () => {
+    const { CANDIDATE_COLUMNS } = await import('@/modules/engine/pipeline/step1-candidate-gen')
+    await getCandidates(createBlankDNA('u1'), undefined, 'movies')
+    expect(io.rpcSelects.length).toBeGreaterThanOrEqual(2)   // by votes and by taste (served: none here)
+    for (const cols of io.rpcSelects) expect(cols).toBe(CANDIDATE_COLUMNS)
+    expect(CANDIDATE_COLUMNS).not.toMatch(/\b(crew|synopsis|narrative_metadata)\b/)
+    // What the filters and caps read is there.
+    for (const c of ['genres', 'keywords', 'tone_tags', 'original_language', 'tmdb_vote_count', 'runtime_minutes']) expect(CANDIDATE_COLUMNS).toContain(c)
   })
 
   it('sends the model weights, the vote floors, the over-fetch and the feature version', async () => {

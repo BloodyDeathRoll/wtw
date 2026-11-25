@@ -55,10 +55,22 @@ import { formulaV2Enabled, forYouV3Enabled } from '@/lib/flags'
 import { restPlan } from '@/lib/resting'
 import { TASTE_FEATURE_VERSION } from '@/lib/taste-scales/features'
 import { capGenreShare, NARRATIVE_OVERFETCH } from './genre-cap'
+import { hydrateTitles } from './hydrate-titles'
 
 // Pool sizes. FRESH is two RPCs that overlap heavily for a popular-taste user,
 // so the union lands between 150 and 300; SEEN is capped by vote count and is
 // only there to supply the 20% slice (10 of 50), so 150 is generous.
+/**
+ * What the candidate pools fetch (#438): every column the filters, caps and scoring read, but not
+ * `crew`, `synopsis` or `narrative_metadata`, ~2/3 of a row. The pools return ~800 rows to keep ~440
+ * (the taste pool is over-fetched 3× for the genre cap), so their heavy fields were mostly thrown
+ * away: ~1.7 MB a build. `crew` is loaded for the kept candidates below; plot and story data for the
+ * few titles that need them (hydrate-titles.ts, from generate.ts).
+ */
+export const CANDIDATE_COLUMNS =
+  'id, tmdb_id, title, type, genres, release_year, runtime_minutes, tmdb_rating, tmdb_vote_count, ' +
+  'omdb_rating, pacing_tag, tone_tags, keywords, original_language, enriched_at, created_at'
+
 const FRESH_BY_VOTES_LIMIT     = 150
 // The narrative RPC is asked for NARRATIVE_OVERFETCH× this and cut back here,
 // so the genre cap has something to swap in (genre-cap.ts).
@@ -182,7 +194,7 @@ export async function getCandidates(
     title_type:   titleType,
     max_runtime:  maxRuntime,
     ...ruleParams,
-  })
+  }).select(CANDIDATE_COLUMNS)
 
   // Taste-driven pool. v1: the nearest titles to the fingerprint embedding,
   // from the same cache/row the scorer uses. v2: the titles the taste model
@@ -203,9 +215,9 @@ export async function getCandidates(
         min_votes_tv:    FRESH_BY_TASTE_MIN_VOTES_TV,
         feature_version: TASTE_FEATURE_VERSION,
         ...ruleParams,
-      })
+      }).select(CANDIDATE_COLUMNS)
       if (res.error) throw new Error(res.error.message)
-      return { data: (res.data ?? []) as TitleRow[], error: null }
+      return { data: (res.data ?? []) as unknown as TitleRow[], error: null }
     } catch (err) {
       console.warn('[step1] taste pool unavailable (popularity pool only):', err instanceof Error ? err.message : err)
       return { data: [], error: null }
@@ -228,7 +240,7 @@ export async function getCandidates(
           pool_limit:      FRESH_BY_NARRATIVE_LIMIT * NARRATIVE_OVERFETCH,
           min_votes:       FRESH_BY_NARRATIVE_MIN_VOTES,
           ...ruleParams,
-        }),
+        }).select(CANDIDATE_COLUMNS),
       )
       .catch(err => {
         console.warn('[step1] narrative pool unavailable (popularity pool only):', err instanceof Error ? err.message : err)
@@ -251,7 +263,7 @@ export async function getCandidates(
         max_runtime:  maxRuntime,
         pool_limit:   SEEN_LIMIT,
         ...ruleParams,
-      }).then(res => {
+      }).select(CANDIDATE_COLUMNS).then(res => {
         if (res.error) {
           console.error('[step1] served pool unavailable (fresh pools only):', res.error.message)
           return { data: [], error: null }
@@ -268,7 +280,7 @@ export async function getCandidates(
 
   // Union the fresh pools on the composite key; a title in both is one candidate.
   const fresh = new Map<string, TitleRow>()
-  for (const t of (votesRes.data ?? []).slice(0, FRESH_BY_VOTES_LIMIT) as TitleRow[]) {
+  for (const t of (votesRes.data ?? []).slice(0, FRESH_BY_VOTES_LIMIT) as unknown as TitleRow[]) {
     fresh.set(titleKey(t.type, t.tmdb_id), t)
   }
   // The narrative pool is over-fetched and cut back to FRESH_BY_NARRATIVE_LIMIT
@@ -289,6 +301,9 @@ export async function getCandidates(
       times_served: timesServed.get(titleKey(t.type, t.tmdb_id)) ?? 1,
     })),
   ]
+
+  // The kept candidates' crew, in one read: scoring and the person rules below need it.
+  await hydrateTitles(candidates, ['crew'], true)
 
   // ── Post-filter: what SQL could not express ───────────────
   // Person rules (crew is JSONB the RPCs don't unnest) and conjunctions.

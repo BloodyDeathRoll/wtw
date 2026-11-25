@@ -18,9 +18,11 @@ const served = [
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     from: (table: string) => ({
-      select: () => ({ eq: async () => ({ data: table === 'served_titles' ? served : [], error: null }) }),
+      select: () => ({ in: async () => ({ data: [], error: null }), eq: async () => ({ data: table === 'served_titles' ? served : [], error: null }) }),
     }),
-    rpc: async (name: string, args: Record<string, unknown>) => {
+    // supabase.rpc(...).select(CANDIDATE_COLUMNS): the result answers .select() with itself.
+    rpc(name: string, args: Record<string, unknown>) { const p = this.rpcImpl(name, args); return Object.assign(p, { select: () => p }) },
+    rpcImpl: async (name: string, args: Record<string, unknown>) => {
       calls.rpcs.push({ name, args })
       if (name === 'get_served_candidates') return { data: [row('lastweek'), row('legacy')], error: null }
       if (name === 'get_candidate_titles') return { data: [row('v1')], error: null }

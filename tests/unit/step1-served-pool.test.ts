@@ -12,13 +12,16 @@ vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     from: (table: string) => ({
       select: () => ({
+        in: async () => ({ data: [], error: null }),
         eq: async () => ({
           data: table === 'served_titles' ? [{ tmdb_id: 's1', media_type: 'movie', times_served: 1 }] : [],
           error: null,
         }),
       }),
     }),
-    rpc: async (name: string) => {
+    // supabase.rpc(...).select(CANDIDATE_COLUMNS): the result answers .select() with itself.
+    rpc(name: string, args: Record<string, unknown>) { const p = this.rpcImpl(name, args); return Object.assign(p, { select: () => p }) },
+    rpcImpl: async (name: string, _args?: Record<string, unknown>) => {
       calls.rpcs.push(name)
       if (name === 'get_served_candidates') {
         if (calls.servedThrows) throw new Error('fetch failed')
