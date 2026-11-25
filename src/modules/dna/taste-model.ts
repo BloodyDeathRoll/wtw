@@ -60,9 +60,10 @@ export function genreLean(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | null
 
 /**
  * The recency penalty's floor (#436, Eran's call on #389). A trained `modern`
- * weight below it docked recent titles hard: on one account MobLand scored 67%,
- * and its loved 2020s titles averaged 48 against 88 for pre-1990 ones. Lifted
- * to −0.15, MobLand reads 96% there and the 2020s titles 58 (#441); the harness
+ * weight below it docked recent titles hard: on Shahar's account (−0.31) MobLand
+ * matched 89% and its loved 2020s titles averaged 48 against 88 for pre-1990 ones
+ * (#389 first found MobLand at 67%, before the series crew fix #395). Lifted to
+ * −0.15, MobLand reads 96% there and the 2020s titles 58 (#441); the harness
  * moves at most 2 points of concordance on any of the three sheets. A gentler
  * weight stays as trained.
  *

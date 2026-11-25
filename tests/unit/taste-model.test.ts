@@ -90,7 +90,6 @@ describe('trainTasteModel', () => {
       expect(w[MODERN_INDEX]).toBe(MODERN_FLOOR)
       expect(w[3]).toBe(0.4)
     })
-
   })
 })
 
