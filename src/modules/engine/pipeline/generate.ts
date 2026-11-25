@@ -41,11 +41,12 @@ import { composeBatch }             from './step3b-compose-batch'
 import { capTurnedUp }              from './turned-up-cap'
 import { capKidsShare, spreadKids } from './kids-share'
 import { llmRerank }                from './step4-llm-rerank'
-import { injectStretchPick }        from './step5-stretch-pick'
+import { injectStretchPick, isStretchCandidate, stretchPossible } from './step5-stretch-pick'
 import { buildReasonPayloads }      from './step6-reason-payload'
 import { sheetTexts, toResults } from './step7-explanation'
 import { loadRatedByPerson } from './step7-card-reason'
 import { cardPlots } from './card-plot'
+import { hydrateTitles } from './hydrate-titles'
 import { poolStatsOf, savePoolStats } from '../scoring/pool-stats'
 import {
   getCachedRecommendations,
@@ -188,7 +189,19 @@ async function runPipeline(
   // ── Step 5: stretch pick injection ───────────────────────
   // Kids' titles spread out first (kids-share.ts): in strict match order
   // they all opened the feed.
-  const withStretch = injectStretchPick(spreadKids(reranked), scored, dna)
+  // The pools leave story and plot data out (#438): the stretch pick's
+  // candidates get their story data first (its strand B clash), then the
+  // batch gets both for steps 6–7. Best-effort: a failed read means no plot
+  // line or no clash, never a failed batch.
+  const spread = spreadKids(reranked)
+  if (stretchPossible(spread, dna)) {
+    // Only the titles step 5 can take: not ones already in the list.
+    const inList = new Set(spread.map(s => `${s.title.type}:${s.title.tmdb_id}`))
+    await hydrateTitles(scored.filter(s => isStretchCandidate(s) && !inList.has(`${s.title.type}:${s.title.tmdb_id}`)).map(s => s.title), ['narrative_metadata'])
+  }
+  const withStretch = injectStretchPick(spread, scored, dna)
+  await hydrateTitles(withStretch.map(s => s.title), ['synopsis', 'narrative_metadata'])
+  t.mark('titles hydrated')
 
   // ── Step 6: reason payload assembly ──────────────────────
   const withPayloads = buildReasonPayloads(withStretch)
