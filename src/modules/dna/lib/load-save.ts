@@ -1,3 +1,4 @@
+import { capRecommendationHistory } from './cap-history'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getRedis } from '@/lib/redis'
 import type { DNASchema } from '@/types/dna'
@@ -48,6 +49,7 @@ export async function loadDNA(user_id: string): Promise<DNASchema> {
 }
 
 export async function saveDNA(user_id: string, dna: DNASchema): Promise<void> {
+  capRecommendationHistory(dna)   // bounded on every write (#375)
   const db = createServiceClient()
   const { error } = await db
     .from('users')
@@ -94,6 +96,7 @@ export async function saveDNAIfUnchanged(
   dna: DNASchema,
   seenUpdatedAt: string,
 ): Promise<boolean> {
+  capRecommendationHistory(dna)   // bounded on every write (#375)
   const { data, error } = await createServiceClient()
     .from('users')
     .update({ dna, updated_at: new Date().toISOString() })

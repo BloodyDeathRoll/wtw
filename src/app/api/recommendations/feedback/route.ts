@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
   const outcome = await withDNAUpdate(
     user.id,
     async dna => {
-      const changed = applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick })
+      const changed = applyFeedbackToDNA(dna, { tmdb_id, media_type, recKey, action, reaction, is_stretch_pick, title })
       if (!reaction) return changed
       // A merge that throws part-way (a catalog row with no crew, say) must
       // not leave a half-merged signal in what is saved: put back the DNA as
