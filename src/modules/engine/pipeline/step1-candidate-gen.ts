@@ -49,7 +49,6 @@ import { titleTypeFor, type ContentType } from '@/lib/content-type'
 import { isExcluded, sqlExclusionParams } from '@/lib/exclusion-rules'
 import type { DNASchema, SessionContext } from '@/types/dna'
 import type { TitleRow } from '../types'
-import { getUserEmbedding } from '../scoring/narrative-match'
 import { userTasteWeights } from '../scoring/taste-weights'
 import { formulaV2Enabled, forYouV3Enabled } from '@/lib/flags'
 import { restPlan } from '@/lib/resting'
@@ -225,12 +224,13 @@ export async function getCandidates(
   }
   const byNarrative = v2
     ? tastePool()
-    : getUserEmbedding(
+    // v1 only, loaded only then (see step 2: the AI SDK on every cold start otherwise).
+    : import('../scoring/narrative-match').then(({ getUserEmbedding }) => getUserEmbedding(
       userId,
       dna.metadata.taste_version,
       dna.strand_b_narrative_dimensions,
       dna.strand_c_visceral_specs,
-    )
+    ))
       .then(embedding =>
         supabase.rpc('get_candidate_titles_by_narrative', {
           query_embedding: embedding,
