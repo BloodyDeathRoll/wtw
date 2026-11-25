@@ -181,10 +181,11 @@ export default function SeenView({
   const [data, setData] = useState<RatingsSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   // The chip, type and sort are kept for the visit when you leave the tab and come back (#453).
-  const seenKey = `${user?.id ?? ""}:seen`;
-  const [chip, setChip] = useTabChoice<SeenChip>(`${seenKey}:chip`, "loved", (v) => CHIPS.some((c) => c.chip === v));
-  const [sort, setSort] = useTabChoice<SortKey>(`${seenKey}:sort`, "newest", (v) => ["newest", "oldest", "title"].includes(v));
-  const [kind, setKind] = useTabChoice<KindFilter>(`${seenKey}:kind`, "all", (v) => ["all", "movie", "tv"].includes(v));
+  // Nothing kept until the account is known (an empty key).
+  const seenKey = (what: string) => (user ? `${user.id}:seen:${what}` : "");
+  const [chip, setChip] = useTabChoice<SeenChip>(seenKey("chip"), "loved", (v) => CHIPS.some((c) => c.chip === v));
+  const [sort, setSort] = useTabChoice<SortKey>(seenKey("sort"), "newest", (v) => ["newest", "oldest", "title"].includes(v));
+  const [kind, setKind] = useTabChoice<KindFilter>(seenKey("kind"), "all", (v) => ["all", "movie", "tv"].includes(v));
   const [shown, setShown] = useState(PAGE);
   // Which rows a chip shows is fixed when the chip (type, sort) opens: a re-rated row stays put until then (DEC-4).
   const [frozen, setFrozen] = useState<RatingsSummary | null>(null);
