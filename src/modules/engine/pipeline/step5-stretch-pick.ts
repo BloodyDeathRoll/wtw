@@ -82,7 +82,10 @@ export function isStretchCandidate(s: ScoredTitle): boolean {
   return s.composite_score < MAX_COMPOSITE_SCORE && s.external_rating_score >= MIN_EXTERNAL_RATING
 }
 
-/** Whether injectStretchPick can place one at all: only then do its candidates need their story data. */
+/**
+ * Whether injectStretchPick can place one at all: only then do its candidates need their story data.
+ * Mirrors injectStretchPick's early return (keep the two in step).
+ */
 export function stretchPossible(ranked: ScoredTitle[], dna: DNASchema): boolean {
   return ranked.length > 0 && dna.signals.length >= SUPPRESS_BELOW_SIGNALS
 }

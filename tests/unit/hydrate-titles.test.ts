@@ -55,6 +55,7 @@ describe('hydrateTitles (#438)', () => {
     const r = slim(404)
     await hydrateTitles([r], ['crew', 'synopsis', 'narrative_metadata'])
     expect(r.crew).toEqual(NO_CREW)
+    expect(r.crew).not.toBe(NO_CREW)                       // its own copy, never the shared object
     expect(r.synopsis).toBeNull()
     expect(r.narrative_metadata).toBeNull()
   })
