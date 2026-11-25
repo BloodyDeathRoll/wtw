@@ -10,7 +10,7 @@ const crewOf = (id: string) => (id === '3'
   : { directors: [{ tmdb_person_id: 'nolan', name: 'Nolan' }], writers: [], cinematographers: [], cast: [] })
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
-    from: () => ({ select: () => ({ eq: (_c: string, type: string) => ({
+    from: () => ({ select: () => ({ eq: (_c: string, _type: string) => ({
       in: async (_c2: string, ids: string[]) => {
         io.reads++
         // The database answers in its own order (here: reversed), not the ratings'.
