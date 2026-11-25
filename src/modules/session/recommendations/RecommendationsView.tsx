@@ -84,7 +84,7 @@ import {
 import { addToRegretQueue, removeFromRegretQueue } from "@/lib/regret-queue";
 import { fastTabsEnabled, forYouV3Enabled } from "@/lib/flags";
 import { heldTwenty, holdTwenty, isNewTwenty } from "./held-twenty";
-import { tabScroller } from "@/modules/session/tab-place";
+import { tabScroller, useTabChoice } from "@/modules/session/tab-place";
 import { shareTitle } from "@/lib/share";
 import { announceHidden, deleteRating, postRating } from "./rate";
 import { useStoppedOn } from "./use-stopped-on";
@@ -424,7 +424,8 @@ export default function RecommendationsView({
   }, [mode, entries]);
   // The lit filter chip (DEC-3). Back to All when its chip is gone (the last
   // title on that service was removed).
-  const [pickedFilter, setFilter] = useState<WatchlistFilter>("all");
+  // Kept for the visit when you leave the tab and come back (#453); a service chip that's gone falls back to All below.
+  const [pickedFilter, setFilter] = useTabChoice<WatchlistFilter>(`${user?.id ?? ""}:watchlist:filter`, "all");
   const chips = useMemo(() => (mode === "watchlist" ? watchlistChips(entries) : []), [mode, entries]);
   const filter: WatchlistFilter = chips.some((c) => c.filter === pickedFilter) ? pickedFilter : "all";
   // Removed titles whose "Removed … Undo" note is still on the list (DEC-8),

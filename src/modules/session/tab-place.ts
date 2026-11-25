@@ -7,7 +7,8 @@
  * marked `data-tab-scroll` (TAB_SCROLL), is all they share. For you keeps its place only once FOR_YOU_V3 is on, when
  * its list stays the same until Refresh; until then it opens at the top, as today.
  */
-import { useEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { navHistoryEnabled } from "@/lib/flags";
 
 const PREFIX = "wtw:place:";
 /** Long enough for a list that pages in as you scroll (Seen, the Watchlist) to reach a deep place, a page at a time. */
@@ -100,4 +101,42 @@ export function useTabPlace(key: string | null): void {
       forget();
     };
   }, [key]);
+}
+
+const CHOICE = "wtw:choice:";
+
+/**
+ * #453 (behind NAV_HISTORY): the chip a tab screen had picked (the Watchlist's filter, Seen's chip, type and sort),
+ * kept for this session like its place, so coming back lands on the same list. It's put back in a layout effect:
+ * after the first render (the server's and the phone's agree) and before the place is restored (useTabPlace waits a
+ * frame), so the scroll lands on the right list. `ok` rejects a saved value the screen no longer offers.
+ */
+export function useTabChoice<T extends string>(key: string, initial: T, ok: (v: string) => boolean = () => true): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(initial);
+  useLayoutEffect(() => {
+    if (!navHistoryEnabled()) return;
+    let saved: string | null = null;
+    try {
+      saved = window.sessionStorage.getItem(CHOICE + key);
+    } catch {
+      // Storage off: the screen opens on its usual chip.
+    }
+    // Once per screen key; `ok` and `initial` are fixed for a screen.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValue(saved !== null && ok(saved) ? (saved as T) : initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const choose = useCallback(
+    (v: T) => {
+      setValue(v);
+      if (!navHistoryEnabled()) return;
+      try {
+        window.sessionStorage.setItem(CHOICE + key, v);
+      } catch {
+        // Storage off: nothing remembered, nothing breaks.
+      }
+    },
+    [key],
+  );
+  return [value, choose];
 }

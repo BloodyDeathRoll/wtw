@@ -29,6 +29,7 @@ import { ChevronDown, ChevronLeft, Star } from "lucide-react";
 import type { Reaction } from "@/types/dna";
 import type { ContentKind, Recommendation } from "@/types/recommendation";
 import type { AppUser } from "@/modules/session/types";
+import { useTabChoice } from "@/modules/session/tab-place";
 import type { RatingsSummary, RatingItem, RemovedItem } from "@/app/api/recommendations/ratings/route";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { TAB_SCROLL } from "@/app/components/TabBar";
@@ -179,9 +180,11 @@ export default function SeenView({
 }) {
   const [data, setData] = useState<RatingsSummary | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [chip, setChip] = useState<SeenChip>("loved");
-  const [sort, setSort] = useState<SortKey>("newest");
-  const [kind, setKind] = useState<KindFilter>("all");
+  // The chip, type and sort are kept for the visit when you leave the tab and come back (#453).
+  const seenKey = `${user?.id ?? ""}:seen`;
+  const [chip, setChip] = useTabChoice<SeenChip>(`${seenKey}:chip`, "loved", (v) => CHIPS.some((c) => c.chip === v));
+  const [sort, setSort] = useTabChoice<SortKey>(`${seenKey}:sort`, "newest", (v) => ["newest", "oldest", "title"].includes(v));
+  const [kind, setKind] = useTabChoice<KindFilter>(`${seenKey}:kind`, "all", (v) => ["all", "movie", "tv"].includes(v));
   const [shown, setShown] = useState(PAGE);
   // Which rows a chip shows is fixed when the chip (type, sort) opens: a re-rated row stays put until then (DEC-4).
   const [frozen, setFrozen] = useState<RatingsSummary | null>(null);
