@@ -20,7 +20,7 @@ describe('crew headline threshold', () => {
   it('does not say "you love their work" on a single rating', () => {
     const text = cardReason(item([{ name: 'Andy Garcia', role: 'actor', affinity_score: 0.15 }]))
     expect(text).not.toMatch(/you love/)
-    expect(text).toContain("Andy Garcia is in it; you've enjoyed their work before.")
+    expect(text).toContain("Andy Garcia is in it; you've liked their work before.")
   })
 
   it('says it at or above the threshold', () => {
