@@ -65,6 +65,9 @@ describe('#433: a warning is said once on the card', () => {
   it('matches on words only: case, curly quotes and emphasis do not count', () => {
     expect(saidInWhy('…one thing to know: it’s *funnier* than you usually go for', CATCH)).toBe(true)
     expect(saidInWhy('It is funnier than most.', CATCH)).toBe(false)
+    // Whole words only: "slow pacing" is not inside "slow pacings" or "reslow pacing".
+    expect(saidInWhy('A reslow pacings tale.', 'Slow pacing.')).toBe(false)
+    expect(saidInWhy('Fair warning: slow pacing, though.', 'Slow pacing.')).toBe(true)
     expect(saidInWhy(null, CATCH)).toBe(false)
   })
 })

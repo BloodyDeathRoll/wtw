@@ -259,7 +259,8 @@ export function saidInWhy(why: string | null | undefined, line: string): boolean
   if (!why) return false
   const words = (s: string) => s.toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9']+/g, " ").trim()
   const l = words(line)
-  return l.length > 0 && words(why).includes(l)
+  // Padded, so a short line matches whole words only, never the inside of a longer one.
+  return l.length > 0 && ` ${words(why)} `.includes(` ${l} `)
 }
 
 /** "en" → "English". Falls back to the code if the browser can't name it. */
