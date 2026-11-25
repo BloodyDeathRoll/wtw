@@ -217,12 +217,16 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
       for (const [n, { data, error }] of results.entries()) {
         if (error) throw error
         for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
-          loaded.set(`${chunks[n].type}:${t.tmdb_id}`, { t: t.title, v: t.tmdb_vote_count ?? 0, p: [...peopleIn(t.crew)] })
+          // No crew yet (enrichment or a backfill pending): not ready, so not cached; it names no one this time.
+          loaded.set(`${chunks[n].type}:${t.tmdb_id}`, t.crew ? { t: t.title, v: t.tmdb_vote_count ?? 0, p: [...peopleIn(t.crew)] } : null)
         }
       }
       return loaded
     })
-    for (const [key, f] of facts) {
+    // In the ratings' order (newest first), whatever answered each title: memory, Redis or the
+    // database. The order of a person's titles must not depend on how warm the cache is.
+    for (const key of reaction.keys()) {
+      const f = facts.get(key)
       if (!f) continue
       for (const [id, roles] of f.p) {
         const list = out.get(id) ?? []

@@ -15,7 +15,11 @@ import 'server-only'
 
 import { getRedis } from '@/lib/redis'
 
-/** A rated title's facts: its name, TMDB votes, and the people a card can name with their roles. Null: not in the catalogue (never cached: it may be added later). */
+/**
+ * A rated title's facts: its name, TMDB votes, and the people a card can name with their roles.
+ * Null: not ready (not in the catalogue, or its crew not loaded yet). Never cached: it may come later.
+ * Shared by reference from memory: treat as read-only.
+ */
 export interface RatedTitleFacts {
   t: string
   v: number
@@ -73,6 +77,7 @@ export async function ratedTitleFacts(
     missing = still
   } catch (err) {
     console.warn('[rated-title-cache] redis read failed (reading the database):', err instanceof Error ? err.message : err)
+    redis = null   // and don't try to write to it either: one slow failure, not two
   }
   if (missing.length === 0) return out
 

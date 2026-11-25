@@ -4,12 +4,12 @@ import type { RatedTitleFacts } from '@/modules/engine/pipeline/rated-title-cach
 // #438: a rated title's facts (name, votes, people) cached per title: memory, then Redis, then the
 // database for the rest. A new rating misses one title, not the viewer's whole list.
 
-const io = vi.hoisted(() => ({ store: new Map<string, unknown>(), mgets: 0, msets: 0, down: false }))
+const io = vi.hoisted(() => ({ store: new Map<string, unknown>(), mgets: 0, msets: 0, down: false, mgetFails: false }))
 vi.mock('@/lib/redis', () => ({
   getRedis: () => {
     if (io.down) throw new Error('Upstash Redis env vars are not set')
     return {
-      mget: async (...keys: string[]) => { io.mgets++; return keys.map(k => io.store.get(k) ?? null) },
+      mget: async (...keys: string[]) => { io.mgets++; if (io.mgetFails) throw new Error('timeout'); return keys.map(k => io.store.get(k) ?? null) },
       mset: async (o: Record<string, unknown>) => { io.msets++; for (const [k, v] of Object.entries(o)) io.store.set(k, v) },
     }
   },
@@ -28,7 +28,7 @@ const db = () => {
   return { asked, load }
 }
 
-beforeEach(() => { io.store.clear(); io.mgets = 0; io.msets = 0; io.down = false; clearRatedTitleMemory() })
+beforeEach(() => { io.store.clear(); io.mgets = 0; io.msets = 0; io.down = false; io.mgetFails = false; clearRatedTitleMemory() })
 
 describe('ratedTitleFacts (#438)', () => {
   it('first build: everything from the database, then stored in one MSET', async () => {
@@ -73,6 +73,14 @@ describe('ratedTitleFacts (#438)', () => {
     const d = db()
     expect((await ratedTitleFacts(['movie:1'], d.load)).get('movie:1')).toEqual(facts('movie:1'))
     expect(d.asked).toEqual([['movie:1']])
+  })
+
+  it('a failed Redis read: the database answers, and no write is tried', async () => {
+    io.mgetFails = true
+    const d = db()
+    expect((await ratedTitleFacts(['movie:1'], d.load)).get('movie:1')).toEqual(facts('movie:1'))
+    expect(d.asked).toEqual([['movie:1']])
+    expect(io.msets).toBe(0)
   })
 
   it('a database failure still throws (the caller marks the ratings unavailable)', async () => {
