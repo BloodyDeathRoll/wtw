@@ -194,7 +194,11 @@ async function runPipeline(
   // batch gets both for steps 6–7. Best-effort: a failed read means no plot
   // line or no clash, never a failed batch.
   const spread = spreadKids(reranked)
-  if (stretchPossible(spread, dna)) await hydrateTitles(scored.filter(isStretchCandidate).map(s => s.title), ['narrative_metadata'])
+  if (stretchPossible(spread, dna)) {
+    // Only the titles step 5 can take: not ones already in the list.
+    const inList = new Set(spread.map(s => `${s.title.type}:${s.title.tmdb_id}`))
+    await hydrateTitles(scored.filter(s => isStretchCandidate(s) && !inList.has(`${s.title.type}:${s.title.tmdb_id}`)).map(s => s.title), ['narrative_metadata'])
+  }
   const withStretch = injectStretchPick(spread, scored, dna)
   await hydrateTitles(withStretch.map(s => s.title), ['synopsis', 'narrative_metadata'])
   t.mark('titles hydrated')

@@ -18,7 +18,9 @@ export type HeavyField = 'crew' | 'synopsis' | 'narrative_metadata'
 /** One `in` list per request: the ids go in the URL. */
 const CHUNK = 150
 
-export const NO_CREW: TMDBCrewSnapshot = { directors: [], writers: [], cinematographers: [], cast: [] }
+/** An empty crew, for a title the read didn't return. Frozen; rows get their own copy (noCrew), never this object. */
+export const NO_CREW: Readonly<TMDBCrewSnapshot> = Object.freeze({ directors: [], writers: [], cinematographers: [], cast: [] })
+const noCrew = (): TMDBCrewSnapshot => ({ directors: [], writers: [], cinematographers: [], cast: [] })
 
 /**
  * Fills `fields` on each row in place, by `titles.id`. Rows already carrying a field keep it.
@@ -40,15 +42,19 @@ export async function hydrateTitles(rows: TitleRow[], fields: HeavyField[], requ
       if (error) throw new Error(error.message)
       for (const r of (data ?? []) as unknown as (Pick<TitleRow, HeavyField> & { id: number })[]) found.set(r.id, r)
     }
+    let gone = 0
     for (const r of rows) {
       const got = found.get(r.id)
+      if (!got && need(r)) gone++
       for (const f of fields) {
         if (r[f] !== undefined) continue
-        if (f === 'crew') r.crew = got?.crew ?? NO_CREW
+        if (f === 'crew') r.crew = got?.crew ?? noCrew()
         else if (f === 'synopsis') r.synopsis = got?.synopsis ?? null
         else r.narrative_metadata = got?.narrative_metadata ?? null
       }
     }
+    // A title the pool returned but this read didn't (deleted in between?): it carries on empty, said once.
+    if (gone > 0) console.warn(`[hydrate] ${gone} title(s) missing on the ${fields.join(', ')} read; they carry on without it`)
   } catch (err) {
     if (required) throw new Error(`title fields (${fields.join(', ')}) unavailable: ${err instanceof Error ? err.message : err}`)
     console.warn(`[hydrate] ${fields.join(', ')} unavailable (fallbacks apply):`, err instanceof Error ? err.message : err)
