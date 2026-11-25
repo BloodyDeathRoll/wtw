@@ -72,12 +72,23 @@ describe('trainTasteModel', () => {
     })
 
     it('a gentler weight, or a lean towards newer titles, stays as trained', () => {
-      // Newer titles rated down a little more often than older ones (1 in 4 against 1 in 8): a mild lean.
-      const mild = trainTasteModel(byEra(2, 2).map((r, i) => ({ ...r, level: (i % 8 === 0 || i % 16 === 1 ? 1 : 2) as 1 | 2 })), [])
+      // A mild lean: a newer title (even i) is rated down 1 time in 4, an older one 1 time in 8.
+      const newerDown = (i: number) => i % 8 === 0
+      const olderDown = (i: number) => i % 16 === 1
+      const mild = trainTasteModel(byEra(2, 2).map((r, i) => ({ ...r, level: (newerDown(i) || olderDown(i) ? 1 : 2) as 1 | 2 })), [])
       expect(mild[MODERN_INDEX]).toBeLessThan(0)
       expect(mild[MODERN_INDEX]).toBeGreaterThan(MODERN_FLOOR)
       const towardsNew = trainTasteModel(byEra(3, 1), [])
       expect(towardsNew[MODERN_INDEX]).toBeGreaterThan(0)
+    })
+
+    it('with no data, a w0 below the floor is lifted too (every path out is floored)', () => {
+      const w0 = new Array(25).fill(0)
+      w0[MODERN_INDEX] = -0.5
+      w0[3] = 0.4
+      const w = trainTasteModel([], [], w0)
+      expect(w[MODERN_INDEX]).toBe(MODERN_FLOOR)
+      expect(w[3]).toBe(0.4)
     })
 
   })

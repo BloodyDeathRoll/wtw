@@ -59,11 +59,16 @@ export function genreLean(state: Pick<PlayState, 'sel' | 'loved' | 'gen'> | null
 }
 
 /**
- * The recency penalty's floor (#436; Eran, 2026-11-24, on #389). A trained
- * `modern` weight below it docked recent titles hard: on one account MobLand
- * scored 67% and its loved 2020s titles averaged 48 against 86 for older ones.
- * Lifted to −0.15, the harness costs at most 2 points of concordance on any of
- * the three sheets (#389), and MobLand reads 97. A gentler weight stays as trained.
+ * The recency penalty's floor (#436, Eran's call on #389). A trained `modern`
+ * weight below it docked recent titles hard: on one account MobLand scored 67%,
+ * and its loved 2020s titles averaged 48 against 88 for pre-1990 ones. Lifted
+ * to −0.15, MobLand reads 96% there and the 2020s titles 58 (#441); the harness
+ * moves at most 2 points of concordance on any of the three sheets. A gentler
+ * weight stays as trained.
+ *
+ * A clamp after the solve, as #389 decided: the other weights were fit with
+ * `modern` free and aren't refit with it held at the floor. The harness numbers
+ * above include that.
  */
 export const MODERN_FLOOR = -0.15
 /** `modern`'s place in the 25 features: rating, the 13 genres, then the scales. */
@@ -85,8 +90,12 @@ export function trainTasteModel(rows: TasteRow[], pairs: TastePair[], w0?: numbe
   const mean = totalW > 0 ? rows.reduce((s, r) => s + r.weight * r.level, 0) / totalW : 0
   for (const r of rows) add(r.vec, r.level - mean, r.weight)
   for (const p of pairs) add(p.chosen.map((v, k) => v - p.other[k]), 1, 1)
-  if (rows.length === 0 && pairs.length === 0) return Array.from({ length: d }, (_, i) => w0?.[i] ?? 0)
-  const w = solveSPD(A, b)
+  if (rows.length === 0 && pairs.length === 0) return floorModern(Array.from({ length: d }, (_, i) => w0?.[i] ?? 0))
+  return floorModern(solveSPD(A, b))
+}
+
+/** The recency floor, on every path out of trainTasteModel (with no data, w0 is the answer). */
+function floorModern(w: number[]): number[] {
   if (w[MODERN_INDEX] < MODERN_FLOOR) w[MODERN_INDEX] = MODERN_FLOOR
   return w
 }
