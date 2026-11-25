@@ -52,7 +52,7 @@ import RecommendPill from "./RecommendPill";
 import type { AppUser, Conversation, Welcome } from "../types";
 import type { RecPage } from "@/types/recommendation";
 import { AppMenu, VOICES, type Voice } from "./AppMenu";
-import { FEED_START_TYPE, isContentType, type ContentType } from "@/lib/content-type";
+import { FEED_START_TYPE, contentTypeKey, isContentType, type ContentType } from "@/lib/content-type";
 import { LEAVE_TIMEOUT_MS, RouteLoading } from "@/app/components/RouteLoading";
 import { HeaderSearch } from "@/app/components/HeaderSearch";
 import { chatMode, fastTabsEnabled, forYouV3Enabled, navHistoryEnabled, navTabsEnabled } from "@/lib/flags";
@@ -607,11 +607,11 @@ export default function WTWApp({
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voicePrimer, setVoicePrimer] = useState<string | null>(null);
-  // "Both" until the person picks (then this device remembers the choice, below). The first feed after the
+  // "Both" until the person picks (then this device remembers the choice for this account, below). The first feed after the
   // onboarding is built for both (src/modules/engine/first-feed.ts), so opening on Movies cost a second build.
   const [contentType, setContentType] = useState<ContentType>(() => {
     if (!kept) return FEED_START_TYPE;
-    const c = window.localStorage.getItem("wtw:contentType");
+    const c = window.localStorage.getItem(contentTypeKey(user.id));
     return isContentType(c) ? c : FEED_START_TYPE;
   });
   const [voice, setVoice] = useState<Voice>(DEFAULT_VOICE);
@@ -634,15 +634,15 @@ export default function WTWApp({
   // Hydrate Movies/Series + voice from localStorage after mount. SSR-safe
   // (window check happens only here). Brief race on first paint is fine.
   useEffect(() => {
-    const c = window.localStorage.getItem("wtw:contentType");
+    const c = window.localStorage.getItem(contentTypeKey(user.id));
     if (isContentType(c)) setContentType(c);
     const v = window.localStorage.getItem("wtw:voice");
     if (isVoice(v)) setVoice(v);
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
-    window.localStorage.setItem("wtw:contentType", contentType);
-  }, [contentType]);
+    window.localStorage.setItem(contentTypeKey(user.id), contentType);
+  }, [contentType, user.id]);
 
   useEffect(() => {
     window.localStorage.setItem("wtw:voice", voice);
@@ -703,7 +703,7 @@ export default function WTWApp({
           // effect that hydrates `contentType` from the same key.
           body: JSON.stringify({
             content_type: (() => {
-              const c = window.localStorage.getItem("wtw:contentType");
+              const c = window.localStorage.getItem(contentTypeKey(user.id));
               return isContentType(c) ? c : FEED_START_TYPE;   // the same starting point as `contentType`
             })(),
           }),

@@ -7,8 +7,10 @@
  * user's accept/reject as a signal.
  *
  * Suppressed when:
- *   - total_sessions < 3  (user is too new)
- *   - signals.length < 15 (not enough fingerprint data)
+ *   - signals.length < 15 (not enough fingerprint data — the product rule)
+ *
+ * It used to wait for 3 chat sessions too, but only a chat merge moves
+ * total_sessions, so someone who only rates never got one (#416).
  *
  * One stretch pick per 20 slots: slot 20 of a 20-result list, slots 20 and
  * 40 of a 50-result list, the last slot of a list shorter than 20.
@@ -17,13 +19,19 @@
  * Stretch pick selection criteria:
  *   - composite_score < 0.4 (genuine mismatch on numeric scoring)
  *   - external_rating_score > 0.7 (high critical/audience quality)
- *   - mismatches the user's strand_b on at least one major dimension
+ *
+ * Order among those (#416): the least served first, so the pick changes from
+ * one Refresh to the next; then one that also clashes with the user's
+ * strand_b on a major dimension; then the best rated. Serve count outranks
+ * quality on purpose: a 0.70 title never shown beats a 0.95 one shown twice,
+ * and the 0.7 floor bounds what that costs. The clash used to be
+ * required, but it counts only where strand_b's confidence is 0.4+, and
+ * formula v2 doesn't score on strand_b, so for most people nothing passed.
  */
 
 import type { DNASchema } from '@/types/dna'
 import type { ScoredTitle } from '../types'
 
-const SUPPRESS_BELOW_SESSIONS = 3
 const SUPPRESS_BELOW_SIGNALS  = 15
 const MAX_COMPOSITE_SCORE     = 0.4
 const MIN_EXTERNAL_RATING     = 0.7
@@ -69,15 +77,28 @@ function hasDimensionMismatch(
   }
 }
 
+/** Low match, high crowd: a title the stretch pick may take (before the ranked-list check). */
+export function isStretchCandidate(s: ScoredTitle): boolean {
+  return s.composite_score < MAX_COMPOSITE_SCORE && s.external_rating_score >= MIN_EXTERNAL_RATING
+}
+
+/**
+ * Whether injectStretchPick can place one at all: only then do its candidates need their story data.
+ * Mirrors injectStretchPick's early return (keep the two in step).
+ */
+export function stretchPossible(ranked: ScoredTitle[], dna: DNASchema): boolean {
+  return ranked.length > 0 && dna.signals.length >= SUPPRESS_BELOW_SIGNALS
+}
+
 export function injectStretchPick(
   ranked: ScoredTitle[],
   allCandidates: ScoredTitle[],
   dna: DNASchema
 ): ScoredTitle[] {
   // ── Suppression checks ────────────────────────────────────
+  // (stretchPossible below mirrors these, for generate.ts's story-data read.)
   if (
     ranked.length === 0 ||
-    dna.metadata.total_sessions < SUPPRESS_BELOW_SESSIONS ||
     dna.signals.length < SUPPRESS_BELOW_SIGNALS
   ) {
     return ranked  // too early (or nothing to inject into) — return unmodified
@@ -94,13 +115,18 @@ export function injectStretchPick(
   for (let i = 19; i < ranked.length; i += 20) slots.push(i)
   if (slots.length === 0) slots.push(ranked.length - 1)
 
-  const stretchCandidates = allCandidates.filter(candidate => {
-    if (rankedIds.has(`${candidate.title.type}:${candidate.title.tmdb_id}`)) return false  // already in list
-    if (candidate.composite_score >= MAX_COMPOSITE_SCORE) return false
-    if (candidate.external_rating_score < MIN_EXTERNAL_RATING) return false
-    const { mismatched } = hasDimensionMismatch(candidate, dna)
-    return mismatched
-  })
+  const stretchCandidates = allCandidates
+    .filter(candidate =>
+      !rankedIds.has(`${candidate.title.type}:${candidate.title.tmdb_id}`) &&  // already in list
+      isStretchCandidate(candidate))
+    .map(candidate => ({ candidate, clash: hasDimensionMismatch(candidate, dna).mismatched }))
+    .sort((a, b) =>
+      // `?? 0`, not step 3b's `?? 1`: step 1 sets times_served only on titles
+      // served before (SEEN), so a FRESH title has none: it was served 0 times.
+      (a.candidate.title.times_served ?? 0) - (b.candidate.title.times_served ?? 0) ||
+      Number(b.clash) - Number(a.clash) ||
+      b.candidate.external_rating_score - a.candidate.external_rating_score)
+    .map(({ candidate }) => candidate)
 
   if (stretchCandidates.length === 0) return ranked   // no suitable stretch pick found
 
@@ -129,11 +155,14 @@ function toStretchPick(candidate: ScoredTitle, dna: DNASchema): ScoredTitle {
   const dimensionLabels = dimensions_stretched
     .map(d => d.replace(/_/g, ' '))
     .join(' and ')
+  const why = dimensionLabels
+    ? `this title scores lower on your usual ${dimensionLabels} preferences`
+    : 'this title is outside what you usually go for'
 
   return {
     ...candidate,
     is_stretch_pick:  true,
-    stretch_rationale: `Intentional stretch: this title scores lower on your usual ${dimensionLabels} preferences. High critical rating. Accept or reject — both are useful signals.`,
+    stretch_rationale: `Intentional stretch: ${why}. High critical rating. Accept or reject — both are useful signals.`,
     dimensions_stretched,
   }
 }

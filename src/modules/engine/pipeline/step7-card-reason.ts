@@ -23,6 +23,7 @@
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
+import { ratedTitleFacts, type RatedTitleFacts } from './rated-title-cache'
 import type { DNASchema, ReasonPayload } from '@/types/dna'
 import type { TitleRow } from '../types'
 
@@ -166,13 +167,23 @@ export function linkRole(r: RatedTitle, roleHere: string): RatedTitle['role'] {
 /** tmdb_person_id → the loved/liked titles they directed, wrote or starred in. */
 export type RatedByPerson = Map<string, RatedTitle[]>
 
+/** What loadRatedByPerson returns after a failed read: empty, but not "you rated nobody". */
+const unavailable = new WeakSet<RatedByPerson>()
+
+/** True when the ratings couldn't be read, so no one can be said to be unrated (v3 F6). */
+export function ratedUnavailable(rated: RatedByPerson): boolean {
+  return unavailable.has(rated)
+}
+
 /** Newest-first cap on the signals read — a long history only adds older links. */
 const MAX_RATED = 400
 
 /**
  * One read per batch: the crew of every title the user loved or liked, keyed
  * by person. Best-effort — on any failure the cards fall back to "X directed
- * it, and you love their work", with no title named.
+ * it, and you love their work", with no title named, and the empty map comes
+ * back marked (`ratedUnavailable`), so the sheet doesn't say "Nobody you've
+ * rated" (toResults leaves rated_creators out).
  */
 export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> {
   const out: RatedByPerson = new Map()
@@ -186,35 +197,48 @@ export async function loadRatedByPerson(dna: DNASchema): Promise<RatedByPerson> 
   if (reaction.size === 0) return out
 
   try {
-    const supabase = createServiceClient()
-    // Every chunk's read at once (up to 3 for 400 titles), then read in the same
-    // order as before: one after another, they cost ~0.4 s, the slowest part of
-    // scoring one title (P2-G check 2).
-    const chunks: { type: 'movie' | 'tv'; ids: string[] }[] = []
-    for (const type of ['movie', 'tv'] as const) {
-      const ids = [...reaction.keys()].filter(k => k.startsWith(`${type}:`)).map(k => k.slice(type.length + 1))
-      for (let i = 0; i < ids.length; i += 150) chunks.push({ type, ids: ids.slice(i, i + 150) })
-    }
-    const results = await Promise.all(chunks.map(c => supabase
-      .from('titles')
-      .select('tmdb_id, title, crew, tmdb_vote_count')
-      .eq('type', c.type)
-      .in('tmdb_id', c.ids)))
-    for (const [n, { data, error }] of results.entries()) {
-      if (error) throw error
-      const { type } = chunks[n]
-      for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
-        const key = `${type}:${t.tmdb_id}`
-        for (const [id, roles] of peopleIn(t.crew)) {
-          const list = out.get(id) ?? []
-          list.push({ key, title: t.title, reaction: reaction.get(key)!, votes: t.tmdb_vote_count ?? 0, role: roles[0], roles })
-          out.set(id, list)
+    // Per title, from memory, then Redis, then the database for the rest (#438): a title's crew
+    // doesn't change, and a viewer's list changes by one title per rating.
+    const facts = await ratedTitleFacts([...reaction.keys()], async (missing) => {
+      const supabase = createServiceClient()
+      // Every chunk's read at once (up to 3 for 400 titles): one after another, they cost ~0.4 s,
+      // the slowest part of scoring one title (P2-G check 2).
+      const chunks: { type: 'movie' | 'tv'; ids: string[] }[] = []
+      for (const type of ['movie', 'tv'] as const) {
+        const ids = missing.filter(k => k.startsWith(`${type}:`)).map(k => k.slice(type.length + 1))
+        for (let i = 0; i < ids.length; i += 150) chunks.push({ type, ids: ids.slice(i, i + 150) })
+      }
+      const results = await Promise.all(chunks.map(c => supabase
+        .from('titles')
+        .select('tmdb_id, title, crew, tmdb_vote_count')
+        .eq('type', c.type)
+        .in('tmdb_id', c.ids)))
+      const loaded = new Map<string, RatedTitleFacts | null>()
+      for (const [n, { data, error }] of results.entries()) {
+        if (error) throw error
+        for (const t of (data ?? []) as Pick<TitleRow, 'tmdb_id' | 'title' | 'crew' | 'tmdb_vote_count'>[]) {
+          // No crew yet (enrichment or a backfill pending): not ready, so not cached; it names no one this time.
+          loaded.set(`${chunks[n].type}:${t.tmdb_id}`, t.crew ? { t: t.title, v: t.tmdb_vote_count ?? 0, p: [...peopleIn(t.crew)] } : null)
         }
+      }
+      return loaded
+    })
+    // In the ratings' order (newest first), whatever answered each title: memory, Redis or the
+    // database. The order of a person's titles must not depend on how warm the cache is.
+    for (const key of reaction.keys()) {
+      const f = facts.get(key)
+      if (!f) continue
+      for (const [id, roles] of f.p) {
+        const list = out.get(id) ?? []
+        list.push({ key, title: f.t, reaction: reaction.get(key)!, votes: f.v, role: roles[0], roles })
+        out.set(id, list)
       }
     }
   } catch (err) {
     console.warn('[card-reason] rated titles unavailable (cards name no titles):', err instanceof Error ? err.message : err)
-    return new Map()
+    const none: RatedByPerson = new Map()
+    unavailable.add(none)
+    return none
   }
   return out
 }
