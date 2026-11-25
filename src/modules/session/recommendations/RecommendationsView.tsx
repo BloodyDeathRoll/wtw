@@ -425,7 +425,7 @@ export default function RecommendationsView({
   // The lit filter chip (DEC-3). Back to All when its chip is gone (the last
   // title on that service was removed).
   // Kept for the visit when you leave the tab and come back (#453); a service chip that's gone falls back to All below.
-  const [pickedFilter, setFilter] = useTabChoice<WatchlistFilter>(`${user?.id ?? ""}:watchlist:filter`, "all");
+  const [pickedFilter, setFilter] = useTabChoice<WatchlistFilter>(mode === "watchlist" ? `${user?.id ?? ""}:watchlist:filter` : "", "all");
   const chips = useMemo(() => (mode === "watchlist" ? watchlistChips(entries) : []), [mode, entries]);
   const filter: WatchlistFilter = chips.some((c) => c.filter === pickedFilter) ? pickedFilter : "all";
   // Removed titles whose "Removed … Undo" note is still on the list (DEC-8),

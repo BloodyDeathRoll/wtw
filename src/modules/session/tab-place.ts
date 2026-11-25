@@ -109,12 +109,13 @@ const CHOICE = "wtw:choice:";
  * #453 (behind NAV_HISTORY): the chip a tab screen had picked (the Watchlist's filter, Seen's chip, type and sort),
  * kept for this session like its place, so coming back lands on the same list. It's put back in a layout effect:
  * after the first render (the server's and the phone's agree) and before the place is restored (useTabPlace waits a
- * frame), so the scroll lands on the right list. `ok` rejects a saved value the screen no longer offers.
+ * frame), so the scroll lands on the right list. `ok` rejects a saved value the screen no longer offers. Pass a
+ * stable `initial` and `ok` (fixed per screen): only a new `key` reads again. An empty `key` keeps nothing.
  */
 export function useTabChoice<T extends string>(key: string, initial: T, ok: (v: string) => boolean = () => true): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(initial);
   useLayoutEffect(() => {
-    if (!navHistoryEnabled()) return;
+    if (!key || !navHistoryEnabled()) return;
     let saved: string | null = null;
     try {
       saved = window.sessionStorage.getItem(CHOICE + key);
@@ -129,7 +130,7 @@ export function useTabChoice<T extends string>(key: string, initial: T, ok: (v: 
   const choose = useCallback(
     (v: T) => {
       setValue(v);
-      if (!navHistoryEnabled()) return;
+      if (!key || !navHistoryEnabled()) return;
       try {
         window.sessionStorage.setItem(CHOICE + key, v);
       } catch {

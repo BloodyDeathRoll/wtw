@@ -43,4 +43,21 @@ describe('useTabChoice', () => {
     expect(sessionStorage.length).toBe(0)
     expect(renderHook(() => useTabChoice<string>('u1:seen:chip', 'loved')).result.current[0]).toBe('loved')
   })
+
+  it('a new key (another account, or the user arriving late) reads its own, or opens on the usual chip', () => {
+    sessionStorage.setItem('wtw:choice:u1:seen:chip', 'liked')
+    const h = renderHook(({ k }) => useTabChoice<string>(k, 'loved'), { initialProps: { k: ':seen:chip' } })
+    expect(h.result.current[0]).toBe('loved')
+    h.rerender({ k: 'u1:seen:chip' })
+    expect(h.result.current[0]).toBe('liked')
+    h.rerender({ k: 'u2:seen:chip' })
+    expect(h.result.current[0]).toBe('loved')
+  })
+
+  it('an empty key (For you, not the Watchlist) reads and keeps nothing', () => {
+    const h = renderHook(() => useTabChoice<string>('', 'all'))
+    act(() => h.result.current[1]('movies'))
+    expect(h.result.current[0]).toBe('movies')
+    expect(sessionStorage.length).toBe(0)
+  })
 })
