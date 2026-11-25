@@ -47,7 +47,8 @@ const PAUSE_MS = 250;
 // How long a results list must stay on screen before its matches are asked for (#375: the score route was ~70% of CPU).
 const MATCH_PAUSE_MS = 600;
 // The matches asked this visit (this page load), kept across Search's opens. One account's at a time.
-// shortcut: a rating made elsewhere in the visit doesn't refresh a match already here; a reload does.
+// shortcut: a rating made elsewhere in the visit doesn't refresh a match already here, and the map only grows (a
+// number per title searched); a reload clears both.
 let visit: { userId: string; asked: Set<string>; got: Record<string, number> } | null = null;
 function visitMatches(userId: string) {
   if (visit?.userId !== userId) visit = { userId, asked: new Set(), got: {} };
@@ -94,7 +95,9 @@ export default function SearchView({
   // SEARCH_V3: your rating of each title, and what you hid from For you, to mark the rows (SEARCH.md DEC-5).
   const [marks, setMarks] = useState<Record<string, WatchlistRating>>({});
   // SEARCH_V3: your match on each title row, by "type:tmdb_id" (v3 Q7); each title asked once a visit (#375).
-  const [matches, setMatches] = useState<Record<string, number>>(() => visitMatches(user.id).got);
+  // A copy of the visit's: every answer goes into both (below). `user.id` is fixed while Search is open: sign-out
+  // leaves the page.
+  const [matches, setMatches] = useState<Record<string, number>>(() => ({ ...visitMatches(user.id).got }));
 
   // The open card lives in the URL (/search?t=movie-1900): opening one pushes a
   // history entry, so Back (the arrow, or Android's back gesture) closes the
@@ -399,17 +402,17 @@ export default function SearchView({
     : "";
   // Asked only once the rows hold still (typing has paused), so "sl" → "slo" → "slow" scores one list, not three (#375).
   useEffect(() => {
-    const visit = visitMatches(user.id);
-    const ks = rowKeys ? [...new Set(rowKeys.split(","))].filter((k) => !visit.asked.has(k)) : [];
+    const held = visitMatches(user.id);
+    const ks = rowKeys ? [...new Set(rowKeys.split(","))].filter((k) => !held.asked.has(k)) : [];
     if (!ks.length) return;
     const t = setTimeout(() => {
-      ks.forEach((k) => visit.asked.add(k));
+      ks.forEach((k) => held.asked.add(k));
       for (let i = 0; i < ks.length; i += 60) {
         const chunk = ks.slice(i, i + 60);
         void fetchMatches(chunk.map((k) => ({ type: k.split(":")[0] as "movie" | "tv", tmdb_id: k.split(":")[1] }))).then((m) => {
-          if (!m) chunk.forEach((k) => visit.asked.delete(k)); // failed: asked again with the next list
+          if (!m) chunk.forEach((k) => held.asked.delete(k)); // failed: asked again with the next list
           else if (Object.keys(m).length) {
-            Object.assign(visit.got, m);
+            Object.assign(held.got, m); // kept for the visit, and shown now
             setMatches((cur) => ({ ...cur, ...m }));
           }
         });
