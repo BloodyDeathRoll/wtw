@@ -59,6 +59,12 @@ describe('a stretch pick rated on For you records its outcome (#419 part 3)', ()
     expect(record(dna)).toMatchObject({ accepted: true, reaction: 'liked', session: 2, dimensions_stretched: ['moral_ambiguity'] })
   })
 
+  it('a skip with no reaction is a rejection too (the anti-recommendation rule)', () => {
+    const dna = createBlankDNA('u1')
+    applyFeedbackToDNA(dna, { tmdb_id: '313369', media_type: 'movie', recKey: 'movie:313369', action: 'skipped', reaction: undefined, is_stretch_pick: true, title: 'La La Land' })
+    expect(record(dna)).toMatchObject({ accepted: false, reaction: null })
+  })
+
   it('a rating on an ordinary pick makes no record', () => {
     const dna = createBlankDNA('u1')
     rate(dna, 'loved', false)
