@@ -147,7 +147,8 @@ export async function scoreCandidates(
         candidateIds
       )
 
-  // Rank within the pool, not raw cosine. Mistral embeddings put every
+  // Rank within the pool, not raw cosine. Mistral embeddings (the stored
+  // ones; Gemini's since 2026-11-26 weren't measured) put every
   // enriched title at 0.94–0.99 against the fingerprint (measured 2026-08-28:
   // min 0.943, median 0.985, max 0.991), so the raw value moved the composite
   // by ~0.01 and this 30% component decided nothing. The percentile keeps the
