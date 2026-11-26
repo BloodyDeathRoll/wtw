@@ -3,7 +3,7 @@
  *
  * Runs headless with no Next.js dev server. Reuses the exact app enrichment
  * modules (so the tone-repair fix etc. never drift), driving them directly
- * against Supabase + TMDB + Mistral. Invoked by the Dream automation platform's
+ * against Supabase + TMDB + Gemini. Invoked by the Dream automation platform's
  * `wtw-catalog` assignment inside the nightly window, but also runnable by hand:
  *
  *   npm run grow-catalog                 # defaults below
@@ -11,7 +11,7 @@
  *   SEED_COUNT=100 TARGET_CATALOG=5000 npm run grow-catalog
  *
  * Budget note: Dream's guard only protects your Claude Max quota — it does NOT
- * know about Mistral. So this script self-limits: it seeds at most SEED_COUNT
+ * know about Gemini. So this script self-limits: it seeds at most SEED_COUNT
  * new titles per run and stops growing once the catalog reaches TARGET_CATALOG.
  * Enrichment then drains whatever is pending (new titles + existing backlog),
  * capped at ENRICH_MAX titles per run to stay polite to the free tier.
@@ -34,13 +34,14 @@ const key = (type: string, tmdb_id: string) => `${type}:${tmdb_id}`
 const SEED_COUNT       = intEnv('SEED_COUNT', 120)       // new titles to add per run
 const TARGET_CATALOG   = intEnv('TARGET_CATALOG', 15000) // stop growing at this size
 const ENRICH_MAX       = intEnv('ENRICH_MAX', 300)       // max titles to enrich per run
-const MISTRAL_CALL_BUDGET = intEnv('MISTRAL_CALL_BUDGET', 600) // max Mistral REQUESTS per run —
-                                                         // the unit Mistral meters. A title is 2
-                                                         // (extraction + embedding), a crew row 1.
-                                                         // The live app shares the workspace
-                                                         // (MISTRAL_BATCH_API_KEY splits it), and
-                                                         // on 2026-09-04 ~2,000 calls/night spent
-                                                         // it to a 0 req/min wall for days.
+const LLM_CALL_BUDGET  = intEnv('LLM_CALL_BUDGET', 150) // max LLM REQUESTS per run (Gemini).
+                                                         // A title is 2 (extraction + embedding),
+                                                         // a crew row 1. Gemini's free quota is
+                                                         // per Google Cloud PROJECT (~500 req/day
+                                                         // on Flash-Lite, unpublished) and the
+                                                         // live app uses it too: a separate
+                                                         // GEMINI_BATCH_API_KEY splits it only if
+                                                         // it comes from a separate project.
 const DISCOVER_CAP     = intEnv('DISCOVER_CAP', 40)      // max discover slices/attempts to scan
 const DISCOVER_PAGES   = Math.max(1, intEnv('DISCOVER_PAGES', 5)) // TMDB page depth per genre×decade
                                                          // slice. Sets the REACHABLE pool:
@@ -411,10 +412,10 @@ async function main() {
   // runNightlyEnrichment processes up to its own internal batch each call and
   // is idempotent (only touches enriched_at IS NULL); loop until the backlog is
   // empty, ENRICH_MAX is reached, or a run makes no progress (rate-limit wall).
-  // Two more exits, both loud in the summary: a PROVEN Mistral wall ends the
-  // phase (`mistral_rate_limited`, ok:false — three 429s in a row, each through
+  // Two more exits, both loud in the summary: a PROVEN rate-limit wall ends the
+  // phase (`llm_rate_limited`, ok:false — three 429s in a row, each through
   // a cooldown; a 429 the cooldown clears is absorbed and never reaches here),
-  // and so does the per-run call budget (`mistral_budget_exhausted`). A run whose
+  // and so does the per-run call budget (`llm_budget_exhausted`). A run whose
   // pending-queue select fails (after its own retries) throws instead of
   // reporting an empty backlog; that counts as a stall here, is retried once
   // after a pause, and is surfaced as `enrich_queue_failures`.
@@ -423,20 +424,20 @@ async function main() {
   let enrichQueueFailures = 0
   let crewQueueFailures = 0
   let stalls = 0
-  let mistralCalls = 0
-  let mistralRateLimited = false
-  let mistralBudgetExhausted = false
+  let llmCalls = 0
+  let llmRateLimited = false
+  let llmBudgetExhausted = false
   // P1-D3: the taste-scales phase rides each enrichment run (runNightlyEnrichment `scales: true`).
   let scalesScored = 0
   let scalesFinalised = 0
   let scalesFailed = 0
   let scalesQueueFailures = 0
   while (enriched < ENRICH_MAX && stalls < 2) {
-    const callsLeft = MISTRAL_CALL_BUDGET - mistralCalls
-    if (callsLeft <= 0) { mistralBudgetExhausted = true; break }
+    const callsLeft = LLM_CALL_BUDGET - llmCalls
+    if (callsLeft <= 0) { llmBudgetExhausted = true; break }
     let report: EnrichmentReport
     try {
-      report = await runNightlyEnrichment({ maxMistralCalls: callsLeft, scales: true })
+      report = await runNightlyEnrichment({ maxBatchCalls: callsLeft, scales: true })
     } catch (e) {
       enrichQueueFailures++
       stalls++
@@ -446,7 +447,7 @@ async function main() {
     }
     enriched += report.titles_processed
     enrichFailures += report.titles_failed
-    mistralCalls += report.mistral_calls
+    llmCalls += report.llm_calls
     scalesScored += report.scales_scored
     scalesFinalised += report.scales_finalised
     scalesFailed += report.scales_failed
@@ -455,13 +456,13 @@ async function main() {
     // skipped this run. Not a stall — but it must show in the summary.
     if (report.crew_queue_failed) crewQueueFailures++
     if (report.rate_limited) {
-      mistralRateLimited = true
-      console.error(`[grow] Mistral rate limited (429) after ${mistralCalls} call(s) — enrichment stopped, ${enriched} enriched`)
+      llmRateLimited = true
+      console.error(`[grow] LLM rate limited (429) after ${llmCalls} call(s) — enrichment stopped, ${enriched} enriched`)
       break
     }
     if (report.budget_exhausted) {
-      mistralBudgetExhausted = true
-      console.log(`[grow] Mistral call budget ${MISTRAL_CALL_BUDGET} reached — enrichment stopped, ${enriched} enriched`)
+      llmBudgetExhausted = true
+      console.log(`[grow] LLM call budget ${LLM_CALL_BUDGET} reached — enrichment stopped, ${enriched} enriched`)
       break
     }
     if (report.titles_processed === 0) stalls++
@@ -663,7 +664,7 @@ async function main() {
   const summary = {
     // A rate-limited night is a FAILED night: the key is spent for the live
     // app too, and the digest must say so (two nights went unread otherwise).
-    ok: !mistralRateLimited,
+    ok: !llmRateLimited,
     started_titles: startCount,
     seeded,
     // Spend + failure legibility. seed_attempts is the OMDB-costing number
@@ -696,14 +697,14 @@ async function main() {
     target: TARGET_CATALOG,
     enriched,
     enrich_failures: enrichFailures,
-    mistral_calls: mistralCalls,
+    llm_calls: llmCalls,
     // P1-D3: new titles put on the 11 taste scales, and vectors written (new + moved ratings).
     scales_scored: scalesScored,
     scales_finalised: scalesFinalised,
     // Present only on the nights they fire, so they cost nothing in the
     // digest's 400-byte window otherwise and cannot be missed when they do.
-    ...(mistralRateLimited ? { mistral_rate_limited: true } : {}),
-    ...(mistralBudgetExhausted ? { mistral_budget_exhausted: MISTRAL_CALL_BUDGET } : {}),
+    ...(llmRateLimited ? { llm_rate_limited: true } : {}),
+    ...(llmBudgetExhausted ? { llm_budget_exhausted: LLM_CALL_BUDGET } : {}),
     ...(enrichQueueFailures ? { enrich_queue_failures: enrichQueueFailures } : {}),
     ...(crewQueueFailures ? { crew_queue_failures: crewQueueFailures } : {}),
     ...(scalesFailed ? { scales_failed: scalesFailed } : {}),

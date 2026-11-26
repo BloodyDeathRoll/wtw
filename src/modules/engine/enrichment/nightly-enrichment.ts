@@ -24,13 +24,14 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { enrichTitleWithNarrative } from './enrich-title-narrative'
 import { buildLineageGraph } from './build-lineage-graph'
-import { isMistralRateLimit, mistralCallCount, mistralRetryAfterMs } from '@/lib/mistral-batch'
+import { isBatchRateLimit, batchCallCount, batchRetryAfterMs } from '@/lib/llm-batch'
 import { SCALE_BATCH, SCALE_COLS, finaliseScaleRow, scoreScaleBatch, type ScaleRow } from '@/lib/taste-scales/catalogue'
 
 const TITLE_BATCH_SIZE = 1    // STRICTLY serial — one enrichment call at a time
 const TITLE_LIMIT = 15        // titles enriched per run
 const CREW_BATCH_SIZE = 8     // crew lineage rows per run
-// Pacing derived from a measured probe (2026-07-09): Mistral free tier is
+// Pacing derived from a measured probe (2026-07-09, on Mistral, which ran this
+// until 2026-11-26; Gemini's free limits are unpublished): Mistral free tier was
 // 50 req/min + 50K tokens/min, resets per-minute, no daily/monthly header cap;
 // a 45-call burst hit 0 failures. Each title = structured call + embed (2 calls),
 // each crew = 1 structured call, and a real enrichment is only ~1K tokens — so
@@ -55,10 +56,10 @@ export interface EnrichmentReport {
   crew_processed: number
   crew_failed: number
   duration_ms: number
-  /** Mistral requests this run made (extraction + embedding + lineage). */
-  mistral_calls: number
+  /** LLM requests this run made (extraction + embedding + lineage). */
+  llm_calls: number
   /**
-   * Mistral answered 429 RATE_LIMIT_MAX_COOLDOWNS times in a row, each through
+   * The LLM answered 429 RATE_LIMIT_MAX_COOLDOWNS times in a row, each through
    * a cooldown: the key is spent, and the run stopped at that point. A 429 the
    * cooldown cleared leaves this false — the run recovered.
    */
@@ -83,11 +84,11 @@ export interface EnrichmentReport {
 
 export interface EnrichmentOptions {
   /**
-   * Stop before the next item once this many Mistral calls have been made in
+   * Stop before the next item once this many LLM calls have been made in
    * this run. A title costs 2 (extraction + embedding), a crew row 1. The
    * caller (grow-catalog) turns its nightly budget into this per-call cap.
    */
-  maxMistralCalls?: number
+  maxBatchCalls?: number
   /**
    * Base wait after a 429 before the item is retried, overridden by the
    * response's `retry-after` when it carries one. Exists so tests can drive
@@ -119,7 +120,7 @@ export interface EnrichmentOptions {
 // before) and a full night's backlog recovered in the 09-10 one.
 const TITLE_COST = 2
 const CREW_COST = 1
-const RATE_LIMIT_COOLDOWN_MS = 60_000       // one Mistral per-minute window
+const RATE_LIMIT_COOLDOWN_MS = 60_000       // one per-minute rate window
 const RATE_LIMIT_MAX_COOLDOWNS = 3          // consecutive 429s ⇒ the key is spent
 const RATE_LIMIT_MAX_COOLDOWN_MS = 300_000  // cap on a hostile `retry-after`
 
@@ -164,9 +165,9 @@ export async function runNightlyEnrichment(
   options: EnrichmentOptions = {},
 ): Promise<EnrichmentReport> {
   const start = Date.now()
-  const callsAtStart = mistralCallCount()
-  const maxCalls = options.maxMistralCalls ?? Infinity
-  const callsLeft = () => maxCalls - (mistralCallCount() - callsAtStart)
+  const callsAtStart = batchCallCount()
+  const maxCalls = options.maxBatchCalls ?? Infinity
+  const callsLeft = () => maxCalls - (batchCallCount() - callsAtStart)
   const supabase = createServiceClient()
 
   let titles_processed = 0
@@ -207,7 +208,7 @@ export async function runNightlyEnrichment(
         rateLimitsSinceSuccess = 0
         return 'ok'
       } catch (err) {
-        if (!isMistralRateLimit(err)) {
+        if (!isBatchRateLimit(err)) {
           // An ordinary failure is not evidence about the rate limit either
           // way: it neither proves the wall nor clears a run of 429s.
           onFailure(err)
@@ -218,14 +219,14 @@ export async function runNightlyEnrichment(
         if (rateLimitsSinceSuccess >= RATE_LIMIT_MAX_COOLDOWNS) {
           onFailure(err)
           console.error(
-            `[${label}] Mistral rate limit (429) on ${what} — ${rateLimitsSinceSuccess} in a row through a cooldown, the key is spent; stopping this run`,
+            `[${label}] LLM rate limit (429) on ${what} — ${rateLimitsSinceSuccess} in a row through a cooldown, the key is spent; stopping this run`,
           )
           return 'wall'
         }
-        const asked = mistralRetryAfterMs(err)
+        const asked = batchRetryAfterMs(err)
         const wait = Math.min(asked ?? cooldownBase, cooldownCap)
         console.warn(
-          `[${label}] Mistral rate limit (429) on ${what} — cooling down ${Math.round(wait / 1000)}s (${rateLimitsSinceSuccess}/${RATE_LIMIT_MAX_COOLDOWNS}), then retrying`,
+          `[${label}] LLM rate limit (429) on ${what} — cooling down ${Math.round(wait / 1000)}s (${rateLimitsSinceSuccess}/${RATE_LIMIT_MAX_COOLDOWNS}), then retrying`,
         )
         await sleep(wait)
       }
@@ -273,7 +274,7 @@ export async function runNightlyEnrichment(
   }
 
   // ── Phase 2: Build lineage for pending crew members ──────
-  // Each buildLineageGraph call costs 1 Mistral request. Cap at
+  // Each buildLineageGraph call costs 1 LLM request. Cap at
   // CREW_BATCH_SIZE per run, same serial concurrency + delay as titles.
   // A rate-limited or over-budget run skips lineage too: same key, same wall.
   // A failed crew select does not throw: Phase 1 already spent real calls and
@@ -400,7 +401,7 @@ export async function runNightlyEnrichment(
     crew_processed,
     crew_failed,
     duration_ms: Date.now() - start,
-    mistral_calls: mistralCallCount() - callsAtStart,
+    llm_calls: batchCallCount() - callsAtStart,
     rate_limited,
     budget_exhausted,
     crew_queue_failed,

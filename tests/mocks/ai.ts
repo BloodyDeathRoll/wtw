@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-// Stand-in for the Vercel AI SDK call the app makes against Groq/Mistral:
+// Stand-in for the Vercel AI SDK call the app makes against Groq/Gemini:
 // `generateText`, for free text (summary, greetings) and, since AI SDK v7,
 // for structured output too (`output: Output.object(...)` — rerank,
 // extraction, explanations). `Output` is passed through so call sites can
@@ -30,5 +30,5 @@ export function makeAiMock(opts: {
 }
 
 // A no-op model factory to stand in for `groq('llama-3.3-70b-versatile')` /
-// the Mistral provider, so importing modules don't need real API keys.
+// the Gemini provider, so importing modules don't need real API keys.
 export const fakeModel = () => vi.fn(() => ({}))

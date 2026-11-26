@@ -116,10 +116,10 @@ export async function updateSchemaFromSession(
     console.warn('[update-from-session] notes rewrite failed:', err)
   )
 
-  // 10. Regenerate Mistral embedding snapshot (fire-and-forget on error)
+  // 10. Regenerate Gemini embedding snapshot (fire-and-forget on error)
   //     The engine's Redis cache handles the embedding for scoring —
   //     this persists the historical snapshot in fingerprint_embeddings.
-  //     Skips the Mistral call when the strand text is unchanged (hash).
+  //     Skips the Gemini call when the strand text is unchanged (hash).
   await regenerateEmbedding(user_id, dna).catch(err =>
     console.warn('[update-from-session] embedding regen failed:', err)
   )

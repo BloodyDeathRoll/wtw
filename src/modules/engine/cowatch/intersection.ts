@@ -15,7 +15,7 @@ import { scoreCandidates }      from '../pipeline/step2-composite-score'
 import { applySoftModifiers }   from '../pipeline/step3-soft-modifiers'
 import { buildReasonPayloads }  from '../pipeline/step6-reason-payload'
 import { generateText, Output } from 'ai'
-import { createMistral }        from '@ai-sdk/mistral'
+import { gemini }               from '@/lib/gemini'
 import { MODELS }               from '@/lib/ai-models'
 import { z }                    from 'zod'
 import {
@@ -23,12 +23,6 @@ import {
   cacheCowatchResults,
 } from '../pipeline/step8-cache'
 import type { DNASchema, CowatchResult } from '@/types/dna'
-
-function mistral() {
-  const key = process.env.MISTRAL_API_KEY
-  if (!key) throw new Error('MISTRAL_API_KEY is not set')
-  return createMistral({ apiKey: key })
-}
 
 async function loadDNA(userId: string): Promise<DNASchema | null> {
   const supabase = createServiceClient()
@@ -120,7 +114,7 @@ ${titleList}
 For each title, write 2-3 sentences on why it works for BOTH viewers. Be specific about what each person will appreciate.`
 
   const { output } = await generateText({
-    model: mistral()(MODELS.structured),
+    model: gemini()(MODELS.structured),
     output: Output.object({ schema: cowatchExplanationSchema }),
     prompt,
   })

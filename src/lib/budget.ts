@@ -5,8 +5,8 @@
  * own size, and the marks the app already leaves in Redis when a free budget
  * runs out (the Why writer's `why_model_out:*`, Jev's `jev:failures`).
  *
- * Mistral's nightly budget and 429s are in grow-catalog's summary already
- * (`mistral_budget_exhausted`, `mistral_rate_limited`); TMDB has no quota and
+ * The nightly LLM budget and 429s are in grow-catalog's summary already
+ * (`llm_budget_exhausted`, `llm_rate_limited`); TMDB has no quota and
  * Groq's /models endpoint carries no usage, so neither is read here.
  */
 

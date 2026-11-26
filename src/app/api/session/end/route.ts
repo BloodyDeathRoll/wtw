@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
 
   // ── 3. SessionSummary: card ratings only ─────────────────────
   // The transcript is not analysed (P1-C1): no titles, rules, moods or
-  // dimension updates come from the chat. This also saves a Mistral call.
+  // dimension updates come from the chat. This also saves an LLM call.
   const summary: SessionSummary = {
     session_number: sessionNumber,
     new_signals: [],

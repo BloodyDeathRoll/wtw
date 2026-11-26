@@ -10,7 +10,7 @@
  * - Stretch pick feedback handling
  * - Open question resolution
  * - Temporal decay application
- * - Mistral embedding regeneration
+ * - Gemini embedding regeneration
  * - Dimension notes rewriting (LLM)
  * - Versioned snapshots (keep-last-5, rollback)
  * - Profile UI: /profile/dna

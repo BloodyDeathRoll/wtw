@@ -8,7 +8,7 @@
  * and the marks the app already leaves in Redis when a free budget runs out —
  * Groq models the Why writer marked out (`why_model_out:*`) and Jev's failure
  * log (`jev:failures`). Warns at 80% of Supabase's 500 MB (src/lib/budget.ts).
- * Mistral's nightly budget is in grow-catalog's summary; TMDB has no quota.
+ * The nightly LLM budget is in grow-catalog's summary; TMDB has no quota.
  *
  * Also the last first-feed timings (#246, `first_feed:timings`, written by
  * src/modules/engine/first-feed.ts): Vercel keeps runtime logs an hour, so a

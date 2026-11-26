@@ -7,7 +7,7 @@
  *
  * The user's embedding is read from fingerprint_embeddings when the DNA
  * Writer has already stored one for this taste_version, and only embedded
- * via Mistral when it has not. Either way it is Redis-cached by
+ * via Gemini when it has not. Either way it is Redis-cached by
  * (user_id, taste_version) so it
  * is only regenerated when the DNA schema changes.
  *
@@ -20,7 +20,7 @@
  */
 
 import { embed } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
+import { gemini, EMBED_OPTIONS } from '@/lib/gemini'
 import { MODELS } from '@/lib/ai-models'
 import { getRedis } from '@/lib/redis'
 import { createServiceClient } from '@/lib/supabase/service'
@@ -29,12 +29,6 @@ import type { StrandB, StrandC } from '@/types/dna'
 // Embedding TTL: 24 hours. Taste version is part of the key so stale
 // embeddings naturally fall off as new versions are created.
 const EMBED_TTL_SECONDS = 86_400
-
-function mistral() {
-  const key = process.env.MISTRAL_API_KEY
-  if (!key) throw new Error('MISTRAL_API_KEY is not set')
-  return createMistral({ apiKey: key })
-}
 
 // ─────────────────────────────────────────────
 // Embedding text template
@@ -120,7 +114,7 @@ export async function getUserEmbedding(
   // Then the DNA Writer's stored row. regenerateEmbedding() (A3) embeds the
   // same strandBToEmbeddingText() after every DNA write and upserts it into
   // fingerprint_embeddings with the taste_version it was built from — so on a
-  // matching version this IS the vector Mistral would return, one HTTP hop
+  // matching version this IS the vector Gemini would return, one HTTP hop
   // cheaper. Version must match exactly: an older row means strand_b/c moved
   // since, and a stale vector would silently score against the wrong taste.
   const stored = await readStoredEmbedding(userId, tasteVersion)
@@ -129,12 +123,13 @@ export async function getUserEmbedding(
     return stored
   }
 
-  // Generate via Mistral — no row yet (first session before the writer ran),
+  // Generate via Gemini — no row yet (first session before the writer ran),
   // or the row is from an earlier taste_version.
   const text = strandBToEmbeddingText(strandB, strandC)
   const { embedding } = await embed({
-    model: mistral().embeddingModel(MODELS.embedding),
+    model: gemini().embeddingModel(MODELS.embedding),
     value: text,
+    providerOptions: EMBED_OPTIONS,
   })
 
   // Cache for 24h — key includes taste_version so old versions naturally expire
@@ -146,7 +141,7 @@ export async function getUserEmbedding(
 /**
  * The user's live embedding row, only if it was built from `tasteVersion`.
  * Best-effort: any read error returns null and the caller falls through to
- * Mistral, because the row is an optimisation, not a source of truth.
+ * Gemini, because the row is an optimisation, not a source of truth.
  *
  * PostgREST serialises pgvector columns as the text form `[0.1,0.2,…]`, not
  * a JSON array, hence the parse. Length is checked against the column's
@@ -182,7 +177,7 @@ async function readStoredEmbedding(
 
 /**
  * Batch narrative similarity for all candidate titles.
- * One Mistral embed call (cached) + one pgvector SQL query.
+ * One Gemini embed call (cached) + one pgvector SQL query.
  *
  * @returns Map<`${type}:${tmdb_id}`, score>  score is 0.0 – 1.0
  *          Unenriched titles are absent; caller uses 0.5 as fallback.

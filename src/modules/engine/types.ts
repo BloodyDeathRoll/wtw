@@ -46,7 +46,7 @@ export interface TitleRow {
   /** Lowercased TMDB keywords — what makes "no anime" matchable (0021). */
   keywords: string[]
   narrative_metadata: TitleNarrativeMetadata | null
-  narrative_embedding: number[] | null  // 1024-dim Mistral vector
+  narrative_embedding: number[] | null  // 1024-dim embedding (mistral-embed until 2026-11-26, Gemini after)
   enriched_at: string | null
   created_at: string
   /**

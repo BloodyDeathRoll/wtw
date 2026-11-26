@@ -450,7 +450,7 @@ export async function syncPlayToDNA(userId: string, S: PlayState, titles: GameTi
   if (outcome !== 'saved' || !result.dna) return outcome === 'missing' ? 'missing' : 'conflict'
 
   // The narrative pool reads the embedding by taste_version; best-effort,
-  // the row's text hash skips the Mistral call when nothing moved.
+  // the row's text hash skips the Gemini call when nothing moved.
   await regenerateEmbedding(userId, result.dna).catch(err =>
     console.warn('[play-sync] embedding regen failed:', err instanceof Error ? err.message : err))
   return 'synced'

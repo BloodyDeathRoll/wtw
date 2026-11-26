@@ -6,7 +6,7 @@
 // in this file that propagates to every call site.
 //
 // Provider clients are still constructed per-module (createGroq /
-// createMistral / Gemini); only the *model identifier* is centralized.
+// createGoogleGenerativeAI); only the *model identifier* is centralized.
 
 /**
  * Required on every `MODELS.text` call. `reasoningFormat: 'hidden'` keeps the
@@ -29,6 +29,12 @@
 export const GROQ_TEXT_OPTIONS = { groq: { reasoningFormat: 'hidden' } } as const
 
 export const MODELS = {
+  /** 2026-11-26: every model below that was Mistral is now Gemini
+   *  (src/lib/gemini.ts): Mistral's Free mode stopped including API access
+   *  (402 on any key). gemini-3.1-flash-lite: non-reasoning output, passed a
+   *  JSON test on our key; free limit not published by Google (third-party
+   *  readings ~500 requests a day) — check AI Studio → Rate limit. The notes
+   *  further down about Mistral's free tier are history. */
   /** Gemini TTS — offline only: records the pre-recorded intros
    *  (scripts/record-intro.mts). Free tier is a handful of requests a day. */
   tts: 'gemini-2.5-flash-preview-tts',
@@ -59,7 +65,7 @@ export const MODELS = {
    *  `mistral-small-latest` until Mistral moved small/medium/magistral/devstral
    *  off the free tier (measured 2026-09-07: 0 req/min, 429 on every call since
    *  09-04). ministral-8b keeps 188 req/min free and passes json_schema output. */
-  structured: 'ministral-8b-latest',
+  structured: 'gemini-3.1-flash-lite',
 
   /** Groq — writes the "Why it's a match" text from facts
    *  (src/modules/engine/why/write-why.ts). NOT `text`: that model's free
@@ -81,29 +87,29 @@ export const MODELS = {
    *  daily budget or down, the next one in line writes / fact-checks, so one
    *  empty budget doesn't turn every user's sheet into plain text (it did,
    *  2026-11-06, after testing used up whyWriter's 200k tokens). gpt-oss-20b
-   *  is also the judge — its own budget; ministral-8b is on Mistral's free
-   *  tier, no daily wall. Every draft still passes the same checks. */
+   *  is also the judge — its own budget; the last in line is Gemini
+   *  Flash-Lite (was ministral-8b until 2026-11-26). Every draft still passes the same checks. */
   whyWriterBackup: 'openai/gpt-oss-20b',
-  whyWriterLast: 'ministral-8b-latest',
-  whyJudgeBackup: 'ministral-8b-latest',
+  whyWriterLast: 'gemini-3.1-flash-lite',
+  whyJudgeBackup: 'gemini-3.1-flash-lite',
 
-  /** Mistral — one-sentence plot summaries for feed cards whose catalogue
+  /** Gemini — one-sentence plot summaries for feed cards whose catalogue
    *  plot won't fit four lines (src/modules/engine/pipeline/card-plot.ts).
    *  Written once per TITLE, shared by every user and cached, so volume is
-   *  low; on Mistral's free tier (no daily wall) so it never touches the
+   *  low; on Gemini's free tier (was Mistral's until 2026-11-26) so it never touches the
    *  chat's or the "why" writer's Groq budgets. Non-reasoning, plain text. */
-  cardPlot: 'ministral-8b-latest',
+  cardPlot: 'gemini-3.1-flash-lite',
 
   /** BULK structured enrichment (narrative extraction + lineage graphs) via
    *  structured output. Same NON-reasoning requirement as `structured`, but kept a
    *  distinct key because it is HIGH-VOLUME + rate-sensitive and may diverge
    *  (e.g. move to a paid fast model) independently of the live-path sites.
-   *  Mistral free tier measured live at 50K TPM / 50 req-min, no daily wall (vs
-   *  Groq 12K TPM + daily token budget, Gemini free ~20 req/DAY — both hit during
-   *  2026-07-09 seeding). Driven serially by the enrichment loop. Same
-   *  2026-09-07 free-tier move as `structured`: ministral-8b (188 req/min free)
-   *  replaces mistral-small (0). */
-  enrichment: 'ministral-8b-latest',
+   *  Driven serially by the enrichment loop. History: Mistral's free tier ran
+   *  it until 2026-11-26 (ministral-8b; Gemini Flash's ~20 req/DAY was too low
+   *  in 2026-07-09 seeding). Now Gemini Flash-Lite, whose free quota is per
+   *  Google Cloud PROJECT and shared with the live app — see grow-catalog's
+   *  call budget. */
+  enrichment: 'gemini-3.1-flash-lite',
 
   /** Jev (typesafe.ai System One) — yes/no probabilities, not text. Engine
    *  step 4 (`src/lib/jev.ts`): one request asks, per candidate, whether the
@@ -113,9 +119,11 @@ export const MODELS = {
    *  is logged to Redis for the devs. `-latest` floats: pin once measured. */
   jev: 'jev-latest',
 
-  /** Mistral — narrative + fingerprint embeddings (1024-dim, matches the
-   *  vector(1024) columns in the Supabase migrations). */
-  embedding: 'mistral-embed',
+  /** Gemini — narrative + fingerprint embeddings, asked for 1024 dims
+   *  (EMBED_OPTIONS) to match the vector(1024) columns. NOT comparable with
+   *  the mistral-embed vectors already stored: formula v1's narrative match
+   *  needs titles and fingerprints re-embedded before it is turned back on. */
+  embedding: 'gemini-embedding-001',
 
   /** Gemini Live — native audio-to-audio voice mode. Preview model;
    *  successor is `gemini-3.1-flash-live-preview` when this is retired. */

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { APICallError } from 'ai'
-import { recordMistralCall, resetMistralCallCount } from '@/lib/mistral-batch'
+import { recordBatchCall, resetBatchCallCount } from '@/lib/llm-batch'
 
-// The nightly loop must survive a TRANSIENT Mistral 429 and still stop dead on
+// The nightly loop must survive a TRANSIENT LLM 429 and still stop dead on
 // a spent key, and honour a per-run call budget throughout.
 // 2026-09-04: it ran 15 of 15 failing attempts per call, two nights, into a key
 // the live app also needed — so a run of 429s through a cooldown must stop it.
@@ -44,7 +44,7 @@ vi.mock('@/lib/supabase/service', () => ({
 const rateLimit = (responseHeaders?: Record<string, string>) =>
   new APICallError({
     message: 'Rate limit exceeded',
-    url: 'https://api.mistral.ai/v1/chat/completions',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models',
     requestBodyValues: {},
     statusCode: 429,
     responseHeaders,
@@ -54,7 +54,7 @@ const title = (id: number) => ({ tmdb_id: String(id), title: `T${id}`, type: 'mo
 const crew = (id: number) => ({ tmdb_person_id: String(id), name: `P${id}`, primary_role: 'director' })
 
 beforeEach(() => {
-  resetMistralCallCount()
+  resetBatchCallCount()
   enrichTitle.mockReset()
   buildLineage.mockReset()
   tables.titles = [title(1), title(2), title(3)]
@@ -65,7 +65,7 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
-async function run(options?: { maxMistralCalls?: number; rateLimitCooldownMs?: number; maxCooldownMs?: number }) {
+async function run(options?: { maxBatchCalls?: number; rateLimitCooldownMs?: number; maxCooldownMs?: number }) {
   const { runNightlyEnrichment } = await import('@/modules/engine/enrichment/nightly-enrichment')
   return runNightlyEnrichment(options)
 }
@@ -74,13 +74,13 @@ describe('runNightlyEnrichment — rate limit', () => {
   it('cools down and retries the SAME title after a transient 429', async () => {
     let attempts = 0
     enrichTitle.mockImplementation(async () => {
-      recordMistralCall()
+      recordBatchCall()
       attempts++
       if (attempts === 1) throw rateLimit()
-      recordMistralCall()
+      recordBatchCall()
       return true
     })
-    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    buildLineage.mockImplementation(async () => { recordBatchCall(); return true })
     const report = await run({ rateLimitCooldownMs: 0 })
     // 3 titles + one retry of the first. The retry is the same title, not the next.
     expect(enrichTitle).toHaveBeenCalledTimes(4)
@@ -90,12 +90,12 @@ describe('runNightlyEnrichment — rate limit', () => {
     expect(report.rate_limited).toBe(false)
     expect(report.titles_processed).toBe(3)
     expect(report.titles_failed).toBe(0)
-    expect(report.mistral_calls).toBe(9) // 1 burnt + 2+2+2 titles + 2 lineage
+    expect(report.llm_calls).toBe(9) // 1 burnt + 2+2+2 titles + 2 lineage
   }, 15_000)
 
   it('stops after three consecutive 429s through a cooldown: no lineage', async () => {
     enrichTitle.mockImplementation(async () => {
-      recordMistralCall()
+      recordBatchCall()
       throw rateLimit()
     })
     const report = await run({ rateLimitCooldownMs: 0 })
@@ -104,19 +104,19 @@ describe('runNightlyEnrichment — rate limit', () => {
     expect(report.rate_limited).toBe(true)
     expect(report.titles_failed).toBe(1)
     expect(report.titles_processed).toBe(0)
-    expect(report.mistral_calls).toBe(3)
+    expect(report.llm_calls).toBe(3)
   })
 
   it('a success resets the run, so scattered 429s never read as the wall', async () => {
     let n = 0
     enrichTitle.mockImplementation(async () => {
-      recordMistralCall()
+      recordBatchCall()
       n++
       if (n % 2 === 1) throw rateLimit() // every title 429s once, then succeeds
-      recordMistralCall()
+      recordBatchCall()
       return true
     })
-    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    buildLineage.mockImplementation(async () => { recordBatchCall(); return true })
     const report = await run({ rateLimitCooldownMs: 0 })
     expect(enrichTitle).toHaveBeenCalledTimes(6)
     expect(report.rate_limited).toBe(false)
@@ -127,8 +127,8 @@ describe('runNightlyEnrichment — rate limit', () => {
     tables.titles = [title(1)]
     tables.crew_members = []
     enrichTitle
-      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit({ 'Retry-After': '1' }) })
-      .mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
+      .mockImplementationOnce(async () => { recordBatchCall(); throw rateLimit({ 'Retry-After': '1' }) })
+      .mockImplementation(async () => { recordBatchCall(); recordBatchCall(); return true })
     const started = Date.now()
     const report = await run() // no cooldown override: the default is 60s
     expect(Date.now() - started).toBeGreaterThanOrEqual(900)
@@ -140,15 +140,15 @@ describe('runNightlyEnrichment — rate limit', () => {
   it('keeps going on an ordinary failure', async () => {
     enrichTitle
       .mockImplementationOnce(async () => { throw new Error('Failed to update narrative for 1') })
-      .mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
-    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+      .mockImplementation(async () => { recordBatchCall(); recordBatchCall(); return true })
+    buildLineage.mockImplementation(async () => { recordBatchCall(); return true })
     const report = await run()
     expect(enrichTitle).toHaveBeenCalledTimes(3)
     expect(buildLineage).toHaveBeenCalledTimes(2)
     expect(report.rate_limited).toBe(false)
     expect(report.titles_failed).toBe(1)
     expect(report.titles_processed).toBe(2)
-    expect(report.mistral_calls).toBe(6)
+    expect(report.llm_calls).toBe(6)
   }, 15_000)
 })
 
@@ -157,9 +157,9 @@ describe('runNightlyEnrichment — what the 429 streak counts', () => {
   // and were untested, so they are pinned here rather than left to the name.
   it('an ordinary failure does not clear the streak', async () => {
     enrichTitle
-      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit() })
+      .mockImplementationOnce(async () => { recordBatchCall(); throw rateLimit() })
       .mockImplementationOnce(async () => { throw new Error('Failed to update narrative for 2') })
-      .mockImplementation(async () => { recordMistralCall(); throw rateLimit() })
+      .mockImplementation(async () => { recordBatchCall(); throw rateLimit() })
     const report = await run({ rateLimitCooldownMs: 0 })
     // 429 (title 1) -> cooldown -> 429 (title 1 again) is 2; the ordinary
     // failure on title 2 leaves it at 2; the next 429 is the third and the wall.
@@ -174,9 +174,9 @@ describe('runNightlyEnrichment — what the 429 streak counts', () => {
     enrichTitle
       // 429 (streak 1) -> cooldown -> ordinary failure, which ends the item
       // WITHOUT clearing the streak. Phase 1 leaves the crew phase at 1.
-      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit() })
+      .mockImplementationOnce(async () => { recordBatchCall(); throw rateLimit() })
       .mockImplementationOnce(async () => { throw new Error('Failed to update narrative for 1') })
-    buildLineage.mockImplementation(async () => { recordMistralCall(); throw rateLimit() })
+    buildLineage.mockImplementation(async () => { recordBatchCall(); throw rateLimit() })
     const report = await run({ rateLimitCooldownMs: 0 })
     expect(report.titles_failed).toBe(1)
     // Two more 429s reach the wall, not three: the streak came in at 1.
@@ -192,8 +192,8 @@ describe('runNightlyEnrichment — cooldown ceiling', () => {
     tables.titles = [title(1)]
     tables.crew_members = []
     enrichTitle
-      .mockImplementationOnce(async () => { recordMistralCall(); throw rateLimit({ 'retry-after': '600' }) })
-      .mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
+      .mockImplementationOnce(async () => { recordBatchCall(); throw rateLimit({ 'retry-after': '600' }) })
+      .mockImplementation(async () => { recordBatchCall(); recordBatchCall(); return true })
     const started = Date.now()
     const report = await run({ maxCooldownMs: 50 })
     expect(Date.now() - started).toBeLessThan(5_000) // not 600s
@@ -205,36 +205,36 @@ describe('runNightlyEnrichment — cooldown ceiling', () => {
 
 describe('runNightlyEnrichment — call budget', () => {
   it('stops before the title that would exceed the budget and skips lineage', async () => {
-    enrichTitle.mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
-    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
-    const report = await run({ maxMistralCalls: 3 })
+    enrichTitle.mockImplementation(async () => { recordBatchCall(); recordBatchCall(); return true })
+    buildLineage.mockImplementation(async () => { recordBatchCall(); return true })
+    const report = await run({ maxBatchCalls: 3 })
     // Title costs 2: one fits in 3, the second would need 4.
     expect(enrichTitle).toHaveBeenCalledTimes(1)
     expect(buildLineage).not.toHaveBeenCalled()
     expect(report.budget_exhausted).toBe(true)
     expect(report.rate_limited).toBe(false)
     expect(report.titles_processed).toBe(1)
-    expect(report.mistral_calls).toBe(2)
+    expect(report.llm_calls).toBe(2)
   })
 
   it('a 429 retry that would exceed the budget stops instead of overspending', async () => {
-    enrichTitle.mockImplementation(async () => { recordMistralCall(); throw rateLimit() })
+    enrichTitle.mockImplementation(async () => { recordBatchCall(); throw rateLimit() })
     // A 429 on extraction spends 1 call (the embedding never fires). Budget 2:
     // that leaves 1, under TITLE_COST — so the cooldown retry must not happen,
     // and a run cut short by the budget must not read as the rate-limit wall.
-    const report = await run({ maxMistralCalls: 2, rateLimitCooldownMs: 0 })
+    const report = await run({ maxBatchCalls: 2, rateLimitCooldownMs: 0 })
     expect(enrichTitle).toHaveBeenCalledTimes(1)
     expect(report.budget_exhausted).toBe(true)
     expect(report.rate_limited).toBe(false)
-    expect(report.mistral_calls).toBe(1)
+    expect(report.llm_calls).toBe(1)
   })
 
   it('a budget of zero makes no call at all', async () => {
-    enrichTitle.mockImplementation(async () => { recordMistralCall(); return true })
-    const report = await run({ maxMistralCalls: 0 })
+    enrichTitle.mockImplementation(async () => { recordBatchCall(); return true })
+    const report = await run({ maxBatchCalls: 0 })
     expect(enrichTitle).not.toHaveBeenCalled()
     expect(report.budget_exhausted).toBe(true)
-    expect(report.mistral_calls).toBe(0)
+    expect(report.llm_calls).toBe(0)
   })
 })
 
@@ -243,8 +243,8 @@ describe('runNightlyEnrichment — pending-queue select failure', () => {
   // as an empty backlog and the caller stopped with budget unspent.
   it('retries a transient select failure and then processes the queue', async () => {
     selectErrors.titles = ['TypeError: fetch failed']
-    enrichTitle.mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
-    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    enrichTitle.mockImplementation(async () => { recordBatchCall(); recordBatchCall(); return true })
+    buildLineage.mockImplementation(async () => { recordBatchCall(); return true })
     const report = await run()
     expect(enrichTitle).toHaveBeenCalledTimes(3)
     expect(buildLineage).toHaveBeenCalledTimes(2)
@@ -254,7 +254,7 @@ describe('runNightlyEnrichment — pending-queue select failure', () => {
 
   it('throws instead of reporting an empty backlog when the select keeps failing', async () => {
     selectErrors.titles = ['TypeError: fetch failed', 'TypeError: fetch failed', 'TypeError: fetch failed']
-    enrichTitle.mockImplementation(async () => { recordMistralCall(); return true })
+    enrichTitle.mockImplementation(async () => { recordBatchCall(); return true })
     await expect(run()).rejects.toThrow('titles queue select failed 3 times')
     expect(enrichTitle).not.toHaveBeenCalled()
     expect(buildLineage).not.toHaveBeenCalled()
@@ -263,13 +263,13 @@ describe('runNightlyEnrichment — pending-queue select failure', () => {
   it('keeps the title counts when only the crew select keeps failing', async () => {
     // Phase 1 spent real calls and wrote rows; the caller needs those numbers.
     selectErrors.crew_members = ['TypeError: fetch failed', 'TypeError: fetch failed', 'TypeError: fetch failed']
-    enrichTitle.mockImplementation(async () => { recordMistralCall(); recordMistralCall(); return true })
-    buildLineage.mockImplementation(async () => { recordMistralCall(); return true })
+    enrichTitle.mockImplementation(async () => { recordBatchCall(); recordBatchCall(); return true })
+    buildLineage.mockImplementation(async () => { recordBatchCall(); return true })
     const report = await run()
     expect(enrichTitle).toHaveBeenCalledTimes(3)
     expect(buildLineage).not.toHaveBeenCalled()
     expect(report.titles_processed).toBe(3)
-    expect(report.mistral_calls).toBe(6)
+    expect(report.llm_calls).toBe(6)
     expect(report.crew_queue_failed).toBe(true)
   }, 15_000)
 })

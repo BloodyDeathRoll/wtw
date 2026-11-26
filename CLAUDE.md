@@ -41,7 +41,7 @@ Each was decided or learned the hard way. **Do not re-litigate from first princi
 - **Always increment `metadata.taste_version` + `last_updated` after any DNA write.** (`docs/DNA-CONTRACT.md`)
 - **`learning_loop.open_questions` is append-only during a session** — only the DNA Writer resolves them. (`docs/DNA-CONTRACT.md`)
 - **Model IDs live only in `src/lib/ai-models.ts`** — never hardcode one in a module.
-- **Groq gpt-oss/qwen are reasoning models and break `generateObject`** (empty `content`). Mistral chat on the embeddings key is the enrichment workhorse; Gemini free is ~20 req/**day**. (`docs/INTEGRATION.md` §0)
+- **Groq gpt-oss/qwen are reasoning models and break `generateObject`** (empty `content`). Non-reasoning structured output and embeddings run on Gemini (`gemini-3.1-flash-lite`, `gemini-embedding-001`) since 2026-11-26: Mistral's Free mode dropped API access (402 on any key). Gemini Flash (not Flash-Lite) free is ~20 req/**day**. (`docs/INTEGRATION.md` §0)
 - **Never commit `.env.local`.**
 
 ## Do not touch
@@ -78,7 +78,7 @@ These decisions are made. Do not refactor, rename, or redesign without team agre
 | AI Orchestration | Vercel AI SDK |
 | LLM — speed (text) | Groq / `openai/gpt-oss-120b` (free tier) |
 | LLM — voice (audio↔audio) | Gemini Live 2.5 Flash (native audio-to-audio) |
-| LLM — embeddings | Mistral embed (free tier) |
+| LLM — structured + embeddings | Gemini 3.1 Flash-Lite + gemini-embedding-001 (free tier) |
 | Content metadata | TMDB API (free) |
 | Ratings supplement | OMDB API (free tier) |
 
@@ -87,9 +87,9 @@ These decisions are made. Do not refactor, rename, or redesign without team agre
 ```
 NEXT_PUBLIC_SUPABASE_URL=          GROQ_API_KEY=            TMDB_API_KEY=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=     GEMINI_API_KEY=          OMDB_API_KEY=
-SUPABASE_SERVICE_ROLE_KEY=         MISTRAL_API_KEY=         CRON_SECRET=
+SUPABASE_SERVICE_ROLE_KEY=         CRON_SECRET=
 UPSTASH_REDIS_REST_URL=            UPSTASH_REDIS_REST_TOKEN=
-MISTRAL_BATCH_API_KEY=   # optional — nightly enrichment only; falls back to MISTRAL_API_KEY
+GEMINI_BATCH_API_KEY=    # optional — enrichment scripts only; falls back to GEMINI_API_KEY
 TYPESAFE_API_KEY=        # Jev — engine step 4 filter; when it fails the batch is served in score order and the devs are told
 JEV_ENABLED=false        # skips step 4 (Jev) entirely; set in Vercel since P1-E7. Unset = on
 NAV_HISTORY=             # v3 N1: Back retraces your steps (needs NAV_TABS; client-side, redeploy to change). Unset = off; on at P1-G

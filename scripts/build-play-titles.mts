@@ -4,7 +4,7 @@
  *
  * READ-ONLY against Supabase: it reads `titles`, never writes. The only
  * spend is TMDB (one detail call per series, for seasons/episodes/creators)
- * and Mistral (one call per 10 titles, for the scales that need judgement).
+ * and Gemini (one call per 10 titles, for the scales that need judgement).
  *
  *   npm run build-play-titles -- --select-only    # pick the set, print the genre balance, no AI
  *   npm run build-play-titles -- --batches 2      # score only 2 batches (a trial), then assemble what exists
@@ -26,24 +26,24 @@
  * title id, so a re-run (or a run after a 429) only scores what is missing.
  * Delete an entry there to re-score it.
  *
- * Pacing: the Mistral key falls back to the one the live app uses
- * (src/lib/mistral-batch.ts), so calls are spaced SPACING_MS apart (default
- * 8s ≈ 7/min against a 188/min free tier) and capped at MAX_CALLS. A 429
+ * Pacing: the batch key falls back to the one the live app uses
+ * (src/lib/llm-batch.ts), so calls are spaced SPACING_MS apart (default
+ * 8s ≈ 7/min; Gemini's free quota is per project and shared) and capped at MAX_CALLS. A 429
  * cools down for retry-after (else 60s); three in a row stops the run.
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { generateText, Output } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { z } from 'zod'
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { MODELS } from '@/lib/ai-models'
 import {
-  batchMistralApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, mistralRetryAfterMs,
-  recordMistralCall, mistralCallCount,
-} from '@/lib/mistral-batch'
+  batchApiKey, BATCH_MAX_RETRIES, isBatchRateLimit, batchRetryAfterMs,
+  recordBatchCall, batchCallCount,
+} from '@/lib/llm-batch'
 import { GAME_GENRE_IDS, candidateGenres, neverGenres, type GameGenre } from '@/app/play/lib/genres'
 import { selectBalanced } from '@/app/play/lib/select'
 import { pickWatchProvider } from '@/lib/watch-providers'
@@ -200,14 +200,14 @@ async function seriesFacts(tmdb_id: string): Promise<SeriesFacts> {
 type AIScore = Record<Exclude<AIScale, 'humor'>, number> & { humor: number | null; confirmed: GameGenre[] }
 
 async function scoreBatch(batch: Candidate[]): Promise<Map<string, AIScore>> {
-  const mistral = createMistral({ apiKey: batchMistralApiKey() })
+  const google = createGoogleGenerativeAI({ apiKey: batchApiKey() })
   const prompt = batchPrompt(SCALE_GUIDE, batch)
 
-  recordMistralCall()
+  recordBatchCall()
   let output: z.infer<typeof batchSchema>
   try {
     ({ output } = await generateText({
-      model: mistral(MODELS.enrichment),
+      model: google(MODELS.enrichment),
       output: Output.object({ schema: batchSchema }),
       prompt,
       maxRetries: BATCH_MAX_RETRIES,
@@ -246,7 +246,7 @@ async function scoreAll(set: Candidate[]): Promise<Record<string, AIScore>> {
 
   let streak = 0
   for (let b = 0; b < batches.length && b < BATCH_LIMIT; ) {
-    if (mistralCallCount() >= MAX_CALLS) { console.warn(`[play-titles] call cap ${MAX_CALLS} reached`); break }
+    if (batchCallCount() >= MAX_CALLS) { console.warn(`[play-titles] call cap ${MAX_CALLS} reached`); break }
     try {
       const got = await scoreBatch(batches[b])
       for (const [id, s] of got) cache[id] = s
@@ -256,9 +256,9 @@ async function scoreAll(set: Candidate[]): Promise<Record<string, AIScore>> {
       streak = 0
       b++
     } catch (err) {
-      if (isMistralRateLimit(err)) {
+      if (isBatchRateLimit(err)) {
         if (++streak >= 3) { console.warn('[play-titles] three 429s in a row — stopping; re-run later to resume'); break }
-        const wait = Math.min(mistralRetryAfterMs(err) ?? 60_000, 120_000)
+        const wait = Math.min(batchRetryAfterMs(err) ?? 60_000, 120_000)
         console.warn(`[play-titles] 429 — cooling down ${Math.round(wait / 1000)}s`)
         await sleep(wait)
         continue
@@ -441,7 +441,7 @@ async function main() {
   const titles = assemble(set, scores, facts, fixes)
   await writeFile(TITLES_FILE, JSON.stringify(titles) + '\n')
 
-  console.log(`[play-titles] wrote ${titles.length} titles (${mistralCallCount()} Mistral calls this run)`)
+  console.log(`[play-titles] wrote ${titles.length} titles (${batchCallCount()} LLM calls this run)`)
   genreReport('movies', titles.filter(t => t.type === 'movie'))
   genreReport('series', titles.filter(t => t.type === 'tv'))
 }

@@ -7,13 +7,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const generateText = vi.fn()
 const store = new Map<string, string>()
 vi.mock('ai', () => ({ generateText: (...a: unknown[]) => generateText(...a) }))
-vi.mock('@ai-sdk/mistral', () => ({ createMistral: () => (model: string) => ({ model }) }))
+vi.mock('@ai-sdk/google', () => ({ createGoogleGenerativeAI: () => (model: string) => ({ model }) }))
 vi.mock('@ai-sdk/groq', () => ({ createGroq: () => (model: string) => ({ model }) }))
 vi.mock('@/lib/redis', () => ({ getRedis: () => ({
   mget: async (...keys: string[]) => keys.map(k => store.get(k) ?? null),
   set: async (k: string, v: string) => { store.set(k, v); return 'OK' },
 }) }))
-process.env.MISTRAL_API_KEY = 'test'
+process.env.GEMINI_API_KEY = 'test'
 process.env.GROQ_API_KEY = 'test'
 const { cardPlots, plotLineOk } = await import('@/modules/engine/pipeline/card-plot')
 const { MODELS } = await import('@/lib/ai-models')

@@ -36,8 +36,8 @@ const textModel = () => new MockLanguageModelV4({
 const embedModel = new MockEmbeddingModelV4({
   doEmbed: async () => ({ embeddings: [Array(1024).fill(0.1)], warnings: [] }),
 })
-vi.mock('@ai-sdk/mistral', () => ({
-  createMistral: () => Object.assign(() => textModel(), { embeddingModel: () => embedModel }),
+vi.mock('@ai-sdk/google', () => ({
+  createGoogleGenerativeAI: () => Object.assign(() => textModel(), { embeddingModel: () => embedModel }),
 }))
 
 const updates: Record<string, unknown>[] = []
@@ -58,7 +58,7 @@ vi.mock('@/lib/supabase/service', () => ({
   }),
 }))
 
-vi.stubEnv('MISTRAL_API_KEY', 'test-key') // read by batchMistralApiKey(); the model is mocked
+vi.stubEnv('GEMINI_API_KEY', 'test-key') // read by batchApiKey(); the model is mocked
 const { enrichTitleWithNarrative } = await import('@/modules/engine/enrichment/enrich-title-narrative')
 
 describe('structured output on generateText + Output.object', () => {
@@ -68,6 +68,12 @@ describe('structured output on generateText + Output.object', () => {
     replyText = narrative(['warm'])
     await expect(enrichTitleWithNarrative('1', 'movie')).resolves.toBe(true)
     expect(updates[0]).toMatchObject({ pacing_tag: 'slow_burn', tone_tags: ['warm'] })
+  })
+
+  it('asks Gemini for 1024-dim embeddings, the size of the vector(1024) columns', async () => {
+    replyText = narrative(['warm'])
+    await enrichTitleWithNarrative('1', 'movie')
+    expect(embedModel.doEmbedCalls.at(-1)?.providerOptions).toEqual({ google: { outputDimensionality: 1024 } })
   })
 
   it('repairs an off-vocabulary tone from the error text instead of failing the title', async () => {

@@ -93,8 +93,9 @@ export default function PrivacyPolicy() {
             generate recommendation reasoning (groq.com).
           </li>
           <li>
-            <strong>Mistral AI</strong> — AI model used to generate taste
-            embeddings (mistral.ai).
+            <strong>Google Gemini API</strong> — AI models used to write
+            short plot summaries and to generate taste embeddings
+            (policies.google.com/privacy).
           </li>
           <li>
             <strong>TMDB</strong> — film and TV metadata (themoviedb.org).
@@ -104,10 +105,12 @@ export default function PrivacyPolicy() {
           </li>
         </ul>
         <p className="mt-3">
-          Content sent to Groq and Mistral is limited to what is necessary to
+          Content sent to Groq and Google is limited to what is necessary to
           generate recommendations (taste profile data and session context). We
           do not send personally identifiable information such as your email
-          address to these providers.
+          address to these providers. We use Google&apos;s free Gemini API tier,
+          under which Google may use that content to improve its products and
+          human reviewers may read it.
         </p>
       </section>
 
