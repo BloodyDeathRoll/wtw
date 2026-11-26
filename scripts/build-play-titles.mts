@@ -27,7 +27,7 @@
  * Delete an entry there to re-score it.
  *
  * Pacing: the Mistral key falls back to the one the live app uses
- * (src/lib/mistral-batch.ts), so calls are spaced SPACING_MS apart (default
+ * (src/lib/llm-batch.ts), so calls are spaced SPACING_MS apart (default
  * 8s ≈ 7/min against a 188/min free tier) and capped at MAX_CALLS. A 429
  * cools down for retry-after (else 60s); three in a row stops the run.
  */
@@ -41,9 +41,9 @@ import type { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 import { MODELS } from '@/lib/ai-models'
 import {
-  batchApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, mistralRetryAfterMs,
-  recordMistralCall, mistralCallCount,
-} from '@/lib/mistral-batch'
+  batchApiKey, BATCH_MAX_RETRIES, isBatchRateLimit, batchRetryAfterMs,
+  recordBatchCall, batchCallCount,
+} from '@/lib/llm-batch'
 import { GAME_GENRE_IDS, candidateGenres, neverGenres, type GameGenre } from '@/app/play/lib/genres'
 import { selectBalanced } from '@/app/play/lib/select'
 import { pickWatchProvider } from '@/lib/watch-providers'
@@ -203,7 +203,7 @@ async function scoreBatch(batch: Candidate[]): Promise<Map<string, AIScore>> {
   const google = createGoogleGenerativeAI({ apiKey: batchApiKey() })
   const prompt = batchPrompt(SCALE_GUIDE, batch)
 
-  recordMistralCall()
+  recordBatchCall()
   let output: z.infer<typeof batchSchema>
   try {
     ({ output } = await generateText({
@@ -246,7 +246,7 @@ async function scoreAll(set: Candidate[]): Promise<Record<string, AIScore>> {
 
   let streak = 0
   for (let b = 0; b < batches.length && b < BATCH_LIMIT; ) {
-    if (mistralCallCount() >= MAX_CALLS) { console.warn(`[play-titles] call cap ${MAX_CALLS} reached`); break }
+    if (batchCallCount() >= MAX_CALLS) { console.warn(`[play-titles] call cap ${MAX_CALLS} reached`); break }
     try {
       const got = await scoreBatch(batches[b])
       for (const [id, s] of got) cache[id] = s
@@ -256,9 +256,9 @@ async function scoreAll(set: Candidate[]): Promise<Record<string, AIScore>> {
       streak = 0
       b++
     } catch (err) {
-      if (isMistralRateLimit(err)) {
+      if (isBatchRateLimit(err)) {
         if (++streak >= 3) { console.warn('[play-titles] three 429s in a row — stopping; re-run later to resume'); break }
-        const wait = Math.min(mistralRetryAfterMs(err) ?? 60_000, 120_000)
+        const wait = Math.min(batchRetryAfterMs(err) ?? 60_000, 120_000)
         console.warn(`[play-titles] 429 — cooling down ${Math.round(wait / 1000)}s`)
         await sleep(wait)
         continue
@@ -441,7 +441,7 @@ async function main() {
   const titles = assemble(set, scores, facts, fixes)
   await writeFile(TITLES_FILE, JSON.stringify(titles) + '\n')
 
-  console.log(`[play-titles] wrote ${titles.length} titles (${mistralCallCount()} Mistral calls this run)`)
+  console.log(`[play-titles] wrote ${titles.length} titles (${batchCallCount()} Mistral calls this run)`)
   genreReport('movies', titles.filter(t => t.type === 'movie'))
   genreReport('series', titles.filter(t => t.type === 'tv'))
 }

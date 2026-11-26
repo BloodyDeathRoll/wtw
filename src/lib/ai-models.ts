@@ -6,7 +6,7 @@
 // in this file that propagates to every call site.
 //
 // Provider clients are still constructed per-module (createGroq /
-// createMistral / Gemini); only the *model identifier* is centralized.
+// createGoogleGenerativeAI); only the *model identifier* is centralized.
 
 /**
  * Required on every `MODELS.text` call. `reasoningFormat: 'hidden'` keeps the
@@ -87,16 +87,16 @@ export const MODELS = {
    *  daily budget or down, the next one in line writes / fact-checks, so one
    *  empty budget doesn't turn every user's sheet into plain text (it did,
    *  2026-11-06, after testing used up whyWriter's 200k tokens). gpt-oss-20b
-   *  is also the judge — its own budget; ministral-8b is on Mistral's free
-   *  tier, no daily wall. Every draft still passes the same checks. */
+   *  is also the judge — its own budget; the last in line is Gemini
+   *  Flash-Lite (was ministral-8b until 2026-11-26). Every draft still passes the same checks. */
   whyWriterBackup: 'openai/gpt-oss-20b',
   whyWriterLast: 'gemini-3.1-flash-lite',
   whyJudgeBackup: 'gemini-3.1-flash-lite',
 
-  /** Mistral — one-sentence plot summaries for feed cards whose catalogue
+  /** Gemini — one-sentence plot summaries for feed cards whose catalogue
    *  plot won't fit four lines (src/modules/engine/pipeline/card-plot.ts).
    *  Written once per TITLE, shared by every user and cached, so volume is
-   *  low; on Mistral's free tier (no daily wall) so it never touches the
+   *  low; on Gemini's free tier (was Mistral's until 2026-11-26) so it never touches the
    *  chat's or the "why" writer's Groq budgets. Non-reasoning, plain text. */
   cardPlot: 'gemini-3.1-flash-lite',
 
@@ -104,11 +104,11 @@ export const MODELS = {
    *  structured output. Same NON-reasoning requirement as `structured`, but kept a
    *  distinct key because it is HIGH-VOLUME + rate-sensitive and may diverge
    *  (e.g. move to a paid fast model) independently of the live-path sites.
-   *  Mistral free tier measured live at 50K TPM / 50 req-min, no daily wall (vs
-   *  Groq 12K TPM + daily token budget, Gemini free ~20 req/DAY — both hit during
-   *  2026-07-09 seeding). Driven serially by the enrichment loop. Same
-   *  2026-09-07 free-tier move as `structured`: ministral-8b (188 req/min free)
-   *  replaces mistral-small (0). */
+   *  Driven serially by the enrichment loop. History: Mistral's free tier ran
+   *  it until 2026-11-26 (ministral-8b; Gemini Flash's ~20 req/DAY was too low
+   *  in 2026-07-09 seeding). Now Gemini Flash-Lite, whose free quota is per
+   *  Google Cloud PROJECT and shared with the live app — see grow-catalog's
+   *  call budget. */
   enrichment: 'gemini-3.1-flash-lite',
 
   /** Jev (typesafe.ai System One) — yes/no probabilities, not text. Engine

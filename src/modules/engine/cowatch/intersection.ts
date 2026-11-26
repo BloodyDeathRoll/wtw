@@ -24,7 +24,6 @@ import {
 } from '../pipeline/step8-cache'
 import type { DNASchema, CowatchResult } from '@/types/dna'
 
-
 async function loadDNA(userId: string): Promise<DNASchema | null> {
   const supabase = createServiceClient()
   const { data } = await supabase

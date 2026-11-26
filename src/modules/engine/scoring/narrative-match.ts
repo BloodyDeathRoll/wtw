@@ -30,7 +30,6 @@ import type { StrandB, StrandC } from '@/types/dna'
 // embeddings naturally fall off as new versions are created.
 const EMBED_TTL_SECONDS = 86_400
 
-
 // ─────────────────────────────────────────────
 // Embedding text template
 // ─────────────────────────────────────────────

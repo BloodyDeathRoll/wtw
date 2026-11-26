@@ -21,14 +21,14 @@
 import { generateText, Output } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { MODELS } from '@/lib/ai-models'
-import { batchApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
+import { batchApiKey, BATCH_MAX_RETRIES, recordBatchCall } from '@/lib/llm-batch'
 import { z } from 'zod'
 import { getPerson } from '@/lib/tmdb'
 import { createServiceClient } from '@/lib/supabase/service'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 
-// Batch path: its own key, no retries, every call counted (src/lib/mistral-batch.ts).
+// Batch path: its own key, no retries, every call counted (src/lib/llm-batch.ts).
 function batchGemini() {
   return createGoogleGenerativeAI({ apiKey: batchApiKey() })
 }
@@ -120,7 +120,7 @@ Only include connections where the influence is well-documented or widely recogn
 If you are uncertain about a connection, omit it rather than speculate.
 Focus on directors, writers, and cinematographers — not studios or movements.`
 
-  recordMistralCall()
+  recordBatchCall()
   const { output: lineage } = await generateText({
     model: batchGemini()(MODELS.enrichment),
     output: Output.object({ schema: lineageSchema }),

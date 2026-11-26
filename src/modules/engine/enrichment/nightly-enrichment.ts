@@ -24,7 +24,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { enrichTitleWithNarrative } from './enrich-title-narrative'
 import { buildLineageGraph } from './build-lineage-graph'
-import { isMistralRateLimit, mistralCallCount, mistralRetryAfterMs } from '@/lib/mistral-batch'
+import { isBatchRateLimit, batchCallCount, batchRetryAfterMs } from '@/lib/llm-batch'
 import { SCALE_BATCH, SCALE_COLS, finaliseScaleRow, scoreScaleBatch, type ScaleRow } from '@/lib/taste-scales/catalogue'
 
 const TITLE_BATCH_SIZE = 1    // STRICTLY serial — one enrichment call at a time
@@ -87,7 +87,7 @@ export interface EnrichmentOptions {
    * this run. A title costs 2 (extraction + embedding), a crew row 1. The
    * caller (grow-catalog) turns its nightly budget into this per-call cap.
    */
-  maxMistralCalls?: number
+  maxBatchCalls?: number
   /**
    * Base wait after a 429 before the item is retried, overridden by the
    * response's `retry-after` when it carries one. Exists so tests can drive
@@ -164,9 +164,9 @@ export async function runNightlyEnrichment(
   options: EnrichmentOptions = {},
 ): Promise<EnrichmentReport> {
   const start = Date.now()
-  const callsAtStart = mistralCallCount()
-  const maxCalls = options.maxMistralCalls ?? Infinity
-  const callsLeft = () => maxCalls - (mistralCallCount() - callsAtStart)
+  const callsAtStart = batchCallCount()
+  const maxCalls = options.maxBatchCalls ?? Infinity
+  const callsLeft = () => maxCalls - (batchCallCount() - callsAtStart)
   const supabase = createServiceClient()
 
   let titles_processed = 0
@@ -207,7 +207,7 @@ export async function runNightlyEnrichment(
         rateLimitsSinceSuccess = 0
         return 'ok'
       } catch (err) {
-        if (!isMistralRateLimit(err)) {
+        if (!isBatchRateLimit(err)) {
           // An ordinary failure is not evidence about the rate limit either
           // way: it neither proves the wall nor clears a run of 429s.
           onFailure(err)
@@ -222,7 +222,7 @@ export async function runNightlyEnrichment(
           )
           return 'wall'
         }
-        const asked = mistralRetryAfterMs(err)
+        const asked = batchRetryAfterMs(err)
         const wait = Math.min(asked ?? cooldownBase, cooldownCap)
         console.warn(
           `[${label}] Mistral rate limit (429) on ${what} — cooling down ${Math.round(wait / 1000)}s (${rateLimitsSinceSuccess}/${RATE_LIMIT_MAX_COOLDOWNS}), then retrying`,
@@ -400,7 +400,7 @@ export async function runNightlyEnrichment(
     crew_processed,
     crew_failed,
     duration_ms: Date.now() - start,
-    mistral_calls: mistralCallCount() - callsAtStart,
+    mistral_calls: batchCallCount() - callsAtStart,
     rate_limited,
     budget_exhausted,
     crew_queue_failed,

@@ -26,7 +26,7 @@ import { resolve } from 'node:path'
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { CATALOGUE_SCALE_GUIDE, batchPrompt } from '@/lib/taste-scales/prompt'
-import { isMistralRateLimit, mistralRetryAfterMs, mistralCallCount } from '@/lib/mistral-batch'
+import { isBatchRateLimit, batchRetryAfterMs, batchCallCount } from '@/lib/llm-batch'
 import {
   SCALE_BATCH, SCALE_COLS, finaliseScaleRow, scoreScaleBatch, toPrompt,
   type ScaleCallInfo, type ScaleRow, type TasteRaw,
@@ -103,7 +103,7 @@ async function score() {
   let scored = 0, streak = 0
   const started = Date.now()
   for (let b = 0; b < batches.length; ) {
-    if (mistralCallCount() >= BUDGET) { console.log(`[scales] call budget ${BUDGET} reached`); break }
+    if (batchCallCount() >= BUDGET) { console.log(`[scales] call budget ${BUDGET} reached`); break }
     try {
       const n = await scoreBatch(batches[b])
       scored += n
@@ -112,9 +112,9 @@ async function score() {
       if ((b + 1) % 10 === 0) console.log(`[scales] ${b + 1}/${batches.length} calls · ${scored} scored · ${Math.round((Date.now() - started) / 60000)} min`)
       b++
     } catch (err) {
-      if (isMistralRateLimit(err)) {
+      if (isBatchRateLimit(err)) {
         if (++streak >= 3) { console.warn('[scales] three 429s in a row — stopping; re-run later to resume'); break }
-        const wait = Math.min(mistralRetryAfterMs(err) ?? 60_000, 120_000)
+        const wait = Math.min(batchRetryAfterMs(err) ?? 60_000, 120_000)
         console.warn(`[scales] 429 — cooling down ${Math.round(wait / 1000)}s, then the same batch`)
         await sleep(wait)
         continue
@@ -124,7 +124,7 @@ async function score() {
     }
     await sleep(SPACING_MS)
   }
-  console.log(`[scales] done: ${scored} titles scored with ${mistralCallCount()} calls in ${Math.round((Date.now() - started) / 60000)} min`)
+  console.log(`[scales] done: ${scored} titles scored with ${batchCallCount()} calls in ${Math.round((Date.now() - started) / 60000)} min`)
 }
 
 // ── Game titles' audience → ai-scores.json ──────────────────────

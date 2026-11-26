@@ -1,5 +1,5 @@
 /**
- * Mistral for the BATCH path (nightly enrichment + lineage graphs).
+ * LLM calls for the BATCH path (nightly enrichment + lineage graphs).
  *
  * 2026-09-04: the nightly catalog job burned ~2,000 Mistral calls a night on
  * the same key the app uses live. The workspace hit 429 with a per-minute
@@ -9,7 +9,7 @@
  * silently on the same wall. Three things live here so the batch path can be
  * governed separately from the live one:
  *
- *   - its own key (`MISTRAL_BATCH_API_KEY`, falling back to `MISTRAL_API_KEY`)
+ *   - its own key (`GEMINI_BATCH_API_KEY`, falling back to `GEMINI_API_KEY`)
  *   - a 429 detector plus a `retry-after` reader, so the loop can cool down
  *     on a transient limit and tell that apart from a spent workspace,
  *     instead of retrying its way through the rest of the budget
@@ -20,7 +20,7 @@
  *
  * 2026-11-26: the batch path is on Gemini now (src/lib/gemini.ts — Mistral's
  * Free mode dropped API access). The 429 / retry-after / counter helpers are
- * provider-neutral and keep their Mistral names; the key is GEMINI_BATCH_API_KEY,
+ * provider-neutral (renamed from mistral-batch.ts); the key is GEMINI_BATCH_API_KEY,
  * falling back to GEMINI_API_KEY.
  */
 import 'server-only'
@@ -41,12 +41,12 @@ export function batchApiKey(): string {
  * however the SDK wrapped it: a bare APICallError, a RetryError whose last
  * attempt was one, or a plain Error carrying the provider's message.
  */
-export function isMistralRateLimit(err: unknown): boolean {
+export function isBatchRateLimit(err: unknown): boolean {
   if (APICallError.isInstance(err)) {
     return err.statusCode === 429 || /rate limit/i.test(err.message)
   }
   if (RetryError.isInstance(err)) {
-    return err.errors.some(isMistralRateLimit) || isMistralRateLimit(err.lastError)
+    return err.errors.some(isBatchRateLimit) || isBatchRateLimit(err.lastError)
   }
   if (err instanceof Error) return /rate limit exceeded|\b429\b/i.test(err.message)
   return false
@@ -55,9 +55,9 @@ export function isMistralRateLimit(err: unknown): boolean {
 /**
  * Milliseconds Mistral asked the caller to wait, read from a 429's
  * `retry-after` header (a count of seconds, or an HTTP date), or null when it
- * did not say. Unwraps the same shapes `isMistralRateLimit` does.
+ * did not say. Unwraps the same shapes `isBatchRateLimit` does.
  */
-export function mistralRetryAfterMs(err: unknown): number | null {
+export function batchRetryAfterMs(err: unknown): number | null {
   if (APICallError.isInstance(err)) {
     const headers = err.responseHeaders ?? {}
     // Header names are case-insensitive and the SDK does not normalise them.
@@ -76,10 +76,10 @@ export function mistralRetryAfterMs(err: unknown): number | null {
   }
   if (RetryError.isInstance(err)) {
     for (const e of err.errors) {
-      const ms = mistralRetryAfterMs(e)
+      const ms = batchRetryAfterMs(e)
       if (ms !== null) return ms
     }
-    return mistralRetryAfterMs(err.lastError)
+    return batchRetryAfterMs(err.lastError)
   }
   return null
 }
@@ -88,12 +88,12 @@ let calls = 0
 
 /** Count one Mistral request on the batch path. Call it BEFORE the request —
  *  a request that fails still spent the quota. */
-export function recordMistralCall(): void {
+export function recordBatchCall(): void {
   calls++
 }
-export function mistralCallCount(): number {
+export function batchCallCount(): number {
   return calls
 }
-export function resetMistralCallCount(): void {
+export function resetBatchCallCount(): void {
   calls = 0
 }

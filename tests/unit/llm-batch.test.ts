@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { APICallError, RetryError } from 'ai'
 import {
   batchApiKey,
-  isMistralRateLimit,
-  recordMistralCall,
-  mistralCallCount,
-  resetMistralCallCount,
+  isBatchRateLimit,
+  recordBatchCall,
+  batchCallCount,
+  resetBatchCallCount,
   BATCH_MAX_RETRIES,
-} from '@/lib/mistral-batch'
+} from '@/lib/llm-batch'
 
 // 2026-09-04: the nightly job spent the shared Mistral workspace to a
 // 0 req/min wall and kept retrying into it for two nights. These guard the
@@ -21,9 +21,9 @@ const rateLimit = () =>
     statusCode: 429,
   })
 
-describe('isMistralRateLimit', () => {
+describe('isBatchRateLimit', () => {
   it('recognises a bare 429 APICallError', () => {
-    expect(isMistralRateLimit(rateLimit())).toBe(true)
+    expect(isBatchRateLimit(rateLimit())).toBe(true)
   })
 
   it('recognises a 429 wrapped by the SDK retry loop', () => {
@@ -32,11 +32,11 @@ describe('isMistralRateLimit', () => {
       reason: 'maxRetriesExceeded',
       errors: [rateLimit(), rateLimit(), rateLimit()],
     })
-    expect(isMistralRateLimit(wrapped)).toBe(true)
+    expect(isBatchRateLimit(wrapped)).toBe(true)
   })
 
   it("recognises the provider's message on a plain Error", () => {
-    expect(isMistralRateLimit(new Error('Rate limit exceeded'))).toBe(true)
+    expect(isBatchRateLimit(new Error('Rate limit exceeded'))).toBe(true)
   })
 
   it('does not fire on other API failures', () => {
@@ -46,10 +46,10 @@ describe('isMistralRateLimit', () => {
       requestBodyValues: {},
       statusCode: 500,
     })
-    expect(isMistralRateLimit(serverError)).toBe(false)
-    expect(isMistralRateLimit(new Error('Failed to update narrative for 1'))).toBe(false)
-    expect(isMistralRateLimit('nope')).toBe(false)
-    expect(isMistralRateLimit(undefined)).toBe(false)
+    expect(isBatchRateLimit(serverError)).toBe(false)
+    expect(isBatchRateLimit(new Error('Failed to update narrative for 1'))).toBe(false)
+    expect(isBatchRateLimit('nope')).toBe(false)
+    expect(isBatchRateLimit(undefined)).toBe(false)
   })
 })
 
@@ -82,13 +82,13 @@ describe('batchApiKey', () => {
 })
 
 describe('call counter', () => {
-  beforeEach(() => resetMistralCallCount())
+  beforeEach(() => resetBatchCallCount())
 
   it('counts every recorded call', () => {
-    expect(mistralCallCount()).toBe(0)
-    recordMistralCall()
-    recordMistralCall()
-    expect(mistralCallCount()).toBe(2)
+    expect(batchCallCount()).toBe(0)
+    recordBatchCall()
+    recordBatchCall()
+    expect(batchCallCount()).toBe(2)
   })
 
   it('batch calls never retry', () => {

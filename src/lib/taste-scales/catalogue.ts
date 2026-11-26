@@ -13,7 +13,7 @@ import type { z } from 'zod'
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { MODELS } from '@/lib/ai-models'
-import { batchApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, recordMistralCall } from '@/lib/mistral-batch'
+import { batchApiKey, BATCH_MAX_RETRIES, isBatchRateLimit, recordBatchCall } from '@/lib/llm-batch'
 import { CATALOGUE_SCALE_GUIDE, batchPrompt, catalogueBatchSchema, repairBatch, type PromptTitle } from './prompt'
 import { normaliseScales, type CatalogueAIScale } from './normalise'
 import { catalogueGameGenres, tasteFeatures, TASTE_FEATURE_VERSION } from './features'
@@ -61,7 +61,7 @@ export interface ScaleCallInfo {
 export async function scoreScaleBatch(rows: ScaleRow[], onCall?: (info: ScaleCallInfo) => void): Promise<number> {
   const batch = rows.map(toPrompt)
   const google = createGoogleGenerativeAI({ apiKey: batchApiKey() })
-  recordMistralCall()
+  recordBatchCall()
   const t0 = Date.now()
   let output: z.infer<typeof catalogueBatchSchema>
   try {
@@ -75,7 +75,7 @@ export async function scoreScaleBatch(rows: ScaleRow[], onCall?: (info: ScaleCal
     onCall?.({ ms: Date.now() - t0, usage: res.usage, headers: res.response.headers })
   } catch (err) {
     onCall?.({ ms: Date.now() - t0, error: (err as Error).message, headers: (err as { responseHeaders?: Record<string, string> }).responseHeaders })
-    const repaired = isMistralRateLimit(err) ? null : repairBatch(err, catalogueBatchSchema)
+    const repaired = isBatchRateLimit(err) ? null : repairBatch(err, catalogueBatchSchema)
     if (!repaired) throw err
     output = repaired
   }

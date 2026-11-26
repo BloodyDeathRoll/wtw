@@ -70,6 +70,12 @@ describe('structured output on generateText + Output.object', () => {
     expect(updates[0]).toMatchObject({ pacing_tag: 'slow_burn', tone_tags: ['warm'] })
   })
 
+  it('asks Gemini for 1024-dim embeddings, the size of the vector(1024) columns', async () => {
+    replyText = narrative(['warm'])
+    await enrichTitleWithNarrative('1', 'movie')
+    expect(embedModel.doEmbedCalls.at(-1)?.providerOptions).toEqual({ google: { outputDimensionality: 1024 } })
+  })
+
   it('repairs an off-vocabulary tone from the error text instead of failing the title', async () => {
     replyText = narrative(['mysterious', 'dark', 'warm', 'hopeful'])
     await expect(enrichTitleWithNarrative('1', 'movie')).resolves.toBe(true)

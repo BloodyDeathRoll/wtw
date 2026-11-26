@@ -6,7 +6,6 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { strandBToEmbeddingText } from '@/modules/engine/scoring/narrative-match'
 import type { DNASchema } from '@/types/dna'
 
-
 /**
  * Generates a fresh Gemini embedding from the user's current strand_b + strand_c,
  * UPSERTS it as the single live embedding row for the user, and updates

@@ -20,7 +20,7 @@ import { embed } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { EMBED_OPTIONS } from '@/lib/gemini'
 import { MODELS } from '@/lib/ai-models'
-import { batchApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
+import { batchApiKey, BATCH_MAX_RETRIES, recordBatchCall } from '@/lib/llm-batch'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { TitleRow, NarrativeExtractionResult } from '../types'
@@ -29,7 +29,7 @@ import type { TitleRow, NarrativeExtractionResult } from '../types'
 // AI provider instances
 // ─────────────────────────────────────────────
 
-// Batch path: its own key, no retries, every call counted (src/lib/mistral-batch.ts).
+// Batch path: its own key, no retries, every call counted (src/lib/llm-batch.ts).
 function batchGemini() {
   return createGoogleGenerativeAI({ apiKey: batchApiKey() })
 }
@@ -222,7 +222,7 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
   // when the repair can't produce a valid object.
   let extracted: z.infer<typeof narrativeSchema>
   try {
-    recordMistralCall()
+    recordBatchCall()
     const { output } = await generateText({
       model: batchGemini()(MODELS.enrichment),
       output: Output.object({ schema: narrativeSchema }),
@@ -258,7 +258,7 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
   // ── 4. Generate embedding (Gemini) ──────────────────────
   const embeddingText = narrativeToEmbeddingText(extracted as NarrativeExtractionResult)
 
-  recordMistralCall()
+  recordBatchCall()
   const { embedding } = await embed({
     model: batchGemini().embeddingModel(MODELS.embedding),
     value: embeddingText,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { APICallError } from 'ai'
-import { recordMistralCall, resetMistralCallCount } from '@/lib/mistral-batch'
+import { recordBatchCall, resetBatchCallCount } from '@/lib/llm-batch'
 
 // P1-D3: the nightly job puts new titles on the taste scales (opt-in), inside
 // the same call budget and 429 handling as enrichment, then finalises them.
@@ -21,7 +21,7 @@ vi.mock('@/lib/taste-scales/catalogue', () => ({
   SCALE_BATCH: 10,
   SCALE_COLS: 'id, tmdb_id, type',
   scoreScaleBatch: async (rows: { id: number }[]) => {
-    recordMistralCall()
+    recordBatchCall()
     if (io.failNext429 > 0) {
       io.failNext429--
       throw new APICallError({ message: 'Rate limit exceeded', url: 'x', requestBodyValues: {}, statusCode: 429 })
@@ -67,7 +67,7 @@ vi.mock('@/lib/supabase/service', () => ({
 const rows = (n: number, from = 1) => Array.from({ length: n }, (_, i) => ({ id: from + i, tmdb_id: String(from + i), type: 'movie' }))
 
 beforeEach(() => {
-  resetMistralCallCount()
+  resetBatchCallCount()
   io.unscored = rows(25)
   io.unfinalised = rows(25)
   io.scored = []
@@ -101,7 +101,7 @@ describe('runNightlyEnrichment — taste scales (P1-D3)', () => {
   })
 
   it('stays inside the call budget', async () => {
-    const r = await run({ scales: true, scaleSpacingMs: 0, maxMistralCalls: 2 })
+    const r = await run({ scales: true, scaleSpacingMs: 0, maxBatchCalls: 2 })
     expect(io.scored).toHaveLength(2)
     expect(r.budget_exhausted).toBe(true)
   })
