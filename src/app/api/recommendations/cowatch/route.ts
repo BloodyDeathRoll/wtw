@@ -37,7 +37,7 @@ import { generateCowatchRecommendations } from '@/modules/engine'
 
 export const runtime = 'nodejs'
 
-// Each call can spend a Mistral call on the shared free-tier key (dream
+// Each call can spend a Gemini call on the shared free-tier key (dream
 // review 2026-09-30); the window is generous for a real user.
 const RATE_LIMIT = { scope: 'recommendations-cowatch', perUser: 10, windowSec: 10 * 60 }
 

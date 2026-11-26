@@ -14,14 +14,14 @@
  *   WTW_E2E=1 npm test -- tests/e2e
  *
  * Without WTW_E2E the file reports as skipped, which is why it is safe to leave
- * in the default run: CI stays green and nobody spends TMDB/OMDB/Mistral quota
+ * in the default run: CI stays green and nobody spends TMDB/OMDB/Gemini quota
  * by accident.
  *
  * ── What it costs when you DO run it ─────────────────────────────────────────
  * Real rows in real tables, and real third-party quota:
  *   • Supabase  — writes user_dna, dna_snapshots, fingerprint_embeddings for
  *                 WTW_E2E_USER_ID. Cleanup is best-effort in afterAll.
- *   • Mistral   — one embedding per taste_version (regenerateEmbedding).
+ *   • Gemini    — one embedding per taste_version (regenerateEmbedding).
  *   • Groq      — the session analysis / notes rewrite in the update pipeline.
  *   • TMDB/OMDB — only if the engine has to enrich a candidate it does not hold.
  * Point WTW_E2E_USER_ID at a scratch user, never a real account.
@@ -29,7 +29,7 @@
  * ── Required env ─────────────────────────────────────────────────────────────
  *   WTW_E2E=1
  *   WTW_E2E_USER_ID=<uuid of a throwaway auth user that exists in Supabase>
- *   + the normal .env.local set (Supabase service role, Upstash, Groq, Mistral)
+ *   + the normal .env.local set (Supabase service role, Upstash, Groq, Gemini)
  * Run it as: `WTW_E2E=1 node --env-file=.env.local ...` or export them first —
  * vitest does not read .env.local on its own.
  */
@@ -141,7 +141,7 @@ describe.skipIf(!LIVE)('E2E · DNA write path against live Supabase', () => {
     expect(new Date(after!.metadata.last_updated).getTime()).toBeGreaterThanOrEqual(
       new Date(before!.metadata.last_updated).getTime(),
     )
-  }, 120_000) // Groq notes rewrite + Mistral embed + snapshot — not a 5s job
+  }, 120_000) // Groq notes rewrite + Gemini embed + snapshot — not a 5s job
 })
 
 describe.skipIf(!LIVE)('E2E · recommendations + Redis cache by taste_version', () => {

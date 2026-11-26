@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { APICallError } from 'ai'
 import { recordBatchCall, resetBatchCallCount } from '@/lib/llm-batch'
 
-// The nightly loop must survive a TRANSIENT Mistral 429 and still stop dead on
+// The nightly loop must survive a TRANSIENT LLM 429 and still stop dead on
 // a spent key, and honour a per-run call budget throughout.
 // 2026-09-04: it ran 15 of 15 failing attempts per call, two nights, into a key
 // the live app also needed — so a run of 429s through a cooldown must stop it.
@@ -44,7 +44,7 @@ vi.mock('@/lib/supabase/service', () => ({
 const rateLimit = (responseHeaders?: Record<string, string>) =>
   new APICallError({
     message: 'Rate limit exceeded',
-    url: 'https://api.mistral.ai/v1/chat/completions',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models',
     requestBodyValues: {},
     statusCode: 429,
     responseHeaders,
@@ -90,7 +90,7 @@ describe('runNightlyEnrichment — rate limit', () => {
     expect(report.rate_limited).toBe(false)
     expect(report.titles_processed).toBe(3)
     expect(report.titles_failed).toBe(0)
-    expect(report.mistral_calls).toBe(9) // 1 burnt + 2+2+2 titles + 2 lineage
+    expect(report.llm_calls).toBe(9) // 1 burnt + 2+2+2 titles + 2 lineage
   }, 15_000)
 
   it('stops after three consecutive 429s through a cooldown: no lineage', async () => {
@@ -104,7 +104,7 @@ describe('runNightlyEnrichment — rate limit', () => {
     expect(report.rate_limited).toBe(true)
     expect(report.titles_failed).toBe(1)
     expect(report.titles_processed).toBe(0)
-    expect(report.mistral_calls).toBe(3)
+    expect(report.llm_calls).toBe(3)
   })
 
   it('a success resets the run, so scattered 429s never read as the wall', async () => {
@@ -148,7 +148,7 @@ describe('runNightlyEnrichment — rate limit', () => {
     expect(report.rate_limited).toBe(false)
     expect(report.titles_failed).toBe(1)
     expect(report.titles_processed).toBe(2)
-    expect(report.mistral_calls).toBe(6)
+    expect(report.llm_calls).toBe(6)
   }, 15_000)
 })
 
@@ -214,7 +214,7 @@ describe('runNightlyEnrichment — call budget', () => {
     expect(report.budget_exhausted).toBe(true)
     expect(report.rate_limited).toBe(false)
     expect(report.titles_processed).toBe(1)
-    expect(report.mistral_calls).toBe(2)
+    expect(report.llm_calls).toBe(2)
   })
 
   it('a 429 retry that would exceed the budget stops instead of overspending', async () => {
@@ -226,7 +226,7 @@ describe('runNightlyEnrichment — call budget', () => {
     expect(enrichTitle).toHaveBeenCalledTimes(1)
     expect(report.budget_exhausted).toBe(true)
     expect(report.rate_limited).toBe(false)
-    expect(report.mistral_calls).toBe(1)
+    expect(report.llm_calls).toBe(1)
   })
 
   it('a budget of zero makes no call at all', async () => {
@@ -234,7 +234,7 @@ describe('runNightlyEnrichment — call budget', () => {
     const report = await run({ maxBatchCalls: 0 })
     expect(enrichTitle).not.toHaveBeenCalled()
     expect(report.budget_exhausted).toBe(true)
-    expect(report.mistral_calls).toBe(0)
+    expect(report.llm_calls).toBe(0)
   })
 })
 
@@ -269,7 +269,7 @@ describe('runNightlyEnrichment — pending-queue select failure', () => {
     expect(enrichTitle).toHaveBeenCalledTimes(3)
     expect(buildLineage).not.toHaveBeenCalled()
     expect(report.titles_processed).toBe(3)
-    expect(report.mistral_calls).toBe(6)
+    expect(report.llm_calls).toBe(6)
     expect(report.crew_queue_failed).toBe(true)
   }, 15_000)
 })

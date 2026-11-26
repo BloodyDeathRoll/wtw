@@ -233,7 +233,7 @@ export async function GET(req: Request) {
   }
 }
 
-// Each POST can spend a Mistral call on the shared free-tier key, and a
+// Each POST can spend a Gemini call on the shared free-tier key, and a
 // session_override_active body skips the cache (dream review 2026-09-30); the
 // window is generous for a real user.
 const RATE_LIMIT = { scope: "recommendations-generate", perUser: 20, windowSec: 10 * 60 };

@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   console.log(`[seed] Phase 1 done: ${seeded} seeded, ${seed_errors} errors`)
 
   // ── Phase 2: First enrichment pass (optional) ─────────────
-  // Calls Groq to extract narrative dimensions + Mistral for embeddings.
+  // Calls Gemini to extract narrative dimensions and for embeddings.
   // Processes 50 titles per run, batched at 5 to stay inside Groq free tier.
   // The nightly cron will continue enriching the rest automatically.
   let enrichReport = {

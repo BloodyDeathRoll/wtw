@@ -4,7 +4,7 @@
  *
  * READ-ONLY against Supabase: it reads `titles`, never writes. The only
  * spend is TMDB (one detail call per series, for seasons/episodes/creators)
- * and Mistral (one call per 10 titles, for the scales that need judgement).
+ * and Gemini (one call per 10 titles, for the scales that need judgement).
  *
  *   npm run build-play-titles -- --select-only    # pick the set, print the genre balance, no AI
  *   npm run build-play-titles -- --batches 2      # score only 2 batches (a trial), then assemble what exists
@@ -26,9 +26,9 @@
  * title id, so a re-run (or a run after a 429) only scores what is missing.
  * Delete an entry there to re-score it.
  *
- * Pacing: the Mistral key falls back to the one the live app uses
+ * Pacing: the batch key falls back to the one the live app uses
  * (src/lib/llm-batch.ts), so calls are spaced SPACING_MS apart (default
- * 8s ≈ 7/min against a 188/min free tier) and capped at MAX_CALLS. A 429
+ * 8s ≈ 7/min; Gemini's free quota is per project and shared) and capped at MAX_CALLS. A 429
  * cools down for retry-after (else 60s); three in a row stops the run.
  */
 
@@ -441,7 +441,7 @@ async function main() {
   const titles = assemble(set, scores, facts, fixes)
   await writeFile(TITLES_FILE, JSON.stringify(titles) + '\n')
 
-  console.log(`[play-titles] wrote ${titles.length} titles (${batchCallCount()} Mistral calls this run)`)
+  console.log(`[play-titles] wrote ${titles.length} titles (${batchCallCount()} LLM calls this run)`)
   genreReport('movies', titles.filter(t => t.type === 'movie'))
   genreReport('series', titles.filter(t => t.type === 'tv'))
 }

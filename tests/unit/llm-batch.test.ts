@@ -16,7 +16,7 @@ import {
 const rateLimit = () =>
   new APICallError({
     message: 'Rate limit exceeded',
-    url: 'https://api.mistral.ai/v1/chat/completions',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models',
     requestBodyValues: {},
     statusCode: 429,
   })
@@ -42,7 +42,7 @@ describe('isBatchRateLimit', () => {
   it('does not fire on other API failures', () => {
     const serverError = new APICallError({
       message: 'Internal Server Error',
-      url: 'https://api.mistral.ai/v1/chat/completions',
+      url: 'https://generativelanguage.googleapis.com/v1beta/models',
       requestBodyValues: {},
       statusCode: 500,
     })

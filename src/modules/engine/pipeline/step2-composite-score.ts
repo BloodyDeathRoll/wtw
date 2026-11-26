@@ -135,7 +135,7 @@ export async function scoreCandidates(
   const tasteModel = v2 ? loadTasteModel(candidates, dna) : null
 
   // ── Batch narrative match (1 pgvector RPC) — weight 0 under v2 ──
-  // Formula v1 only, so loaded only then: it brings the AI SDK and Mistral's client, ~100 ms of
+  // Formula v1 only, so loaded only then: it brings the AI SDK and Gemini's client, ~100 ms of
   // CPU on every cold start of a route that never calls it under v2 (the Search ring, #438).
   const narrativeScores = v2
     ? new Map<string, number>()

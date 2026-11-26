@@ -201,7 +201,7 @@ describe('refreshLiveBatch', () => {
   })
 
   it('still refreshes when the embedding update fails', async () => {
-    regenerateEmbedding.mockRejectedValueOnce(new Error('mistral down'))
+    regenerateEmbedding.mockRejectedValueOnce(new Error('gemini down'))
     expect(await refreshLiveBatch('u1', 'all')).toBe(8)
   })
 

@@ -18,7 +18,7 @@
  *
  * Agreed cache cost (A2/A3): **no extra generation, no extra rerank.** One
  * DNA read, one conditional write, and one Redis set per N ratings, plus an
- * embedding row update that only calls Mistral when the strand text actually
+ * embedding row update that only calls Gemini when the strand text actually
  * moved. "Find more" afterwards is usually a fast-path no-op instead of a
  * regeneration, so this is a net saving.
  *
@@ -163,7 +163,7 @@ export async function refreshLiveBatch(
   // stale vector can never score against the wrong taste — advancing that row
   // to a version the DNA never reached would reintroduce exactly that.
   //
-  // Skips Mistral when the strand text is byte-identical (text_hash, migration
+  // Skips Gemini when the strand text is byte-identical (text_hash, migration
   // 0020), which it usually is: a handful of ratings rarely moves the dominant
   // pacing or the top two tones. Without it the next generation re-embeds from
   // scratch, which is the one real cost this whole path exists to avoid.

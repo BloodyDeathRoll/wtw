@@ -97,7 +97,7 @@ describe('runNightlyEnrichment — taste scales (P1-D3)', () => {
     expect(io.finalised).toHaveLength(25)
     expect(r.scales_finalised).toBe(25)
     expect(io.updates.every(u => u.patch.taste_vec === '[0]')).toBe(true)
-    expect(r.mistral_calls).toBe(3)
+    expect(r.llm_calls).toBe(3)
   })
 
   it('stays inside the call budget', async () => {
