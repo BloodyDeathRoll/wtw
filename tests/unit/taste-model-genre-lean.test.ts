@@ -6,7 +6,7 @@ import { genre16Rule, isExcluded } from '@/lib/exclusion-rules'
 import { FEATURE_GENRES, FEATURE_SCALES, tasteFeatures } from '@/lib/taste-scales/features'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { never16Of } from '@/modules/dna/update-from-play'
-import { GENRE_LEAN, genreLean, trainTasteModel, type TastePair, type TasteRow } from '@/modules/dna/taste-model'
+import { genreLean, trainTasteModel, type TastePair, type TasteRow } from '@/modules/dna/taste-model'
 import { scoreCandidates } from '@/modules/engine/pipeline/step2-composite-score'
 import { clearTasteWeights } from '@/modules/engine/scoring/taste-weights'
 import type { TitleRow } from '@/modules/engine/types'
@@ -165,8 +165,9 @@ describe('the feed after onboarding (30 cards + 12 picks, formula v2)', () => {
       io.training = { rows, pairs, w0 }
       return (await scoreCandidates(candidates.map(t => t.row), createBlankDNA('u1'))).slice(0, 20).map(s => s.title)
     }
-    const lean = genreLean(S)
-    expect(lean[at('scifi')]).toBe(GENRE_LEAN)
+    // A lean on (g = 1) still never brings a Never genre back.
+    const lean = genreLean(S, 1)
+    expect(lean[at('scifi')]).toBe(1)
     expect(lean[at('horror')]).toBe(0)
     const withLean = await top20(lean)
 
