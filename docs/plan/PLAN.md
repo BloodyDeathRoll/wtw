@@ -80,7 +80,7 @@ Every task below starts with a one-line **"In plain words"**. The rest of each t
 | DEC-10 | **Match % = `composite_score × 100`**, i.e. better than X% of the titles considered. It is **capped at 97%**: never show 100%. |
 | DEC-11 | **Learner cards:** stop at 30 seen or **90 shown**, whichever comes first. The 90 is under review: report the shown-to-seen ratios. |
 | DEC-12 | **Onboarding card answers appear in My ratings**, like feed ratings. |
-| DEC-13 | **The genre screen's Love and Like count in the feed** (Eran, 2026-11-12). A user who's asked what they like expects the feed to show it heard them, not only the onboarding. So Love / Like set a **starting lean in the taste model** toward those genres (Love twice as strong as Like), and the user's real ratings and picks take over as they come in. It stays inside the 30/20/50 formula (DEC-1): no new weight. Never stays a rule (hidden everywhere). No answer = no lean. The test tool (P1-D5) sets how strong the lean is, not whether there is one. Work: P1-D4b (#278). |
+| DEC-13 | **The genre screen's Love and Like count in the feed** (Eran, 2026-11-12). A user who's asked what they like expects the feed to show it heard them, not only the onboarding. So Love / Like set a **starting lean in the taste model** toward those genres (Love twice as strong as Like), and the user's real ratings and picks take over as they come in. It stays inside the 30/20/50 formula (DEC-1): no new weight. Never stays a rule (hidden everywhere). No answer = no lean. The test tool (P1-D5) sets how strong the lean is, not whether there is one. Work: P1-D4b (#278). **Retired 2026-11-26 (#250, Eran): accuracy wins.** At `g = 1` Shahar's harness (b) score fell to the random control's level (45 vs 46) and no `g` helped the three sheets, so the lean is off (`GENRE_LEAN = 0`). Love / Like no longer move the feed; Never stays a rule. |
 
 ---
 
@@ -282,6 +282,7 @@ The format of each entry: **ID · title** — owner · lane · size · deps · f
   - With labels shuffled, the harness lands at about 50.
 
 **P1-D4b · Genre lean: the genre screen's Love / Like count in the feed** — A3 (Shahar) · D · S · deps: D4 (done, #262) · issue #278
+> **Off since 2026-11-26 (#250, Eran):** `GENRE_LEAN = 0`. DEC-13's "a Loved genre shows up more" test is retired; the mechanism stays for `--lean` trials.
 > **In plain words:** A screen that asks what you like has to visibly change what you're shown (DEC-13). Love and Like give the taste model a starting lean towards those genres, which the user's real ratings and picks take over.
 
 - Solve `(XᵀWX + Λ) w = XᵀWy + Λ w0` instead: ridge *towards* `w0` rather than towards 0. `w0` is 0 everywhere except the genre inputs `[1..13]`: Love → `+g`, Like → `+g/2`; no answer and Never → 0 (Never is a rule, not a lean).

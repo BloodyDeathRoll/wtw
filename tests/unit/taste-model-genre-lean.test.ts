@@ -6,7 +6,7 @@ import { genre16Rule, isExcluded } from '@/lib/exclusion-rules'
 import { FEATURE_GENRES, FEATURE_SCALES, tasteFeatures } from '@/lib/taste-scales/features'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { never16Of } from '@/modules/dna/update-from-play'
-import { GENRE_LEAN, genreLean, trainTasteModel, type TastePair, type TasteRow } from '@/modules/dna/taste-model'
+import { genreLean, trainTasteModel, type TastePair, type TasteRow } from '@/modules/dna/taste-model'
 import { scoreCandidates } from '@/modules/engine/pipeline/step2-composite-score'
 import { clearTasteWeights } from '@/modules/engine/scoring/taste-weights'
 import type { TitleRow } from '@/modules/engine/types'
@@ -150,7 +150,9 @@ describe('the feed after onboarding (30 cards + 12 picks, formula v2)', () => {
   beforeEach(() => { clearTasteWeights(); process.env.FORMULA_V2 = 'true' })
   afterEach(() => { delete process.env.FORMULA_V2 })
 
-  it('Loved sci-fi: more sci-fi in the top 20 than with no lean, and nothing from a Never genre', async () => {
+  // DEC-13's "a Loved genre shows up more" was retired on #250 (Eran, 2026-11-26): accuracy wins, the lean is
+  // off (GENRE_LEAN = 0). What stays: a Never genre is a rule, so none of it reaches the feed.
+  it('nothing from a Never genre in the top 20', async () => {
     const { rows, pairs, pool } = fixture()
     const S = applyGenreStep(null, { scifi: 'love', comedy: 'like', horror: 'never' })
     // Never is a rule (update-from-play.ts writes it); step 1 drops what it names before step 2 scores.
@@ -163,13 +165,12 @@ describe('the feed after onboarding (30 cards + 12 picks, formula v2)', () => {
       io.training = { rows, pairs, w0 }
       return (await scoreCandidates(candidates.map(t => t.row), createBlankDNA('u1'))).slice(0, 20).map(s => s.title)
     }
-    const lean = genreLean(S)
-    expect(lean[at('scifi')]).toBe(GENRE_LEAN)
+    // A lean on (g = 1) still never brings a Never genre back.
+    const lean = genreLean(S, 1)
+    expect(lean[at('scifi')]).toBe(1)
     expect(lean[at('horror')]).toBe(0)
-    const without = await top20(genreLean(null)), withLean = await top20(lean)
+    const withLean = await top20(lean)
 
-    const scifi = (ts: TitleRow[]) => ts.filter(t => has(t, 'Science Fiction')).length
-    expect(scifi(withLean)).toBeGreaterThan(scifi(without))
     expect(withLean.filter(t => has(t, 'Horror'))).toEqual([])
   })
 })

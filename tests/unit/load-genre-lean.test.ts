@@ -28,11 +28,17 @@ const at = (genre: (typeof FEATURE_GENRES)[number]) => 1 + FEATURE_GENRES.indexO
 beforeEach(() => { db.rows = []; db.error = null; db.asked = [] })
 
 describe('loadGenreLean', () => {
-  it('turns that user\'s saved answers into w0, at the app\'s strength', async () => {
+  it('turns that user\'s saved answers into w0: Love g, Like g/2, Never 0', async () => {
     db.rows = [{ state: applyGenreStep(null, { comedy: 'love', drama: 'like', horror: 'never' }) }]
-    const w0 = await loadGenreLean('u1')
+    const w0 = await loadGenreLean('u1', 1)
     expect(db.asked).toEqual(['u1'])
-    expect([w0[at('comedy')], w0[at('drama')], w0[at('horror')]]).toEqual([GENRE_LEAN, GENRE_LEAN / 2, 0])
+    expect([w0[at('comedy')], w0[at('drama')], w0[at('horror')]]).toEqual([1, 0.5, 0])
+  })
+
+  it('the app\'s strength is off (#250, Eran 2026-11-26): no lean unless a decision turns it back on', async () => {
+    expect(GENRE_LEAN).toBe(0)
+    db.rows = [{ state: applyGenreStep(null, { comedy: 'love' }) }]
+    expect(await loadGenreLean('u1')).toEqual(new Array(25).fill(0))
   })
 
   it('no saved state: no lean', async () => {
@@ -47,10 +53,10 @@ describe('loadGenreLean', () => {
 })
 
 describe('loadTasteTraining', () => {
-  it('hands the lean to the model as w0', async () => {
+  it('hands the lean to the model as w0, at the app\'s strength (off, so all zeros)', async () => {
     db.rows = [{ state: applyGenreStep(null, { scifi: 'love' }) }]
     const { rows, pairs, w0 } = await loadTasteTraining(createBlankDNA('u1'), 'u1')
     expect([rows, pairs]).toEqual([[], []])
-    expect(w0[at('scifi')]).toBe(GENRE_LEAN)
+    expect(w0).toEqual(new Array(25).fill(0))
   })
 })

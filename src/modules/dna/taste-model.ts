@@ -34,8 +34,11 @@ const DECAY_AFTER_MS = 18 * 30 * 24 * 60 * 60 * 1000
  * How far a Love pulls its genre input; a Like pulls half. Set with the eval
  * harness (--lean): the largest value that costs no more than 1 concordance
  * point against no lean on the three test sheets (numbers in PR for #278).
+ * Off since 2026-11-26 (#250, Eran): at 1 it cost Shahar's sheet 11 points (to the
+ * random control's level) and no value helped the three sheets; accuracy wins over
+ * DEC-13. The mechanism stays, so a lean can be tried again with --lean.
  */
-export const GENRE_LEAN = 1
+export const GENRE_LEAN = 0
 
 /**
  * w0 from the genre answers: Love → g, Like → g/2 on that genre's input, 0
