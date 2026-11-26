@@ -1,7 +1,7 @@
 /**
  * POST /api/cron/decay
  *
- * Nightly cron that applies 18-month temporal decay to every user's DNA.
+ * Nightly cron that applies 18-month temporal decay, per signal, to the DNAs that have one due (#457).
  * Runs separately from /api/cron/enrich so they can be scheduled independently.
  *
  * Protected by CRON_SECRET.
@@ -11,9 +11,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isCronAuthorized, logAuthFailure } from '@/lib/auth-guard'
 import { createServiceClient } from '@/lib/supabase/service'
-import { applyTemporalDecay } from '@/modules/dna/lib/apply-temporal-decay'
-import { bumpVersion } from '@/modules/dna/lib/load-save'
-import type { DNASchema } from '@/types/dna'
+import { applyTemporalDecay, decayCutoff } from '@/modules/dna/lib/apply-temporal-decay'
+import { bumpVersion, withDNAUpdate } from '@/modules/dna/lib/load-save'
 
 export async function POST(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -21,37 +20,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const db = createServiceClient()
-
-  // Load all users with a non-null DNA where decay hasn't been applied yet
-  const { data: users, error } = await db
-    .from('users')
-    .select('id, dna')
-    .not('dna', 'is', null)
-    .eq('dna->learning_loop->>temporal_decay_applied', 'false')
+  // #457: only the users with a signal past 18 months that hasn't decayed yet (migration 0039), as
+  // ids; each DNA is read whole only then. A night with nothing to decay reads a few bytes.
+  const { data: ids, error } = await createServiceClient()
+    .rpc('users_due_for_decay', { p_cutoff: decayCutoff() })
 
   if (error) {
+    console.error('[cron/decay] users_due_for_decay failed:', error.message)
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
   }
 
   let processed = 0
   let totalDecayed = 0
 
-  for (const row of users ?? []) {
+  for (const userId of (ids ?? []) as string[]) {
     try {
-      const dna = row.dna as DNASchema
-      const decayed = applyTemporalDecay(dna)
-      if (decayed > 0) {
-        bumpVersion(dna)
-        await db
-          .from('users')
-          .update({ dna, updated_at: new Date().toISOString() })
-          .eq('id', row.id)
-        totalDecayed += decayed
-      }
+      let decayed = 0
+      // Compare-and-set: a rating landing meanwhile is never reverted; the decay redoes on the newer DNA.
+      const outcome = await withDNAUpdate(userId, (dna) => {
+        decayed = applyTemporalDecay(dna)
+        if (decayed > 0) bumpVersion(dna)   // taste_version + last_updated on every DNA the cron writes
+        return decayed > 0
+      }, 3)
+      if (outcome === 'saved') totalDecayed += decayed
+      else if (outcome === 'conflict') console.warn(`[cron/decay] user ${userId}: kept losing to other writes; tomorrow's run retries`)
       processed++
     } catch (err) {
-      console.error(`[cron/decay] failed for user ${row.id}:`, err)
+      console.error(`[cron/decay] failed for user ${userId}:`, err)
     }
   }
 

@@ -180,7 +180,8 @@
       "dimensions_contradicted": ["array of strand_b field names this signal pushes against"],
       "confidence": "float 0.0 to 1.0 — how certain we are about this signal",
       "flag": "null | reason_needed | rewatch_candidate | contradicts_profile",
-      "watched_at": "ISO-8601 datetime | null"
+      "watched_at": "ISO-8601 datetime | null",
+      "decayed_at": "ISO-8601 datetime, optional — set when the nightly decay halved this signal, so it is halved once (#457)"
     }
   ],
 
@@ -188,7 +189,7 @@
     "open_questions": [
       "string — things the system does not yet know about this user. Append-only during sessions. Resolved by Assignment 3."
     ],
-    "temporal_decay_applied": "boolean — true if decay has been run on this schema version",
+    "temporal_decay_applied": "boolean — true once any signal of this DNA has decayed (the per-signal mark is signals[].decayed_at, #457)",
     "stretch_pick_history": [
       {
         "title": "string",
