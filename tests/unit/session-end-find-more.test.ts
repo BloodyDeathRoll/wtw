@@ -18,6 +18,8 @@ const table = (name: string) => {
   return chain
 }
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ from: table }) }))
+// The route reads the DNA through dna-read.ts (#457); dna-read.test.ts covers that read itself.
+vi.mock('@/modules/engine/dna-read', () => ({ readUserDNA: async () => ({ row: true, dna: dnaRow }) }))
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: table }) }))
 vi.mock('@/lib/supabase/auth-user', () => ({ getAuthUser: async () => ({ id: 'u1', email: 'a@b.c' }) }))
 vi.mock('@/lib/auth-guard', () => ({ logAuthFailure: () => {} }))

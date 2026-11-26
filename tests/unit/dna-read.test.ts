@@ -7,6 +7,7 @@ const io = vi.hoisted(() => ({
   reads: [] as string[],
   store: new Map<string, unknown>(),
   redisDown: false,
+  dbDown: false,
 }))
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
@@ -15,6 +16,7 @@ vi.mock('@/lib/supabase/service', () => ({
         eq: () => ({
           maybeSingle: async () => {
             io.reads.push(cols)
+            if (io.dbDown) return { data: null, error: { message: 'connection lost' } }
             if (!io.row) return { data: null, error: null }
             return { data: cols === 'updated_at' ? { updated_at: io.row.updated_at } : io.row, error: null }
           },
@@ -33,11 +35,11 @@ vi.mock('@/lib/redis', () => ({
   },
 }))
 
-const { readDNA, clearKeptDNA } = await import('@/modules/engine/dna-read')
+const { readDNA, readUserDNA, clearKeptDNA } = await import('@/modules/engine/dna-read')
 const dna = (v: number) => ({ metadata: { taste_version: v }, signals: [] })
 const fullReads = () => io.reads.filter(c => c.includes('dna')).length
 
-beforeEach(() => { io.row = { dna: dna(1), updated_at: 't1' }; io.reads = []; io.store.clear(); io.redisDown = false; clearKeptDNA() })
+beforeEach(() => { io.row = { dna: dna(1), updated_at: 't1' }; io.reads = []; io.store.clear(); io.redisDown = false; io.dbDown = false; clearKeptDNA() })
 
 describe('readDNA (#457)', () => {
   it('first read: the stamp, then the whole DNA once, kept in memory and Redis', async () => {
@@ -87,5 +89,26 @@ describe('readDNA (#457)', () => {
     const a = await readDNA('u1') as { metadata: { taste_version: number } }
     a.metadata.taste_version = 99
     expect(await readDNA('u1')).toEqual(dna(1))
+  })
+})
+
+describe('readUserDNA (#457 part 2: the routes)', () => {
+  it('tells no row from a row without a DNA', async () => {
+    io.row = null
+    expect(await readUserDNA('u1')).toEqual({ row: false, dna: null })
+    io.row = { dna: null, updated_at: 't9' }
+    expect(await readUserDNA('u1')).toEqual({ row: true, dna: null })
+    io.row = { dna: dna(3), updated_at: 't10' }
+    expect(await readUserDNA('u1')).toEqual({ row: true, dna: dna(3) })
+  })
+
+  it('throws when the database can\'t be read, so a route never writes a blank DNA over a real one', async () => {
+    io.dbDown = true
+    await expect(readUserDNA('u1')).rejects.toThrow('connection lost')
+  })
+
+  it('readDNA (the engine) still gets null when the database can\'t be read', async () => {
+    io.dbDown = true
+    expect(await readDNA('u1')).toBeNull()
   })
 })

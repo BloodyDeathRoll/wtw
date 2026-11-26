@@ -38,14 +38,19 @@ function keep(userId: string, kept: Kept): void {
   if (memory.size > MEMORY_MAX) memory.delete(memory.keys().next().value!)
 }
 
-/** The user's DNA, or null with none (no row, or a row without a DNA). Reads it whole only when it changed. */
-export async function readDNA(userId: string): Promise<DNASchema | null> {
+/**
+ * The user's row and DNA, reading the DNA whole only when it changed. `row` is false when the user has
+ * no row; `dna` is null with no row or a row without a DNA. Throws when the database can't be read, so a
+ * caller that must tell "no DNA" from "couldn't read it" (and never write a blank DNA over a real one) can.
+ */
+export async function readUserDNA(userId: string): Promise<{ row: boolean; dna: DNASchema | null }> {
   const db = createServiceClient()
-  const { data: stamp } = await db.from('users').select('updated_at').eq('id', userId).maybeSingle<{ updated_at: string }>()
-  if (!stamp) return null
+  const { data: stamp, error } = await db.from('users').select('updated_at').eq('id', userId).maybeSingle<{ updated_at: string }>()
+  if (error) throw new Error(`readDNA: ${error.message}`)
+  if (!stamp) return { row: false, dna: null }
 
   const mine = memory.get(userId)
-  if (mine && mine.u === stamp.updated_at) return structuredClone(mine.dna)
+  if (mine && mine.u === stamp.updated_at) return { row: true, dna: structuredClone(mine.dna) }
 
   let redis: ReturnType<typeof getRedis> | null = null
   try {
@@ -53,7 +58,7 @@ export async function readDNA(userId: string): Promise<DNASchema | null> {
     const theirs = await redis.get<Kept>(key(userId))
     if (theirs && theirs.u === stamp.updated_at && theirs.dna) {
       keep(userId, theirs)
-      return structuredClone(theirs.dna)
+      return { row: true, dna: structuredClone(theirs.dna) }
     }
   } catch (err) {
     redis = null
@@ -61,13 +66,25 @@ export async function readDNA(userId: string): Promise<DNASchema | null> {
   }
 
   // The DNA and its own stamp in one read: a write in between gives the newer pair, never a mix.
-  const { data: row } = await db.from('users').select('dna, updated_at').eq('id', userId)
+  const { data: row, error: readError } = await db.from('users').select('dna, updated_at').eq('id', userId)
     .maybeSingle<{ dna: DNASchema | null; updated_at: string }>()
-  if (!row?.dna) return null
+  if (readError) throw new Error(`readDNA: ${readError.message}`)
+  if (!row) return { row: false, dna: null }
+  if (!row.dna) return { row: true, dna: null }
   const kept = { u: row.updated_at, dna: row.dna }
   keep(userId, kept)
   if (redis) await redis.set(key(userId), kept, { ex: REDIS_TTL_SECONDS }).catch(err => {
     console.warn('[dna-read] redis write failed (next read goes to the database):', err instanceof Error ? err.message : err)
   })
-  return structuredClone(row.dna)
+  return { row: true, dna: structuredClone(row.dna) }
+}
+
+/** The user's DNA, or null with none or when it can't be read (the engine's readers, as before #457). */
+export async function readDNA(userId: string): Promise<DNASchema | null> {
+  try {
+    return (await readUserDNA(userId)).dna
+  } catch (err) {
+    console.warn('[dna-read]', err instanceof Error ? err.message : err)
+    return null
+  }
 }
