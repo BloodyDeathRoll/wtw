@@ -13,8 +13,8 @@
  *   - a 429 detector plus a `retry-after` reader, so the loop can cool down
  *     on a transient limit and tell that apart from a spent workspace,
  *     instead of retrying its way through the rest of the budget
- *   - a call counter, so the run can be capped in calls (the unit Mistral
- *     meters) rather than in titles
+ *   - a call counter, so the run can be capped in calls (the unit the
+ *     provider meters) rather than in titles
  *
  * Model IDs stay in ./ai-models.ts — this file only picks the key.
  *
@@ -37,7 +37,7 @@ export function batchApiKey(): string {
 }
 
 /**
- * True when the failure is Mistral saying "rate limit exceeded" (HTTP 429),
+ * True when the failure is the provider saying "rate limit exceeded" (HTTP 429),
  * however the SDK wrapped it: a bare APICallError, a RetryError whose last
  * attempt was one, or a plain Error carrying the provider's message.
  */
@@ -53,7 +53,7 @@ export function isBatchRateLimit(err: unknown): boolean {
 }
 
 /**
- * Milliseconds Mistral asked the caller to wait, read from a 429's
+ * Milliseconds the provider asked the caller to wait, read from a 429's
  * `retry-after` header (a count of seconds, or an HTTP date), or null when it
  * did not say. Unwraps the same shapes `isBatchRateLimit` does.
  */
@@ -86,7 +86,7 @@ export function batchRetryAfterMs(err: unknown): number | null {
 
 let calls = 0
 
-/** Count one Mistral request on the batch path. Call it BEFORE the request —
+/** Count one LLM request on the batch path. Call it BEFORE the request —
  *  a request that fails still spent the quota. */
 export function recordBatchCall(): void {
   calls++
