@@ -241,7 +241,7 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
   // The tester's own genre answers, as a new user would have given them on the genre screen. Not in the control.
   const w0 = args.includes('--control') ? undefined : await loadGenreLean(USER!, LEAN)
   console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} ${TEST} titles in catalogue · ${allPicks.length} duel picks · genre lean g = ${LEAN} on ${(w0 ?? []).filter(Boolean).length} genres${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
-  if (fairIn.length < 20) throw new Error('fewer than 20 fair titles in the catalogue')
+  if (fairIn.length < 20) throw new Error(`fewer than 20 ${TEST} titles in the catalogue`)
 
   const res = { all: [] as number[], ld: [] as number[], loved: [] as number[], disliked: [] as number[] }
   const levels: Level[] = ['loved', 'liked', 'disliked']
