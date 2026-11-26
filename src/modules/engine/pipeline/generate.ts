@@ -30,7 +30,6 @@
  */
 
 import { after } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/service'
 import { startTimer, type StepTimer } from '@/lib/timing'
 import { ensureWatchProviders }     from '../enrichment/ensure-watch-providers'
 import { isColdStart, coldStartBatch } from './cold-start'
@@ -55,6 +54,7 @@ import {
 } from './step8-cache'
 import type { DNASchema, SessionContext, RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
+import { readDNA } from '../dna-read'
 
 export interface GenerateOptions {
   /**
@@ -88,17 +88,8 @@ export interface GenerateOptions {
 // DNA loader
 // ─────────────────────────────────────────────
 
-async function loadDNA(userId: string): Promise<DNASchema | null> {
-  const supabase = createServiceClient()
-  const { data, error } = await supabase
-    .from('users')
-    .select('dna')
-    .eq('id', userId)
-    .single<{ dna: DNASchema | null }>()
-
-  if (error || !data?.dna) return null
-  return data.dna
-}
+/** The whole DNA only when it changed (#457, dna-read.ts). */
+const loadDNA = readDNA
 
 /**
  * Streaming availability for a whole batch (decided 2026-08-28: checked on

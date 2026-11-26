@@ -34,6 +34,7 @@ import type { ContentType } from '@/lib/content-type'
 import { generateRecommendations } from './generate'
 import { formulaV2Enabled } from '@/lib/flags'
 import { cacheRecommendations } from './step8-cache'
+import { readDNA } from '../dna-read'
 
 // `rec_pending2:` (2026-11-06): batches parked before the kids' cap and the new card lines aren't adopted.
 const pendingKey = (userId: string, contentType: ContentType) => `rec_pending3:${userId}:${contentType}`
@@ -130,14 +131,8 @@ export async function precomputeRunning(userId: string): Promise<boolean> {
   }
 }
 
-async function loadDNA(userId: string): Promise<DNASchema | null> {
-  const { data } = await createServiceClient()
-    .from('users')
-    .select('dna')
-    .eq('id', userId)
-    .single<{ dna: DNASchema | null }>()
-  return data?.dna ?? null
-}
+/** The whole DNA only when it changed (#457, dna-read.ts). */
+const loadDNA = readDNA
 
 /**
  * Build and park the next batch for this user. Safe to call on every rating:
