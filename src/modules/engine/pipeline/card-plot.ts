@@ -15,7 +15,7 @@
  * finished in the background and cached for the next batch.
  */
 
-import { createMistral } from '@ai-sdk/mistral'
+import { gemini } from '@/lib/gemini'
 import { createGroq } from '@ai-sdk/groq'
 import { generateText } from 'ai'
 import { after } from 'next/server'
@@ -87,11 +87,6 @@ async function judgeLines(pairs: { plot: string; line: string }[]): Promise<Set<
   return ok
 }
 
-function mistral() {
-  const apiKey = process.env.MISTRAL_API_KEY
-  if (!apiKey) throw new Error('MISTRAL_API_KEY is not set')
-  return createMistral({ apiKey })
-}
 
 /** A cache read that hangs must not hold the batch up either. */
 const CACHE_READ_MAX_MS = 300
@@ -166,7 +161,7 @@ async function writeNew(ids: string[], byId: Map<string, PlotSource['title']>, o
   if (!missing.length) return
   try {
     const { text } = await generateText({
-      model: mistral()(MODELS.cardPlot),
+      model: gemini()(MODELS.cardPlot),
       prompt: PROMPT(missing.map(id => byId.get(id)!.synopsis!)),
       temperature: 0.3,
       maxRetries: 0,

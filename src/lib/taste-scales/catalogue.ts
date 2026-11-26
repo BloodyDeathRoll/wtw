@@ -8,12 +8,12 @@
  * so both score and finalise the same way. Moved here from the script verbatim.
  */
 import { generateText, Output } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { z } from 'zod'
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { MODELS } from '@/lib/ai-models'
-import { batchMistralApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, recordMistralCall } from '@/lib/mistral-batch'
+import { batchApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, recordMistralCall } from '@/lib/mistral-batch'
 import { CATALOGUE_SCALE_GUIDE, batchPrompt, catalogueBatchSchema, repairBatch, type PromptTitle } from './prompt'
 import { normaliseScales, type CatalogueAIScale } from './normalise'
 import { catalogueGameGenres, tasteFeatures, TASTE_FEATURE_VERSION } from './features'
@@ -60,13 +60,13 @@ export interface ScaleCallInfo {
  */
 export async function scoreScaleBatch(rows: ScaleRow[], onCall?: (info: ScaleCallInfo) => void): Promise<number> {
   const batch = rows.map(toPrompt)
-  const mistral = createMistral({ apiKey: batchMistralApiKey() })
+  const google = createGoogleGenerativeAI({ apiKey: batchApiKey() })
   recordMistralCall()
   const t0 = Date.now()
   let output: z.infer<typeof catalogueBatchSchema>
   try {
     const res = await generateText({
-      model: mistral(MODELS.enrichment),
+      model: google(MODELS.enrichment),
       output: Output.object({ schema: catalogueBatchSchema }),
       prompt: batchPrompt(CATALOGUE_SCALE_GUIDE, batch),
       maxRetries: BATCH_MAX_RETRIES,

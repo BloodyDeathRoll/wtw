@@ -17,6 +17,11 @@
  *     meters) rather than in titles
  *
  * Model IDs stay in ./ai-models.ts — this file only picks the key.
+ *
+ * 2026-11-26: the batch path is on Gemini now (src/lib/gemini.ts — Mistral's
+ * Free mode dropped API access). The 429 / retry-after / counter helpers are
+ * provider-neutral and keep their Mistral names; the key is GEMINI_BATCH_API_KEY,
+ * falling back to GEMINI_API_KEY.
  */
 import 'server-only'
 
@@ -25,9 +30,9 @@ import { APICallError, RetryError } from 'ai'
 /** Retries on a rate-limited key triple the burn for nothing. Batch = none. */
 export const BATCH_MAX_RETRIES = 0
 
-export function batchMistralApiKey(): string {
-  const key = process.env.MISTRAL_BATCH_API_KEY || process.env.MISTRAL_API_KEY
-  if (!key) throw new Error('MISTRAL_BATCH_API_KEY / MISTRAL_API_KEY is not set')
+export function batchApiKey(): string {
+  const key = process.env.GEMINI_BATCH_API_KEY || process.env.GEMINI_API_KEY
+  if (!key) throw new Error('GEMINI_BATCH_API_KEY / GEMINI_API_KEY is not set')
   return key
 }
 

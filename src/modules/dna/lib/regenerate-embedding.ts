@@ -1,19 +1,14 @@
 import { createHash } from 'crypto'
 import { embed } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
+import { gemini, EMBED_OPTIONS } from '@/lib/gemini'
 import { MODELS } from '@/lib/ai-models'
 import { createServiceClient } from '@/lib/supabase/service'
 import { strandBToEmbeddingText } from '@/modules/engine/scoring/narrative-match'
 import type { DNASchema } from '@/types/dna'
 
-function getMistral() {
-  const key = process.env.MISTRAL_API_KEY
-  if (!key) throw new Error('MISTRAL_API_KEY is not set')
-  return createMistral({ apiKey: key })
-}
 
 /**
- * Generates a fresh Mistral embedding from the user's current strand_b + strand_c,
+ * Generates a fresh Gemini embedding from the user's current strand_b + strand_c,
  * UPSERTS it as the single live embedding row for the user, and updates
  * metadata.fingerprint_embedding_ref in the DNA object (caller must save).
  *
@@ -24,7 +19,7 @@ function getMistral() {
  * Uses the same text template as the engine's narrative-match scorer so that
  * cosine similarity between user and title embeddings is meaningful.
  *
- * Skips the Mistral call when the text it would embed is byte-identical to
+ * Skips the Gemini call when the text it would embed is byte-identical to
  * what the stored row was built from (text_hash, migration 0020): per-click
  * merges rarely move the dominant pacing / top tones, so most "Find more"
  * bumps only need the row's taste_version moved forward. The engine's scorer
@@ -59,10 +54,11 @@ export async function regenerateEmbedding(
     return
   }
 
-  // ── Changed (or never embedded) → Mistral ─────────────────
+  // ── Changed (or never embedded) → Gemini ─────────────────
   const { embedding } = await embed({
-    model: getMistral().embeddingModel(MODELS.embedding),
+    model: gemini().embeddingModel(MODELS.embedding),
     value: text,
+    providerOptions: EMBED_OPTIONS,
   })
 
   // Upsert the single live embedding row for this user. The UNIQUE(user_id)

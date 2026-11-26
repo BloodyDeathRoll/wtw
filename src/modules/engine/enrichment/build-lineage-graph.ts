@@ -19,9 +19,9 @@
  */
 
 import { generateText, Output } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { MODELS } from '@/lib/ai-models'
-import { batchMistralApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
+import { batchApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
 import { z } from 'zod'
 import { getPerson } from '@/lib/tmdb'
 import { createServiceClient } from '@/lib/supabase/service'
@@ -29,8 +29,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 
 // Batch path: its own key, no retries, every call counted (src/lib/mistral-batch.ts).
-function mistral() {
-  return createMistral({ apiKey: batchMistralApiKey() })
+function batchGemini() {
+  return createGoogleGenerativeAI({ apiKey: batchApiKey() })
 }
 
 // ─────────────────────────────────────────────
@@ -122,7 +122,7 @@ Focus on directors, writers, and cinematographers — not studios or movements.`
 
   recordMistralCall()
   const { output: lineage } = await generateText({
-    model: mistral()(MODELS.enrichment),
+    model: batchGemini()(MODELS.enrichment),
     output: Output.object({ schema: lineageSchema }),
     prompt,
     maxRetries: BATCH_MAX_RETRIES,

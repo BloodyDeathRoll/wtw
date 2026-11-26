@@ -8,8 +8,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const generateText = vi.fn()
 vi.mock('ai', () => ({ generateText: (...a: unknown[]) => generateText(...a) }))
 vi.mock('@ai-sdk/groq', () => ({ createGroq: () => (model: string) => ({ model }) }))
-vi.mock('@ai-sdk/mistral', () => ({ createMistral: () => (model: string) => ({ model }) }))
-process.env.MISTRAL_API_KEY = 'test'
+vi.mock('@ai-sdk/google', () => ({ createGoogleGenerativeAI: () => (model: string) => ({ model }) }))
+process.env.GEMINI_API_KEY = 'test'
 vi.mock('@/lib/redis', () => ({ getRedis: () => ({ get: async () => null, set: async () => 'OK' }) }))
 // The catalogue, for comparisons to other titles: only these exist.
 const CATALOGUE = ['little miss sunshine', 'the proposal']

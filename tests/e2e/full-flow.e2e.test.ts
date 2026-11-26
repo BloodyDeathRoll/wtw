@@ -52,7 +52,7 @@ const REQUIRED = [
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
   'GROQ_API_KEY',
-  'MISTRAL_API_KEY',
+  'GEMINI_API_KEY',
 ]
 const missing = REQUIRED.filter((k) => !process.env[k])
 const LIVE = process.env.WTW_E2E === '1' && USER_ID !== '' && missing.length === 0

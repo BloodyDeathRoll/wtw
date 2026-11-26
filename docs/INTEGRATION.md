@@ -10,6 +10,7 @@ v3 gets the app ready for friends: For you as a set of 20 with Refresh and Hide,
 
 ### v3 plan
 
+- **Mistral → Gemini (2026-11-26, Shahar).** Mistral's Free mode stopped including API access: every call answers 402 "You need a subscription to access this API", on the old key and on a new one (last card plot written 2026-11-23 16:26 UTC). Everything that was Mistral now runs on our Gemini key (`src/lib/gemini.ts`): card plots, co-watch, the last "Why" backups and the enrichment scripts on `gemini-3.1-flash-lite`; embeddings on `gemini-embedding-001` at 1024 dims. Tested live: structured output 1.3 s, a card plot 0.5 s, an embedding 0.3 s. Batch key `GEMINI_BATCH_API_KEY` (falls back to `GEMINI_API_KEY`). ⚠️ Gemini vectors aren't comparable with the stored Mistral ones: formula v1's narrative match needs titles and fingerprints re-embedded before v1 is turned back on (production runs v2, which doesn't read them). Google doesn't publish the free daily limit; check AI Studio → Rate limit.
 - **The plan (2026-11-18, `docs/v3-plan`).** PLAN.md, FOR-YOU / YOU / SEEN / SEARCH / CHAT decisions, the evidence, and the approved mocks (`docs/prototypes/for-you-v3`, `seen-v3`, `you-v3`). The Watchlist (#345, #346) is v3's first landed part; its end card is W1.
 - **F8 added (2026-11-18, #378, Eran).** Tabs open instantly: today every tab switch shows the spinning logo, because For you refetches its list when you come back and Games / You are rebuilt by the server on every visit. Lands after F1 and Shahar's N2; flag `FAST_TABS`.
 

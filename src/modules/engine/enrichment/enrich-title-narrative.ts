@@ -4,7 +4,7 @@
  * Given a title already in the `titles` table, calls the enrichment LLM
  * (MODELS.enrichment) to extract
  * structured narrative dimensions (strand_b-aligned), then generates a
- * Mistral embedding of those dimensions for pgvector cosine similarity.
+ * Gemini embedding of those dimensions for pgvector cosine similarity.
  *
  * Sets enriched_at on completion. The nightly cron calls this for every
  * title where enriched_at IS NULL.
@@ -17,9 +17,10 @@
 
 import { generateText, Output } from 'ai'
 import { embed } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { EMBED_OPTIONS } from '@/lib/gemini'
 import { MODELS } from '@/lib/ai-models'
-import { batchMistralApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
+import { batchApiKey, BATCH_MAX_RETRIES, recordMistralCall } from '@/lib/mistral-batch'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { TitleRow, NarrativeExtractionResult } from '../types'
@@ -29,8 +30,8 @@ import type { TitleRow, NarrativeExtractionResult } from '../types'
 // ─────────────────────────────────────────────
 
 // Batch path: its own key, no retries, every call counted (src/lib/mistral-batch.ts).
-function mistral() {
-  return createMistral({ apiKey: batchMistralApiKey() })
+function batchGemini() {
+  return createGoogleGenerativeAI({ apiKey: batchApiKey() })
 }
 
 // ─────────────────────────────────────────────
@@ -167,7 +168,7 @@ export function narrativeToEmbeddingText(meta: NarrativeExtractionResult): strin
 // ─────────────────────────────────────────────
 
 /**
- * Enriches a single title with LLM-extracted narrative metadata + Mistral embedding.
+ * Enriches a single title with LLM-extracted narrative metadata + Gemini embedding.
  * Requires the title to already exist in the `titles` table.
  *
  * @param tmdb_id  The title to enrich
@@ -214,7 +215,7 @@ Pick the ONE or TWO tones that apply most strongly, or none at all if no tone do
 
 Be precise: confidence values should reflect genuine certainty (0.5 = uncertain, 0.9 = very certain).`
 
-  // ── 3. LLM extraction (Mistral) ──────────────────────────
+  // ── 3. LLM extraction (Gemini) ──────────────────────────
   // If the model still sneaks an off-vocabulary tone past the prompt (e.g.
   // "mysterious" for a Mystery-genre title), don't fail the title forever:
   // strip unknown tones from the raw output and re-validate. Only rethrow
@@ -223,7 +224,7 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
   try {
     recordMistralCall()
     const { output } = await generateText({
-      model: mistral()(MODELS.enrichment),
+      model: batchGemini()(MODELS.enrichment),
       output: Output.object({ schema: narrativeSchema }),
       prompt,
       maxRetries: BATCH_MAX_RETRIES,
@@ -254,14 +255,15 @@ Be precise: confidence values should reflect genuine certainty (0.5 = uncertain,
     extracted = repaired.data
   }
 
-  // ── 4. Generate embedding (Mistral) ──────────────────────
+  // ── 4. Generate embedding (Gemini) ──────────────────────
   const embeddingText = narrativeToEmbeddingText(extracted as NarrativeExtractionResult)
 
   recordMistralCall()
   const { embedding } = await embed({
-    model: mistral().embeddingModel(MODELS.embedding),
+    model: batchGemini().embeddingModel(MODELS.embedding),
     value: embeddingText,
     maxRetries: BATCH_MAX_RETRIES,
+    providerOptions: EMBED_OPTIONS,
   })
 
   // ── 5. Update titles row ──────────────────────────────────

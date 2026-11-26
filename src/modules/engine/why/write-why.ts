@@ -25,7 +25,7 @@
  */
 
 import { createGroq } from '@ai-sdk/groq'
-import { createMistral } from '@ai-sdk/mistral'
+import { gemini } from '@/lib/gemini'
 import { generateText } from 'ai'
 import { MODELS, GROQ_TEXT_OPTIONS } from '@/lib/ai-models'
 import { getRedis } from '@/lib/redis'
@@ -696,16 +696,14 @@ async function draft(prompt: string, purpose: 'write' | 'judge' = 'write'): Prom
 function effortFor(model: string): 'low' | 'none' {
   return model.startsWith('qwen/') ? 'none' : 'low'
 }
-const isMistral = (model: string) => /^(ministral|mistral|open-mistral)/.test(model)
+const isGemini = (model: string) => model.startsWith('gemini-')
 
 async function callModel(model: string, prompt: string, purpose: 'write' | 'judge'): Promise<string> {
-  const mistralKey = process.env.MISTRAL_API_KEY
-  if (isMistral(model) && !mistralKey) throw new Error('MISTRAL_API_KEY is not set')
   const { text } = await generateText({
-    model: isMistral(model) ? createMistral({ apiKey: mistralKey })(model) : groq()(model),
+    model: isGemini(model) ? gemini()(model) : groq()(model),
     // The Groq ones are reasoning models; a paragraph from given facts needs
     // little thinking, and each free budget is 8,000 tokens a minute.
-    ...(isMistral(model) ? {} : { providerOptions: { groq: { ...GROQ_TEXT_OPTIONS.groq, reasoningEffort: effortFor(model) } } }),
+    ...(isGemini(model) ? {} : { providerOptions: { groq: { ...GROQ_TEXT_OPTIONS.groq, reasoningEffort: effortFor(model) } } }),
     // gpt-oss bills its hidden reasoning against this before any reply
     // token; Qwen runs without reasoning and caps output at 1,000 a minute.
     maxOutputTokens: model.startsWith('openai/gpt-oss') ? 2000 : 600,

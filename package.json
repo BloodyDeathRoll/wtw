@@ -40,8 +40,8 @@
     "build-genres16": "node --env-file=.env.local --conditions=react-server --import tsx scripts/build-genres16.mts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.128",
     "@ai-sdk/groq": "^4.0.84",
-    "@ai-sdk/mistral": "^4.0.87",
     "@ai-sdk/react": "^4.0.177",
     "@ducanh2912/next-pwa": "^10",
     "@google/genai": "^3.3.0",

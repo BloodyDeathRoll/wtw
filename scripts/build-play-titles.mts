@@ -35,13 +35,13 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { generateText, Output } from 'ai'
-import { createMistral } from '@ai-sdk/mistral'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { z } from 'zod'
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { MODELS } from '@/lib/ai-models'
 import {
-  batchMistralApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, mistralRetryAfterMs,
+  batchApiKey, BATCH_MAX_RETRIES, isMistralRateLimit, mistralRetryAfterMs,
   recordMistralCall, mistralCallCount,
 } from '@/lib/mistral-batch'
 import { GAME_GENRE_IDS, candidateGenres, neverGenres, type GameGenre } from '@/app/play/lib/genres'
@@ -200,14 +200,14 @@ async function seriesFacts(tmdb_id: string): Promise<SeriesFacts> {
 type AIScore = Record<Exclude<AIScale, 'humor'>, number> & { humor: number | null; confirmed: GameGenre[] }
 
 async function scoreBatch(batch: Candidate[]): Promise<Map<string, AIScore>> {
-  const mistral = createMistral({ apiKey: batchMistralApiKey() })
+  const google = createGoogleGenerativeAI({ apiKey: batchApiKey() })
   const prompt = batchPrompt(SCALE_GUIDE, batch)
 
   recordMistralCall()
   let output: z.infer<typeof batchSchema>
   try {
     ({ output } = await generateText({
-      model: mistral(MODELS.enrichment),
+      model: google(MODELS.enrichment),
       output: Output.object({ schema: batchSchema }),
       prompt,
       maxRetries: BATCH_MAX_RETRIES,

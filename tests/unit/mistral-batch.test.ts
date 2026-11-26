@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { APICallError, RetryError } from 'ai'
 import {
-  batchMistralApiKey,
+  batchApiKey,
   isMistralRateLimit,
   recordMistralCall,
   mistralCallCount,
@@ -53,31 +53,31 @@ describe('isMistralRateLimit', () => {
   })
 })
 
-describe('batchMistralApiKey', () => {
-  const saved = { batch: process.env.MISTRAL_BATCH_API_KEY, live: process.env.MISTRAL_API_KEY }
+describe('batchApiKey', () => {
+  const saved = { batch: process.env.GEMINI_BATCH_API_KEY, live: process.env.GEMINI_API_KEY }
   afterEach(() => {
-    process.env.MISTRAL_BATCH_API_KEY = saved.batch
-    process.env.MISTRAL_API_KEY = saved.live
-    if (saved.batch === undefined) delete process.env.MISTRAL_BATCH_API_KEY
-    if (saved.live === undefined) delete process.env.MISTRAL_API_KEY
+    process.env.GEMINI_BATCH_API_KEY = saved.batch
+    process.env.GEMINI_API_KEY = saved.live
+    if (saved.batch === undefined) delete process.env.GEMINI_BATCH_API_KEY
+    if (saved.live === undefined) delete process.env.GEMINI_API_KEY
   })
 
   it('prefers the batch key', () => {
-    process.env.MISTRAL_BATCH_API_KEY = 'batch-key'
-    process.env.MISTRAL_API_KEY = 'live-key'
-    expect(batchMistralApiKey()).toBe('batch-key')
+    process.env.GEMINI_BATCH_API_KEY = 'batch-key'
+    process.env.GEMINI_API_KEY = 'live-key'
+    expect(batchApiKey()).toBe('batch-key')
   })
 
   it('falls back to the live key', () => {
-    delete process.env.MISTRAL_BATCH_API_KEY
-    process.env.MISTRAL_API_KEY = 'live-key'
-    expect(batchMistralApiKey()).toBe('live-key')
+    delete process.env.GEMINI_BATCH_API_KEY
+    process.env.GEMINI_API_KEY = 'live-key'
+    expect(batchApiKey()).toBe('live-key')
   })
 
   it('throws when neither is set', () => {
-    delete process.env.MISTRAL_BATCH_API_KEY
-    delete process.env.MISTRAL_API_KEY
-    expect(() => batchMistralApiKey()).toThrow(/not set/)
+    delete process.env.GEMINI_BATCH_API_KEY
+    delete process.env.GEMINI_API_KEY
+    expect(() => batchApiKey()).toThrow(/not set/)
   })
 })
 
