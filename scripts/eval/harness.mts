@@ -8,6 +8,7 @@
  *   npm run eval -- --user <uuid> --sheet … --mode jev [--jev-calls 2]
  *   npm run eval -- --user <uuid> --sheet … --mode new [--cards 30] [--picks 12] [--draws 200] [--control] [--seed 1]
  *   npm run eval -- --user <uuid> --sheet … [--mode new] --lean 0.5      # try a genre lean g (P1-D4b); 0 = none; default = the app's GENRE_LEAN
+ *   npm run eval -- --user <uuid> --sheet … --mode new --test seen       # test on every seen sheet title, not only the fair ones (#250)
  *
  * The sheet is one tester's answers, `{ "movie:603": "loved" | "liked" |
  * "disliked" | "unseen", … }`. It lives in .eval-data/ (gitignored): the repo
@@ -67,6 +68,12 @@ const MODE = opt('--mode') ?? 'live'
 if (!USER || !SHEET) throw new Error('usage: --user <uuid> --sheet <path> [--mode live|new|jev]')
 if (MODE !== 'live' && MODE !== 'new' && MODE !== 'jev') throw new Error(`--mode must be live, new or jev, not ${MODE}`)
 if (MODE === 'new' && args.includes('--shuffle')) throw new Error('--shuffle is the live-mode control; in --mode new use --control')
+/** --mode new: which sheet titles the 20 hidden test titles come from. `fair` (default) leaves out what the
+ *  tester also rated in My ratings; `seen` takes every seen title. A new user starts blank, so a title they
+ *  rated later is still fair to hide from them; `seen` keeps the test set from shrinking as testers rate more (#250). */
+const TEST = opt('--test') ?? 'fair'
+if (TEST !== 'fair' && TEST !== 'seen') throw new Error(`--test must be fair or seen, not ${TEST}`)
+if (MODE !== 'new' && opt('--test') !== undefined) throw new Error('--test applies to --mode new only')
 /** The genre lean g to score with (P1-D4b). */
 const LEAN = Number(opt('--lean') ?? GENRE_LEAN)
 if (!Number.isFinite(LEAN) || LEAN < 0) throw new Error('--lean needs a number ≥ 0')
@@ -230,10 +237,10 @@ async function newUser(dna: DNASchema, seen: [string, Level][], fair: [string, L
   }
   const titles = await loadTitles([...new Set([...pool.keys(), ...allPicks.flatMap(p => [p.a, p.b])])])
   const vecs = new Map([...titles].map(([k, r]) => [k, vecOf(r)]).filter((e): e is [string, number[]] => !!e[1]))
-  const fairIn = fair.filter(([k]) => titles.has(k))
+  const fairIn = (TEST === 'seen' ? seen : fair).filter(([k]) => titles.has(k))
   // The tester's own genre answers, as a new user would have given them on the genre screen. Not in the control.
   const w0 = args.includes('--control') ? undefined : await loadGenreLean(USER!, LEAN)
-  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} fair titles in catalogue · ${allPicks.length} duel picks · genre lean g = ${LEAN} on ${(w0 ?? []).filter(Boolean).length} genres${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
+  console.log(`[eval] new user · ${CARDS} cards + ${PICKS} picks · ${DRAWS} draws · pool ${pool.size} rated · ${fairIn.length} ${TEST} titles in catalogue · ${allPicks.length} duel picks · genre lean g = ${LEAN} on ${(w0 ?? []).filter(Boolean).length} genres${args.includes('--control') ? ' · RANDOM-ANSWER CONTROL (cards and picks)' : ''}`)
   if (fairIn.length < 20) throw new Error('fewer than 20 fair titles in the catalogue')
 
   const res = { all: [] as number[], ld: [] as number[], loved: [] as number[], disliked: [] as number[] }
