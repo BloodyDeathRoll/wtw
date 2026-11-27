@@ -58,6 +58,12 @@ export function onboardingStarted(): void {
   track('onboarding_start', { run })
 }
 
+/** On sign-out: the next person on this browser starts their own count. */
+export function forgetOnboarding(): void {
+  write(RUNS_KEY, null)
+  write(START_KEY, null)
+}
+
 /** When the first feed is ready. Duration runs from the first start in this browser. */
 export function onboardingCompleted(): void {
   const runs = Number(read(RUNS_KEY) ?? 1) || 1
