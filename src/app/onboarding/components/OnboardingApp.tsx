@@ -35,6 +35,7 @@ import {
 import { FEED_HREF, fanOf, runShowtime } from '../lib/showtime'
 import type { GameGenre } from '@/app/play/lib/genres'
 import { furthest, readDevice, useCardQueue } from '../lib/card-queue'
+import { onboardingCompleted, onboardingStarted } from '@/lib/analytics'
 import {
   CARD_PARTS, MESSAGE_PARTS, PAIR_PARTS, STEP_PARTS, afterPick, flowIn, flowOut, pickOut, preload, sideParts, type Part,
 } from '../lib/flow'
@@ -118,6 +119,7 @@ export default function OnboardingApp({ user, saved, titles }: { user: AppUser; 
     setCards(c)
     setView(viewFor(c, S?.onboarding?.genres16 ?? {}))
     setReady(true)
+    if (!demo) onboardingStarted() // GA4: one run per visit to the onboarding
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on the first visit render
   }, [])
 
@@ -285,6 +287,7 @@ export default function OnboardingApp({ user, saved, titles }: { user: AppUser; 
       router.prefetch(FEED_HREF, { kind: PrefetchKind.FULL })
       const res = await fetch('/api/onboarding/finish', { method: 'POST' })
       if (!res.ok) throw new Error(`finish ${res.status}`)
+      onboardingCompleted()
     }
     return runShowtime(feed, {
       // Straight to the feed (P2-U0 part 6), not the home screen; the deep link the menu uses.

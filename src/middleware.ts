@@ -19,10 +19,11 @@ function contentSecurityPolicy(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${TZ_SCRIPT_HASH} ${SW_TEARDOWN_SCRIPT_HASH}`,
     "style-src 'self' 'unsafe-inline'",
     // TMDB posters/logos; Google avatars (AppMenu); data: for inline icons.
-    "img-src 'self' data: blob: https://image.tmdb.org https://*.googleusercontent.com",
+    // GA4 (src/lib/analytics.ts) also beacons through images.
+    "img-src 'self' data: blob: https://image.tmdb.org https://*.googleusercontent.com https://*.google-analytics.com https://*.googletagmanager.com",
     "font-src 'self'",
     // Supabase auth/realtime; Gemini Live's voice WebSocket (VoiceMode.tsx).
-    `connect-src 'self' ${supabase} ${supabaseWs} https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com`,
+    `connect-src 'self' ${supabase} ${supabaseWs} https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com`,
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
