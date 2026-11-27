@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import AppShell from "@/modules/session/components/AppShell";
 import styles from "@/modules/session/components/WTWApp.module.css";
 
-export default function LoginScreen() {
+export default function LoginScreen({ notApproved = false }: { notApproved?: boolean }) {
   const [busy, setBusy] = useState(false);
 
   async function signInWithGoogle() {
@@ -57,7 +57,12 @@ export default function LoginScreen() {
             <h1 className={styles.heroTitle}>
               Recommendations for you, not the average Joe
             </h1>
-            <p className={styles.onboardHint}>Sign in to calibrate your taste.</p>
+            <p className={styles.onboardHint}>Closed beta taste</p>
+            {notApproved && (
+              <p className={styles.onboardHint} role="alert">
+                This Google account isn&apos;t on the closed beta list yet.
+              </p>
+            )}
             <button
               type="button"
               className={styles.googleBtn}
