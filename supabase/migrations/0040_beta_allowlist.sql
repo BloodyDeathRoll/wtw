@@ -6,7 +6,10 @@
 --      Enable once in the dashboard: Authentication → Hooks → Before User Created →
 --      Postgres → public.hook_before_user_created.
 --   2. /auth/callback checks `is_beta_approved` on every sign-in, so removing an email
---      from the list also locks out an account that already exists.
+--      from the list also locks out an account that already exists, at its NEXT sign-in.
+--      A session already open keeps working until it ends. To cut someone off now, also
+--      end their sessions:
+--        delete from auth.sessions where user_id = (select id from auth.users where email = lower('…'));
 --
 -- The emails themselves are never committed (the repo is public): add them with
 --   insert into public.beta_allowlist (email) values (lower('someone@example.com'));
