@@ -103,6 +103,12 @@ export default function PrivacyPolicy() {
           <li>
             <strong>Upstash</strong> — caching layer (upstash.com).
           </li>
+          <li>
+            <strong>Google Analytics</strong> — usage statistics: when you finish
+            the first-run setup, Watchlist adds and removes, and your device
+            and browser type. Tied to your account id, never your email
+            (policies.google.com/privacy).
+          </li>
         </ul>
         <p className="mt-3">
           Content sent to Groq and Google is limited to what is necessary to

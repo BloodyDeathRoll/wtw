@@ -95,6 +95,7 @@ JEV_ENABLED=false        # skips step 4 (Jev) entirely; set in Vercel since P1-E
 NAV_HISTORY=             # v3 N1: Back retraces your steps (needs NAV_TABS; client-side, redeploy to change). Unset = off; on at P1-G
 RESEND_API_KEY=          # v3 Y2: "Send us feedback" emails (Resend, sending access only). Unset = the feedback row is hidden
 FEEDBACK_TO=             # v3 Y2: the team's feedback inbox (YOU.md DEC-5)
+NEXT_PUBLIC_GA_ID=       # GA4 measurement id (G-…); unset = no analytics. Baked in at build: redeploy to change
 ```
 
 ## Commands
