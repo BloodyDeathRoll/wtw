@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 
 // <Analytics /> (#464): the first config carries the user id when the session reads in
@@ -25,6 +25,7 @@ vi.mock('@/lib/supabase/client', () => ({
 const { default: Analytics } = await import('@/app/Analytics')
 
 beforeEach(() => { cleanup(); session = signedIn(); a.init.mockClear(); a.identify.mockClear(); a.forget.mockClear() })
+afterEach(() => { vi.useRealTimers() })
 
 describe('<Analytics />', () => {
   it('starts GA with the user id when the session reads in time', async () => {
@@ -40,7 +41,6 @@ describe('<Analytics />', () => {
     expect(a.init).toHaveBeenCalledWith(null)
     onAuth('INITIAL_SESSION', { user: { id: 'u2' } })
     expect(a.identify).toHaveBeenCalledWith('u2')
-    vi.useRealTimers()
   })
 
   it('sign-out clears the id and the onboarding counters', () => {
