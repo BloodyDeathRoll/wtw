@@ -13,7 +13,8 @@ vi.mock('@/lib/analytics', () => ({
   forgetOnboarding: () => a.forget(),
 }))
 vi.mock('next/script', () => ({ default: () => null }))
-let session: Promise<unknown> = Promise.resolve({ data: { session: { user: { id: 'u1' } } } })
+const signedIn = () => Promise.resolve({ data: { session: { user: { id: 'u1' } } } })
+let session: Promise<unknown> = signedIn()
 let onAuth: (event: string, s: unknown) => void = () => {}
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({ auth: {
@@ -23,7 +24,7 @@ vi.mock('@/lib/supabase/client', () => ({
 }))
 const { default: Analytics } = await import('@/app/Analytics')
 
-beforeEach(() => { cleanup(); a.init.mockClear(); a.identify.mockClear(); a.forget.mockClear() })
+beforeEach(() => { cleanup(); session = signedIn(); a.init.mockClear(); a.identify.mockClear(); a.forget.mockClear() })
 
 describe('<Analytics />', () => {
   it('starts GA with the user id when the session reads in time', async () => {
