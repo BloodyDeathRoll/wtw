@@ -17,7 +17,7 @@ describe('LoginScreen', () => {
     expect(screen.getByText(/not the average Joe/)).toBeTruthy()
     expect(screen.getByText('Closed Beta test')).toBeTruthy()
     expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Continue with Google/ })).toBeTruthy()
   })
 
   it('refused: no title or subtitle, just the reason and the button', () => {
@@ -25,6 +25,7 @@ describe('LoginScreen', () => {
     expect(screen.queryByText(/not the average Joe/)).toBeNull()
     expect(screen.queryByText('Closed Beta test')).toBeNull()
     expect(screen.getByRole('alert').textContent).toMatch(/isn.t on the closed beta list yet/)
-    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'WTW closed beta' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Continue with Google/ })).toBeTruthy()
   })
 })

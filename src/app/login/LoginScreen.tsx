@@ -75,7 +75,6 @@ export default function LoginScreen({ notApproved = false }: { notApproved?: boo
               className={styles.googleBtn}
               onClick={signInWithGoogle}
               disabled={busy}
-              aria-label="Sign in with Google"
             >
               <GoogleGlyph />
               <span>{busy ? "Redirecting…" : "Continue with Google"}</span>
