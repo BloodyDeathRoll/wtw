@@ -18,20 +18,19 @@ beforeEach(() => { window.dataLayer = []; localStorage.clear(); vi.useRealTimers
 describe('analytics', () => {
   it('does nothing without a measurement id', async () => {
     const a = await load('')
-    a.initAnalytics()
-    a.identify('u1')
+    a.initAnalytics('u1')
     a.track('watchlist_add', { items: 1 })
     expect(window.dataLayer).toEqual([])
   })
 
-  it('pushes Arguments objects, and sets the user id', async () => {
+  it('pushes Arguments objects; config carries the user id with ad signals off', async () => {
     const a = await load('G-TEST')
-    a.initAnalytics()
-    a.identify('u1')
+    a.initAnalytics('u1')
+    a.identify(null)
     a.track('watchlist_add', { items: 3 })
     expect(Object.prototype.toString.call(window.dataLayer![0])).toBe('[object Arguments]')
-    expect(calls()[1]).toEqual(['config', 'G-TEST'])
-    expect(calls()[2]).toEqual(['set', { user_id: 'u1' }])
+    expect(calls()[1]).toEqual(['config', 'G-TEST', { allow_google_signals: false, allow_ad_personalization_signals: false, user_id: 'u1' }])
+    expect(calls()[2]).toEqual(['set', { user_id: null }])
     expect(events('watchlist_add')).toEqual([{ items: 3 }])
   })
 

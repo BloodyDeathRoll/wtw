@@ -19,14 +19,19 @@ function gtag(..._args: unknown[]): void {
   window.dataLayer.push(arguments)
 }
 
-/** Once per page load, from <Analytics />. */
-export function initAnalytics(): void {
+/** Once per page load, from <Analytics />. Google signals and ad personalisation stay off:
+ *  only the stats the privacy page lists. */
+export function initAnalytics(userId: string | null): void {
   gtag('js', new Date())
-  gtag('config', GA_ID)
+  gtag('config', GA_ID, {
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+    ...(userId ? { user_id: userId } : {}),
+  })
 }
 
-/** Tags every later event with the signed-in user's id (Supabase id, never an email). */
-export function identify(userId: string): void {
+/** Tags later events with the signed-in user's id (Supabase id, never an email); null on sign-out. */
+export function identify(userId: string | null): void {
   gtag('set', { user_id: userId })
 }
 
