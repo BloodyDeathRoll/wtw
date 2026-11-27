@@ -3,7 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import LoginScreen from "./LoginScreen";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
 
@@ -11,5 +15,6 @@ export default async function LoginPage() {
     redirect("/");
   }
 
-  return <LoginScreen />;
+  const { error } = await searchParams;
+  return <LoginScreen notApproved={error === "not-approved"} />;
 }
