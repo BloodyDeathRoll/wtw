@@ -54,14 +54,18 @@ export default function LoginScreen({ notApproved = false }: { notApproved?: boo
               />
               <span className={styles.welcomeLogoName}>WTW</span>
             </div>
-            <h1 className={styles.heroTitle}>
-              Recommendations for you, not the average Joe
-            </h1>
-            <p className={styles.onboardHint}>Closed beta taste</p>
-            {notApproved && (
+            {/* Refused (not on the closed beta list): only the logo, the reason and the button. */}
+            {notApproved ? (
               <p className={styles.onboardHint} role="alert">
                 This Google account isn&apos;t on the closed beta list yet.
               </p>
+            ) : (
+              <>
+                <h1 className={styles.heroTitle}>
+                  Recommendations for you, not the average Joe
+                </h1>
+                <p className={styles.onboardHint}>Closed beta taste</p>
+              </>
             )}
             <button
               type="button"
