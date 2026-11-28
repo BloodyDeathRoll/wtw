@@ -9,7 +9,6 @@
  * a title scoring 0.9 for user A and 0.1 for user B gets 0.30, not 0.50.
  */
 
-import { createServiceClient }  from '@/lib/supabase/service'
 import { getCandidates }        from '../pipeline/step1-candidate-gen'
 import { scoreCandidates }      from '../pipeline/step2-composite-score'
 import { applySoftModifiers }   from '../pipeline/step3-soft-modifiers'
@@ -22,17 +21,11 @@ import {
   getCachedCowatch,
   cacheCowatchResults,
 } from '../pipeline/step8-cache'
-import type { DNASchema, CowatchResult } from '@/types/dna'
+import type { CowatchResult } from '@/types/dna'
+import { readDNA } from '../dna-read'
 
-async function loadDNA(userId: string): Promise<DNASchema | null> {
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('users')
-    .select('dna')
-    .eq('id', userId)
-    .single<{ dna: DNASchema | null }>()
-  return data?.dna ?? null
-}
+/** The whole DNA only when it changed (#457, dna-read.ts). */
+const loadDNA = readDNA
 
 const cowatchExplanationSchema = z.object({
   explanations: z.array(z.object({

@@ -15,7 +15,7 @@ vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     from: () => ({
       select: () => ({
-        eq: () => ({ single: async () => ({ data: { dna: createBlankDNA('u1') }, error: null }) }),
+        eq: () => ({ single: async () => ({ data: { dna: createBlankDNA('u1'), updated_at: 't0' }, error: null }), maybeSingle: async () => ({ data: { dna: createBlankDNA('u1'), updated_at: 't0' }, error: null }) }),   // + readDNA (#457)
       }),
     }),
   }),

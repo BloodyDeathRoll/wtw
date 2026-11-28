@@ -18,7 +18,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
-    from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { dna: { metadata: { taste_version: 7 } } } }) }) }) }),
+    from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { taste_version: 7 } }) }) }) }),   // the version only (#457)
   }),
 }))
 vi.mock('@/lib/auth-guard', () => ({ logAuthFailure: () => {} }))

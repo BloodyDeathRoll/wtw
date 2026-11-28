@@ -25,7 +25,7 @@ import { isSavedMarker } from '@/lib/title-key'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import { invalidateDNACache } from '@/modules/dna/lib/load-save'
 import { freshState, type PlayState } from '@/app/play/lib/brain'
-import type { DNASchema } from '@/types/dna'
+import { readUserDNA } from '@/modules/engine/dna-read'
 
 export interface ResetOptions {
   /** Keep the Watchlist and the titles taken off the feed. */
@@ -71,10 +71,8 @@ export interface ResetResult { tables: number; redisKeys: number; tasteVersion: 
 
 export async function resetTaste(userId: string, opts: ResetOptions): Promise<ResetResult> {
   const db = createServiceClient()
-  const { data: row, error } = await db.from('users').select('dna').eq('id', userId).maybeSingle<{ dna: DNASchema | null }>()
-  if (error) throw new Error(error.message)
+  const { row, dna } = await readUserDNA(userId)   // #457: whole only when it changed; throws on a failed read
   if (!row) throw new Error('no such user')
-  const dna = row.dna
 
   // A DNA with no signals (a re-run after the DNA write, or a fresh account) has nothing to roll back to.
   if (dna && dna.signals.length > 0) {

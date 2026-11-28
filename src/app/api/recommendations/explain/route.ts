@@ -29,7 +29,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/supabase/auth-user'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getCachedRecommendations, getWhyText } from '@/modules/engine'
-import type { DNASchema, RecommendationResult } from '@/types/dna'
+import type { RecommendationResult } from '@/types/dna'
 import type { ContentType } from '@/lib/content-type'
 import { findInForYouSets } from '@/lib/for-you-set'
 import { forYouV3Enabled } from '@/lib/flags'
@@ -55,13 +55,14 @@ export async function GET(req: NextRequest) {
   // ── Get current taste_version from DNA ───────────────────
   // Needed to construct the correct Redis cache key
   const serviceClient = createServiceClient()
+  // #457: only the version, not the whole DNA (0.17–0.88 MB).
   const { data: userData } = await serviceClient
     .from('users')
-    .select('dna')
+    .select('taste_version:dna->metadata->taste_version')
     .eq('id', user.id)
-    .single<{ dna: Pick<DNASchema, 'metadata'> | null }>()
+    .single<{ taste_version: number | null }>()
 
-  const tasteVersion = userData?.dna?.metadata?.taste_version
+  const tasteVersion = userData?.taste_version
   if (tasteVersion == null) {
     return NextResponse.json(
       { error: 'Profile not set up yet. Complete onboarding first.' },
