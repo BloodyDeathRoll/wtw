@@ -46,6 +46,7 @@ import { hasMaterialChange, ratedTmdbIds, cacheServableUnchanged } from '@/modul
 import { markSavedInHistory, unmarkSavedInHistory } from '@/modules/session/watchlist-intent'
 import type { DNASchema, RecommendationResult, SessionSummary } from '@/types/dna'
 import type { RecPage } from '@/types/recommendation'
+import { readUserDNA } from '@/modules/engine/dna-read'
 
 export const runtime = 'nodejs'
 
@@ -133,18 +134,16 @@ export async function POST(req: NextRequest) {
 
   // ── 1. Load conversation (ownership check) ───────────────────
   // The two reads are independent — one round trip, not two.
-  const [{ data: convo }, { data: userRow }] = await Promise.all([
+  const [{ data: convo }, userRow] = await Promise.all([
     db
       .from('conversations')
       .select('id, user_id')
       .eq('id', conversationId)
       .single<{ id: string; user_id: string }>(),
     // ── 2. Ensure a DNA fingerprint exists (idempotent bootstrap) ─
-    db
-      .from('users')
-      .select('dna')
-      .eq('id', user.id)
-      .single<{ dna: DNASchema | null }>(),
+    // #457: the whole DNA only when it changed. Throws when it can't be read, so a failed
+    // read never falls through to the blank-DNA write below.
+    readUserDNA(user.id),
   ])
 
   if (!convo || convo.user_id !== user.id) {
@@ -152,7 +151,7 @@ export async function POST(req: NextRequest) {
   }
   t.mark('reads')
 
-  let dna = userRow?.dna ?? null
+  let dna = userRow.dna
   if (!dna) {
     dna = createBlankDNA(user.id)
     await db

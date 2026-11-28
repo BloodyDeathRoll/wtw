@@ -21,7 +21,6 @@
  */
 import 'server-only'
 
-import { createServiceClient } from '@/lib/supabase/service'
 import { formulaV2Enabled } from '@/lib/flags'
 import type { ContentType } from '@/lib/content-type'
 import type { DNASchema, ReasonPayload } from '@/types/dna'
@@ -37,6 +36,7 @@ import { poolStatsOf, readPoolStats, savePoolStats, v2PartsOf, type SavedPoolSta
 import { userTasteWeights } from './scoring/taste-weights'
 import { displayMatch } from './match-display'
 import { loadTitleRows, type TitleKey } from './why/score-titles'
+import { readDNA } from './dna-read'
 
 export type NotScoredReason = 'no_profile' | 'cold_start' | 'formula_v1' | 'not_in_catalogue' | 'no_pool'
 
@@ -67,12 +67,8 @@ function poolLists(type: 'movie' | 'tv'): ContentType[] {
   return [type === 'tv' ? 'series' : 'movies', 'all']
 }
 
-async function loadDNA(userId: string): Promise<DNASchema | null> {
-  const { data } = await createServiceClient()
-    .from('users').select('dna').eq('id', userId)
-    .maybeSingle<{ dna: DNASchema | null }>()
-  return data?.dna ?? null
-}
+/** The whole DNA only when it changed (#457, dna-read.ts). */
+const loadDNA = readDNA
 
 /** No pool saved in the last week: build the Both pool once (read-only, ~1 s) and save its stats. */
 async function buildPool(userId: string, dna: DNASchema): Promise<SavedPoolStats | null> {

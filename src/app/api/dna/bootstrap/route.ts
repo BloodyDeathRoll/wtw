@@ -14,6 +14,7 @@ import { getAuthUser } from '@/lib/supabase/auth-user'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createBlankDNA } from '@/modules/dna/blank-dna'
 import type { DNASchema } from '@/types/dna'
+import { readUserDNA } from '@/modules/engine/dna-read'
 
 export async function POST(_req: NextRequest) {
   const supabase = await createClient()
@@ -25,22 +26,21 @@ export async function POST(_req: NextRequest) {
   }
 
   const db = createServiceClient()
-  const { data, error } = await db
-    .from('users')
-    .select('dna')
-    .eq('id', user.id)
-    .single<{ dna: DNASchema | null }>()
-
-  if (error) {
+  // #457: the whole DNA only when it changed; throws when it can't be read (→ 500, never a blank write).
+  let dna: DNASchema | null
+  try {
+    dna = (await readUserDNA(user.id)).dna
+  } catch (err) {
+    console.error('[dna/bootstrap] read failed:', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 })
   }
 
-  if (data?.dna) {
+  if (dna) {
     // Already initialized — return current version
     return NextResponse.json({
       ok: true,
       created: false,
-      taste_version: data.dna.metadata.taste_version,
+      taste_version: dna.metadata.taste_version,
     })
   }
 

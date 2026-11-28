@@ -37,6 +37,17 @@ vi.mock('@/modules/engine', () => ({ generateRecommendations: async () => [], ge
 vi.mock('@/modules/engine/enrichment/ensure-watch-providers', () => ({ ensureWatchProviders: async () => {} }))
 vi.mock('@/modules/engine/pipeline/step8-cache', () => ({ getCachedRecommendations: async () => db.batch }))
 
+function usersDNA() {
+  const dna = dnaAt(7)
+  dna.signals = db.signals as never
+  dna.learning_loop.recommendation_history = db.history as never
+  return dna
+}
+// The routes read the DNA through dna-read.ts (#457); dna-read.test.ts covers that read itself.
+vi.mock('@/modules/engine/dna-read', () => ({
+  readUserDNA: async () => ({ row: true, dna: usersDNA() }),
+  readDNA: async () => usersDNA(),
+}))
 // A tiny stand-in for the tables these routes read.
 function query(table: string) {
   const filters: Record<string, unknown> = {}
@@ -46,10 +57,8 @@ function query(table: string) {
   q.eq = (col: string, v: unknown) => { filters[col] = v; return q }
   q.single = async () => {
     if (table !== 'users') return { data: null, error: null }
-    const dna = dnaAt(7)
-    dna.signals = db.signals as never
-    dna.learning_loop.recommendation_history = db.history as never
-    return { data: { dna }, error: null }
+    const dna = usersDNA()
+    return { data: { dna, taste_version: dna.metadata.taste_version }, error: null }   // explain reads the version only (#457)
   }
   q.maybeSingle = async () => {
     if (db.readFails) return { data: null, error: { message: 'boom' } }

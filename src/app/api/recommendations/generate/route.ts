@@ -19,6 +19,7 @@ import { forYouV3Enabled } from "@/lib/flags";
 import { startTimer } from "@/lib/timing";
 import { isContentType, type ContentType } from "@/lib/content-type";
 import type { SessionContext, DNASchema, RecommendationResult } from "@/types/dna";
+import { readUserDNA } from "@/modules/engine/dna-read";
 
 export const runtime = "nodejs";
 
@@ -72,12 +73,9 @@ export async function GET(req: Request) {
   //    different from a Redis failure below. ──────────────────────────────
   // Step times for a card page (2026-11-13: ~1.6 s per page, cause not yet known).
   const t = startTimer("recs/get");
-  const dnaRead = createServiceClient()
-    .from("users")
-    .select("dna")
-    .eq("id", user.id)
-    .single<{ dna: DNASchema | null }>()
-    .then((r) => ({ ok: true as const, ...r }), (err: unknown) => ({ ok: false as const, err }));
+  // #457: the whole DNA only when it changed (dna-read.ts); throws when the database can't be read.
+  const dnaRead = readUserDNA(user.id)
+    .then((r) => ({ ok: true as const, dna: r.dna }), (err: unknown) => ({ ok: false as const, err }));
   // v3 F1 (FOR_YOU_V3): the 20, kept until Refresh (src/lib/for-you-set.ts). Read alongside. `ok: false` (the read
   // failed) falls back to today's paged feed below, never to an error.
   const setOn = forYouV3Enabled();
@@ -95,18 +93,10 @@ export async function GET(req: Request) {
   t.mark(setOn ? "dna + removed list + the 20" : "dna + removed list");
 
   try {
+    // No row or no DNA = determinate "not onboarded" (fine → blank DNA below). A read that failed
+    // means we couldn't determine fingerprint status → fail closed below rather than guess.
     if (!dnaResult.ok) throw dnaResult.err;
-    const { data, error } = dnaResult;
-
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 = no row = determinate "not onboarded" (fine → blank DNA
-      // below). Any other error means we couldn't determine fingerprint
-      // status → fail closed below rather than guess.
-      dnaReadFailed = true
-      console.error("[recommendations/generate] DNA read failed:", error.message)
-    } else {
-      dna = data?.dna ?? null
-    }
+    dna = dnaResult.dna;
   } catch (err) {
     dnaReadFailed = true
     console.error(

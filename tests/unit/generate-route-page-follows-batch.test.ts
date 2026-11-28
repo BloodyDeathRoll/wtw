@@ -24,6 +24,8 @@ vi.mock('@/modules/engine/pipeline/step8-cache', () => ({
     explanation: '', is_stretch_pick: false, generated_at: '', fingerprint_version: state.version,
   })),
 }))
+// The route reads the DNA through dna-read.ts (#457); dna-read.test.ts covers that read itself.
+vi.mock('@/modules/engine/dna-read', () => ({ readUserDNA: async () => ({ row: true, dna: dnaAt(state.version) }) }))
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     from: (table: string) => {

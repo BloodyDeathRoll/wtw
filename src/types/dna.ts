@@ -189,6 +189,8 @@ export interface DNASignal {
   confidence: number
   flag: SignalFlag | null
   watched_at: string | null         // ISO-8601
+  /** Set when the nightly decay halved this signal (past 18 months), so it's halved once, never twice (#457). */
+  decayed_at?: string               // ISO-8601
 }
 
 // ─────────────────────────────────────────────

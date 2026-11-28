@@ -11,7 +11,7 @@ let redis: FakeRedis
 vi.mock('@/lib/redis', () => ({ getRedis: () => redis }))
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
-    from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { dna: createBlankDNA('u1') }, error: null }) }) }) }),
+    from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { dna: createBlankDNA('u1'), updated_at: 't0' }, error: null }), maybeSingle: async () => ({ data: { dna: createBlankDNA('u1'), updated_at: 't0' }, error: null }) }) }) }),   // + readDNA (#457)
   }),
 }))
 const generateRecommendations = vi.fn(async () => [{ tmdb_id: '900', type: 'movie' } as unknown as RecommendationResult])
