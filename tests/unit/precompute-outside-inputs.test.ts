@@ -20,11 +20,16 @@ vi.mock('@/lib/supabase/service', () => ({
     from: (table: string) => {
       const q: Record<string, unknown> = {}
       for (const m of ['select', 'eq', 'not', 'order']) q[m] = () => q
-      q.single = async () => ({ data: { dna: createBlankDNA('u1') }, error: null })
+      q.single = async () => ({ data: { dna: createBlankDNA('u1'), updated_at: 't0' }, error: null })
       q.limit = async () => db.picksFail
         ? { data: null, count: null, error: { message: 'timeout' } }
         : { data: db.picks.count ? [{ id: db.picks.lastId }] : [], count: db.picks.count, error: null }
-      q.maybeSingle = async () => ({ data: table === 'play_state' ? { state: { gen: db.gen } } : null, error: null })
+      q.maybeSingle = async () => ({
+        data: table === 'play_state' ? { state: { gen: db.gen } }
+          : table === 'users' ? { dna: createBlankDNA('u1'), updated_at: 't0' }   // readDNA (#457)
+          : null,
+        error: null,
+      })
       return q
     },
   }),

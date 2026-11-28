@@ -4,15 +4,14 @@
  * any title — a feed card, or a Watchlist entry saved weeks ago.
  */
 
-import { createServiceClient } from '@/lib/supabase/service'
 import { isColdStart } from '../pipeline/cold-start'
 import { getCachedRecommendations } from '../pipeline/step8-cache'
 import type { ReasonPayloadWithTaste } from '../types'
-import type { DNASchema } from '@/types/dna'
 import { loadRatedForComparison, scoreTitlesForUser, type TitleKey } from './score-titles'
 import { cacheWhy, getCachedWhy, writeWhyFromFacts, type WhyText } from './write-why'
 import { cardReason } from '../pipeline/step7-card-reason'
 import { cardPlots } from '../pipeline/card-plot'
+import { readDNA } from '../dna-read'
 
 export type { WhyText } from './write-why'
 export type { TitleKey } from './score-titles'
@@ -22,10 +21,9 @@ export async function whyForTitle(userId: string, key: TitleKey): Promise<WhyTex
   const cached = await getCachedWhy(userId, key.type, key.tmdb_id).catch(() => null)
   if (cached) return cached
 
-  const { data } = await createServiceClient()
-    .from('users').select('dna').eq('id', userId)
-    .single<{ dna: DNASchema | null }>()
-  if (!data?.dna) return null
+  const dna = await readDNA(userId)   // whole only when it changed (#457)
+  if (!dna) return null
+  const data = { dna }
 
   const [{ items, rated }, ratedTitles, skipTasteCatch] = await Promise.all([
     scoreTitlesForUser(data.dna, [key]),
@@ -68,10 +66,9 @@ async function catchSharedInBatch(userId: string, tasteVersion: number, key: Tit
  * line, which is true, and there's no taste to say anything else from.
  */
 export async function cardLinesForTitles(userId: string, keys: TitleKey[]): Promise<Record<string, string> | null> {
-  const { data } = await createServiceClient()
-    .from('users').select('dna').eq('id', userId)
-    .single<{ dna: DNASchema | null }>()
-  if (!data?.dna || isColdStart(data.dna)) return null
+  const dna = await readDNA(userId)   // whole only when it changed (#457)
+  if (!dna || isColdStart(dna)) return null
+  const data = { dna }
   const { items, rated } = await scoreTitlesForUser(data.dna, keys)
   const plots = await cardPlots(items)
   return Object.fromEntries(items.map(item => [`${item.title.type}:${item.title.tmdb_id}`, cardReason(item, rated, plots)]))
